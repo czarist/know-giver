@@ -1,0 +1,63 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+# Internal crates
+kg-ui = { path = "crates/ui" }
+kg-engine = { path = "crates/engine" }
+kg-study = { path = "crates/study" }
+kg-ai = { path = "crates/ai" }
+kg-audio = { path = "crates/audio" }
+kg-pdf = { path = "crates/pdf" }
+
+# External
+candle-core = "0.11"
+candle-nn = "0.11"
+candle-transformers = "0.11"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+cpal = "0.18"
+directories = "6"
+dotenvy = "0.15"
+eframe = "0.36"
+egui = "0.36"
+embed-resource = "3"
+pdf-extract = "0.12"
+rfd = "0.17"
+rodio = { version = "0.23", default-features = false, features = ["playback"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
+rust-i18n = "4.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ureq = { version = "3", features = ["json"] }
+zip = "9"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "warn"
+dbg_macro = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Keep egui snappy in debug builds.
+[profile.dev.package."*"]
+opt-level = 2

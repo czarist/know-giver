@@ -1,19 +1,14 @@
 # Changelog
 
-All notable changes to the Know Giver project will be documented in this file.
+All notable changes to Know Giver. Format based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[Semantic Versioning](https://semver.org/).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-
-## [Unreleased]
+## [0.1.0] - 2026-10-27
 
 ### Added
-- Initial AI agent environment setup
-- `AGENTS.md` / `CLAUDE.md` with project instructions for coding agents
-- Skills directory (`.agents/skills/`) with Rust best practices, review, porting and UI/UX skills
-- Supporting docs: architecture, tutor prompts, roadmap and README
-- Project structure prepared for pure Rust desktop app (egui) with voice lessons
-
-### Notes
-- First milestone: AI development environment configured
-- Skills installed include rust-best-practices, rust-review, ui-ux-pro-max and related design skills
-- Ready for agent-assisted development of the desktop application
+- Cargo workspace (`crates/*`) with shared dependencies and lints: no `unwrap`, `expect`
+  or `panic!` outside tests.
+- `kg-study`: study plans (subjects, topics, difficulty, status, week), SM-2 spaced
+  repetition, multiple-choice quizzes, and SQLite storage with migrations.
+- `.gitignore` and `.env.example`.
