@@ -4,6 +4,19 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-10-27
+
+### Added
+- Microphone capture (cpal) with noise-floor end-of-speech detection and idle timeout.
+- Speech-to-text with Whisper on candle, pure Rust on CPU: slaney mel filterbank,
+  byte-level token decoder, greedy decoding with a repetition guard, silence skip.
+- Text-to-speech with the Piper executable as a child process, text split into sentence
+  chunks so speech starts early.
+- Playback on its own thread (rodio).
+- Local model store: Whisper tiny/base/small, Piper, pt-BR voices Faber, Cadu and Jeff;
+  downloads through `.part` files so interrupted downloads never look installed.
+- `stt_check` and `voice_check` examples.
+
 ## [0.3.0] - 2026-10-27
 
 ### Added
