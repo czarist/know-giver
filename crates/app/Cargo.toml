@@ -1,0 +1,21 @@
+[package]
+name = "know-giver"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Estude para concursos com plano gerado por IA e aulas por voz."
+
+[[bin]]
+name = "know-giver"
+path = "src/main.rs"
+
+[dependencies]
+dotenvy.workspace = true
+kg-ui.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

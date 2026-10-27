@@ -4,6 +4,32 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-27
+
+### Added
+- Desktop interface (egui) with seven screens:
+  - **Edital**: pick the PDF, see what was extracted, set weeks, hours per week and role,
+    generate the plan; list, open and delete saved plans.
+  - **Study plan**: by week (current week first) or by subject, with status, difficulty,
+    reviews due and shortcuts to lesson and quiz.
+  - **Lesson**: transcript, voice orb that shows listening, thinking and speaking, mic
+    level, typed fallback, warnings when speech models are missing.
+  - **Quiz**: one question at a time, right/wrong feedback with explanation, score.
+  - **Review**: topics due today and in the next days; AI recall question, graded answer,
+    or self-grading.
+  - **Progress**: totals, per-subject bars, Markdown report export.
+  - **Settings**: language, AI server, key and per-task models, connection test, voice
+    options, local model downloads with progress.
+- Translations in `locales/pt-BR.yml` and `locales/en.yml`; no hardcoded UI text. Tests
+  check that both languages have the same keys and that every key used in code exists.
+- Calm light and dark theme, notices as toasts, badges in the sidebar.
+- `know-giver` binary: reads `.env` from the working folder or next to the executable,
+  no console window in release builds.
+- Snapshot test that renders every screen to PNG (needs a GPU, ignored by default).
+
+### Fixed
+- A global `OPENAI_API_KEY` in the system no longer overrides the project's `.env`.
+
 ## [0.5.0] - 2026-10-27
 
 ### Added

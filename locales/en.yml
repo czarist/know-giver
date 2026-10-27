@@ -1,0 +1,280 @@
+_version: 1
+
+app:
+  name: "Know Giver"
+  tagline: "Public exam study"
+
+language:
+  pt-BR: "Português (Brasil)"
+  en: "English"
+
+format:
+  date: "%b %d, %Y"
+
+common:
+  close: "Close"
+  cancel: "Cancel"
+
+fatal:
+  title: "Could not start"
+  subtitle: "Know Giver could not open your data."
+
+nav:
+  edital: "Exam notice"
+  plan: "Study plan"
+  lesson: "Lesson"
+  quiz: "Quiz"
+  review: "Review"
+  progress: "Progress"
+  settings: "Settings"
+  in_progress: "in progress"
+  active_plan: "Active plan"
+
+status:
+  not_started: "Not started"
+  studying: "Studying"
+  reviewing: "Reviewing"
+  done: "Done"
+
+difficulty:
+  easy: "Easy"
+  medium: "Medium"
+  hard: "Hard"
+
+grade:
+  again: "Forgot"
+  hard: "Hard"
+  good: "Good"
+  easy: "Easy"
+
+edital:
+  title: "Exam notice"
+  subtitle: "Upload the exam notice PDF to generate your study plan."
+  empty: "Choose the exam notice PDF. The text is read on your computer and only the syllabus is sent to the AI."
+  select_pdf: "Select exam notice PDF"
+  pdf_filter: "PDF document"
+  extracting: "Reading %{file}…"
+  summary: "%{pages} pages · %{chars} characters of text"
+  preview: "Show extracted text"
+  weeks: "Weeks until the exam"
+  hours: "Study hours per week"
+  role: "Position"
+  role_hint: "Optional: the position you are applying for"
+  generate: "Generate study plan"
+  other_file: "Use another file"
+  generating: "Generating the plan… %{seconds} s. Usually takes 30 seconds to 2 minutes."
+  your_plans: "Your plans"
+  no_plans: "No plans yet."
+  active: "Active"
+  plan_meta: "Created %{date} · %{done} of %{total} topics done"
+  open: "Open"
+  delete: "Delete"
+  confirm_delete: "Delete this plan and all its progress? This cannot be undone."
+
+plan:
+  title: "Study plan"
+  subtitle: "Subjects and topics extracted from the exam notice."
+  empty: "No plan yet. Start by uploading the exam notice."
+  go_to_edital: "Go to Exam notice"
+  summary: "%{weeks} weeks · %{topics} topics · %{done} done"
+  by_week: "By week"
+  by_subject: "By subject"
+  switch: "Switch plan"
+  week: "Week %{n}"
+  this_week: "this week"
+  lesson: "Lesson"
+  quiz: "Quiz"
+  review_due: "Review today"
+
+lesson:
+  title: "Lesson"
+  subtitle: "Talk to the tutor by voice about the topics in your plan."
+  none: "Pick a topic to start a lesson. You speak, the tutor answers out loud."
+  suggestions: "Suggested now"
+  start: "Start lesson"
+  end: "End lesson"
+  tutor: "Tutor"
+  you: "You"
+  send: "Send"
+  type_hint: "Or type your question and press Enter"
+  open_settings: "Open settings"
+  need_stt: "To talk to the tutor, download a speech recognition model in Settings."
+  need_tts: "To hear the tutor, download Piper and a voice in Settings."
+  phase:
+    idle: "Ready"
+    listening: "Listening…"
+    transcribing: "Understanding what you said…"
+    thinking: "Thinking…"
+    speaking: "Speaking…"
+  orb_hint:
+    idle: "Click the microphone to speak."
+    listening: "Go ahead. Click again to send."
+    speaking: "Click the microphone to interrupt."
+    wait: "One moment."
+
+quiz:
+  title: "Quiz"
+  subtitle: "Multiple-choice questions in the style of exam boards."
+  none: "No quiz in progress. Start one from a topic in your plan."
+  go_to_plan: "Go to plan"
+  loading: "Preparing questions…"
+  progress: "Question %{n} of %{total}"
+  correct: "Correct."
+  wrong: "Not this time."
+  next: "Next question"
+  see_result: "See result"
+  score: "%{correct} of %{total}"
+  again: "New quiz"
+  lesson: "Lesson on this topic"
+  result:
+    great: "Excellent. This topic is solid."
+    good: "Good result. A quick review will help it stick."
+    keep_going: "A lesson on this topic is worth it before the next quiz."
+
+review:
+  title: "Review"
+  subtitle: "Spaced reviews: each topic comes back at the right time so you do not forget it."
+  all_done: "No reviews for today."
+  all_done_hint: "Topics enter review after a lesson or a quiz."
+  due_today: "%{count} to review today"
+  start: "Review"
+  upcoming: "Coming up"
+  loading_question: "Preparing a question…"
+  answer_hint: "Answer in your own words"
+  check: "Check"
+  self_grade: "Or say how it went, without checking:"
+  grading: "Checking…"
+  score: "Score %{score} of 5"
+  confirm_grade: "Confirm how it went. This sets when the topic comes back."
+
+progress:
+  title: "Progress"
+  subtitle: "How much of the exam notice you have studied."
+  empty: "No plan, no progress yet."
+  by_subject: "By subject"
+  count: "%{done}/%{total}"
+  export: "Export report"
+  markdown: "Markdown"
+  tile:
+    done: "done"
+    reviewing: "in review"
+    due: "reviews today"
+    lessons: "lessons taken"
+    accuracy: "quiz accuracy"
+
+export:
+  file_prefix: "progress"
+  title: "Progress"
+  generated: "Generated on %{date}."
+  summary: "Summary"
+  topics_done: "%{done} of %{total} topics done"
+  due: "%{count} reviews pending"
+  lessons: "%{count} lessons taken"
+  quizzes: "%{attempts} quizzes, %{accuracy}% correct"
+  col:
+    topic: "Topic"
+    week: "Week"
+    status: "Status"
+    next_review: "Next review"
+
+settings:
+  title: "Settings"
+  subtitle: "Language, AI, voice and local models."
+  language: "Language"
+  save: "Save"
+  discard: "Discard changes"
+  data_dir: "Your data is stored in %{path}"
+  quiz_size: "Questions per quiz"
+  ai:
+    title: "Artificial intelligence"
+    hint: "Any server compatible with the OpenAI API: Z.ai (GLM), Ollama, LiteLLM."
+    base_url: "Address"
+    api_key: "API key"
+    key_from_env: "Loaded from the .env file"
+    model_plan: "Plan model"
+    model_tutor: "Tutor model"
+    model_quiz: "Quiz model"
+    model_correction: "Correction model"
+    model_fallback: "Fallback model"
+    fast: "Fast answers (less reasoning in lessons and quizzes)"
+    test: "Test connection"
+    test_hint: "Uses the saved settings."
+  voice:
+    title: "Voice"
+    enabled: "Read the tutor's answers out loud"
+    hands_free: "Hands-free: listen again when the tutor stops speaking"
+    auto_stop: "Stop listening when I pause"
+    voice: "Tutor voice"
+    rate: "Speech speed"
+    stt_model: "Speech recognition"
+  models:
+    title: "Local models"
+    hint: "They run on your computer, with no audio sent to the internet. Download once, use offline."
+    in_use: "in use"
+    size: "%{description} · about %{mb} MB"
+    missing: "Not installed"
+    installed: "Installed · %{mb} MB"
+    download: "Download"
+    remove: "Remove"
+    piper_note: "Piper is downloaded from the project's official GitHub page (rhasspy/piper)."
+
+models:
+  piper: "Piper (speech synthesizer)"
+  piper_description: "Program that turns the tutor's text into speech"
+  whisper:
+    description: "Turns your speech into text"
+    tiny: "Whisper tiny (fastest)"
+    base: "Whisper base (balanced)"
+    small: "Whisper small (most accurate)"
+  voice:
+    description: "Brazilian Portuguese voice"
+    faber: "Faber voice"
+    cadu: "Cadu voice"
+    jeff: "Jeff voice"
+
+notice:
+  plan_created: "Study plan created."
+  settings_saved: "Settings saved."
+  connection_ok: "AI connection is working."
+  model_installed: "%{model} installed."
+  lesson_saved: "Lesson recorded. The topic is now in review."
+  review_saved: "Review recorded. Next one on %{date}."
+  review_saved_no_date: "Review recorded."
+  quiz_saved: "Quiz recorded: %{correct} of %{total}."
+  nothing_heard: "I did not hear anything. Try speaking a bit closer to the microphone."
+  exported: "Report saved to %{path}."
+
+error:
+  no_edital: "Upload an exam notice before generating the plan."
+  no_active_plan: "Open a study plan first."
+  topic_not_found: "That topic is no longer in the plan."
+  export: "Could not save the file %{path}."
+  speech_model_missing: "Not installed yet: %{model}. Download it in Settings."
+  study:
+    empty_plan: "The AI found no subjects in this notice. Check that the PDF contains the syllabus."
+    empty_subject: "The subject \"%{subject}\" came without topics. Try generating the plan again."
+    bad_quiz: "The AI produced incomplete questions. Try again."
+  store:
+    not_found: "That plan no longer exists."
+    generic: "Error accessing your saved data."
+  ai:
+    connection: "Could not connect to the AI server at %{url}."
+    auth: "The AI server rejected the key. Check the API key in Settings."
+    rate_limited: "AI usage limit reached. Wait a little and try again."
+    http: "The AI server returned an error (HTTP %{status})."
+    invalid_response: "The model answered in an unexpected format. Try again."
+  audio:
+    no_input_device: "No microphone found."
+    no_output_device: "No sound output available."
+    device: "Audio device failure."
+    model_missing: "The voice model is not installed."
+    model: "The speech recognition model failed."
+    tts: "The speech synthesizer failed."
+    download: "The download failed. Check your connection and try again."
+    cancelled: "Download cancelled."
+    io: "Could not write to %{path}."
+    unsupported: "This is not supported on this system."
+  pdf:
+    io: "Could not read the file %{path}."
+    parse: "Could not open the PDF %{path}. It may be damaged or protected."
+    no_text: "The PDF %{path} has no extractable text. It may be scanned."

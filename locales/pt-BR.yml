@@ -1,0 +1,280 @@
+_version: 1
+
+app:
+  name: "Know Giver"
+  tagline: "Estudo para concursos"
+
+language:
+  pt-BR: "Português (Brasil)"
+  en: "English"
+
+format:
+  date: "%d/%m/%Y"
+
+common:
+  close: "Fechar"
+  cancel: "Cancelar"
+
+fatal:
+  title: "Não foi possível iniciar"
+  subtitle: "O Know Giver não conseguiu abrir seus dados."
+
+nav:
+  edital: "Edital"
+  plan: "Plano de estudo"
+  lesson: "Aula"
+  quiz: "Quiz"
+  review: "Revisão"
+  progress: "Progresso"
+  settings: "Configurações"
+  in_progress: "em andamento"
+  active_plan: "Plano ativo"
+
+status:
+  not_started: "Não iniciado"
+  studying: "Estudando"
+  reviewing: "Em revisão"
+  done: "Concluído"
+
+difficulty:
+  easy: "Fácil"
+  medium: "Média"
+  hard: "Difícil"
+
+grade:
+  again: "Errei"
+  hard: "Difícil"
+  good: "Bom"
+  easy: "Fácil"
+
+edital:
+  title: "Edital"
+  subtitle: "Envie o PDF do edital para gerar seu plano de estudo."
+  empty: "Escolha o PDF do edital do concurso. O texto é lido no seu computador e só o conteúdo programático vai para a IA."
+  select_pdf: "Selecionar PDF do edital"
+  pdf_filter: "Documento PDF"
+  extracting: "Lendo %{file}…"
+  summary: "%{pages} páginas · %{chars} caracteres de texto"
+  preview: "Ver texto extraído"
+  weeks: "Semanas até a prova"
+  hours: "Horas de estudo por semana"
+  role: "Cargo"
+  role_hint: "Opcional: o cargo que você vai prestar"
+  generate: "Gerar plano de estudo"
+  other_file: "Usar outro arquivo"
+  generating: "Gerando o plano… %{seconds} s. Costuma levar de 30 segundos a 2 minutos."
+  your_plans: "Seus planos"
+  no_plans: "Nenhum plano ainda."
+  active: "Ativo"
+  plan_meta: "Criado em %{date} · %{done} de %{total} tópicos concluídos"
+  open: "Abrir"
+  delete: "Excluir"
+  confirm_delete: "Excluir este plano e todo o progresso dele? Não dá para desfazer."
+
+plan:
+  title: "Plano de estudo"
+  subtitle: "Matérias e tópicos extraídos do edital."
+  empty: "Nenhum plano ainda. Comece enviando o edital."
+  go_to_edital: "Ir para Edital"
+  summary: "%{weeks} semanas · %{topics} tópicos · %{done} concluídos"
+  by_week: "Por semana"
+  by_subject: "Por matéria"
+  switch: "Trocar plano"
+  week: "Semana %{n}"
+  this_week: "esta semana"
+  lesson: "Aula"
+  quiz: "Quiz"
+  review_due: "Revisar hoje"
+
+lesson:
+  title: "Aula"
+  subtitle: "Converse com o tutor por voz sobre os tópicos do seu plano."
+  none: "Escolha um tópico para começar uma aula. Você fala, o tutor responde em voz alta."
+  suggestions: "Sugestões para agora"
+  start: "Começar aula"
+  end: "Encerrar aula"
+  tutor: "Tutor"
+  you: "Você"
+  send: "Enviar"
+  type_hint: "Ou digite sua pergunta e tecle Enter"
+  open_settings: "Abrir configurações"
+  need_stt: "Para falar com o tutor, baixe um modelo de reconhecimento de voz em Configurações."
+  need_tts: "Para ouvir o tutor, baixe o Piper e uma voz em Configurações."
+  phase:
+    idle: "Pronto"
+    listening: "Ouvindo…"
+    transcribing: "Entendendo o que você disse…"
+    thinking: "Pensando…"
+    speaking: "Falando…"
+  orb_hint:
+    idle: "Clique no microfone para falar."
+    listening: "Fale à vontade. Clique de novo para enviar."
+    speaking: "Clique no microfone para interromper."
+    wait: "Um instante."
+
+quiz:
+  title: "Quiz"
+  subtitle: "Questões de múltipla escolha no estilo das bancas."
+  none: "Nenhum quiz em andamento. Comece um a partir de um tópico do plano."
+  go_to_plan: "Ir para o plano"
+  loading: "Preparando as questões…"
+  progress: "Questão %{n} de %{total}"
+  correct: "Resposta certa."
+  wrong: "Não foi dessa vez."
+  next: "Próxima questão"
+  see_result: "Ver resultado"
+  score: "%{correct} de %{total}"
+  again: "Novo quiz"
+  lesson: "Aula sobre o tópico"
+  result:
+    great: "Excelente. Esse tópico está firme."
+    good: "Bom resultado. Uma revisão rápida ajuda a fixar."
+    keep_going: "Vale uma aula sobre esse tópico antes do próximo quiz."
+
+review:
+  title: "Revisão"
+  subtitle: "Revisões espaçadas: cada tópico volta no momento certo para você não esquecer."
+  all_done: "Nenhuma revisão para hoje."
+  all_done_hint: "Os tópicos entram em revisão depois de uma aula ou de um quiz."
+  due_today: "%{count} para revisar hoje"
+  start: "Revisar"
+  upcoming: "Próximos dias"
+  loading_question: "Preparando uma pergunta…"
+  answer_hint: "Responda com suas palavras"
+  check: "Corrigir"
+  self_grade: "Ou diga como foi, sem correção:"
+  grading: "Corrigindo…"
+  score: "Nota %{score} de 5"
+  confirm_grade: "Confirme como foi. Isso define quando o tópico volta."
+
+progress:
+  title: "Progresso"
+  subtitle: "Quanto do edital você já estudou."
+  empty: "Sem plano, sem progresso por enquanto."
+  by_subject: "Por matéria"
+  count: "%{done}/%{total}"
+  export: "Exportar relatório"
+  markdown: "Markdown"
+  tile:
+    done: "concluído"
+    reviewing: "em revisão"
+    due: "revisões hoje"
+    lessons: "aulas feitas"
+    accuracy: "acertos nos quizzes"
+
+export:
+  file_prefix: "progresso"
+  title: "Progresso"
+  generated: "Gerado em %{date}."
+  summary: "Resumo"
+  topics_done: "%{done} de %{total} tópicos concluídos"
+  due: "%{count} revisões pendentes"
+  lessons: "%{count} aulas feitas"
+  quizzes: "%{attempts} quizzes, %{accuracy}% de acertos"
+  col:
+    topic: "Tópico"
+    week: "Semana"
+    status: "Situação"
+    next_review: "Próxima revisão"
+
+settings:
+  title: "Configurações"
+  subtitle: "Idioma, IA, voz e modelos locais."
+  language: "Idioma"
+  save: "Salvar"
+  discard: "Descartar alterações"
+  data_dir: "Seus dados ficam em %{path}"
+  quiz_size: "Questões por quiz"
+  ai:
+    title: "Inteligência artificial"
+    hint: "Qualquer servidor compatível com a API da OpenAI: Z.ai (GLM), Ollama, LiteLLM."
+    base_url: "Endereço"
+    api_key: "Chave da API"
+    key_from_env: "Carregada do arquivo .env"
+    model_plan: "Modelo do plano"
+    model_tutor: "Modelo do tutor"
+    model_quiz: "Modelo do quiz"
+    model_correction: "Modelo de correção"
+    model_fallback: "Modelo reserva"
+    fast: "Respostas rápidas (menos raciocínio nas aulas e quizzes)"
+    test: "Testar conexão"
+    test_hint: "Usa as configurações salvas."
+  voice:
+    title: "Voz"
+    enabled: "Ler as respostas do tutor em voz alta"
+    hands_free: "Mãos livres: voltar a ouvir quando o tutor terminar de falar"
+    auto_stop: "Parar de ouvir quando eu fizer uma pausa"
+    voice: "Voz do tutor"
+    rate: "Velocidade da fala"
+    stt_model: "Reconhecimento de voz"
+  models:
+    title: "Modelos locais"
+    hint: "Rodam no seu computador, sem enviar áudio para a internet. Baixe uma vez e use offline."
+    in_use: "em uso"
+    size: "%{description} · cerca de %{mb} MB"
+    missing: "Não instalado"
+    installed: "Instalado · %{mb} MB"
+    download: "Baixar"
+    remove: "Remover"
+    piper_note: "O Piper é baixado da página oficial do projeto no GitHub (rhasspy/piper)."
+
+models:
+  piper: "Piper (sintetizador de voz)"
+  piper_description: "Programa que transforma o texto do tutor em fala"
+  whisper:
+    description: "Transforma sua fala em texto"
+    tiny: "Whisper tiny (mais rápido)"
+    base: "Whisper base (equilibrado)"
+    small: "Whisper small (mais preciso)"
+  voice:
+    description: "Voz em português do Brasil"
+    faber: "Voz Faber"
+    cadu: "Voz Cadu"
+    jeff: "Voz Jeff"
+
+notice:
+  plan_created: "Plano de estudo criado."
+  settings_saved: "Configurações salvas."
+  connection_ok: "Conexão com a IA funcionando."
+  model_installed: "%{model} instalado."
+  lesson_saved: "Aula registrada. O tópico entrou em revisão."
+  review_saved: "Revisão registrada. Próxima em %{date}."
+  review_saved_no_date: "Revisão registrada."
+  quiz_saved: "Quiz registrado: %{correct} de %{total}."
+  nothing_heard: "Não ouvi nada. Tente falar um pouco mais perto do microfone."
+  exported: "Relatório salvo em %{path}."
+
+error:
+  no_edital: "Envie um edital antes de gerar o plano."
+  no_active_plan: "Abra um plano de estudo primeiro."
+  topic_not_found: "Esse tópico não existe mais no plano."
+  export: "Não foi possível salvar o arquivo %{path}."
+  speech_model_missing: "Falta instalar: %{model}. Baixe em Configurações."
+  study:
+    empty_plan: "A IA não encontrou matérias nesse edital. Confira se o PDF tem o conteúdo programático."
+    empty_subject: "A matéria \"%{subject}\" veio sem tópicos. Tente gerar o plano de novo."
+    bad_quiz: "A IA gerou questões incompletas. Tente de novo."
+  store:
+    not_found: "Esse plano não existe mais."
+    generic: "Erro ao acessar seus dados salvos."
+  ai:
+    connection: "Não foi possível conectar ao servidor de IA em %{url}."
+    auth: "O servidor de IA recusou a chave. Confira a chave da API em Configurações."
+    rate_limited: "Limite de uso da IA atingido. Aguarde um pouco e tente de novo."
+    http: "O servidor de IA respondeu com erro (HTTP %{status})."
+    invalid_response: "O modelo respondeu em um formato inesperado. Tente de novo."
+  audio:
+    no_input_device: "Nenhum microfone encontrado."
+    no_output_device: "Nenhuma saída de som disponível."
+    device: "Falha no dispositivo de áudio."
+    model_missing: "O modelo de voz não está instalado."
+    model: "O modelo de reconhecimento de voz falhou."
+    tts: "O sintetizador de voz falhou."
+    download: "O download falhou. Confira sua conexão e tente de novo."
+    cancelled: "Download cancelado."
+    io: "Não foi possível gravar em %{path}."
+    unsupported: "Isso não é suportado neste sistema."
+  pdf:
+    io: "Não foi possível ler o arquivo %{path}."
+    parse: "Não foi possível abrir o PDF %{path}. Ele pode estar corrompido ou protegido."
+    no_text: "O PDF %{path} não tem texto extraível. Talvez seja digitalizado."
