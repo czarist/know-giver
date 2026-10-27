@@ -4,6 +4,22 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] - 2026-10-27
+
+### Added
+- Roadmap phase 5: optional upload of past exams and board material, with a relevance
+  filter against the edital, and written study handouts exported as PDF.
+- Roadmap phase 6: meeting-style lessons with an animated teacher, visual identity (logo,
+  palette, fonts, icons) and UX (Today screen, onboarding, empty states).
+- Roadmap phase 7: more natural speech, female and male voices (Kokoro), voice samples.
+
+### Changed
+- README: features, running, packaging and development checks.
+- Architecture document: decisions on speech, AI, edital excerpt, background work and
+  translations.
+- Agent instructions: actual speech stack (Whisper on candle, Piper as a child process)
+  and the rule that every UI string comes from the translation files.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added

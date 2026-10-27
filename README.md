@@ -1,39 +1,77 @@
 # Know Giver
 
-Desktop application for studying for public exams (concursos).
+Desktop app for studying for Brazilian public exams (concursos).
 
-Upload an exam notice (edital PDF), the AI generates a personalized study plan and delivers interactive lessons with voice (you speak, the app answers in audio).
+Upload the exam notice (edital PDF) and the AI builds a study plan by week. Then study
+with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced reviews.
 
-## Idea
+## Features
 
-- Upload edital → content extraction
-- Generate study plan + activities
-- Lessons in the style of a human tutor (with speech and listening)
-- Progress tracking, review and quizzes
+- **Edital → plan**: reads the PDF locally, sends only the syllabus to the AI, and builds
+  a plan for your role, number of weeks and hours per week. Several editais can be kept.
+- **Voice lessons**: local speech recognition (Whisper), tutor via any OpenAI-compatible
+  model, spoken answers with a Brazilian Portuguese Piper voice. Hands-free mode, or type.
+- **Quizzes**: multiple-choice questions in the style of exam boards, with explanations.
+- **Spaced review (SM-2)**: topics come back when you are about to forget them. The AI
+  asks a recall question and grades your answer, or you grade yourself.
+- **Progress**: per subject, quiz accuracy, lessons taken, Markdown export.
+- **Portuguese and English UI**, calm light/dark theme.
 
-## Stack
-
-- **UI**: egui + eframe (pure Rust, native)
-- **Audio**: microphone capture + STT (Whisper/Parakeet) + TTS (Piper pt-BR)
-- **AI**: OpenAI-compatible client (Ollama / LiteLLM / GLM)
-- **PDF**: local extraction
-- **Storage**: SQLite
-
-## How to run (once code exists)
+## Running
 
 ```bash
-cargo run --release -p know-giver
+cp .env.example .env      # then fill in OPENAI_API_KEY
+cargo run --release
 ```
 
-## Planned structure
+`.env` overrides global environment variables with the same name. Everything in it can
+also be set in the app's Settings. On first use, download the speech models in
+Settings → Local models (Whisper base ≈ 290 MB, Piper ≈ 22 MB, a voice ≈ 63 MB).
+
+Data (SQLite database and models) lives in `%LOCALAPPDATA%\KnowGiver`, or in
+`KG_DATA_DIR` if set.
+
+## Packaging (Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\package.ps1
+```
+
+Creates `dist\KnowGiver-<version>-windows-x64.zip`, plus an installer when
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed.
+
+## Structure
 
 ```
 crates/
-  engine/      # main logic
-  audio/       # STT + TTS
-  study/       # plans, progress, quizzes
-  ui/          # egui interface
-  ai/          # LLM client
+  app/      # know-giver binary (entry point, icon)
+  ui/       # egui interface (screens, theme, translations)
+  engine/   # app state, commands, background work, voice loop
+  study/    # plans, reviews (SM-2), quizzes, SQLite storage
+  ai/       # OpenAI-compatible client + tutor prompts (crates/ai/prompts)
+  audio/    # mic capture, Whisper STT, Piper TTS, playback, model downloads
+  pdf/      # edital text extraction
+locales/    # UI translations (pt-BR, en)
+```
+
+Dependency direction: `app → ui → engine → {study, ai, audio, pdf}`. The UI never calls
+the lower layers directly. See [docs/architecture.md](docs/architecture.md).
+
+## Development
+
+```bash
+cargo fmt
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Manual checks against real services (need `.env` and network):
+
+```bash
+cargo run -p kg-ai --example live_check                         # every AI task
+cargo run -p kg-engine --example e2e -- edital.pdf               # import → plan → quiz → review
+cargo run --release -p kg-audio --example stt_check -- <models-dir> fala.wav
+KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored # renders every screen to PNG
 ```
 
 ## References

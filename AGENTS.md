@@ -10,8 +10,8 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 ## Stack
 - **UI**: egui + eframe (native, no webview)
 - **Language**: pure Rust
-- **STT**: whisper-rs or Parakeet (via ONNX) + cpal
-- **TTS**: piper-rs (priority Brazilian Portuguese) or fallback
+- **STT**: Whisper on candle (pure Rust) + cpal
+- **TTS**: Piper binary as a child process (pt-BR voices), playback via rodio
 - **PDF**: pdf-extract / oxidize-pdf
 - **AI**: OpenAI-compatible client (Ollama / LiteLLM / GLM)
 - **Storage**: SQLite
@@ -33,6 +33,7 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Do not mix business logic into the UI
 - Errors with context (thiserror)
 - Prioritize Brazilian Portuguese (TTS, prompts, STT)
+- No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
 
 ## Do not

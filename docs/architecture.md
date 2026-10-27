@@ -62,3 +62,26 @@ The main flow is:
 - Clear separation between UI and logic
 - Errors handled with context
 - Priority for Brazilian Portuguese
+
+## Decisions
+
+- **Speech recognition**: Whisper runs on [candle](https://github.com/huggingface/candle)
+  (pure Rust, CPU), with weights downloaded from Hugging Face. `whisper-rs` would need
+  clang and cmake to build whisper.cpp. Whisper base is the default: about 3 s for 10 s
+  of speech, and small is more accurate but about 3× slower.
+- **Speech synthesis**: the official Piper binary runs as a child process with a pt-BR
+  voice. No C/C++ is compiled into the app. Answers are spoken sentence by sentence, so
+  playback starts early.
+- **AI**: one OpenAI-compatible client, with a model per task (`MODEL_*` in `.env`) and a
+  fallback model. `reasoning_effort: "low"` keeps GLM 5.x fast. Without it, plan generation
+  on a full edital spent the whole token budget reasoning.
+- **Edital excerpt**: only the opening of the edital and its syllabus section go into the
+  prompt. For the TJ-CE edital, that cut 111k characters down to 25k.
+- **Background work**: slow tasks run on worker threads and send events back to the engine.
+  `Engine::poll` applies them on the UI thread, and results from closed sessions are dropped.
+- **Quizzes**: options are shuffled after generation, because models tend to put the right
+  answer first.
+- **Translations**: every UI string comes from `locales/*.yml`, and tests check that both
+  languages have the same keys. Errors in lower crates are English and only go to logs.
+  The UI translates them for the user.
+
