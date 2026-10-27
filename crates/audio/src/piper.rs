@@ -4,7 +4,11 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use crate::signal::soften;
 use crate::{AudioClip, AudioError};
+
+/// Pause Piper inserts between sentences inside one chunk.
+const SENTENCE_SILENCE_SECS: &str = "0.25";
 
 /// Runs `piper --output_raw` once per text chunk.
 #[derive(Debug, Clone)]
@@ -49,6 +53,8 @@ impl PiperTts {
             .arg("--output_raw")
             .arg("--length_scale")
             .arg(format!("{:.2}", self.length_scale))
+            .arg("--sentence_silence")
+            .arg(SENTENCE_SILENCE_SECS)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -88,12 +94,12 @@ impl PiperTts {
             )));
         }
 
-        let samples = raw
+        let samples: Vec<f32> = raw
             .chunks_exact(2)
             .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / f32::from(i16::MAX))
             .collect();
         Ok(AudioClip {
-            samples,
+            samples: soften(&samples, self.sample_rate),
             sample_rate: self.sample_rate,
         })
     }

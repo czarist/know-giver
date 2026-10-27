@@ -4,6 +4,24 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-10-27
+
+### Added
+- Speech text normalization for Brazilian Portuguese before synthesis: legal
+  abbreviations ("art. 5º, § 2º, da CF/88" → "artigo quinto, parágrafo segundo, da
+  Constituição Federal de 1988"), law numbers and years ("Lei nº 8.112/90" → "Lei número
+  8112 de 1990"), ordinals, dates, roman numerals after "inciso"/"título", percentages,
+  money, brackets and dashes.
+- Softer playback: gentle low-pass against harsh sibilants, equal loudness for every
+  chunk, fades against clicks and a short pause between chunks.
+
+### Changed
+- Piper pauses between sentences (`--sentence_silence 0.25`).
+- Default speech speed slightly slower (0.95).
+- Tutor prompt asks for spoken style: short sentences, natural connectors, no
+  parentheses, abbreviations written out.
+- `voice_check` example speaks a legal sentence and can save the result as WAV.
+
 ## [0.7.1] - 2026-10-27
 
 ### Added

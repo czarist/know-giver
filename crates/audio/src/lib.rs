@@ -11,13 +11,15 @@ mod models;
 mod piper;
 mod playback;
 mod signal;
+mod speech_text;
 mod whisper;
 
 pub use capture::{RecordOptions, Recording};
 pub use models::{ModelId, ModelStore, PiperVoice, WhisperModel};
 pub use piper::PiperTts;
 pub use playback::Speaker;
-pub use signal::{resample, split_for_speech};
+pub use signal::{resample, soften, split_for_speech};
+pub use speech_text::normalize_for_speech;
 pub use whisper::WhisperStt;
 
 use std::path::PathBuf;

@@ -1,7 +1,7 @@
 //! Manual end-to-end check: installs models, speaks a sentence with Piper and
 //! transcribes it back with Whisper.
 //!
-//! cargo run --release -p kg-audio --example voice_check -- <models-dir> [tiny|base|small]
+//! cargo run --release -p kg-audio --example voice_check -- <models-dir> [tiny|base|small] [out.wav]
 
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -52,15 +52,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let exe = store.piper_exe().ok_or("piper missing")?;
     let (onnx, json) = store.voice_files(PiperVoice::Faber);
     let tts = PiperTts::new(exe, onnx, &json, 1.0)?;
-    let sentence = "Bom dia! Hoje vamos estudar o emprego da crase antes de horas, um tema muito cobrado em concursos.";
+    let sentence =
+        "Bom dia! Hoje vamos ver o art. 5º, § 2º, da CF/88 e a Lei nº 8.112/90 (servidores).";
     let t = Instant::now();
-    let clip = tts.synthesize(sentence)?;
+    let mut clip = kg_audio::AudioClip {
+        samples: Vec::new(),
+        sample_rate: 22_050,
+    };
+    for chunk in kg_audio::split_for_speech(sentence) {
+        println!("speaking: {chunk:?}");
+        let part = tts.synthesize(&chunk)?;
+        clip.sample_rate = part.sample_rate;
+        clip.samples.extend(part.samples);
+    }
     println!(
         "piper: {:.1}s of audio at {} Hz in {:?}",
         clip.duration_secs(),
         clip.sample_rate,
         t.elapsed()
     );
+    if let Some(path) = args.next() {
+        write_wav(&path, &clip)?;
+        println!("saved {path}");
+    }
 
     let t = Instant::now();
     let mut stt = WhisperStt::load(&store.whisper_dir(whisper))?;
@@ -70,4 +84,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("whisper: {:?} in {:?}", text, t.elapsed());
     println!("expected: {sentence:?}");
     Ok(())
+}
+
+/// 16-bit mono PCM WAV.
+fn write_wav(path: &str, clip: &kg_audio::AudioClip) -> std::io::Result<()> {
+    let data: Vec<u8> = clip
+        .samples
+        .iter()
+        .flat_map(|s| ((s.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes())
+        .collect();
+    let mut out = Vec::with_capacity(44 + data.len());
+    out.extend_from_slice(b"RIFF");
+    out.extend_from_slice(&(36 + data.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"WAVEfmt ");
+    out.extend_from_slice(&16u32.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&clip.sample_rate.to_le_bytes());
+    out.extend_from_slice(&(clip.sample_rate * 2).to_le_bytes());
+    out.extend_from_slice(&2u16.to_le_bytes());
+    out.extend_from_slice(&16u16.to_le_bytes());
+    out.extend_from_slice(b"data");
+    out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    out.extend_from_slice(&data);
+    std::fs::write(path, out)
 }

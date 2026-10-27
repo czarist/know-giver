@@ -36,7 +36,7 @@ impl Default for Settings {
             auto_stop: true,
             whisper_model: WhisperModel::default(),
             voice: PiperVoice::default(),
-            speech_rate: 1.0,
+            speech_rate: 0.95,
             quiz_size: 5,
             locale: "pt-BR".into(),
         }

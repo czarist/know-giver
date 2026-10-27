@@ -106,14 +106,13 @@ Piper's official Brazilian Portuguese voices (faber, cadu, jeff, edresson) are a
 and sound somewhat robotic. A female voice needs another engine.
 
 ### Quick wins on the current voice
-- [ ] Tune Piper: `noise_scale` / `noise_w` for smoother prosody, slightly slower default
-      speed, longer pauses between sentences (`--sentence_silence`)
-- [ ] Text normalization before speech: numbers and dates in words, legal abbreviations
-      ("art." → "artigo", "§" → "parágrafo", "CF/88" → "Constituição Federal de 1988",
-      "inc." → "inciso"), acronyms spelled out or read as words as appropriate
-- [ ] Tutor prompt: short spoken sentences, no parentheses or lists, natural connectors
-- [ ] Softer playback: fade in/out between sentence chunks, loudness normalization, gentle
-      high-frequency roll-off to reduce harshness
+- [x] Longer pauses between sentences (`--sentence_silence`), slightly slower default speed
+- [ ] Tune Piper `noise_scale` / `noise_w` by listening tests
+- [x] Text normalization before speech: legal abbreviations, ordinals, dates, law numbers
+      and years, roman numerals after "inciso"/"título", percentages, money, brackets
+- [x] Tutor prompt: short spoken sentences, no parentheses or lists, natural connectors
+- [x] Softer playback: fades between chunks, loudness normalization, gentle
+      high-frequency roll-off
 
 ### More natural engine (local)
 - [ ] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
