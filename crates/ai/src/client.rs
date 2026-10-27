@@ -1,0 +1,210 @@
+//! Minimal blocking client for `/chat/completions`.
+
+use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+use crate::AiError;
+use crate::config::{AiConfig, Task};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    System,
+    User,
+    Assistant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: Role,
+    pub content: String,
+}
+
+impl ChatMessage {
+    pub fn system(content: impl Into<String>) -> Self {
+        Self {
+            role: Role::System,
+            content: content.into(),
+        }
+    }
+
+    pub fn user(content: impl Into<String>) -> Self {
+        Self {
+            role: Role::User,
+            content: content.into(),
+        }
+    }
+
+    pub fn assistant(content: impl Into<String>) -> Self {
+        Self {
+            role: Role::Assistant,
+            content: content.into(),
+        }
+    }
+}
+
+/// One chat request.
+#[derive(Debug, Clone)]
+pub(crate) struct ChatRequest<'a> {
+    pub task: Task,
+    pub messages: &'a [ChatMessage],
+    pub json: bool,
+    pub max_tokens: u32,
+}
+
+/// Blocking OpenAI-compatible client. Cheap to clone; call it from a worker
+/// thread, never from the UI thread.
+#[derive(Debug, Clone)]
+pub struct Client {
+    config: AiConfig,
+    agent: ureq::Agent,
+}
+
+#[derive(Deserialize)]
+struct ChatResponse {
+    choices: Vec<Choice>,
+}
+
+#[derive(Deserialize)]
+struct Choice {
+    message: ResponseMessage,
+    #[serde(default)]
+    finish_reason: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ResponseMessage {
+    #[serde(default)]
+    content: Option<String>,
+}
+
+impl Client {
+    pub fn new(config: AiConfig) -> Self {
+        let agent = ureq::Agent::config_builder()
+            .timeout_global(Some(Duration::from_secs(600)))
+            .http_status_as_error(false)
+            .build()
+            .into();
+        Self { config, agent }
+    }
+
+    pub fn config(&self) -> &AiConfig {
+        &self.config
+    }
+
+    /// Checks that the endpoint answers with the tutor model.
+    pub fn ping(&self) -> Result<(), AiError> {
+        let messages = [ChatMessage::user("ok")];
+        self.send(
+            self.config.models.for_task(Task::Tutor),
+            &ChatRequest {
+                task: Task::Tutor,
+                messages: &messages,
+                json: false,
+                max_tokens: 512,
+            },
+        )
+        .map(|_| ())
+    }
+
+    /// Sends a request with the task's model, retrying once with the fallback
+    /// model when the first one is rate limited or failing server-side.
+    pub(crate) fn chat(&self, request: &ChatRequest<'_>) -> Result<String, AiError> {
+        let primary = self.config.models.for_task(request.task);
+        match self.send(primary, request) {
+            Err(err) if should_fall_back(&err) && self.config.models.fallback != primary => {
+                tracing::warn!(%err, model = primary, fallback = %self.config.models.fallback, "retrying with fallback model");
+                self.send(&self.config.models.fallback, request)
+            }
+            other => other,
+        }
+    }
+
+    fn send(&self, model: &str, request: &ChatRequest<'_>) -> Result<String, AiError> {
+        let url = self.config.chat_url();
+        let mut body = json!({
+            "model": model,
+            "messages": request.messages,
+            "max_tokens": request.max_tokens,
+            "temperature": if request.json { 0.3 } else { 0.7 },
+        });
+        if request.json {
+            body["response_format"] = json!({ "type": "json_object" });
+        }
+        if self.config.fast_responses {
+            // Standard OpenAI field; GLM 5.x skips reasoning entirely with "low".
+            // Without it, plan generation on a full edital can spend the whole
+            // token budget reasoning and return nothing.
+            body["reasoning_effort"] = json!("low");
+        }
+
+        let mut call = self.agent.post(&url);
+        if !self.config.api_key.is_empty() {
+            call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
+        }
+        let started = std::time::Instant::now();
+        let mut response = call.send_json(&body).map_err(|e| AiError::Connection {
+            url: url.clone(),
+            reason: e.to_string(),
+        })?;
+        let status = response.status().as_u16();
+        let text = response
+            .body_mut()
+            .with_config()
+            .limit(64 * 1024 * 1024)
+            .read_to_string()
+            .map_err(|e| AiError::Connection {
+                url: url.clone(),
+                reason: e.to_string(),
+            })?;
+        tracing::debug!(
+            model,
+            status,
+            elapsed_ms = started.elapsed().as_millis() as u64,
+            "chat completion"
+        );
+
+        match status {
+            200..=299 => {}
+            401 | 403 => return Err(AiError::Auth { status }),
+            429 => return Err(AiError::RateLimited),
+            _ => {
+                return Err(AiError::Http {
+                    status,
+                    body: text.chars().take(500).collect(),
+                });
+            }
+        }
+
+        let parsed: ChatResponse = serde_json::from_str(&text)
+            .map_err(|e| AiError::InvalidResponse(format!("{e}: {}", truncate(&text))))?;
+        let choice = parsed
+            .choices
+            .into_iter()
+            .next()
+            .ok_or_else(|| AiError::InvalidResponse("no choices".into()))?;
+        let content = choice.message.content.unwrap_or_default().trim().to_owned();
+        if content.is_empty() {
+            return Err(AiError::InvalidResponse(format!(
+                "empty content (finish_reason: {})",
+                choice.finish_reason.unwrap_or_default()
+            )));
+        }
+        Ok(content)
+    }
+}
+
+fn should_fall_back(err: &AiError) -> bool {
+    match err {
+        AiError::RateLimited => true,
+        AiError::Http { status, .. } => *status >= 500 || *status == 400 || *status == 404,
+        AiError::InvalidResponse(_) => true,
+        AiError::Connection { .. } | AiError::Auth { .. } => false,
+    }
+}
+
+fn truncate(text: &str) -> String {
+    text.chars().take(300).collect()
+}
