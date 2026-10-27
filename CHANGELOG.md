@@ -4,6 +4,17 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-10-27
+
+### Added
+- App icon drawn in code and embedded into `know-giver.exe`
+  (`cargo run -p kg-ui --example write_icon` regenerates the `.ico`).
+- `scripts/package.ps1`: release build and portable zip
+  (`dist/KnowGiver-<version>-windows-x64.zip`).
+- Inno Setup script for a per-user Windows installer in Portuguese and English, built by
+  the package script when Inno Setup 6 is installed.
+- `LEIA-ME.txt` with first steps for end users.
+
 ## [0.6.0] - 2026-10-27
 
 ### Added
