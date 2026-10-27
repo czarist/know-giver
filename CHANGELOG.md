@@ -4,6 +4,24 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-27
+
+### Added
+- Engine that owns all app state: the UI sends commands, slow work runs on worker
+  threads, and results come back as events. Results from closed sessions are dropped.
+- Edital import and plan generation; several plans, with the active one remembered.
+- Voice lesson loop: listen → transcribe → tutor → speak sentence by sentence, with
+  interrupt and an optional hands-free mode that listens again after the tutor speaks.
+- Quizzes recorded and turned into a spaced-repetition grade.
+- Reviews: AI recall question and AI-graded answer, or self-grade; SM-2 scheduling.
+- Settings stored in SQLite; an API key that comes from `.env` is not copied there.
+- Model downloads with progress, cancel and remove.
+- `e2e` example: real edital → plan → quiz → review against the configured AI server.
+
+### Fixed
+- Quiz options are shuffled after generation; the model tended to put the right answer
+  first.
+
 ## [0.4.0] - 2026-10-27
 
 ### Added
