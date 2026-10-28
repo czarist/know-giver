@@ -10,7 +10,8 @@ publish.workspace = true
 chrono.workspace = true
 eframe.workspace = true
 egui.workspace = true
-egui_extras = { version = "0.36", default-features = false, features = ["svg"] }
+egui_extras = { version = "0.36", default-features = false, features = ["svg", "image"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 kg-engine.workspace = true
 resvg = "0.47"
 rfd.workspace = true

@@ -119,7 +119,7 @@ fn tile(ui: &mut egui::Ui, value: &str, label: &str) {
     egui::Frame::new()
         .fill(p.surface)
         .stroke(egui::Stroke::new(1.0, p.border))
-        .corner_radius(8)
+        .corner_radius(0)
         .inner_margin(egui::Margin::symmetric(16, 12))
         .show(ui, |ui| {
             ui.set_min_width(130.0);

@@ -6,8 +6,15 @@ the current study, lesson and settings flows without replacing their visual syst
 ## Verified vocabulary
 
 - `crates/ui/src/theme.rs`: warm paper light theme, charcoal dark theme, teal accent,
-  amber highlight; Literata headings, Inter body. `Palette` owns application colors.
-- `widgets.rs`: `card`, `header`, `hint`, `callout`, `primary_button`, `empty_state`.
+  amber highlight. Since v0.23.0 the layout is minimal and brutalist, like the covers of
+  programming books: square corners, black rules (`ink`), hard offset shadows
+  (`shadow`), IBM Plex Mono for titles and labels, Inter for running text.
+  `Palette` owns application colors.
+- `widgets.rs`: `card`, `header` (title over a heavy rule), `rule`, `kicker` (uppercase
+  mono label), `cover` (book-cover block with the accent band and the engraving),
+  `hint`, `callout`, `primary_button`, `empty_state`.
+- `art.rs`: the black-and-white engraving of Thoth (`Seated` on the welcome cover,
+  `Head` on Today and as a sidebar plate when there is room).
 - `screens/settings.rs`: editable draft saved/discarded together; model progress,
   installed and missing states remain visible in the existing model list.
 - `screens/lesson.rs`: stage, captions, whiteboard, transcript and bottom controls.
@@ -34,8 +41,8 @@ Empty states use original native vector illustrations: an open study book, a mar
 route, question cards and growing progress. They retain one title, explanation and
 primary action. Illustration colors come from the existing palette in both themes.
 
-The dark logo keeps the original silhouette and replaces its colors with the existing
-dark palette. Teacher variations reuse the same animation; choice changes the outfit
+The logo is Thoth's ibis head under the lunar disc and crescent, in a square: light
+ibis on ink for light backgrounds, inverted for dark ones, amber disc in both. Teacher variations reuse the same animation; choice changes the outfit
 and the chosen voice determines the female/male appearance.
 
 ## Validation

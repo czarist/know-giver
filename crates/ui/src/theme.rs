@@ -1,7 +1,10 @@
-//! Calm, low-glare palette and typography for long study sessions.
+//! Calm, low-glare palette with a minimal, brutalist layout in the spirit
+//! of programming book covers: square corners, black rules, hard shadows,
+//! monospaced titles and a black-and-white engraving of Thoth.
 //!
-//! Fonts (SIL Open Font License, files in `assets/fonts`): Literata for
-//! headings, designed for long reading; Inter for everything else.
+//! Fonts (SIL Open Font License, files in `assets/fonts`): IBM Plex Mono for
+//! titles and labels; Inter for running text, which stays easy to read in
+//! long sessions.
 
 use std::sync::Arc;
 
@@ -22,6 +25,10 @@ pub struct Palette {
     /// Warm amber for highlights: streaks, milestones, "speaking".
     pub highlight: Color32,
     pub border: Color32,
+    /// Strong rules and frames, like printed lines on a book cover.
+    pub ink: Color32,
+    /// Hard offset shadow under cards.
+    pub shadow: Color32,
     pub success: Color32,
     pub danger: Color32,
     pub warning: Color32,
@@ -36,6 +43,8 @@ const LIGHT: Palette = Palette {
     accent: Color32::from_rgb(0x2F, 0x6F, 0x68),
     highlight: Color32::from_rgb(0xB0, 0x77, 0x1F),
     border: Color32::from_rgb(0xD9, 0xD5, 0xCC),
+    ink: Color32::from_rgb(0x1C, 0x1B, 0x19),
+    shadow: Color32::from_rgb(0x1C, 0x1B, 0x19),
     success: Color32::from_rgb(0x3B, 0x7A, 0x4A),
     danger: Color32::from_rgb(0xA8, 0x4A, 0x3F),
     warning: Color32::from_rgb(0x9A, 0x6B, 0x1F),
@@ -50,14 +59,21 @@ const DARK: Palette = Palette {
     accent: Color32::from_rgb(0x8C, 0xC2, 0xB8),
     highlight: Color32::from_rgb(0xE2, 0xB1, 0x5E),
     border: Color32::from_rgb(0x3A, 0x3E, 0x43),
+    ink: Color32::from_rgb(0xE4, 0xE1, 0xDA),
+    shadow: Color32::from_rgb(0x0B, 0x0C, 0x0D),
     success: Color32::from_rgb(0x8F, 0xC2, 0x9A),
     danger: Color32::from_rgb(0xE0, 0x96, 0x8B),
     warning: Color32::from_rgb(0xD9, 0xB3, 0x6C),
 };
 
-/// Font family for headings and the wordmark.
+/// Font family for headings and the wordmark (IBM Plex Mono Bold).
 pub fn heading_family() -> FontFamily {
     FontFamily::Name("heading".into())
+}
+
+/// Font family for small labels and kickers (IBM Plex Mono).
+pub fn mono_family() -> FontFamily {
+    FontFamily::Monospace
 }
 
 /// Font family for strong UI text (semibold Inter).
@@ -75,7 +91,7 @@ pub fn apply(ctx: &egui::Context) {
     ctx.all_styles_mut(|style| {
         use FontFamily::{Monospace, Proportional};
         style.text_styles = [
-            (TextStyle::Heading, FontId::new(28.0, heading_family())),
+            (TextStyle::Heading, FontId::new(25.0, heading_family())),
             (TextStyle::Body, FontId::new(15.5, Proportional)),
             (TextStyle::Button, FontId::new(14.5, Proportional)),
             (TextStyle::Small, FontId::new(12.5, Proportional)),
@@ -101,8 +117,12 @@ fn fonts() -> FontDefinitions {
         include_bytes!("../assets/fonts/Inter-SemiBold.ttf"),
     );
     add(
-        "literata-semibold",
-        include_bytes!("../assets/fonts/Literata-SemiBold.ttf"),
+        "plex-mono-bold",
+        include_bytes!("../assets/fonts/IBMPlexMono-Bold.ttf"),
+    );
+    add(
+        "plex-mono",
+        include_bytes!("../assets/fonts/IBMPlexMono-Regular.ttf"),
     );
 
     // egui's default fonts stay as fallbacks for symbols the new fonts lack.
@@ -121,7 +141,10 @@ fn fonts() -> FontDefinitions {
         .insert(FontFamily::Proportional, with_defaults("inter"));
     fonts
         .families
-        .insert(heading_family(), with_defaults("literata-semibold"));
+        .insert(heading_family(), with_defaults("plex-mono-bold"));
+    fonts
+        .families
+        .insert(FontFamily::Monospace, with_defaults("plex-mono"));
     fonts
         .families
         .insert(strong_family(), with_defaults("inter-semibold"));
@@ -138,7 +161,7 @@ fn visuals(mut v: Visuals, p: &Palette) -> Visuals {
     // Also the fill of progress bars, so it must read well.
     v.selection.bg_fill = p.accent.gamma_multiply(0.55);
     v.selection.stroke = Stroke::new(1.0, p.accent);
-    let radius = CornerRadius::same(7);
+    let radius = CornerRadius::ZERO;
     for w in [
         &mut v.widgets.noninteractive,
         &mut v.widgets.inactive,
@@ -150,9 +173,11 @@ fn visuals(mut v: Visuals, p: &Palette) -> Visuals {
     }
     v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border);
     v.widgets.inactive.weak_bg_fill = p.surface;
-    v.widgets.inactive.bg_stroke = Stroke::new(1.0, p.border);
-    v.widgets.hovered.bg_stroke = Stroke::new(1.0, p.accent);
-    v.widgets.active.bg_stroke = Stroke::new(1.0, p.accent);
+    v.widgets.inactive.bg_stroke = Stroke::new(1.0, p.ink.gamma_multiply(0.45));
+    v.widgets.hovered.bg_stroke = Stroke::new(1.5, p.ink);
+    v.widgets.active.bg_stroke = Stroke::new(1.5, p.accent);
+    v.window_corner_radius = CornerRadius::ZERO;
+    v.menu_corner_radius = CornerRadius::ZERO;
     v
 }
 

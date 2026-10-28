@@ -4,6 +4,27 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.23.0] - 2026-10-28
+
+### Added
+- "What should we call you?" (Settings › You, and on the welcome screen). The tutor
+  uses the name now and then in lessons (greeting, praise, getting attention), and
+  Today greets you by name. The name is not part of the handout cache.
+- A black-and-white engraving of Thoth, god of writing and knowledge, used like the
+  animal engraving on a programming book cover: on the welcome screen, on Today, and
+  as a small plate at the bottom of the sidebar when there is room.
+
+### Changed
+- New look, same colors: minimal and brutalist, in the spirit of programming book
+  covers. Square corners everywhere, black rules under titles, cards with a black
+  frame and a hard offset shadow, primary buttons with a black outline, IBM Plex Mono
+  for titles, labels and the wordmark (Inter stays for running text). Today and the
+  welcome screen open with a "cover": accent band, series label, large title, rule,
+  and the engraving.
+- New logo: Thoth's ibis head under the lunar disc and crescent, in a square (light
+  ibis on ink; inverted for dark backgrounds). The Windows icon was regenerated.
+- Whiteboard text uses Inter SemiBold so it fits the board.
+
 ## [0.22.0] - 2026-10-28
 
 ### Changed

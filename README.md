@@ -106,8 +106,9 @@ optional platform tooling.
 
 ## Credits
 
-- Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
+- Fonts: [Inter](https://rsms.me/inter/) and [IBM Plex Mono](https://github.com/IBM/plex),
   SIL Open Font License (`crates/ui/assets/fonts`).
+- Thoth engraving (`crates/ui/assets/art`): supplied by the project owner.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
 
 ## References

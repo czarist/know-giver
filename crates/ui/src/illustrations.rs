@@ -21,7 +21,7 @@ pub fn empty(ui: &mut egui::Ui, kind: Icon) {
             for (x, height) in [(67.0, 29.0), (96.0, 52.0), (125.0, 76.0)] {
                 painter.rect_filled(
                     Rect::from_min_max(at(x, 128.0 - height), at(x + 18.0, 128.0)),
-                    4.0,
+                    0.0,
                     p.accent.gamma_multiply(0.65),
                 );
             }
@@ -41,10 +41,10 @@ pub fn empty(ui: &mut egui::Ui, kind: Icon) {
         Icon::Quiz | Icon::Review => {
             for (x, y) in [(62.0, 34.0), (75.0, 25.0), (88.0, 16.0)] {
                 let card = Rect::from_min_size(at(x, y), vec2(100.0, 110.0));
-                painter.rect_filled(card, 7.0, p.surface);
+                painter.rect_filled(card, 0.0, p.surface);
                 painter.rect_stroke(
                     card,
-                    7.0,
+                    0.0,
                     Stroke::new(1.4, p.border),
                     egui::StrokeKind::Inside,
                 );
@@ -68,10 +68,10 @@ pub fn empty(ui: &mut egui::Ui, kind: Icon) {
         }
         Icon::Plan => {
             let paper = Rect::from_min_size(at(55.0, 20.0), vec2(131.0, 106.0));
-            painter.rect_filled(paper, 6.0, p.surface);
+            painter.rect_filled(paper, 0.0, p.surface);
             painter.rect_stroke(
                 paper,
-                6.0,
+                0.0,
                 Stroke::new(1.3, p.border),
                 egui::StrokeKind::Inside,
             );

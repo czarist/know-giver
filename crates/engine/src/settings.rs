@@ -20,6 +20,8 @@ pub enum AvatarStyle {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// How the tutor calls the student; empty when not given.
+    pub student_name: String,
     pub ai: AiConfig,
     /// Read tutor answers aloud.
     pub voice_enabled: bool,
@@ -59,6 +61,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            student_name: String::new(),
             ai: AiConfig::default(),
             voice_enabled: true,
             hands_free: true,

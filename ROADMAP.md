@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.22.0. Everything an agent can build and check without a human ear, a
+Version 0.23.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person or hardware
 (listed under "Not yet verified"). Each release is a short-lived branch merged into
 `main` with an annotated tag.

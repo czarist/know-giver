@@ -212,6 +212,7 @@ export:
     next_review: "Próxima revisão"
 
 today:
+  greeting_named: "%{greeting}, %{name}"
   study_time: "Tempo de estudo hoje: %{duration}"
   study_time_hint: "Conta o estudo ativo; pausas e inatividade não entram."
   study_zero: "0 min"
@@ -308,6 +309,11 @@ handout:
     answers: "Gabarito comentado"
 
 settings:
+  you:
+    title: "Você"
+    name: "Como você quer ser chamado?"
+    name_placeholder: "Seu nome ou apelido"
+    name_hint: "O professor ou a professora usa esse nome nas aulas."
   title: "Configurações"
   subtitle: "Idioma, IA, voz e modelos locais."
   language: "Idioma"

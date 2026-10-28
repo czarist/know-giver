@@ -167,6 +167,8 @@ pub struct TopicContext {
     /// Board material about the topic (see [`crate::reference_block`]); may
     /// be empty.
     pub reference: String,
+    /// What the student wants to be called in lessons; may be empty.
+    pub student: String,
 }
 
 impl TopicContext {
@@ -337,6 +339,16 @@ pub fn tutor_reply(
 fn tutor_system(topic: &TopicContext) -> ChatMessage {
     let mut values = topic.values().to_vec();
     values.push(("max_words", TUTOR_MAX_WORDS));
+    let name = topic.student.trim();
+    let student = if name.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "- O aluno quer ser chamado de {name}. Use esse nome de vez em quando, com naturalidade: no cumprimento, ao elogiar ou ao chamar a atenção, não em toda frase."
+        )
+    };
+    // Last, so a name cannot be mistaken for another placeholder.
+    values.push(("student", &student));
     ChatMessage::system(fill(prompts::TUTOR, &values))
 }
 
@@ -511,6 +523,20 @@ fn extract_json(text: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tutor_knows_what_to_call_the_student() {
+        let mut topic = TopicContext {
+            topic: "Crase".into(),
+            ..TopicContext::default()
+        };
+        let without = tutor_system(&topic).content;
+        assert!(!without.contains("{student}"));
+        assert!(!without.contains("chamado de"));
+        topic.student = "Lucas".into();
+        let with = tutor_system(&topic).content;
+        assert!(with.contains("quer ser chamado de Lucas"));
+    }
 
     #[test]
     fn streamed_sentences_exclude_fragmented_whiteboard_lines() {

@@ -109,7 +109,7 @@ fn paint_stage(
     } else {
         Color32::from_rgb(0xE9, 0xE6, 0xDF)
     };
-    painter.rect_filled(stage, 14.0, stage_fill);
+    painter.rect_filled(stage, 0.0, stage_fill);
 
     // Layout: teacher on the left, whiteboard on the right when it fits.
     let gap = 16.0;
@@ -144,7 +144,7 @@ fn paint_stage(
         teacher_area.left_bottom() + vec2(14.0, -40.0),
         vec2(170.0, 28.0),
     );
-    painter.rect_filled(tag, 8.0, Color32::from_black_alpha(150));
+    painter.rect_filled(tag, 0.0, Color32::from_black_alpha(150));
     painter.text(
         tag.left_center() + vec2(12.0, 0.0),
         egui::Align2::LEFT_CENTER,
@@ -202,7 +202,7 @@ fn paint_captions(ui: &egui::Ui, area: egui::Rect, lesson: &LessonSession) {
         size,
     );
     let painter = ui.painter_at(area);
-    painter.rect_filled(rect, 10.0, Color32::from_black_alpha(165));
+    painter.rect_filled(rect, 0.0, Color32::from_black_alpha(165));
     painter.galley(rect.min + vec2(14.0, 9.0), galley, Color32::WHITE);
 }
 
@@ -220,10 +220,10 @@ fn last_lines(text: &str, max_chars: usize) -> String {
 /// Key points written on the whiteboard; the newest appears letter by letter.
 fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
     let painter = ui.painter_at(board);
-    painter.rect_filled(board, 12.0, BOARD_FILL);
+    painter.rect_filled(board, 0.0, BOARD_FILL);
     painter.rect_stroke(
         board,
-        12.0,
+        0.0,
         Stroke::new(6.0, Color32::from_rgb(0x8A, 0x6A, 0x4A)),
         egui::StrokeKind::Inside,
     );
@@ -268,7 +268,8 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
         let alpha = if i == newest { 1.0 } else { 0.7 };
         let galley = painter.layout(
             format!("•  {text}"),
-            egui::FontId::new(17.0, theme::heading_family()),
+            // Chalk text stays proportional: monospace would not fit the board.
+            egui::FontId::new(17.0, theme::strong_family()),
             BOARD_INK.gamma_multiply(alpha),
             width,
         );
@@ -295,10 +296,10 @@ fn paint_student(ui: &egui::Ui, tile: egui::Rect, lesson: &LessonSession) {
     let p = theme::palette(ui.ctx());
     let painter = ui.painter_at(tile.expand(2.0));
     let listening = lesson.phase == LessonPhase::Listening;
-    painter.rect_filled(tile, 12.0, p.surface);
+    painter.rect_filled(tile, 0.0, p.surface);
     painter.rect_stroke(
         tile,
-        12.0,
+        0.0,
         Stroke::new(
             if listening { 2.5 } else { 1.0 },
             if listening { p.accent } else { p.border },
@@ -415,7 +416,7 @@ fn controls(
                 .family(theme::strong_family()),
         )
         .fill(p.danger)
-        .corner_radius(23.0)
+        .corner_radius(0.0)
         .min_size(vec2(120.0, 46.0));
         if ui.add(end).clicked() {
             actions.send(Command::EndLesson);

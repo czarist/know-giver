@@ -40,7 +40,7 @@ pub fn panel(
     egui::Frame::new()
         .fill(p.surface)
         .stroke(egui::Stroke::new(1.0, p.border))
-        .corner_radius(14.0)
+        .corner_radius(0.0)
         .inner_margin(egui::Margin::same(18))
         .show(ui, |ui| {
             ui.horizontal(|ui| {

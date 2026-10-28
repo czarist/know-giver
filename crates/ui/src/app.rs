@@ -110,6 +110,8 @@ pub struct UiState {
     pub plan_view: PlanView,
     /// Prepare handouts and quizzes right after the plan is created.
     pub prepare_all: bool,
+    /// Name typed on the welcome screen, before it is saved.
+    pub welcome_name: Option<String>,
 }
 
 /// The eframe application.
@@ -175,6 +177,7 @@ impl KnowGiverApp {
                 board_choice: std::collections::HashMap::new(),
                 plan_view: PlanView::default(),
                 prepare_all: true,
+                welcome_name: None,
             },
             toasts: Vec::new(),
             shown_screen: screen,
@@ -223,23 +226,21 @@ impl KnowGiverApp {
             .frame(frame)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(icons::logo(38.0, ui.visuals().dark_mode));
+                    ui.add(icons::logo(40.0, ui.visuals().dark_mode));
                     ui.vertical(|ui| {
-                        ui.add_space(1.0);
+                        ui.add_space(2.0);
                         ui.label(
-                            egui::RichText::new(t!("app.name"))
+                            egui::RichText::new(t!("app.name").to_uppercase())
                                 .family(theme::heading_family())
-                                .size(21.0)
-                                .color(p.accent),
+                                .size(18.0)
+                                .color(p.text),
                         );
-                        ui.label(
-                            egui::RichText::new(t!("app.tagline"))
-                                .small()
-                                .color(p.muted),
-                        );
+                        widgets::kicker(ui, &t!("app.tagline"), p.muted);
                     });
                 });
-                ui.add_space(18.0);
+                ui.add_space(6.0);
+                widgets::rule(ui, 3.0);
+                ui.add_space(12.0);
 
                 for screen in Screen::ALL {
                     let selected = self.ui.screen == screen;
@@ -262,17 +263,25 @@ impl KnowGiverApp {
                     }
                 }
 
-                if let Some(plan) = &engine_badges.plan_title {
-                    ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                    if let Some(plan) = &engine_badges.plan_title {
                         ui.label(egui::RichText::new(plan).small().color(p.muted));
-                        ui.label(
-                            egui::RichText::new(t!("nav.active_plan"))
-                                .small()
-                                .strong()
-                                .color(p.muted),
+                        widgets::kicker(ui, &t!("nav.active_plan"), p.muted);
+                        ui.add_space(4.0);
+                    }
+                    // The engraving as a small plate, when there is room.
+                    let plate = ui.available_width();
+                    if ui.available_height() > plate + 24.0 {
+                        let image = ui.add(crate::art::Art::Head.image(plate));
+                        ui.painter().rect_stroke(
+                            image.rect,
+                            0.0,
+                            egui::Stroke::new(2.0, p.ink),
+                            egui::StrokeKind::Outside,
                         );
-                    });
-                }
+                        ui.add_space(8.0);
+                    }
+                });
             });
     }
 

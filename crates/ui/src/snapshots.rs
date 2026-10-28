@@ -96,6 +96,9 @@ fn seed(paths: &AppPaths) {
 }
 
 fn render(harness: &mut Harness<'_, KnowGiverApp>, dir: Option<&std::path::Path>, name: &str) {
+    // A few frames more than needed, so engravings finish decoding.
+    harness.run_steps(4);
+    std::thread::sleep(std::time::Duration::from_millis(150));
     harness.run_steps(4);
     let image = harness.render().unwrap();
     if let Some(dir) = dir {
@@ -291,10 +294,15 @@ fn voice_settings_states() {
                 tts_backend: backend,
                 ..Default::default()
             };
+            let mut fonts_ready = false;
             let mut harness = Harness::builder()
                 .with_size([900.0, 900.0])
                 .build_ui(move |ui| {
                     crate::theme::apply(ui.ctx());
+                    // Fonts set in a frame are used from the next one.
+                    if !std::mem::replace(&mut fonts_ready, true) {
+                        return;
+                    }
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         crate::screens::settings::voice_section(
                             ui,

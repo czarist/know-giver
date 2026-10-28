@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         subject: "Língua Portuguesa".into(),
         topic: "Crase".into(),
         reference: "Questão da banca: Em 'vou à escola', explique o acento grave.".into(),
+        ..TopicContext::default()
     };
     for (name, edital) in [
         (

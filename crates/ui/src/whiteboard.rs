@@ -46,7 +46,7 @@ pub fn paint(painter: &egui::Painter, area: Rect, entry: &Entry<'_>, ink: Color3
             );
             let height = galley.size().y + 20.0;
             let rect = Rect::from_min_size(area.min, vec2(area.width(), height));
-            painter.rect_filled(rect, 5.0, ink.gamma_multiply(0.06));
+            painter.rect_filled(rect, 0.0, ink.gamma_multiply(0.06));
             painter.galley(area.min + vec2(10.0, 10.0), galley, ink);
             height + 12.0
         }
@@ -82,7 +82,7 @@ pub fn paint(painter: &egui::Painter, area: Rect, entry: &Entry<'_>, ink: Color3
                 let node = Rect::from_min_size(area.min + offset, vec2(width, height));
                 painter.rect_stroke(
                     node,
-                    5.0,
+                    0.0,
                     Stroke::new(1.1, ink.gamma_multiply(0.75)),
                     egui::StrokeKind::Inside,
                 );
