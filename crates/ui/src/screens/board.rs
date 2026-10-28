@@ -37,6 +37,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         upload_card(ui, engine, &mut actions);
         ui.add_space(12.0);
+        reuse_card(ui, engine, &mut actions);
+        ui.add_space(12.0);
 
         if engine.board_documents().is_empty() {
             widgets::hint(ui, &t!("board.no_documents"));
@@ -55,6 +57,69 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         item_lists(ui, engine, plan, &mut state.board_choice, &mut actions);
     });
     actions.run(app);
+}
+
+fn reuse_card(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
+    egui::CollapsingHeader::new(t!("board.reuse.title"))
+        .id_salt("reuse_board_material")
+        .show(ui, |ui| {
+            widgets::hint(ui, &t!("board.reuse.hint"));
+            let documents = match engine.reusable_board_documents() {
+                Ok(documents) => documents,
+                Err(error) => {
+                    ui.colored_label(theme::palette(ui.ctx()).danger, i18n::error_message(&error));
+                    return;
+                }
+            };
+            if documents.is_empty() {
+                widgets::hint(ui, &t!("board.reuse.empty"));
+                return;
+            }
+            let id = ui.id().with("reuse_document");
+            let mut selected = ui.ctx().data_mut(|data| data.get_temp::<DocumentId>(id));
+            selected = selected.filter(|id| documents.iter().any(|doc| doc.id == *id));
+            let label = |document: &BoardDocument| {
+                let plan = engine
+                    .plans()
+                    .iter()
+                    .find(|plan| plan.id == document.plan_id)
+                    .map_or("", |plan| plan.title.as_str());
+                t!(
+                    "board.reuse.document",
+                    file = document.file_name,
+                    plan = plan
+                )
+                .into_owned()
+            };
+            let selected_text = documents
+                .iter()
+                .find(|doc| Some(doc.id) == selected)
+                .map(&label)
+                .unwrap_or_else(|| t!("board.reuse.choose").into_owned());
+            ui.add_enabled_ui(engine.board_job().is_none(), |ui| {
+                egui::ComboBox::from_id_salt("reuse_document_picker")
+                    .width(360.0)
+                    .selected_text(selected_text)
+                    .show_ui(ui, |ui| {
+                        for document in &documents {
+                            ui.selectable_value(&mut selected, Some(document.id), label(document));
+                        }
+                    });
+                if ui
+                    .add_enabled(
+                        selected.is_some(),
+                        egui::Button::new(t!("board.reuse.action")),
+                    )
+                    .clicked()
+                    && let Some(document) = selected
+                {
+                    actions.send(Command::ReuseBoardDocument(document));
+                }
+            });
+            if let Some(selected) = selected {
+                ui.ctx().data_mut(|data| data.insert_temp(id, selected));
+            }
+        });
 }
 
 fn upload_card(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {

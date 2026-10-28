@@ -5,8 +5,9 @@
 
 use chrono::NaiveDate;
 use kg_engine::{
-    AiError, AudioError, Difficulty, EngineError, HandoutError, LessonPhase, Milestone, ModelId,
-    Notice, PdfError, PiperVoice, ReviewGrade, StoreError, StudyError, TopicStatus, WhisperModel,
+    AiError, AudioError, Difficulty, EngineError, HandoutError, KokoroVoice, LessonPhase,
+    Milestone, ModelId, Notice, PdfError, PiperVoice, ReviewGrade, StoreError, StudyError,
+    TopicStatus, Voice, VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -88,11 +89,22 @@ pub fn whisper_model(model: WhisperModel) -> String {
     .into_owned()
 }
 
-pub fn voice(voice: PiperVoice) -> String {
+pub fn voice(voice: Voice) -> String {
     match voice {
-        PiperVoice::Faber => t!("models.voice.faber"),
-        PiperVoice::Cadu => t!("models.voice.cadu"),
-        PiperVoice::Jeff => t!("models.voice.jeff"),
+        Voice::Piper(PiperVoice::Faber) => t!("models.voice.faber"),
+        Voice::Piper(PiperVoice::Cadu) => t!("models.voice.cadu"),
+        Voice::Piper(PiperVoice::Jeff) => t!("models.voice.jeff"),
+        Voice::Kokoro(KokoroVoice::Dora) => t!("models.voice.dora"),
+        Voice::Kokoro(KokoroVoice::Alex) => t!("models.voice.alex"),
+        Voice::Kokoro(KokoroVoice::Santa) => t!("models.voice.santa"),
+    }
+    .into_owned()
+}
+
+pub fn voice_gender(gender: VoiceGender) -> String {
+    match gender {
+        VoiceGender::Female => t!("settings.voice.female"),
+        VoiceGender::Male => t!("settings.voice.male"),
     }
     .into_owned()
 }
@@ -100,8 +112,10 @@ pub fn voice(voice: PiperVoice) -> String {
 pub fn model_name(id: ModelId) -> String {
     match id {
         ModelId::Whisper(m) => whisper_model(m),
-        ModelId::Voice(v) => voice(v),
+        ModelId::Voice(v) => voice(Voice::Piper(v)),
         ModelId::PiperRuntime => t!("models.piper").into_owned(),
+        ModelId::KokoroRuntime => t!("models.kokoro_runtime").into_owned(),
+        ModelId::KokoroModel => t!("models.kokoro_model").into_owned(),
     }
 }
 
@@ -110,6 +124,8 @@ pub fn model_description(id: ModelId) -> String {
         ModelId::Whisper(_) => t!("models.whisper.description"),
         ModelId::Voice(_) => t!("models.voice.description"),
         ModelId::PiperRuntime => t!("models.piper_description"),
+        ModelId::KokoroRuntime => t!("models.kokoro_runtime_description"),
+        ModelId::KokoroModel => t!("models.kokoro_model_description"),
     }
     .into_owned()
 }

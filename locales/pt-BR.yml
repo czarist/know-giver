@@ -194,6 +194,12 @@ export:
     next_review: "Próxima revisão"
 
 today:
+  study_time: "Tempo de estudo hoje: %{duration}"
+  study_time_hint: "Conta o estudo ativo; pausas e inatividade não entram."
+  study_zero: "0 min"
+  study_under_minute: "menos de 1 min"
+  study_minutes: "%{minutes} min"
+  study_hours: "%{hours} h %{minutes} min"
   greeting:
     morning: "Bom dia"
     afternoon: "Boa tarde"
@@ -233,6 +239,13 @@ welcome:
     text: "Envie o PDF do edital e o plano de estudo fica pronto em menos de um minuto."
 
 board:
+  reuse:
+    title: "Reaproveitar material de outro plano"
+    hint: "A relevância será avaliada novamente para este edital. O material do plano original será preservado."
+    empty: "Ainda não há material em outros planos."
+    choose: "Escolha um documento"
+    document: "%{file} — %{plan}"
+    action: "Analisar neste plano"
   title: "Material da banca"
   subtitle: "Provas anteriores e materiais da banca para deixar quizzes, aulas e apostilas mais parecidos com a prova."
   upload_hint: "Envie PDFs de provas anteriores ou de material da banca. A IA separa o que é do seu edital e deixa de lado o resto (outros cargos, matérias que não caem)."
@@ -295,12 +308,37 @@ settings:
     model_quiz: "Modelo do quiz"
     model_correction: "Modelo de correção"
     model_handout: "Modelo da apostila (vazio = modelo do plano)"
+    model_vision: "Modelo de visão para PDFs digitalizados (opcional)"
+    vision_notice: "Se preencher o modelo de visão, páginas sem texto serão enviadas como imagem ao endereço de IA configurado para reconhecer o conteúdo. Deixe vazio para desativar."
     model_fallback: "Modelo reserva"
     fast: "Respostas rápidas (menos raciocínio nas aulas e quizzes)"
     test: "Testar conexão"
     test_hint: "Usa as configurações salvas."
   voice:
     title: "Voz"
+    backend: "Síntese de voz"
+    local: "No computador"
+    cloud: "Serviço configurado"
+    gender: "Tipo de voz"
+    female: "Feminina"
+    male: "Masculina"
+    choose: "Escolha uma voz instalada"
+    none_installed: "Nenhuma voz deste tipo está instalada."
+    download_hint: "Em Modelos locais, baixe %{runtime} e %{model}."
+    current: "Voz selecionada: %{voice}"
+    pitch: "Tom (semitons)"
+    avatar: "Estilo do tutor"
+    avatar_classic: "Clássico"
+    avatar_minimal: "Simples"
+    preview: "Ouvir amostra"
+    preview_active: "Preparando ou reproduzindo amostra…"
+    stop_preview: "Parar amostra"
+    preview_hint: "Usa as opções acima sem salvar."
+    sample: "Olá! Vamos estudar com calma, um tópico de cada vez. Qual assunto você quer revisar hoje?"
+    cloud_notice: "Ao usar este serviço, o texto do tutor e das amostras será enviado ao endereço abaixo. Um servidor local mantém esse processamento no seu computador."
+    cloud_url: "Endereço do serviço de voz"
+    cloud_model: "Modelo de voz"
+    cloud_voice: "Identificador da voz"
     enabled: "Ler as respostas do tutor em voz alta"
     hands_free: "Mãos livres: voltar a ouvir quando o tutor terminar de falar"
     auto_stop: "Parar de ouvir quando eu fizer uma pausa"
@@ -319,6 +357,10 @@ settings:
     piper_note: "O Piper é baixado da página oficial do projeto no GitHub (rhasspy/piper)."
 
 models:
+  kokoro_runtime: "Sherpa-ONNX (sintetizador Kokoro)"
+  kokoro_runtime_description: "Programa local que executa as vozes Kokoro"
+  kokoro_model: "Kokoro — Dora, Alex e Santa"
+  kokoro_model_description: "Voz feminina e vozes masculinas em português do Brasil"
   piper: "Piper (sintetizador de voz)"
   piper_description: "Programa que transforma o texto do tutor em fala"
   whisper:
@@ -331,6 +373,9 @@ models:
     faber: "Voz Faber"
     cadu: "Voz Cadu"
     jeff: "Voz Jeff"
+    dora: "Dora · Kokoro"
+    alex: "Alex · Kokoro"
+    santa: "Santa · Kokoro"
 
 notice:
   plan_created: "Plano de estudo criado."

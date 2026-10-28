@@ -42,12 +42,41 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         stats(ui, engine, plan);
+        ui.add_space(6.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.label(
+                RichText::new(t!(
+                    "today.study_time",
+                    duration = study_duration(engine.today_study_seconds())
+                ))
+                .strong(),
+            );
+            widgets::hint(ui, &t!("today.study_time_hint"));
+        });
         ui.add_space(14.0);
         next_step(ui, engine, plan, &mut actions);
         ui.add_space(14.0);
         this_week(ui, plan, &mut actions);
     });
     actions.run(app);
+}
+
+fn study_duration(seconds: u64) -> String {
+    let minutes = seconds / 60;
+    if seconds == 0 {
+        t!("today.study_zero").into_owned()
+    } else if minutes == 0 {
+        t!("today.study_under_minute").into_owned()
+    } else if minutes < 60 {
+        t!("today.study_minutes", minutes = minutes).into_owned()
+    } else {
+        t!(
+            "today.study_hours",
+            hours = minutes / 60,
+            minutes = minutes % 60
+        )
+        .into_owned()
+    }
 }
 
 fn stats(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan) {

@@ -51,7 +51,7 @@ pub fn empty_state(
     let mut clicked = false;
     ui.vertical_centered(|ui| {
         ui.add_space(48.0);
-        ui.add(icon.image(56.0, p.accent.gamma_multiply(0.6)));
+        crate::illustrations::empty(ui, icon);
         ui.add_space(8.0);
         ui.label(
             RichText::new(title)
