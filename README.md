@@ -92,6 +92,8 @@ It is a developer listening harness; Piper remains the app's voice engine.
 
 ## Credits
 
+- OpenAI Codex — AI coding assistance, [**Contributor**](https://github.com/czarist/know-giver/graphs/contributors).
+
 - Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
   SIL Open Font License (`crates/ui/assets/fonts`).
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
