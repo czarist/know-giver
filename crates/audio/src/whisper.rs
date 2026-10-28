@@ -14,6 +14,10 @@ use crate::{AudioClip, AudioError, STT_SAMPLE_RATE};
 /// silence, so we skip it).
 const SILENCE_RMS: f32 = 0.004;
 
+/// Most context tokens put before the transcript, as in OpenAI's decoder
+/// (half the decoder window minus one).
+const MAX_CONTEXT_TOKENS: usize = 223;
+
 /// A loaded Whisper model. Loading takes a few seconds; keep it around.
 pub struct WhisperStt {
     model: Whisper,
@@ -89,6 +93,19 @@ impl WhisperStt {
 
     /// Transcribes a clip. `language` is a Whisper code like `"pt"`.
     pub fn transcribe(&mut self, clip: &AudioClip, language: &str) -> Result<String, AudioError> {
+        self.transcribe_with_context(clip, language, "")
+    }
+
+    /// Transcribes a clip, conditioning Whisper on `context`, the text that
+    /// came just before (for example the tutor's last sentence). Without it,
+    /// short answers like "sim" are often heard as video-ending phrases such
+    /// as "Tchau!", which Whisper learned from subtitles.
+    pub fn transcribe_with_context(
+        &mut self,
+        clip: &AudioClip,
+        language: &str,
+        context: &str,
+    ) -> Result<String, AudioError> {
         let pcm = resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE);
         if pcm.len() < STT_SAMPLE_RATE as usize / 4 || rms(&pcm) < SILENCE_RMS {
             return Ok(String::new());
@@ -98,12 +115,22 @@ impl WhisperStt {
             .tokenizer
             .special(&format!("<|{language}|>"))
             .ok_or_else(|| AudioError::Model(format!("unknown language {language}")))?;
-        let prompt = [
+        let mut prompt = Vec::new();
+        if let Some(prev) = self.tokenizer.start_of_prev {
+            let context = self.tokenizer.encode(context.trim());
+            if !context.is_empty() {
+                prompt.push(prev);
+                prompt.extend_from_slice(
+                    &context[context.len().saturating_sub(MAX_CONTEXT_TOKENS)..],
+                );
+            }
+        }
+        prompt.extend([
             self.tokenizer.sot,
             lang,
             self.tokenizer.transcribe,
             self.tokenizer.no_timestamps,
-        ];
+        ]);
 
         let mel = audio::pcm_to_mel(&self.config, &pcm, &self.mel_filters);
         let n_mels = self.config.num_mel_bins;
@@ -121,7 +148,12 @@ impl WhisperStt {
             text.push_str(&self.tokenizer.decode(&tokens));
             seek += m::N_FRAMES;
         }
-        let text = text.trim().to_owned();
+        let mut text = text.trim().to_owned();
+        if is_known_hallucination(&text) {
+            // Better to ask the student to repeat than to answer "Tchau!".
+            tracing::info!(%text, "dropped a typical Whisper hallucination");
+            text.clear();
+        }
         tracing::info!(
             audio_secs = clip.duration_secs(),
             elapsed_ms = started.elapsed().as_millis() as u64,
@@ -158,6 +190,39 @@ impl WhisperStt {
         }
         Ok(tokens[prompt.len()..].to_vec())
     }
+}
+
+/// Phrases Whisper invents for short or unclear clips, learned from the end
+/// of subtitled videos. A student does not answer the tutor with them.
+const HALLUCINATIONS: [&str; 10] = [
+    "tchau",
+    "até a próxima",
+    "até mais",
+    "até logo",
+    "obrigado por assistir",
+    "obrigada por assistir",
+    "inscreva-se",
+    "se inscreva",
+    "legendas pela comunidade",
+    "amara.org",
+];
+
+/// True when the whole transcript is one of [`HALLUCINATIONS`] (ignoring
+/// punctuation and case), or contains a subtitle credit.
+fn is_known_hallucination(text: &str) -> bool {
+    let normalized = text
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '.'))
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let normalized = normalized.trim_end_matches('.');
+    !normalized.is_empty()
+        && HALLUCINATIONS
+            .iter()
+            .any(|h| normalized == *h || (h.len() > 12 && normalized.contains(h)))
 }
 
 /// Greedy decoding sometimes repeats a phrase forever; stop when the last
@@ -217,12 +282,17 @@ fn mel_to_hz(mel: f64) -> f64 {
     }
 }
 
-/// Decoding half of Whisper's byte-level BPE tokenizer. We never encode
-/// text, so the merge rules are not needed.
+/// Whisper's byte-level BPE tokenizer. Encoding is only used for the short
+/// context prompt, so a plain merge loop is fast enough.
 struct Tokenizer {
     vocab: Vec<String>,
+    ids: HashMap<String, u32>,
+    merge_rank: HashMap<(String, String), usize>,
     specials: HashMap<String, u32>,
     byte_of: HashMap<char, u8>,
+    char_of: [char; 256],
+    pieces: regex::Regex,
+    start_of_prev: Option<u32>,
     sot: u32,
     eot: u32,
     transcribe: u32,
@@ -258,6 +328,39 @@ impl Tokenizer {
                     .collect()
             })
             .unwrap_or_default();
+        let merge_rank = value["model"]["merges"]
+            .as_array()
+            .map(|merges| {
+                merges
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(rank, merge)| {
+                        let (a, b) = match merge {
+                            serde_json::Value::String(s) => s.split_once(' ')?,
+                            serde_json::Value::Array(pair) => {
+                                (pair.first()?.as_str()?, pair.get(1)?.as_str()?)
+                            }
+                            _ => return None,
+                        };
+                        Some(((a.to_owned(), b.to_owned()), rank))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let ids = vocab_map
+            .iter()
+            .filter_map(|(token, id)| Some((token.clone(), u32::try_from(id.as_u64()?).ok()?)))
+            .collect();
+        let byte_of = byte_decoder();
+        let mut char_of = [' '; 256];
+        for (&c, &b) in &byte_of {
+            char_of[usize::from(b)] = c;
+        }
+        // GPT-2's pre-tokenizer pattern without the look-ahead the regex
+        // crate lacks; it only changes how runs of spaces are split.
+        let pieces =
+            regex::Regex::new(r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+")
+                .map_err(model_err)?;
         let find = |name: &str| {
             specials
                 .get(name)
@@ -269,10 +372,43 @@ impl Tokenizer {
             eot: find(m::EOT_TOKEN)?,
             transcribe: find(m::TRANSCRIBE_TOKEN)?,
             no_timestamps: find(m::NO_TIMESTAMPS_TOKEN)?,
+            start_of_prev: specials.get("<|startofprev|>").copied(),
             vocab,
-            byte_of: byte_decoder(),
+            ids,
+            merge_rank,
+            byte_of,
+            char_of,
+            pieces,
             specials,
         })
+    }
+
+    /// Encodes plain text into token ids (no special tokens).
+    fn encode(&self, text: &str) -> Vec<u32> {
+        let mut out = Vec::new();
+        for piece in self.pieces.find_iter(text) {
+            let mut parts: Vec<String> = piece
+                .as_str()
+                .bytes()
+                .map(|b| self.char_of[usize::from(b)].to_string())
+                .collect();
+            loop {
+                let best = parts
+                    .windows(2)
+                    .enumerate()
+                    .filter_map(|(i, w)| {
+                        self.merge_rank
+                            .get(&(w[0].clone(), w[1].clone()))
+                            .map(|rank| (*rank, i))
+                    })
+                    .min();
+                let Some((_, i)) = best else { break };
+                let right = parts.remove(i + 1);
+                parts[i].push_str(&right);
+            }
+            out.extend(parts.iter().filter_map(|p| self.ids.get(p).copied()));
+        }
+        out
     }
 
     fn special(&self, name: &str) -> Option<u32> {
@@ -364,6 +500,48 @@ mod tests {
         let tok = Tokenizer::parse(json).unwrap();
         assert_eq!(tok.decode(&[0, 1, 2, 3]), "Olá mundo");
         assert_eq!(tok.special("<|pt|>"), Some(7));
+    }
+
+    #[test]
+    fn tokenizer_encodes_with_merges_and_round_trips() {
+        let json = r#"{
+            "added_tokens": [
+                {"id": 20, "content": "<|endoftext|>"},
+                {"id": 21, "content": "<|startoftranscript|>"},
+                {"id": 22, "content": "<|transcribe|>"},
+                {"id": 23, "content": "<|notimestamps|>"},
+                {"id": 24, "content": "<|startofprev|>"}
+            ],
+            "model": {
+                "vocab": {"s": 0, "i": 1, "m": 2, "Ġ": 3, "si": 4, "sim": 5, "Ġsim": 6, "Ã": 7, "£": 8, "Ã£": 9, "o": 10, "n": 11},
+                "merges": ["s i", "si m", "Ġ sim", "Ã £"]
+            }
+        }"#;
+        let tok = Tokenizer::parse(json).unwrap();
+        assert_eq!(tok.encode("sim sim"), vec![5, 6]);
+        assert_eq!(tok.decode(&tok.encode("não sim")), "não sim");
+        assert_eq!(tok.start_of_prev, Some(24));
+    }
+
+    #[test]
+    fn recognizes_subtitle_hallucinations_only() {
+        for text in [
+            "Tchau!",
+            " Até a próxima! ",
+            "Obrigado por assistir.",
+            "Legendas pela comunidade Amara.org",
+        ] {
+            assert!(is_known_hallucination(text), "{text}");
+        }
+        for text in [
+            "Sim.",
+            "Obrigado",
+            "Até a vírgula muda o sentido",
+            "Tchau, professor, até amanhã",
+            "",
+        ] {
+            assert!(!is_known_hallucination(text), "{text}");
+        }
     }
 
     #[test]

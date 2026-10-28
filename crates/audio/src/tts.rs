@@ -174,7 +174,9 @@ fn kokoro(
     let temp = tempfile::tempdir()
         .map_err(|e| AudioError::Tts(format!("could not create speech output: {e}")))?;
     let output = temp.path().join("speech.wav");
-    let model = std::fs::canonicalize(model).map_err(|e| AudioError::io(model, e))?;
+    // sherpa-onnx appends "/phontab" and similar to the data dir, and Windows
+    // rejects forward slashes in `\\?\` paths, so pass a plain absolute path.
+    let model = plain_path(std::fs::canonicalize(model).map_err(|e| AudioError::io(model, e))?);
     let exe = std::fs::canonicalize(exe).map_err(|e| AudioError::io(exe, e))?;
     let exe = crate::prepare_kokoro_executable(&exe)?;
     let mut command = Command::new(&exe);
@@ -195,6 +197,21 @@ fn kokoro(
     run_child(&mut command, None, cancelled)?;
     let bytes = std::fs::read(&output).map_err(|e| AudioError::io(&output, e))?;
     decode_wav(&bytes)
+}
+
+/// Removes the `\\?\` prefix `canonicalize` adds on Windows when the rest is
+/// an ordinary drive or network path.
+fn plain_path(path: PathBuf) -> PathBuf {
+    let Some(text) = path.to_str() else {
+        return path;
+    };
+    if let Some(unc) = text.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{unc}"));
+    }
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
+        _ => path,
+    }
 }
 
 fn cloud(
@@ -386,6 +403,22 @@ mod tests {
         }
         writer.finalize().unwrap();
         out.into_inner()
+    }
+
+    #[test]
+    fn plain_path_drops_the_verbatim_prefix() {
+        assert_eq!(
+            plain_path(PathBuf::from(r"\\?\C:\Users\a\kokoro")),
+            PathBuf::from(r"C:\Users\a\kokoro")
+        );
+        assert_eq!(
+            plain_path(PathBuf::from(r"\\?\UNC\server\share\m")),
+            PathBuf::from(r"\\server\share\m")
+        );
+        assert_eq!(
+            plain_path(PathBuf::from("/opt/kokoro")),
+            PathBuf::from("/opt/kokoro")
+        );
     }
 
     #[test]

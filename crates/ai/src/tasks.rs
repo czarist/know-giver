@@ -346,15 +346,74 @@ pub fn generate_quiz(
     topic: &TopicContext,
     count: u32,
 ) -> Result<Vec<QuestionDraft>, AiError> {
+    if count < PARALLEL_QUIZ_MIN {
+        return quiz_batch(client, topic, count, None);
+    }
+    // Two smaller requests at once take about half the time of one large
+    // one. Each gets its own focus so they do not write the same questions.
+    let first = count.div_ceil(2);
+    let (a, b) = std::thread::scope(|scope| {
+        let other = scope.spawn(|| quiz_batch(client, topic, count - first, Some(QUIZ_FOCUS[1])));
+        let mine = quiz_batch(client, topic, first, Some(QUIZ_FOCUS[0]));
+        let other = other
+            .join()
+            .unwrap_or_else(|_| Err(AiError::InvalidResponse("quiz worker panicked".into())));
+        (mine, other)
+    });
+    let mut questions = match (a, b) {
+        (Ok(mut a), Ok(b)) => {
+            a.extend(b);
+            a
+        }
+        (Ok(one), Err(error)) | (Err(error), Ok(one)) => {
+            tracing::warn!(%error, "one quiz batch failed; using the other");
+            one
+        }
+        (Err(error), Err(_)) => return Err(error),
+    };
+    let mut seen = std::collections::HashSet::new();
+    questions.retain(|q| seen.insert(normalized_prompt(&q.prompt)));
+    questions.truncate(count as usize);
+    Ok(questions)
+}
+
+/// Quizzes with at least this many questions are written in two halves.
+const PARALLEL_QUIZ_MIN: u32 = 4;
+
+/// What each half of a parallel quiz concentrates on.
+const QUIZ_FOCUS: [&str; 2] = [
+    "Concentre-se nas regras gerais, nos conceitos e nas definições do tópico.",
+    "Concentre-se nas exceções, nos casos especiais e na aplicação a situações concretas.",
+];
+
+fn quiz_batch(
+    client: &Client,
+    topic: &TopicContext,
+    count: u32,
+    focus: Option<&str>,
+) -> Result<Vec<QuestionDraft>, AiError> {
     let count = count.to_string();
     let mut values = topic.values().to_vec();
     values.push(("count", &count));
+    let request = match focus {
+        Some(focus) => format!("Gere as questões. {focus}"),
+        None => "Gere as questões.".to_owned(),
+    };
     let messages = [
         ChatMessage::system(fill(prompts::QUIZ, &values)),
-        ChatMessage::user("Gere as questões."),
+        ChatMessage::user(request),
     ];
     let draft: QuizDraft = chat_json(client, Task::Quiz, &messages, 8_000)?;
     Ok(draft.questions)
+}
+
+/// Lowercase letters and digits only, to spot the same question twice.
+fn normalized_prompt(prompt: &str) -> String {
+    prompt
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 /// Writes a handout within the syllabus supplied in `edital`.

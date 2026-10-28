@@ -25,7 +25,7 @@ const TOPICS: [(&str, &str); 4] = [
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
-        .with_env_filter("kg_ai=info")
+        .with_env_filter(std::env::var("RUST_LOG").unwrap_or_else(|_| "kg_ai=info".into()))
         .init();
     dotenvy::dotenv_override().ok();
     let config = AiConfig::from_env(|k| std::env::var(k).ok());

@@ -4,6 +4,34 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - 2026-10-28
+
+### Fixed
+- Kokoro voices failed every synthesis on Windows: the model folder was passed as a
+  `\\?\` path, and sherpa-onnx appends `/phontab` with a forward slash, which such
+  paths reject. The folder is now passed as a plain absolute path.
+- GLM 4.x models ignored `reasoning_effort: "low"` and reasoned at length before
+  answering; a handout on `glm-4.7-flash` took 264 s just to write. Fast responses now
+  send `thinking: {"type": "disabled"}` to GLM 4.x (GLM 5.x rejects it and keeps
+  `reasoning_effort`).
+- Short spoken answers were misheard: Whisper turned a lone "sim" into video-ending
+  phrases such as "Tchau!" or "Até a próxima!". Whisper is now given the tutor's last
+  words as context, and a transcript that is only such a phrase is dropped so the
+  student is asked to repeat instead of the tutor answering "Tchau!".
+
+### Changed
+- Handout review returns only its corrections (exact excerpt → fixed text, answer key
+  changes, removed exercises) instead of rewriting the whole handout: the review step
+  went from about 53 s to 17–33 s per handout, with the same kind of fixes (18 over 4
+  topics, 1 of 19 exercises dropped).
+- Quizzes of 4 or more questions are written as two parallel requests with different
+  focus (rules and definitions; exceptions and applied cases), then de-duplicated.
+
+### Added
+- The latest lesson recording is saved as `last-recording.wav` in the data folder, to
+  check a bad transcription against what the microphone captured.
+- `quiz_check` example (quiz generation time); `stt_check` takes `KG_STT_CONTEXT`.
+
 ## [0.17.0] - 2026-10-28
 
 ### Added

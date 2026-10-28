@@ -82,6 +82,18 @@ struct ResponseMessage {
     content: Option<String>,
 }
 
+/// Asks the model to answer without a long reasoning phase. GLM 5.x takes
+/// the standard `reasoning_effort` and rejects disabling thinking; GLM 4.x
+/// ignores `reasoning_effort` (a handout took over four minutes) and needs
+/// `thinking: disabled`.
+fn skip_reasoning(body: &mut serde_json::Value, model: &str) {
+    if model.trim().to_ascii_lowercase().starts_with("glm-4") {
+        body["thinking"] = json!({ "type": "disabled" });
+    } else {
+        body["reasoning_effort"] = json!("low");
+    }
+}
+
 impl Client {
     pub fn new(config: AiConfig) -> Self {
         let agent = ureq::Agent::config_builder()
@@ -173,15 +185,16 @@ impl Client {
         on_delta: impl FnMut(&str),
     ) -> Result<String, AiError> {
         let url = self.config.chat_url();
+        let model = self.config.models.for_task(request.task);
         let mut body = json!({
-            "model": self.config.models.for_task(request.task),
+            "model": model,
             "messages": request.messages,
             "max_tokens": request.max_tokens,
             "temperature": 0.7,
             "stream": true,
         });
         if self.config.fast_responses {
-            body["reasoning_effort"] = json!("low");
+            skip_reasoning(&mut body, model);
         }
         let mut call = self.agent.post(&url).header("Accept", "text/event-stream");
         if !self.config.api_key.is_empty() {
@@ -221,10 +234,9 @@ impl Client {
             body["response_format"] = json!({ "type": "json_object" });
         }
         if self.config.fast_responses {
-            // Standard OpenAI field; GLM 5.x skips reasoning entirely with "low".
             // Without it, plan generation on a full edital can spend the whole
             // token budget reasoning and return nothing.
-            body["reasoning_effort"] = json!("low");
+            skip_reasoning(&mut body, model);
         }
 
         self.send_body(model, &body)
@@ -363,6 +375,16 @@ fn read_sse(mut reader: impl BufRead, mut on_delta: impl FnMut(&str)) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reasoning_is_skipped_the_way_each_glm_family_accepts() {
+        let mut new = json!({});
+        skip_reasoning(&mut new, "glm-5.3-flash");
+        assert_eq!(new, json!({ "reasoning_effort": "low" }));
+        let mut old = json!({});
+        skip_reasoning(&mut old, "GLM-4.7-flash");
+        assert_eq!(old, json!({ "thinking": { "type": "disabled" } }));
+    }
 
     #[test]
     fn sse_delivers_text_before_done_and_keeps_unicode() {

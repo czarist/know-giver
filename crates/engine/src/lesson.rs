@@ -24,6 +24,8 @@ const SILENCE_TO_STOP: Duration = Duration::from_millis(1_400);
 const BOARD_POINTS: usize = 6;
 /// Shorter clips are treated as accidental clicks.
 const MIN_CLIP_SECS: f32 = 0.4;
+/// How much of the tutor's last turn is given to Whisper as context.
+const STT_CONTEXT_CHARS: usize = 300;
 
 /// What the voice lesson is doing right now. Drives the UI's listening and
 /// speaking feedback.
@@ -240,10 +242,28 @@ impl Engine {
         let stt = Arc::clone(&self.stt);
         let models = self.models.clone();
         let model = self.settings.whisper_model;
+        // What the tutor said last helps Whisper read short answers.
+        let context = lesson
+            .turns
+            .iter()
+            .rev()
+            .find(|t| t.speaker == Speaker::Tutor)
+            .map(|t| tail_chars(&t.text, STT_CONTEXT_CHARS).to_owned())
+            .unwrap_or_default();
+        let last_recording = self.paths.last_recording();
         self.spawn(move || {
+            // Kept so a bad transcription can be checked against the audio.
+            if let Err(error) = clip.write_wav(&last_recording) {
+                tracing::debug!(%error, "could not save the last recording");
+            }
+            tracing::info!(
+                secs = clip.duration_secs(),
+                rate = clip.sample_rate,
+                "transcribing recording"
+            );
             Event::Lesson(LessonEvent::Transcribed {
                 session,
-                result: transcribe(&stt, &models, model, &clip),
+                result: transcribe(&stt, &models, model, &clip, &context),
             })
         });
     }
@@ -734,10 +754,22 @@ fn transcribe(
     models: &ModelStore,
     model: WhisperModel,
     clip: &AudioClip,
+    context: &str,
 ) -> Result<String, EngineError> {
     with_stt(stt, models, model, |whisper| {
-        Ok(whisper.transcribe(clip, STT_LANGUAGE)?)
+        Ok(whisper.transcribe_with_context(clip, STT_LANGUAGE, context)?)
     })
+}
+
+/// The last `max` characters of `text`, starting at a word boundary.
+fn tail_chars(text: &str, max: usize) -> &str {
+    let count = text.chars().count();
+    if count <= max {
+        return text;
+    }
+    let start = text.char_indices().nth(count - max).map_or(0, |(i, _)| i);
+    let tail = &text[start..];
+    tail.split_once(' ').map_or(tail, |(_, rest)| rest)
 }
 
 /// Runs `f` with the requested Whisper model, loading it if needed.
@@ -758,5 +790,18 @@ fn with_stt<T>(
     match guard.as_mut() {
         Some((_, whisper)) => f(whisper),
         None => Err(EngineError::SpeechModelMissing(ModelId::Whisper(model))),
+    }
+}
+
+#[cfg(test)]
+mod stt_context_tests {
+    use super::tail_chars;
+
+    #[test]
+    fn tail_keeps_whole_words_from_the_end() {
+        assert_eq!(tail_chars("curto", 300), "curto");
+        assert_eq!(tail_chars("ficou claro até aqui", 9), "até aqui");
+        assert_eq!(tail_chars("ficou claro até aqui", 7), "aqui");
+        assert_eq!(tail_chars("é à crase", 5), "crase");
     }
 }

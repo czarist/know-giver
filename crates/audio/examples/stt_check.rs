@@ -2,6 +2,7 @@
 //! transcribes a 16-bit PCM WAV file.
 //!
 //! cargo run --release -p kg-audio --example stt_check -- <models-dir> <file.wav> [tiny|base|small]
+//! Set `KG_STT_CONTEXT` to the text spoken just before, to test context prompting.
 
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
@@ -51,7 +52,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stt = WhisperStt::load(&store.whisper_dir(model))?;
     println!("{model:?} loaded in {:?}", t.elapsed());
     let t = Instant::now();
-    let text = stt.transcribe(&clip, "pt")?;
+    // Optional context, like the tutor sentence before the answer.
+    let context = std::env::var("KG_STT_CONTEXT").unwrap_or_default();
+    let text = stt.transcribe_with_context(&clip, "pt", &context)?;
     println!("text: {text:?} ({:?})", t.elapsed());
     Ok(())
 }

@@ -44,6 +44,24 @@ pub struct AudioClip {
 }
 
 impl AudioClip {
+    /// Writes the clip as 16-bit mono WAV, for diagnosing what the
+    /// microphone actually captured.
+    pub fn write_wav(&self, path: &std::path::Path) -> Result<(), AudioError> {
+        let bad = |e: hound::Error| AudioError::Device(format!("wav write failed: {e}"));
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: self.sample_rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = hound::WavWriter::create(path, spec).map_err(bad)?;
+        for sample in &self.samples {
+            let value = (sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)) as i16;
+            writer.write_sample(value).map_err(bad)?;
+        }
+        writer.finalize().map_err(bad)
+    }
+
     pub fn duration_secs(&self) -> f32 {
         if self.sample_rate == 0 {
             0.0

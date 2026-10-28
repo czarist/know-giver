@@ -1,6 +1,10 @@
 //! Second pass over a generated handout: a content review that fixes wrong
 //! statements, then a blind solve of every exercise. An exercise is kept only
 //! when the independent answer matches its answer key.
+//!
+//! The reviewer returns only its corrections (exact excerpt -> fixed text, and
+//! exercise key changes), not the whole handout again: rewriting everything
+//! took as long as writing the handout.
 
 use serde::Deserialize;
 
@@ -20,12 +24,34 @@ pub struct ReviewedHandout {
     pub dropped_exercises: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct ReviewReply {
-    #[serde(flatten)]
-    draft: HandoutDraft,
+    #[serde(default)]
+    corrections: Vec<Correction>,
+    #[serde(default)]
+    exercises: Vec<ExerciseFix>,
     #[serde(default)]
     issues: Vec<String>,
+}
+
+/// Replace `original` (an exact excerpt) with `corrected`; empty removes it.
+#[derive(Deserialize, Default)]
+struct Correction {
+    #[serde(default)]
+    original: String,
+    #[serde(default)]
+    corrected: String,
+}
+
+/// A change to exercise `n` (1-based): a new answer key, or removal.
+#[derive(Deserialize, Default)]
+struct ExerciseFix {
+    #[serde(default)]
+    n: serde_json::Value,
+    #[serde(default)]
+    correct: serde_json::Value,
+    #[serde(default)]
+    remove: bool,
 }
 
 #[derive(Deserialize)]
@@ -67,8 +93,8 @@ pub fn review_handout(
             "EDITAL (dados de referência):\n{edital}\n\nAPOSTILA (dados a revisar):\n{json}"
         )),
     ];
-    let reply: ReviewReply = chat_json(client, Task::Correction, &messages, 16_000)?;
-    let (mut reviewed, issues) = accept_review(draft, reply);
+    let reply: ReviewReply = chat_json(client, Task::Correction, &messages, 6_000)?;
+    let (mut reviewed, issues) = apply_review(draft, reply);
 
     let before = reviewed.exercises.len();
     if before > 0 {
@@ -94,18 +120,85 @@ pub fn review_handout(
 
 /// Uses the reviewed text unless the reviewer lost the content, in which
 /// case the original is kept (its exercises are still checked afterwards).
-fn accept_review(original: HandoutDraft, reply: ReviewReply) -> (HandoutDraft, Vec<String>) {
-    let lost_content = (reply.draft.sections.is_empty() && !original.sections.is_empty())
-        || (reply.draft.introduction.trim().is_empty() && !original.introduction.trim().is_empty());
-    if lost_content {
-        tracing::warn!("handout review returned an incomplete handout; keeping the original");
-        (original, Vec::new())
-    } else {
-        (reply.draft, reply.issues)
+/// Applies the reviewer's corrections. Excerpts that are not found verbatim
+/// are skipped (and logged) rather than guessed.
+fn apply_review(mut draft: HandoutDraft, reply: ReviewReply) -> (HandoutDraft, Vec<String>) {
+    let mut missed = 0;
+    for fix in &reply.corrections {
+        if fix.original.trim().is_empty() || fix.original == fix.corrected {
+            continue;
+        }
+        if !replace_once(&mut draft, &fix.original, &fix.corrected) {
+            missed += 1;
+            tracing::debug!(original = %fix.original, "review excerpt not found");
+        }
     }
+    if missed > 0 {
+        tracing::info!(missed, "some review corrections did not match the handout");
+    }
+
+    let mut removed = vec![false; draft.exercises.len()];
+    for fix in &reply.exercises {
+        let Some(index) = as_index(&fix.n)
+            .and_then(|n| n.checked_sub(1))
+            .filter(|i| *i < draft.exercises.len())
+        else {
+            continue;
+        };
+        if fix.remove {
+            removed[index] = true;
+        } else if let Some(correct) =
+            as_index(&fix.correct).filter(|c| *c < draft.exercises[index].options.len())
+        {
+            draft.exercises[index].correct = correct;
+        }
+    }
+    let mut flags = removed.into_iter();
+    draft.exercises.retain(|_| !flags.next().unwrap_or(false));
+    prune_empty(&mut draft);
+    (draft, reply.issues)
 }
 
-/// Independent answers for `exercises`: `(1-based number, option index)`.
+/// Replaces the first exact occurrence of `original` in any text of the
+/// handout. Returns false when it appears nowhere.
+fn replace_once(draft: &mut HandoutDraft, original: &str, corrected: &str) -> bool {
+    let mut texts: Vec<&mut String> = vec![&mut draft.introduction];
+    for section in &mut draft.sections {
+        texts.push(&mut section.heading);
+        texts.extend(section.paragraphs.iter_mut());
+        texts.extend(section.key_points.iter_mut());
+    }
+    texts.extend(draft.examples.iter_mut());
+    texts.extend(draft.pitfalls.iter_mut());
+    texts.extend(draft.summary.iter_mut());
+    for exercise in &mut draft.exercises {
+        texts.push(&mut exercise.prompt);
+        texts.extend(exercise.options.iter_mut());
+        texts.push(&mut exercise.explanation);
+    }
+    for text in texts {
+        if let Some(at) = text.find(original) {
+            text.replace_range(at..at + original.len(), corrected);
+            *text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+            return true;
+        }
+    }
+    false
+}
+
+/// Drops list items a correction emptied. Exercises keep their option count
+/// so answer keys stay valid.
+fn prune_empty(draft: &mut HandoutDraft) {
+    let keep = |t: &String| !t.trim().is_empty();
+    for section in &mut draft.sections {
+        section.paragraphs.retain(keep);
+        section.key_points.retain(keep);
+    }
+    draft.examples.retain(keep);
+    draft.pitfalls.retain(keep);
+    draft.summary.retain(keep);
+}
+
 fn solve_blind(
     client: &Client,
     topic: &TopicContext,
@@ -194,10 +287,12 @@ mod tests {
     #[test]
     fn review_reply_parses_with_issues_and_lenient_numbers() {
         let reply: ReviewReply = serde_json::from_str(
-            r#"{"introduction":"I","sections":[{"heading":"H"}],"issues":["corrigido x"]}"#,
+            r#"{"corrections":[{"original":"a","corrected":"b"}],"exercises":[{"n":"1","correct":2}],"issues":["corrigido x"]}"#,
         )
         .unwrap();
         assert_eq!(reply.issues, vec!["corrigido x"]);
+        assert_eq!(reply.corrections.len(), 1);
+        assert_eq!(as_index(&reply.exercises[0].n), Some(1));
         let blind: BlindReply =
             serde_json::from_str(r#"{"answers":[{"n":"2","answer":1},{"n":3,"answer":null}]}"#)
                 .unwrap();
@@ -205,22 +300,78 @@ mod tests {
         assert_eq!(as_index(&blind.answers[1].answer), None);
     }
 
-    #[test]
-    fn incomplete_review_keeps_the_original() {
-        let original = HandoutDraft {
-            introduction: "Intro".into(),
+    fn sample() -> HandoutDraft {
+        HandoutDraft {
+            introduction: "Crase é a fusão de a + a.".into(),
             sections: vec![SectionDraft {
                 heading: "Regra".into(),
-                ..SectionDraft::default()
+                paragraphs: vec!["Usa-se crase antes de meio-dia? Não.".into()],
+                key_points: vec!["Ponto errado.".into(), "Ponto certo.".into()],
             }],
+            exercises: vec![question(0), question(1), question(2)],
             ..HandoutDraft::default()
-        };
+        }
+    }
+
+    #[test]
+    fn corrections_replace_exact_excerpts_and_remove_emptied_items() {
         let reply = ReviewReply {
-            draft: HandoutDraft::default(),
-            issues: vec!["x".into()],
+            corrections: vec![
+                Correction {
+                    original: "Não.".into(),
+                    corrected: "Sim: ao meio-dia.".into(),
+                },
+                Correction {
+                    original: "Ponto errado.".into(),
+                    corrected: String::new(),
+                },
+                Correction {
+                    original: "texto que não existe".into(),
+                    corrected: "x".into(),
+                },
+            ],
+            ..ReviewReply::default()
         };
-        let (kept, issues) = accept_review(original.clone(), reply);
-        assert_eq!(kept, original);
-        assert!(issues.is_empty());
+        let (draft, _) = apply_review(sample(), reply);
+        let section = &draft.sections[0];
+        assert_eq!(
+            section.paragraphs[0],
+            "Usa-se crase antes de meio-dia? Sim: ao meio-dia."
+        );
+        assert_eq!(section.key_points, vec!["Ponto certo."]);
+        assert_eq!(draft.introduction, "Crase é a fusão de a + a.");
+    }
+
+    #[test]
+    fn exercise_fixes_change_keys_and_remove_questions() {
+        let reply = ReviewReply {
+            exercises: vec![
+                ExerciseFix {
+                    n: serde_json::json!(1),
+                    correct: serde_json::json!(3),
+                    remove: false,
+                },
+                ExerciseFix {
+                    n: serde_json::json!(2),
+                    remove: true,
+                    ..ExerciseFix::default()
+                },
+                // Out of range: ignored.
+                ExerciseFix {
+                    n: serde_json::json!(3),
+                    correct: serde_json::json!(9),
+                    remove: false,
+                },
+                ExerciseFix {
+                    n: serde_json::json!(7),
+                    remove: true,
+                    ..ExerciseFix::default()
+                },
+            ],
+            ..ReviewReply::default()
+        };
+        let (draft, _) = apply_review(sample(), reply);
+        let keys: Vec<usize> = draft.exercises.iter().map(|q| q.correct).collect();
+        assert_eq!(keys, vec![3, 2]);
     }
 }

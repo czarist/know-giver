@@ -31,6 +31,11 @@ impl AppPaths {
         self.data_dir.join("know-giver.db")
     }
 
+    /// The latest lesson recording, overwritten each time.
+    pub fn last_recording(&self) -> PathBuf {
+        self.data_dir.join("last-recording.wav")
+    }
+
     pub fn models_dir(&self) -> PathBuf {
         self.data_dir.join("models")
     }
