@@ -31,6 +31,14 @@ impl AppPaths {
         self.data_dir.join("know-giver.db")
     }
 
+    /// Where prepared plan PDFs are saved: "Know Giver" in the user's
+    /// Documents folder, or the data folder when there is none.
+    pub fn handouts_dir(&self) -> PathBuf {
+        directories::UserDirs::new()
+            .and_then(|dirs| dirs.document_dir().map(|d| d.join("Know Giver")))
+            .unwrap_or_else(|| self.data_dir.join("handouts"))
+    }
+
     /// The latest lesson recording, overwritten each time.
     pub fn last_recording(&self) -> PathBuf {
         self.data_dir.join("last-recording.wav")

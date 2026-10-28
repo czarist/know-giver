@@ -18,6 +18,7 @@ mod screens;
 mod theme;
 mod whiteboard;
 mod widgets;
+mod working;
 
 #[cfg(test)]
 mod snapshots;

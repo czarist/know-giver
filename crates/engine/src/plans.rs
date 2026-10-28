@@ -72,6 +72,7 @@ impl Engine {
         result: Result<PlanDraft, kg_ai::AiError>,
     ) -> Result<(), EngineError> {
         self.generating_since = None;
+        let prepare = self.pending_prepare.take();
         let draft = result?;
         let plan = new_plan_from_draft(draft, &edital, prefs.weeks)?;
         let stored = self.store.insert_plan(
@@ -89,10 +90,24 @@ impl Engine {
         self.import = ImportState::Empty;
         self.select_plan(id)?;
         self.notices.push(Notice::PlanCreated);
+        if let Some(request) = prepare {
+            self.prepare_content(request)?;
+        }
         Ok(())
     }
 
+    /// Test hook: shows `edital` as imported, with its plan being generated.
+    #[cfg(feature = "test-support")]
+    pub fn simulate_plan_generation(&mut self, edital: Edital) {
+        self.import = ImportState::Ready(edital);
+        self.generating_since = Some(Instant::now());
+    }
+
     pub(crate) fn select_plan(&mut self, id: PlanId) -> Result<(), EngineError> {
+        if self.active.as_ref().is_some_and(|p| p.id != id) {
+            // Preparation belongs to the plan it started on.
+            self.cancel_prepare();
+        }
         let plan = self.store.load_plan(id)?;
         self.store.set_setting(ACTIVE_PLAN_KEY, &id.0.to_string())?;
         self.active = Some(plan);
@@ -103,6 +118,9 @@ impl Engine {
     }
 
     pub(crate) fn delete_plan(&mut self, id: PlanId) -> Result<(), EngineError> {
+        if self.active.as_ref().is_some_and(|p| p.id == id) {
+            self.cancel_prepare();
+        }
         self.store.delete_plan(id)?;
         if self.active.as_ref().is_some_and(|p| p.id == id) {
             self.active = None;

@@ -55,6 +55,19 @@ fn look(accent: Color32, dark: bool) -> Look {
     }
 }
 
+/// The teacher's look from the settings: the voice's gender and the style.
+pub fn appearance(engine: &kg_engine::Engine) -> Appearance {
+    let settings = engine.settings();
+    Appearance {
+        female: if settings.tts_backend == kg_engine::TtsBackend::Cloud {
+            settings.cloud_speech.gender == kg_engine::VoiceGender::Female
+        } else {
+            settings.voice.gender() == kg_engine::VoiceGender::Female
+        },
+        minimal: settings.avatar_style == kg_engine::AvatarStyle::Minimal,
+    }
+}
+
 /// Paints the teacher centered in `rect`.
 pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32, appearance: Appearance) {
     let painter = ui.painter_at(rect);

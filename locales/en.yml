@@ -20,6 +20,7 @@ fatal:
   subtitle: "Know Giver could not open your data."
 
 nav:
+  preparing: "%{done}/%{total}"
   today: "Today"
   welcome: "Welcome"
   edital: "Exam notice"
@@ -65,7 +66,12 @@ edital:
   role_hint: "Optional: the position you are applying for"
   generate: "Generate study plan"
   other_file: "Use another file"
-  generating: "Generating the plan… %{seconds} s. Usually takes 30 seconds to 2 minutes."
+  generating: "Reading the syllabus and spreading the topics across the weeks. %{seconds} s."
+  generating_title: "Building your study plan"
+  generating_note: "This can take a while: usually 30 seconds to 2 minutes."
+  generating_then_prepare: "This can take a while. After the plan, handouts and quizzes for every topic start being prepared; follow along on the plan screen."
+  prepare_all: "Prepare handouts and quizzes for every topic now"
+  prepare_all_hint: "Writes each topic's handout and a question bank in one go, and saves the full PDF to Documents › Know Giver. Takes a few minutes per subject, in the background: you can keep using the app."
   your_plans: "Your plans"
   no_plans: "No plans yet."
   active: "Active"
@@ -75,6 +81,17 @@ edital:
   confirm_delete: "Delete this plan and all its progress? This cannot be undone."
 
 plan:
+  prepare_all: "Prepare everything now"
+  prepare_all_hint: "Writes the missing handouts and quizzes for every topic and saves the full PDF to Documents › Know Giver."
+  prepare_title: "Preparing the plan's content"
+  prepare_writing: "Writing and reviewing: %{topics}"
+  prepare_saving: "Putting the full PDF together"
+  prepare_cancelling: "Cancelling after the topics in progress"
+  prepare_count: "%{done} of %{total} topics ready"
+  prepare_left: "about %{time} left"
+  prepare_long: "this can take a few minutes"
+  prepare_failed: "%{count} failed (you can retry later)"
+  prepare_keep_using: "Keep studying: preparation continues in the background."
   title: "Study plan"
   subtitle: "Subjects and topics extracted from the exam notice."
   empty: "No plan yet. Start by uploading the exam notice."
@@ -381,7 +398,21 @@ models:
     alex: "Alex · Kokoro"
     santa: "Santa · Kokoro"
 
+working:
+  tip_label: "Meanwhile"
+  tip_1: "A little study every day beats weekend marathons."
+  tip_2: "Explaining the subject out loud to the tutor is one of the fastest ways to make it stick."
+  tip_3: "Reviewing the next day, after a week and after a month keeps the content in memory."
+  tip_4: "Mistakes in a quiz are useful: each one shows exactly what to review."
+  tip_5: "Past exam questions show how the board thinks; upload the ones you have."
+  tip_6: "Short breaks every 50 minutes help you stay focused."
+  under_a_minute: "under a minute"
+  minutes: "%{minutes} min"
+
 notice:
+  content_prepared: "Content ready! Handouts and quizzes prepared for every topic. PDF saved to %{path}."
+  content_prepared_partial: "Content prepared, with %{failed} topic(s) failed. PDF saved to %{path}. Use Prepare everything now to retry the missing ones."
+  content_prepare_failed: "Could not prepare the content. Check the AI connection and try again."
   plan_created: "Study plan created."
   settings_saved: "Settings saved."
   connection_ok: "AI connection is working."

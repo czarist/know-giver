@@ -64,7 +64,7 @@ struct Item {
 
 /// Exact inputs keep old or differently grounded text out of subsequent exports.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct HandoutSource {
+pub(crate) struct HandoutSource {
     exam: String,
     subject: String,
     topic: String,
@@ -74,7 +74,7 @@ struct HandoutSource {
 }
 
 impl HandoutSource {
-    fn new(context: &TopicContext, edital: &str) -> Self {
+    pub(crate) fn new(context: &TopicContext, edital: &str) -> Self {
         Self {
             exam: context.exam.clone(),
             subject: context.subject.clone(),
@@ -85,7 +85,7 @@ impl HandoutSource {
         }
     }
 
-    fn cached(&self, json: &str) -> Option<TopicHandout> {
+    pub(crate) fn cached(&self, json: &str) -> Option<TopicHandout> {
         let cached: CachedHandout = serde_json::from_str(json).ok()?;
         (cached.source == *self).then_some(cached.content)
     }
@@ -108,7 +108,7 @@ impl Engine {
     }
 
     pub(crate) fn export_handout(&mut self, request: HandoutRequest) -> Result<(), EngineError> {
-        if self.handout_job.is_some() {
+        if self.handout_job.is_some() || self.prepare_job.is_some() {
             return Ok(());
         }
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
@@ -253,25 +253,9 @@ fn build_handout(
                         break;
                     }
                     if item.cached.is_none() {
-                        let written =
-                            kg_ai::generate_handout(client, &item.context, &item.source.edital)
-                                .and_then(|draft| {
-                                    kg_ai::review_handout(
-                                        client,
-                                        &item.context,
-                                        &item.source.edital,
-                                        draft,
-                                    )
-                                });
-                        match written {
-                            Ok(reviewed) => {
-                                let draft = reviewed.draft;
-                                let topic = topic_from_draft(draft, &item.context, seed(i));
-                                let cached = CachedHandout {
-                                    source: item.source.clone(),
-                                    content: topic.clone(),
-                                };
-                                if let Ok(json) = serde_json::to_string(&cached) {
+                        match write_topic(client, &item.context, &item.source, seed(i)) {
+                            Ok((topic, json)) => {
+                                if let Some(json) = json {
                                     on_written(item.topic_id, json);
                                 }
                                 if let Ok(mut slot) = slots[i].lock() {
@@ -311,16 +295,49 @@ fn build_handout(
         labels: request.labels.clone(),
         topics,
     };
-    let pdf = kg_handout::render_pdf(&document)?;
-    std::fs::write(&request.path, pdf).map_err(|source| EngineError::Export {
-        path: request.path.clone(),
-        source,
-    })?;
-    tracing::info!(path = %request.path.display(), "handout saved");
-    Ok(request.path.clone())
+    write_pdf(&document, &request.path)
 }
 
-fn seed(i: usize) -> u64 {
+/// Writes and reviews one topic's handout. Returns the content and the JSON
+/// to cache (`None` only if it could not be serialized).
+pub(crate) fn write_topic(
+    client: &kg_ai::Client,
+    context: &TopicContext,
+    source: &HandoutSource,
+    seed: u64,
+) -> Result<(TopicHandout, Option<String>), kg_ai::AiError> {
+    let draft = kg_ai::generate_handout(client, context, &source.edital)?;
+    let reviewed = kg_ai::review_handout(client, context, &source.edital, draft)?;
+    let topic = topic_from_draft(reviewed.draft, context, seed);
+    let json = serde_json::to_string(&CachedHandout {
+        source: source.clone(),
+        content: topic.clone(),
+    })
+    .ok();
+    Ok((topic, json))
+}
+
+/// Renders the PDF and saves it at `path`.
+pub(crate) fn write_pdf(
+    document: &Document,
+    path: &std::path::Path,
+) -> Result<PathBuf, EngineError> {
+    let pdf = kg_handout::render_pdf(document)?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|source| EngineError::Export {
+            path: dir.to_path_buf(),
+            source,
+        })?;
+    }
+    std::fs::write(path, pdf).map_err(|source| EngineError::Export {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    tracing::info!(path = %path.display(), "handout saved");
+    Ok(path.to_path_buf())
+}
+
+pub(crate) fn seed(i: usize) -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(1, |d| d.as_nanos() as u64)

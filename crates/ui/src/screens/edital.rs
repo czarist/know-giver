@@ -6,7 +6,7 @@ use rust_i18n::t;
 
 use super::Actions;
 use crate::app::{KnowGiverApp, Screen};
-use crate::{i18n, theme, widgets};
+use crate::{i18n, theme, widgets, working};
 
 pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let mut actions = Actions::default();
@@ -26,15 +26,34 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                     });
                 });
             }
-            ImportState::Ready(edital) => {
-                ready_card(
+            ImportState::Ready(edital) => match engine.generating_since() {
+                Some(started) => {
+                    let detail = t!("edital.generating", seconds = started.elapsed().as_secs());
+                    let note = if state.prepare_all {
+                        t!("edital.generating_then_prepare")
+                    } else {
+                        t!("edital.generating_note")
+                    };
+                    working::panel(
+                        ui,
+                        engine,
+                        &working::Working {
+                            title: &t!("edital.generating_title"),
+                            detail: &detail,
+                            note: &note,
+                            progress: None,
+                        },
+                        |_| {},
+                    );
+                }
+                None => ready_card(
                     ui,
                     edital,
                     &mut state.prefs,
-                    engine.generating_since(),
+                    &mut state.prepare_all,
                     &mut actions,
-                );
-            }
+                ),
+            },
             ImportState::Empty | ImportState::Failed => {
                 widgets::card(ui, |ui| {
                     widgets::hint(ui, &t!("edital.empty"));
@@ -71,7 +90,7 @@ fn ready_card(
     ui: &mut egui::Ui,
     edital: &Edital,
     prefs: &mut PlanPrefs,
-    generating_since: Option<std::time::Instant>,
+    prepare_all: &mut bool,
     actions: &mut Actions,
 ) {
     widgets::card(ui, |ui| {
@@ -126,29 +145,22 @@ fn ready_card(
             });
 
         ui.add_space(8.0);
-        match generating_since {
-            Some(started) => {
-                ui.horizontal(|ui| {
-                    ui.spinner();
-                    ui.label(t!(
-                        "edital.generating",
-                        seconds = started.elapsed().as_secs()
-                    ));
-                });
+        ui.checkbox(prepare_all, t!("edital.prepare_all"));
+        widgets::hint(ui, &t!("edital.prepare_all_hint"));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if widgets::primary_button(ui, &t!("edital.generate")).clicked() {
+                actions.send(Command::GeneratePlan(prefs.clone()));
+                if *prepare_all {
+                    actions.send(Command::PrepareContent(super::handout::prepare_request()));
+                }
             }
-            None => {
-                ui.horizontal(|ui| {
-                    if widgets::primary_button(ui, &t!("edital.generate")).clicked() {
-                        actions.send(Command::GeneratePlan(prefs.clone()));
-                    }
-                    if ui.button(t!("edital.other_file")).clicked()
-                        && let Some(path) = pick_pdf()
-                    {
-                        actions.send(Command::ImportEdital(path));
-                    }
-                });
+            if ui.button(t!("edital.other_file")).clicked()
+                && let Some(path) = pick_pdf()
+            {
+                actions.send(Command::ImportEdital(path));
             }
-        }
+        });
     });
 }
 

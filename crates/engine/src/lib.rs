@@ -13,6 +13,7 @@ mod models;
 mod paths;
 mod plans;
 mod practice;
+mod prepare;
 mod progress;
 mod settings;
 mod study_time;
@@ -34,7 +35,7 @@ pub use kg_audio::{
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
-pub use kg_pdf::{Edital, PdfError};
+pub use kg_pdf::{Edital, EditalText, PdfError};
 pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
 };
@@ -46,6 +47,7 @@ pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
+pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use settings::{AvatarStyle, Settings};
 pub use study_time::StudyPresence;
@@ -96,6 +98,11 @@ pub enum Command {
 
     ExportHandout(HandoutRequest),
     CancelHandout,
+    /// Writes handouts and quiz questions for every topic of the active plan,
+    /// then saves the plan PDF. Sent while a plan is being generated, it runs
+    /// as soon as that plan is ready.
+    PrepareContent(PrepareRequest),
+    CancelPrepare,
 
     /// Upload a past exam or board material for the active plan.
     ImportBoard {
@@ -177,6 +184,7 @@ pub enum Notice {
     NothingHeard,
     Exported(PathBuf),
     HandoutSaved(PathBuf),
+    ContentPrepared(PrepareSummary),
     BoardImported {
         kind: DocumentKind,
         used: usize,
@@ -214,6 +222,7 @@ pub(crate) enum Event {
         json: String,
     },
     HandoutFinished(Result<PathBuf, EngineError>),
+    Prepare(prepare::PrepareEvent),
     BoardImported(Result<board::BoardImport, EngineError>),
     AnswerKeyRead {
         exam: DocumentId,
@@ -249,6 +258,9 @@ pub struct Engine {
     downloads: HashMap<ModelId, models::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
+    prepare_job: Option<PrepareJob>,
+    /// Preparation asked for while the plan was still being generated.
+    pending_prepare: Option<PrepareRequest>,
     board: board::BoardState,
     board_job: Option<BoardJob>,
     streak: u32,
@@ -340,6 +352,8 @@ impl Engine {
             downloads: HashMap::new(),
             handout_job: None,
             handouts_cached: 0,
+            prepare_job: None,
+            pending_prepare: None,
             board: board::BoardState::default(),
             board_job: None,
             streak: 0,
@@ -432,6 +446,7 @@ impl Engine {
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
             || self.handout_job.is_some()
+            || self.prepare_job.is_some()
             || self.board_job.is_some()
             || self
                 .lesson
@@ -533,6 +548,19 @@ impl Engine {
                 self.cancel_handout();
                 Ok(())
             }
+            Command::PrepareContent(request) => {
+                if self.generating_since.is_some() {
+                    self.pending_prepare = Some(request);
+                    Ok(())
+                } else {
+                    self.prepare_content(request)
+                }
+            }
+            Command::CancelPrepare => {
+                self.pending_prepare = None;
+                self.cancel_prepare();
+                Ok(())
+            }
             Command::ExportProgress { path, content } => {
                 std::fs::write(&path, content).map_err(|source| EngineError::Export {
                     path: path.clone(),
@@ -570,6 +598,7 @@ impl Engine {
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
+                Event::Prepare(event) => self.on_prepare_event(event),
                 Event::BoardImported(result) => self.on_board_imported(result),
                 Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),
             };

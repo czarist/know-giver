@@ -1,7 +1,9 @@
 //! Builds handout export requests: asks where to save and fills in the
 //! translated words of the PDF.
 
-use kg_engine::{Engine, HandoutLabels, HandoutRequest, HandoutScope, StudyPlan};
+use kg_engine::{
+    Engine, HandoutLabels, HandoutRequest, HandoutScope, PrepareRequest, StudyPlan, slug,
+};
 use rust_i18n::t;
 
 use crate::i18n;
@@ -44,6 +46,17 @@ pub fn request(plan: &StudyPlan, scope: HandoutScope, regenerate: bool) -> Optio
     })
 }
 
+/// Translated words for preparing the whole plan at once.
+pub fn prepare_request() -> PrepareRequest {
+    PrepareRequest {
+        file_prefix: t!("handout.file_prefix").into_owned(),
+        whole_plan: t!("handout.whole_plan").into_owned(),
+        generated: t!("handout.generated", date = i18n::date(Engine::today())).into_owned(),
+        lang: i18n::current().split('-').next().unwrap_or("pt").to_owned(),
+        labels: labels(),
+    }
+}
+
 fn labels() -> HandoutLabels {
     HandoutLabels {
         handout: t!("handout.label.handout").into_owned(),
@@ -54,41 +67,5 @@ fn labels() -> HandoutLabels {
         summary: t!("handout.label.summary").into_owned(),
         exercises: t!("handout.label.exercises").into_owned(),
         answers: t!("handout.label.answers").into_owned(),
-    }
-}
-
-/// File-name friendly version of a title: "Língua Portuguesa" → "lingua-portuguesa".
-pub fn slug(text: &str) -> String {
-    let mut out = String::new();
-    for c in text.chars() {
-        let c = match c {
-            'á' | 'à' | 'â' | 'ã' | 'Á' | 'À' | 'Â' | 'Ã' => 'a',
-            'é' | 'ê' | 'É' | 'Ê' => 'e',
-            'í' | 'Í' => 'i',
-            'ó' | 'ô' | 'õ' | 'Ó' | 'Ô' | 'Õ' => 'o',
-            'ú' | 'ü' | 'Ú' | 'Ü' => 'u',
-            'ç' | 'Ç' => 'c',
-            c => c.to_ascii_lowercase(),
-        };
-        if c.is_ascii_alphanumeric() {
-            out.push(c);
-        } else if !out.ends_with('-') && !out.is_empty() {
-            out.push('-');
-        }
-        if out.len() >= 60 {
-            break;
-        }
-    }
-    out.trim_end_matches('-').to_owned()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn slugs() {
-        assert_eq!(slug("Língua Portuguesa"), "lingua-portuguesa");
-        assert_eq!(slug("Crase: uso (art. 5º)"), "crase-uso-art-5");
     }
 }

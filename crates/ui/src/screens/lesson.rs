@@ -136,14 +136,7 @@ fn paint_stage(
             mic: lesson.input_level(),
         },
         p.accent,
-        avatar::Appearance {
-            female: if engine.settings().tts_backend == kg_engine::TtsBackend::Cloud {
-                engine.settings().cloud_speech.gender == kg_engine::VoiceGender::Female
-            } else {
-                engine.settings().voice.gender() == kg_engine::VoiceGender::Female
-            },
-            minimal: engine.settings().avatar_style == kg_engine::AvatarStyle::Minimal,
-        },
+        avatar::appearance(engine),
     );
 
     // Name tag, bottom left, like a video call.

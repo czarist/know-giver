@@ -108,6 +108,8 @@ pub struct UiState {
     /// Topic picked for a set-aside board item, before "use anyway".
     pub board_choice: std::collections::HashMap<kg_engine::BoardItem, kg_engine::TopicId>,
     pub plan_view: PlanView,
+    /// Prepare handouts and quizzes right after the plan is created.
+    pub prepare_all: bool,
 }
 
 /// The eframe application.
@@ -172,6 +174,7 @@ impl KnowGiverApp {
                 confirm_delete_doc: None,
                 board_choice: std::collections::HashMap::new(),
                 plan_view: PlanView::default(),
+                prepare_all: true,
             },
             toasts: Vec::new(),
             shown_screen: screen,
@@ -352,6 +355,8 @@ struct Badges {
     quiz_active: bool,
     lesson_active: bool,
     plan_title: Option<String>,
+    /// Topics prepared so far and in total, while preparing the plan.
+    preparing: Option<(usize, usize)>,
 }
 
 impl Badges {
@@ -364,6 +369,7 @@ impl Badges {
             quiz_active: engine.quiz().is_some(),
             lesson_active: engine.lesson().is_some(),
             plan_title: engine.active_plan().map(|p| p.title.clone()),
+            preparing: engine.prepare_job().map(|job| (job.done(), job.total)),
         }
     }
 
@@ -372,6 +378,9 @@ impl Badges {
             Screen::Review if self.due_reviews > 0 => Some(self.due_reviews.to_string()),
             Screen::Quiz if self.quiz_active => Some(t!("nav.in_progress").into_owned()),
             Screen::Lesson if self.lesson_active => Some(t!("nav.in_progress").into_owned()),
+            Screen::Plan => self
+                .preparing
+                .map(|(done, total)| t!("nav.preparing", done = done, total = total).into_owned()),
             _ => None,
         }
     }

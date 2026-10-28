@@ -134,6 +134,13 @@ const MIGRATIONS: &[&str] = &[
         milliseconds INTEGER NOT NULL DEFAULT 0 CHECK(milliseconds >= 0)
     );
 ",
+    r"
+    CREATE TABLE quiz_banks (
+        topic_id INTEGER PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_on TEXT NOT NULL
+    );
+",
 ];
 
 /// Handle to the app database.
@@ -443,6 +450,33 @@ impl Store {
     pub fn save_handout(&mut self, topic: TopicId, content: &str, today: NaiveDate) -> Result<()> {
         self.conn.execute(
             "INSERT INTO handouts (topic_id, content, created_on) VALUES (?1, ?2, ?3)
+             ON CONFLICT(topic_id) DO UPDATE SET content = excluded.content,
+                 created_on = excluded.created_on",
+            params![topic.0, content, today.to_string()],
+        )?;
+        Ok(())
+    }
+
+    /// Questions prepared in advance for a topic's quizzes (JSON).
+    pub fn quiz_bank(&self, topic: TopicId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT content FROM quiz_banks WHERE topic_id = ?1",
+                [topic.0],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+
+    pub fn save_quiz_bank(
+        &mut self,
+        topic: TopicId,
+        content: &str,
+        today: NaiveDate,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO quiz_banks (topic_id, content, created_on) VALUES (?1, ?2, ?3)
              ON CONFLICT(topic_id) DO UPDATE SET content = excluded.content,
                  created_on = excluded.created_on",
             params![topic.0, content, today.to_string()],

@@ -315,3 +315,38 @@ fn voice_settings_states() {
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }
+
+/// Long-running content preparation: plan generation on the Edital screen
+/// and "prepare everything" on the Plan screen.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn content_preparation() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    let data = tempfile::tempdir().unwrap();
+    let paths = AppPaths::new(data.path());
+    seed(&paths);
+    crate::i18n::set("pt-BR");
+    let mut harness = Harness::builder()
+        .with_size([1180.0, 760.0])
+        .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+    crate::i18n::set("pt-BR");
+
+    // No server answers, so the job stays on its first topics.
+    harness.state_mut().dispatch(Command::PrepareContent(
+        crate::screens::handout::prepare_request(),
+    ));
+    harness.state_mut().ui.screen = Screen::Plan;
+    render(&mut harness, out.as_deref(), "pt-BR-plan-preparing");
+
+    if let Ok(engine) = harness.state_mut().engine.as_mut() {
+        engine.simulate_plan_generation(kg_engine::Edital {
+            file_name: "edital-tjce.pdf".into(),
+            pages: 42,
+            text: kg_engine::EditalText::from_raw("EDITAL"),
+        });
+    }
+    harness.state_mut().ui.screen = Screen::Edital;
+    render(&mut harness, out.as_deref(), "pt-BR-edital-generating");
+    harness.state_mut().dispatch(Command::CancelPrepare);
+    crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}

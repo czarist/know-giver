@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.18.0. Everything an agent can build and check without a human ear, a
+Version 0.19.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person or hardware
 (listed under "Not yet verified"). Each release is a short-lived branch merged into
 `main` with an annotated tag.
@@ -115,6 +115,11 @@ Inno Setup 6).
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
 - [x] Open or save the PDF from the Plan screen
+- [x] Prepare everything at once (v0.19.0): optional on plan creation, or "Prepare
+      everything now"; handouts plus a 10-question quiz bank per topic, then the plan PDF
+      in Documents › Know Giver, with a progress panel and time estimate
+- [ ] Run "prepare everything" on a real full plan (40+ topics) and record time, failures
+      and rate-limit behaviour with 3 topics in parallel
 
 ## Phase 6 — Identity, UI/UX and meeting-style lessons
 

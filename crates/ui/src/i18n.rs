@@ -151,6 +151,15 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         Notice::NothingHeard => t!("notice.nothing_heard"),
         Notice::Exported(path) => t!("notice.exported", path = path.display()),
         Notice::HandoutSaved(path) => t!("notice.handout_saved", path = path.display()),
+        Notice::ContentPrepared(summary) => match (&summary.pdf, summary.failed) {
+            (Some(path), 0) => t!("notice.content_prepared", path = path.display()),
+            (Some(path), failed) => t!(
+                "notice.content_prepared_partial",
+                path = path.display(),
+                failed = failed
+            ),
+            (None, _) => return (t!("notice.content_prepare_failed").into_owned(), true),
+        },
         Notice::BoardImported {
             used, set_aside, ..
         } => t!("notice.board_imported", used = used, set_aside = set_aside),

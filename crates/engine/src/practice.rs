@@ -124,6 +124,11 @@ impl Engine {
             q.shuffle_options(seed().wrapping_add(i as u64));
         }
         let missing = size - board.len();
+        // Questions prepared in advance come next; the model writes the rest.
+        let mut prepared = self.quiz_bank(topic_id);
+        shuffle(&mut prepared, seed());
+        prepared.truncate(missing);
+        let missing = missing - prepared.len();
         self.quiz = Some(QuizSession {
             id,
             topic_id,
@@ -134,17 +139,21 @@ impl Engine {
             board,
         });
         if missing == 0 {
-            // Enough real questions: no model call needed.
+            // Enough real or prepared questions: no model call needed.
             return self.on_practice_event(PracticeEvent::QuizReady {
                 session: id,
-                result: Ok(Vec::new()),
+                result: Ok(prepared),
             });
         }
         let client = self.ai_client();
         self.spawn(move || {
+            let result = kg_ai::generate_quiz(&client, &ctx, missing as u32).map(|generated| {
+                prepared.extend(generated);
+                prepared
+            });
             Event::Practice(PracticeEvent::QuizReady {
                 session: id,
-                result: kg_ai::generate_quiz(&client, &ctx, missing as u32),
+                result,
             })
         });
         Ok(())

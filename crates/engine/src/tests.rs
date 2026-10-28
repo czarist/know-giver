@@ -514,3 +514,66 @@ fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
     assert_eq!(lesson.board, vec!["Crase = a + a"]);
     assert_eq!(lesson.phase, LessonPhase::Idle);
 }
+
+fn prepare_request() -> PrepareRequest {
+    PrepareRequest {
+        file_prefix: "apostila".into(),
+        whole_plan: "Plano completo".into(),
+        generated: "Gerado hoje".into(),
+        lang: "pt".into(),
+        labels: HandoutLabels::default(),
+    }
+}
+
+#[test]
+fn preparation_asked_during_plan_generation_waits_for_the_plan() {
+    let (mut engine, _dir) = engine();
+    engine.generating_since = Some(std::time::Instant::now());
+    engine
+        .handle(Command::PrepareContent(prepare_request()))
+        .unwrap();
+    assert!(engine.prepare_job().is_none());
+    engine
+        .events_tx
+        .send(Event::PlanGenerated {
+            edital: edital(),
+            prefs: prefs(),
+            result: Ok(draft()),
+        })
+        .unwrap();
+    engine.poll();
+    let job = engine
+        .prepare_job()
+        .expect("preparation starts with the plan");
+    assert_eq!(job.total, 3);
+    engine.handle(Command::CancelPrepare).unwrap();
+    assert!(engine.prepare_job().unwrap().is_cancelling());
+}
+
+#[test]
+fn prepared_question_bank_fills_quizzes_without_model_calls() {
+    let (mut engine, _dir) = engine_with_plan();
+    let topic = first_topic(&engine);
+    let bank: Vec<QuestionDraft> = (0..10)
+        .map(|n| QuestionDraft {
+            prompt: format!("Questão {n} sobre crase?"),
+            options: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+            correct: n % 4,
+            explanation: "Porque.".into(),
+        })
+        .collect();
+    engine
+        .events_tx
+        .send(Event::Prepare(prepare::PrepareEvent::QuizBank {
+            topic,
+            json: serde_json::to_string(&bank).unwrap(),
+        }))
+        .unwrap();
+    engine.poll();
+
+    engine.handle(Command::StartQuiz(topic)).unwrap();
+    let quiz = engine.quiz().unwrap();
+    assert!(matches!(quiz.step, QuizStep::Question { index: 0, .. }));
+    assert_eq!(quiz.questions().len(), 5);
+    assert!(quiz.questions().iter().all(|q| !q.from_board));
+}

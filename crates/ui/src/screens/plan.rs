@@ -7,7 +7,7 @@ use rust_i18n::t;
 use super::{Actions, current_week, handout};
 use crate::app::{KnowGiverApp, PlanView, Screen};
 use crate::icons::Icon;
-use crate::{i18n, theme, widgets};
+use crate::{i18n, theme, widgets, working};
 
 /// Room kept on the right of a topic row for its chips and buttons.
 const TOPIC_ACTIONS_WIDTH: f32 = 500.0;
@@ -55,7 +55,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         actions.run(app);
         return;
     };
-    let idle = engine.handout_job().is_none();
+    let idle = engine.handout_job().is_none() && engine.prepare_job().is_none();
 
     ui.heading(&plan.title);
     if !plan.exam.is_empty() {
@@ -96,7 +96,12 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     });
     ui.add(egui::ProgressBar::new(plan.progress()).desired_height(6.0));
 
-    handout_bar(ui, engine, plan, &mut ask, &mut actions);
+    if let Some(job) = engine.prepare_job() {
+        ui.add_space(8.0);
+        prepare_panel(ui, engine, job, &mut actions);
+    } else {
+        handout_bar(ui, engine, plan, &mut ask, &mut actions);
+    }
     ui.add_space(4.0);
 
     egui::ScrollArea::vertical().show(ui, |ui| match state.plan_view {
@@ -141,6 +146,13 @@ fn handout_bar(
         None => {
             ui.add(Icon::Handout.image(18.0, p.accent));
             ask.button(ui, &t!("plan.handout_all"), HandoutScope::Plan, true);
+            if ui
+                .button(t!("plan.prepare_all"))
+                .on_hover_text(t!("plan.prepare_all_hint"))
+                .clicked()
+            {
+                actions.send(Command::PrepareContent(handout::prepare_request()));
+            }
             let missing = plan.topic_count().saturating_sub(engine.handouts_cached());
             let note = if missing == 0 {
                 t!("plan.handout_all_ready")
@@ -150,6 +162,60 @@ fn handout_bar(
             ui.label(RichText::new(note).small().color(p.muted));
         }
     });
+}
+
+/// Progress of "prepare everything", with the thinking teacher.
+fn prepare_panel(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    job: &kg_engine::PrepareJob,
+    actions: &mut Actions,
+) {
+    let done = job.done();
+    let working_on = job.working_on();
+    let detail = if job.is_cancelling() {
+        t!("plan.prepare_cancelling").into_owned()
+    } else if working_on.is_empty() {
+        t!("plan.prepare_saving").into_owned()
+    } else {
+        t!("plan.prepare_writing", topics = working_on.join(" · ")).into_owned()
+    };
+    let mut note = t!("plan.prepare_count", done = done, total = job.total).into_owned();
+    match job.remaining() {
+        Some(left) => {
+            note.push_str(" · ");
+            note.push_str(&t!(
+                "plan.prepare_left",
+                time = working::duration_text(left)
+            ));
+        }
+        None => {
+            note.push_str(" · ");
+            note.push_str(&t!("plan.prepare_long"));
+        }
+    }
+    if job.failed() > 0 {
+        note.push_str(" · ");
+        note.push_str(&t!("plan.prepare_failed", count = job.failed()));
+    }
+    working::panel(
+        ui,
+        engine,
+        &working::Working {
+            title: &t!("plan.prepare_title"),
+            detail: &detail,
+            note: &note,
+            progress: Some(done as f32 / job.total.max(1) as f32),
+        },
+        |ui| {
+            ui.horizontal(|ui| {
+                widgets::hint(ui, &t!("plan.prepare_keep_using"));
+                if !job.is_cancelling() && ui.small_button(t!("common.cancel")).clicked() {
+                    actions.send(Command::CancelPrepare);
+                }
+            });
+        },
+    );
 }
 
 fn by_week(

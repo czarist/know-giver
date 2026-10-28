@@ -20,6 +20,7 @@ fatal:
   subtitle: "O Know Giver não conseguiu abrir seus dados."
 
 nav:
+  preparing: "%{done}/%{total}"
   today: "Hoje"
   welcome: "Boas-vindas"
   edital: "Edital"
@@ -65,7 +66,12 @@ edital:
   role_hint: "Opcional: o cargo que você vai prestar"
   generate: "Gerar plano de estudo"
   other_file: "Usar outro arquivo"
-  generating: "Gerando o plano… %{seconds} s. Costuma levar de 30 segundos a 2 minutos."
+  generating: "Lendo o conteúdo programático e distribuindo os tópicos pelas semanas. %{seconds} s."
+  generating_title: "Montando seu plano de estudo"
+  generating_note: "Isso pode demorar: costuma levar de 30 segundos a 2 minutos."
+  generating_then_prepare: "Isso pode demorar. Depois do plano, as apostilas e os quizzes de cada tópico começam a ser preparados; você acompanha na tela do plano."
+  prepare_all: "Preparar apostilas e quizzes de todos os tópicos agora"
+  prepare_all_hint: "Escreve de uma vez a apostila e um banco de questões de cada tópico, e salva o PDF completo em Documentos › Know Giver. Leva alguns minutos por matéria, em segundo plano: você pode usar o app enquanto isso."
   your_plans: "Seus planos"
   no_plans: "Nenhum plano ainda."
   active: "Ativo"
@@ -75,6 +81,17 @@ edital:
   confirm_delete: "Excluir este plano e todo o progresso dele? Não dá para desfazer."
 
 plan:
+  prepare_all: "Preparar tudo agora"
+  prepare_all_hint: "Escreve as apostilas e os quizzes que faltam para todos os tópicos e salva o PDF completo em Documentos › Know Giver."
+  prepare_title: "Preparando o conteúdo do plano"
+  prepare_writing: "Escrevendo e revisando: %{topics}"
+  prepare_saving: "Montando o PDF completo"
+  prepare_cancelling: "Cancelando depois dos tópicos em andamento"
+  prepare_count: "%{done} de %{total} tópicos prontos"
+  prepare_left: "faltam cerca de %{time}"
+  prepare_long: "isso pode demorar alguns minutos"
+  prepare_failed: "%{count} com falha (dá para tentar de novo depois)"
+  prepare_keep_using: "Pode continuar estudando: o preparo segue em segundo plano."
   title: "Plano de estudo"
   subtitle: "Matérias e tópicos extraídos do edital."
   empty: "Nenhum plano ainda. Comece enviando o edital."
@@ -381,7 +398,21 @@ models:
     alex: "Alex · Kokoro"
     santa: "Santa · Kokoro"
 
+working:
+  tip_label: "Enquanto isso"
+  tip_1: "Estudar um pouco todo dia rende mais do que maratonas de fim de semana."
+  tip_2: "Explicar a matéria em voz alta para o tutor é um dos jeitos mais rápidos de fixar."
+  tip_3: "Revisar no dia seguinte, depois de uma semana e depois de um mês segura o conteúdo na memória."
+  tip_4: "Errar no quiz é bom: cada erro mostra exatamente o que revisar."
+  tip_5: "Questões de provas anteriores mostram como a banca pensa; envie as que tiver."
+  tip_6: "Pausas curtas a cada 50 minutos ajudam a manter a atenção."
+  under_a_minute: "menos de um minuto"
+  minutes: "%{minutes} min"
+
 notice:
+  content_prepared: "Conteúdo pronto! Apostilas e quizzes de todos os tópicos preparados. PDF salvo em %{path}."
+  content_prepared_partial: "Conteúdo preparado, com %{failed} tópico(s) com falha. PDF salvo em %{path}. Use Preparar tudo agora para tentar de novo os que faltaram."
+  content_prepare_failed: "Não foi possível preparar o conteúdo. Confira a conexão com a IA e tente de novo."
   plan_created: "Plano de estudo criado."
   settings_saved: "Configurações salvas."
   connection_ok: "Conexão com a IA funcionando."

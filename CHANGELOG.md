@@ -4,6 +4,27 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.19.0] - 2026-10-28
+
+### Added
+- Prepare a whole plan at once. When creating a plan, "Prepare handouts and quizzes for
+  every topic now" (on by default) writes, in the background, each topic's reviewed
+  handout and a bank of 10 quiz questions, then saves the full plan PDF to
+  Documents › Know Giver. Existing plans get "Prepare everything now" on the Plan
+  screen; it only writes what is missing, so it also resumes after a restart or retries
+  failed topics. Busy or unreachable servers are retried twice before a topic is
+  counted as failed.
+- Quizzes draw from the prepared question bank first (after real past-exam questions),
+  so they start instantly; the model only writes what is still missing.
+- A "working on it" panel for long jobs: the teacher thinking, what is being written
+  right now, progress with a time estimate, "this can take a while", and a study tip
+  that changes every few seconds. Shown while the plan is generated and while content
+  is prepared; the Plan item in the sidebar shows the topic count meanwhile.
+
+### Changed
+- Plan PDFs and single handouts share the same writing and rendering code; database
+  migration adds the `quiz_banks` table.
+
 ## [0.18.0] - 2026-10-28
 
 ### Fixed

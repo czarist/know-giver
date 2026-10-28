@@ -68,7 +68,7 @@ impl TopicHandout {
 
 /// Fixed words in the PDF, in the reader's language. They come from the
 /// app's translation files.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
 pub struct Labels {
     pub handout: String,
     pub contents: String,
