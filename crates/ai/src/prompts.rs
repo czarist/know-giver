@@ -6,6 +6,7 @@ pub const LESSON_START: &str = include_str!("../prompts/lesson_start.md");
 pub const QUIZ: &str = include_str!("../prompts/quiz.md");
 pub const REVIEW_QUESTION: &str = include_str!("../prompts/review_question.md");
 pub const REVIEW_EVAL: &str = include_str!("../prompts/review_eval.md");
+pub const HANDOUT: &str = include_str!("../prompts/handout.md");
 
 /// Replaces `{name}` placeholders. Unknown placeholders are left as they are.
 pub fn fill(template: &str, values: &[(&str, &str)]) -> String {

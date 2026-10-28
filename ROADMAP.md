@@ -58,12 +58,13 @@ microphone and speakers: the full voice loop and Piper speech (see "Not yet veri
 - [ ] Scanned PDFs: OCR fallback with the vision model (`MODEL_VISION`)
 
 ### Written study material as PDF (apostilas)
-- [ ] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
+- [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
 - [ ] Use the edital and the board material as the source, never content outside the edital
-- [ ] Render to PDF in pure Rust (candidate: `typst` as a library, or `genpdf`), with an embedded font for Portuguese accents
-- [ ] Export one topic, one subject or the whole plan as a single handout, with table of contents
-- [ ] Cache generated text in SQLite so regenerating the PDF is free; "regenerate" button for a new version
-- [ ] Open or save the PDF from the Plan screen
+      (today: scoped to the plan's topic; board material comes with the upload feature)
+- [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
+- [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
+- [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
+- [x] Open or save the PDF from the Plan screen
 
 ## Phase 6 — Identity, UI/UX and meeting-style lessons
 

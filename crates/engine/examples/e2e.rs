@@ -96,6 +96,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let plan = engine.active_plan().ok_or("plan vanished")?;
     let t = plan.find_topic(topic).ok_or("topic vanished")?.1;
     println!("topic after: {:?} due {:?}", t.status, t.review.due);
+
+    // Handout for the first topic, saved next to the edital (or in $KG_E2E_OUT).
+    let out = std::env::var("KG_E2E_OUT")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::env::temp_dir().join("kg-e2e-apostila.pdf"));
+    let title = plan.title.clone();
+    let started = Instant::now();
+    engine.handle(Command::ExportHandout(kg_engine::HandoutRequest {
+        scope: kg_engine::HandoutScope::Topic(topic),
+        path: out.clone(),
+        title,
+        subtitle: "Tópico de teste".into(),
+        generated: "Gerada pelo teste e2e".into(),
+        lang: "pt".into(),
+        labels: kg_engine::HandoutLabels {
+            handout: "Apostila".into(),
+            contents: "Sumário".into(),
+            key_points: "Pontos-chave".into(),
+            examples: "Exemplos".into(),
+            pitfalls: "Pegadinhas de prova".into(),
+            summary: "Resumo".into(),
+            exercises: "Exercícios".into(),
+            answers: "Gabarito comentado".into(),
+        },
+        regenerate: false,
+    }))?;
+    wait(&mut engine, "handout", |e| e.handout_job().is_none())?;
+    println!(
+        "handout in {:?}: {} ({} topics cached)",
+        started.elapsed(),
+        out.display(),
+        engine.handouts_cached()
+    );
     Ok(())
 }
 

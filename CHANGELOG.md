@@ -4,6 +4,22 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-10-27
+
+### Added
+- Study handouts (apostilas) as PDF: the AI writes each topic as an introduction,
+  sections with key points, examples, exam pitfalls, a summary and five exercises with a
+  commented answer key.
+- New `kg-handout` crate: renders handouts with Typst as a library (pure Rust, fonts
+  embedded), with cover, table of contents, numbered sections and page headers. Content
+  goes to the template as JSON, so model output is never read as markup.
+- Plan screen: handout per topic, per subject or for the whole plan, with progress and
+  cancel; right-click writes a topic again. The PDF opens when it is ready.
+- Written topics are cached in SQLite (migration 2), so exporting again costs no AI calls.
+  Up to three topics are written at the same time.
+- Optional handout model (`MODEL_HANDOUT`, or Settings); empty means the plan model.
+- Exercise options are shuffled, like quiz options.
+
 ## [0.8.0] - 2026-10-27
 
 ### Added

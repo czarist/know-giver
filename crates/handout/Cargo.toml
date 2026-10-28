@@ -1,0 +1,19 @@
+[package]
+name = "kg-handout"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+typst = "0.15"
+typst-layout = "0.15"
+typst-pdf = "0.15"
+typst-kit = { version = "0.15", default-features = false, features = ["embedded-fonts"] }
+
+[lints]
+workspace = true

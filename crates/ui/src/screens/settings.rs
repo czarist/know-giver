@@ -121,6 +121,7 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
                     (t!("settings.ai.model_tutor"), &mut models.tutor),
                     (t!("settings.ai.model_quiz"), &mut models.quiz),
                     (t!("settings.ai.model_correction"), &mut models.correction),
+                    (t!("settings.ai.model_handout"), &mut models.handout),
                     (t!("settings.ai.model_fallback"), &mut models.fallback),
                 ] {
                     ui.label(label);

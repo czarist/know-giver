@@ -29,7 +29,8 @@ type Result<T> = std::result::Result<T, StoreError>;
 
 /// Schema migrations, applied in order. `PRAGMA user_version` holds how many
 /// have run.
-const MIGRATIONS: &[&str] = &[r"
+const MIGRATIONS: &[&str] = &[
+    r"
     CREATE TABLE plans (
         id INTEGER PRIMARY KEY,
         title TEXT NOT NULL,
@@ -75,7 +76,15 @@ const MIGRATIONS: &[&str] = &[r"
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
     );
-"];
+",
+    r"
+    CREATE TABLE handouts (
+        topic_id INTEGER PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_on TEXT NOT NULL
+    );
+",
+];
 
 /// Handle to the app database.
 #[derive(Debug)]
@@ -339,6 +348,41 @@ impl Store {
         )?)
     }
 
+    /// Cached handout text (JSON) for a topic.
+    pub fn handout(&self, topic: TopicId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT content FROM handouts WHERE topic_id = ?1",
+                [topic.0],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+
+    pub fn save_handout(&mut self, topic: TopicId, content: &str, today: NaiveDate) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO handouts (topic_id, content, created_on) VALUES (?1, ?2, ?3)
+             ON CONFLICT(topic_id) DO UPDATE SET content = excluded.content,
+                 created_on = excluded.created_on",
+            params![topic.0, content, today.to_string()],
+        )?;
+        Ok(())
+    }
+
+    /// How many topics of a plan already have a cached handout.
+    pub fn handout_count(&self, plan: PlanId) -> Result<usize> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(h.topic_id) FROM handouts h
+             JOIN topics t ON t.id = h.topic_id
+             JOIN subjects s ON s.id = t.subject_id
+             WHERE s.plan_id = ?1",
+            [plan.0],
+            |r| r.get(0),
+        )?;
+        Ok(count as usize)
+    }
+
     pub fn setting(&self, key: &str) -> Result<Option<String>> {
         Ok(self
             .conn
@@ -529,6 +573,22 @@ mod tests {
             store.load_plan(plan.id),
             Err(StoreError::PlanNotFound(_))
         ));
+    }
+
+    #[test]
+    fn handouts_are_cached_per_topic() {
+        let mut store = Store::open_in_memory().unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "e.pdf", "", today())
+            .unwrap();
+        let topic = plan.subjects[0].topics[0].id;
+        assert_eq!(store.handout(topic).unwrap(), None);
+        store.save_handout(topic, "{\"a\":1}", today()).unwrap();
+        store.save_handout(topic, "{\"a\":2}", today()).unwrap();
+        assert_eq!(store.handout(topic).unwrap().as_deref(), Some("{\"a\":2}"));
+        assert_eq!(store.handout_count(plan.id).unwrap(), 1);
+        store.delete_plan(plan.id).unwrap();
+        assert_eq!(store.handout(topic).unwrap(), None);
     }
 
     #[test]

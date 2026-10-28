@@ -2,6 +2,7 @@
 //! which run after drawing; none of them contain business rules.
 
 pub mod edital;
+pub mod handout;
 pub mod lesson;
 pub mod plan;
 pub mod progress;

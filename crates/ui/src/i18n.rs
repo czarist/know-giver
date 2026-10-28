@@ -5,8 +5,8 @@
 
 use chrono::NaiveDate;
 use kg_engine::{
-    AiError, AudioError, Difficulty, EngineError, LessonPhase, ModelId, Notice, PdfError,
-    PiperVoice, ReviewGrade, StoreError, StudyError, TopicStatus, WhisperModel,
+    AiError, AudioError, Difficulty, EngineError, HandoutError, LessonPhase, ModelId, Notice,
+    PdfError, PiperVoice, ReviewGrade, StoreError, StudyError, TopicStatus, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -134,6 +134,7 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         }
         Notice::NothingHeard => t!("notice.nothing_heard"),
         Notice::Exported(path) => t!("notice.exported", path = path.display()),
+        Notice::HandoutSaved(path) => t!("notice.handout_saved", path = path.display()),
     };
     (text.into_owned(), false)
 }
@@ -174,6 +175,9 @@ pub fn error_message(err: &EngineError) -> String {
         }
         EngineError::Pdf(PdfError::NoText(path)) => t!("error.pdf.no_text", path = path.display()),
         EngineError::Export { path, .. } => t!("error.export", path = path.display()),
+        EngineError::Handout(HandoutError::Empty) => t!("error.handout.empty"),
+        EngineError::Handout(_) => t!("error.handout.render"),
+        EngineError::Cancelled => t!("error.cancelled"),
         EngineError::NoEdital => t!("error.no_edital"),
         EngineError::NoActivePlan => t!("error.no_active_plan"),
         EngineError::TopicNotFound(_) => t!("error.topic_not_found"),
@@ -226,6 +230,7 @@ mod tests {
             include_str!("export.rs"),
             include_str!("screens/mod.rs"),
             include_str!("screens/edital.rs"),
+            include_str!("screens/handout.rs"),
             include_str!("screens/plan.rs"),
             include_str!("screens/lesson.rs"),
             include_str!("screens/quiz.rs"),

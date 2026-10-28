@@ -85,6 +85,14 @@ plan:
   lesson: "Lesson"
   quiz: "Quiz"
   review_due: "Review today"
+  handout: "Handout"
+  handout_hint: "Creates the PDF handout. Right-click to write the text again."
+  handout_regenerate: "Write again"
+  handout_all: "Full handout"
+  handout_subject: "Subject handout"
+  handout_progress: "Writing the handout: %{done} of %{total} topics"
+  handout_missing: "%{count} topics without text yet. Writing them all takes a few minutes."
+  handout_all_ready: "Every topic already has text."
 
 lesson:
   title: "Lesson"
@@ -177,6 +185,22 @@ export:
     status: "Status"
     next_review: "Next review"
 
+handout:
+  whole_plan: "Full plan"
+  file_prefix: "handout"
+  save_title: "Save handout"
+  pdf_filter: "PDF document"
+  generated: "Generated on %{date}"
+  label:
+    handout: "Study handout"
+    contents: "Contents"
+    key_points: "Key points"
+    examples: "Examples"
+    pitfalls: "Exam pitfalls"
+    summary: "Summary"
+    exercises: "Exercises"
+    answers: "Answer key"
+
 settings:
   title: "Settings"
   subtitle: "Language, AI, voice and local models."
@@ -195,6 +219,7 @@ settings:
     model_tutor: "Tutor model"
     model_quiz: "Quiz model"
     model_correction: "Correction model"
+    model_handout: "Handout model (empty = plan model)"
     model_fallback: "Fallback model"
     fast: "Fast answers (less reasoning in lessons and quizzes)"
     test: "Test connection"
@@ -243,6 +268,7 @@ notice:
   quiz_saved: "Quiz recorded: %{correct} of %{total}."
   nothing_heard: "I did not hear anything. Try speaking a bit closer to the microphone."
   exported: "Report saved to %{path}."
+  handout_saved: "Handout saved to %{path}."
 
 error:
   no_edital: "Upload an exam notice before generating the plan."
@@ -250,6 +276,10 @@ error:
   topic_not_found: "That topic is no longer in the plan."
   export: "Could not save the file %{path}."
   speech_model_missing: "Not installed yet: %{model}. Download it in Settings."
+  cancelled: "Cancelled."
+  handout:
+    empty: "There are no topics for this handout."
+    render: "Could not build the handout PDF."
   study:
     empty_plan: "The AI found no subjects in this notice. Check that the PDF contains the syllabus."
     empty_subject: "The subject \"%{subject}\" came without topics. Try generating the plan again."

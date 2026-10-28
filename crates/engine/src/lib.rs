@@ -5,6 +5,7 @@
 //! model calls, speech) runs on worker threads; results come back as events
 //! that [`Engine::poll`] applies on the UI thread.
 
+mod handouts;
 mod lesson;
 mod models;
 mod paths;
@@ -20,12 +21,14 @@ use std::time::Instant;
 
 use chrono::NaiveDate;
 
+pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{AudioError, ModelId, PiperVoice, WhisperModel};
+pub use kg_handout::{HandoutError, Labels as HandoutLabels};
 pub use kg_pdf::{Edital, PdfError};
 pub use kg_study::{
     Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,
-    StudyPlan, Subject, Topic, TopicId, TopicStatus,
+    StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
 };
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
@@ -69,6 +72,9 @@ pub enum Command {
     CancelDownload(ModelId),
     RemoveModel(ModelId),
 
+    ExportHandout(HandoutRequest),
+    CancelHandout,
+
     /// Writes an already formatted progress report.
     ExportProgress {
         path: PathBuf,
@@ -89,6 +95,10 @@ pub enum EngineError {
     Audio(#[from] AudioError),
     #[error(transparent)]
     Pdf(#[from] PdfError),
+    #[error(transparent)]
+    Handout(#[from] HandoutError),
+    #[error("cancelled")]
+    Cancelled,
     #[error("could not write {path}: {source}")]
     Export {
         path: PathBuf,
@@ -118,6 +128,7 @@ pub enum Notice {
     QuizSaved { correct: u32, total: u32 },
     NothingHeard,
     Exported(PathBuf),
+    HandoutSaved(PathBuf),
 }
 
 /// State of the edital import on the Edital screen.
@@ -141,6 +152,11 @@ pub(crate) enum Event {
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
     DownloadFinished(ModelId, Result<(), AudioError>),
+    HandoutTopic {
+        topic: TopicId,
+        json: String,
+    },
+    HandoutFinished(Result<PathBuf, EngineError>),
 }
 
 /// Called by workers after sending an event, so the UI wakes up.
@@ -169,6 +185,8 @@ pub struct Engine {
     voice: lesson::VoiceRuntime,
     stt: Arc<Mutex<Option<(WhisperModel, WhisperStt)>>>,
     downloads: HashMap<ModelId, models::Download>,
+    handout_job: Option<HandoutJob>,
+    handouts_cached: usize,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -253,6 +271,8 @@ impl Engine {
             voice: lesson::VoiceRuntime::default(),
             stt: Arc::new(Mutex::new(None)),
             downloads: HashMap::new(),
+            handout_job: None,
+            handouts_cached: 0,
             notices,
             events_tx,
             events_rx,
@@ -337,6 +357,7 @@ impl Engine {
         self.generating_since.is_some()
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
+            || self.handout_job.is_some()
             || self
                 .lesson
                 .as_ref()
@@ -413,6 +434,11 @@ impl Engine {
             }
             Command::RemoveModel(id) => self.remove_model(id),
 
+            Command::ExportHandout(request) => self.export_handout(request),
+            Command::CancelHandout => {
+                self.cancel_handout();
+                Ok(())
+            }
             Command::ExportProgress { path, content } => {
                 std::fs::write(&path, content).map_err(|source| EngineError::Export {
                     path: path.clone(),
@@ -447,6 +473,8 @@ impl Engine {
                 Event::Lesson(event) => self.on_lesson_event(event),
                 Event::Practice(event) => self.on_practice_event(event),
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
+                Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
+                Event::HandoutFinished(result) => self.on_handout_finished(result),
             };
             if let Err(err) = result {
                 tracing::warn!(%err, "background task failed");

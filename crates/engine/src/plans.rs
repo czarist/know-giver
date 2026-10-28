@@ -157,6 +157,7 @@ impl Engine {
         };
         self.quiz_stats = self.store.quiz_stats(id).unwrap_or_default();
         self.lesson_count = self.store.lesson_count(id).unwrap_or_default();
+        self.refresh_handout_count();
         self.reload_list();
     }
 

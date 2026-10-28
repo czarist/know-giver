@@ -9,6 +9,7 @@ pub enum Task {
     Tutor,
     Quiz,
     Correction,
+    Handout,
 }
 
 /// Model names per task.
@@ -22,6 +23,9 @@ pub struct ModelSet {
     pub quiz: String,
     /// Grades review answers.
     pub correction: String,
+    /// Writes study handouts. Empty means "same as the study plan model",
+    /// which keeps settings saved before this field existed working.
+    pub handout: String,
     /// Used when the task's model is rate limited or unavailable.
     pub fallback: String,
 }
@@ -35,6 +39,7 @@ impl Default for ModelSet {
             tutor: model.clone(),
             quiz: model.clone(),
             correction: model.clone(),
+            handout: String::new(),
             fallback: model,
         }
     }
@@ -47,6 +52,8 @@ impl ModelSet {
             Task::Tutor => &self.tutor,
             Task::Quiz => &self.quiz,
             Task::Correction => &self.correction,
+            Task::Handout if self.handout.trim().is_empty() => &self.study_plan,
+            Task::Handout => &self.handout,
         }
     }
 }
@@ -107,6 +114,7 @@ impl AiConfig {
             ("MODEL_QUIZ", &mut m.quiz),
             ("MODEL_CORRECTION", &mut m.correction),
             ("MODEL_FALLBACK", &mut m.fallback),
+            ("MODEL_HANDOUT", &mut m.handout),
         ] {
             if let Some(value) = get(key) {
                 *slot = value;
@@ -145,6 +153,17 @@ mod tests {
             config.chat_url(),
             "https://api.z.ai/api/paas/v4/chat/completions"
         );
+    }
+
+    #[test]
+    fn handout_model_falls_back_to_plan_model() {
+        let mut models = ModelSet {
+            study_plan: "big".into(),
+            ..ModelSet::default()
+        };
+        assert_eq!(models.for_task(Task::Handout), "big");
+        models.handout = "writer".into();
+        assert_eq!(models.for_task(Task::Handout), "writer");
     }
 
     #[test]

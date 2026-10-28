@@ -14,6 +14,9 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 - **Quizzes**: multiple-choice questions in the style of exam boards, with explanations.
 - **Spaced review (SM-2)**: topics come back when you are about to forget them. The AI
   asks a recall question and grades your answer, or you grade yourself.
+- **Study handouts**: the AI writes each topic as a handout (explanation, key points,
+  examples, exam pitfalls, summary, exercises with answers), exported as a PDF per topic,
+  per subject or for the whole plan.
 - **Progress**: per subject, quiz accuracy, lessons taken, Markdown export.
 - **Portuguese and English UI**, calm light/dark theme.
 
@@ -51,6 +54,7 @@ crates/
   ai/       # OpenAI-compatible client + tutor prompts (crates/ai/prompts)
   audio/    # mic capture, Whisper STT, Piper TTS, playback, model downloads
   pdf/      # edital text extraction
+  handout/  # study handouts rendered to PDF with Typst
 locales/    # UI translations (pt-BR, en)
 ```
 

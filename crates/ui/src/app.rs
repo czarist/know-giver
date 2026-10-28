@@ -250,6 +250,20 @@ impl KnowGiverApp {
     }
 }
 
+/// Opens a file with the system's default app (e.g. a PDF viewer).
+fn open_file(path: &std::path::Path) {
+    let program = if cfg!(windows) {
+        "explorer"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    if let Err(err) = std::process::Command::new(program).arg(path).spawn() {
+        tracing::warn!(%err, path = %path.display(), "could not open file");
+    }
+}
+
 /// Counts shown next to sidebar entries.
 #[derive(Debug, Default)]
 struct Badges {
@@ -291,6 +305,9 @@ impl eframe::App for KnowGiverApp {
                 let busy = engine.is_busy();
                 let badges = Badges::from_engine(engine);
                 for notice in &notices {
+                    if let kg_engine::Notice::HandoutSaved(path) = notice {
+                        open_file(path);
+                    }
                     let (text, is_error) = i18n::notice(notice);
                     self.push_toast(text, is_error);
                 }

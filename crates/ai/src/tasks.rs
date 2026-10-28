@@ -78,6 +78,33 @@ pub struct ReviewFeedback {
     pub feedback: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+pub struct SectionDraft {
+    #[serde(default)]
+    pub heading: String,
+    #[serde(default)]
+    pub paragraphs: Vec<String>,
+    #[serde(default)]
+    pub key_points: Vec<String>,
+}
+
+/// A written lesson (apostila) for one topic, before validation.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+pub struct HandoutDraft {
+    #[serde(default)]
+    pub introduction: String,
+    #[serde(default)]
+    pub sections: Vec<SectionDraft>,
+    #[serde(default)]
+    pub examples: Vec<String>,
+    #[serde(default)]
+    pub pitfalls: Vec<String>,
+    #[serde(default)]
+    pub summary: Vec<String>,
+    #[serde(default)]
+    pub exercises: Vec<QuestionDraft>,
+}
+
 /// Which topic a lesson, quiz or review is about.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TopicContext {
@@ -177,6 +204,15 @@ pub fn generate_quiz(
     ];
     let draft: QuizDraft = chat_json(client, Task::Quiz, &messages, 8_000)?;
     Ok(draft.questions)
+}
+
+/// Writes the study handout for a topic.
+pub fn generate_handout(client: &Client, topic: &TopicContext) -> Result<HandoutDraft, AiError> {
+    let messages = [
+        ChatMessage::system(fill(prompts::HANDOUT, &topic.values())),
+        ChatMessage::user("Escreva a apostila."),
+    ];
+    chat_json(client, Task::Handout, &messages, 16_000)
 }
 
 /// An open recall question for reviewing a topic.

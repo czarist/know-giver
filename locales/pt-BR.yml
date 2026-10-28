@@ -85,6 +85,14 @@ plan:
   lesson: "Aula"
   quiz: "Quiz"
   review_due: "Revisar hoje"
+  handout: "Apostila"
+  handout_hint: "Gera a apostila em PDF. Clique com o botão direito para escrever o texto de novo."
+  handout_regenerate: "Escrever de novo"
+  handout_all: "Apostila completa"
+  handout_subject: "Apostila da matéria"
+  handout_progress: "Escrevendo a apostila: %{done} de %{total} tópicos"
+  handout_missing: "%{count} tópicos ainda sem texto. Gerar tudo leva alguns minutos."
+  handout_all_ready: "Todos os tópicos já têm texto."
 
 lesson:
   title: "Aula"
@@ -177,6 +185,22 @@ export:
     status: "Situação"
     next_review: "Próxima revisão"
 
+handout:
+  whole_plan: "Plano completo"
+  file_prefix: "apostila"
+  save_title: "Salvar apostila"
+  pdf_filter: "Documento PDF"
+  generated: "Gerada em %{date}"
+  label:
+    handout: "Apostila"
+    contents: "Sumário"
+    key_points: "Pontos-chave"
+    examples: "Exemplos"
+    pitfalls: "Pegadinhas de prova"
+    summary: "Resumo"
+    exercises: "Exercícios"
+    answers: "Gabarito comentado"
+
 settings:
   title: "Configurações"
   subtitle: "Idioma, IA, voz e modelos locais."
@@ -195,6 +219,7 @@ settings:
     model_tutor: "Modelo do tutor"
     model_quiz: "Modelo do quiz"
     model_correction: "Modelo de correção"
+    model_handout: "Modelo da apostila (vazio = modelo do plano)"
     model_fallback: "Modelo reserva"
     fast: "Respostas rápidas (menos raciocínio nas aulas e quizzes)"
     test: "Testar conexão"
@@ -243,6 +268,7 @@ notice:
   quiz_saved: "Quiz registrado: %{correct} de %{total}."
   nothing_heard: "Não ouvi nada. Tente falar um pouco mais perto do microfone."
   exported: "Relatório salvo em %{path}."
+  handout_saved: "Apostila salva em %{path}."
 
 error:
   no_edital: "Envie um edital antes de gerar o plano."
@@ -250,6 +276,10 @@ error:
   topic_not_found: "Esse tópico não existe mais no plano."
   export: "Não foi possível salvar o arquivo %{path}."
   speech_model_missing: "Falta instalar: %{model}. Baixe em Configurações."
+  cancelled: "Cancelado."
+  handout:
+    empty: "Não há tópicos para essa apostila."
+    render: "Não foi possível montar o PDF da apostila."
   study:
     empty_plan: "A IA não encontrou matérias nesse edital. Confira se o PDF tem o conteúdo programático."
     empty_subject: "A matéria \"%{subject}\" veio sem tópicos. Tente gerar o plano de novo."
