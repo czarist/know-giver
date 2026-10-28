@@ -130,9 +130,6 @@ impl Engine {
 
     /// True when both the selected local model and its runtime are installed.
     pub fn voice_available(&self, voice: Voice) -> bool {
-        if cfg!(windows) && matches!(voice, Voice::Kokoro(_)) {
-            return false;
-        }
         self.models.is_installed(voice.model_id()) && self.models.is_installed(voice.runtime_id())
     }
 }

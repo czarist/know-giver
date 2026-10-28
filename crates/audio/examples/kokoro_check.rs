@@ -20,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: kokoro_check <sherpa-onnx-offline-tts> <kokoro-multi-lang-v1_0> <new-output-dir>".into());
     };
     let exe = std::fs::canonicalize(exe)?;
+    let exe = kg_audio::prepare_kokoro_executable(&exe)?;
     let model = std::fs::canonicalize(model)?;
     validate_model(&model)?;
     // A fresh directory keeps previous listening results from being overwritten.

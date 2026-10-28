@@ -25,9 +25,10 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 - **Scanned PDFs**: configure a vision model to transcribe pages that have no extractable
   text. The app explains that page images are sent to that configured service.
 - **Daily study time**: Today shows active time, excluding inactivity and unfocused windows.
-- **Voice controls**: preview, speed, pitch and avatar styles; an optional compatible
-  speech service supports remote voices. Local Kokoro remains disabled on Windows
-  until its UTF-8 runtime issue is resolved.
+- **Voice controls**: preview, speed, pitch and avatar styles. Local Kokoro voices
+  include a female Brazilian Portuguese voice. On Windows the runtime is launched
+  with a UTF-8 code page so accented text is preserved. An optional speech service,
+  off by default, can supply other voices.
 - **Study handouts**: the AI writes each topic as a handout (explanation, key points,
   examples, exam pitfalls, summary, exercises with answers), exported as a PDF per topic,
   per subject or for the whole plan. Generation receives the original edital excerpt
@@ -101,9 +102,12 @@ Piper remains the default. See [validation notes](docs/validation-v0.15.md) for 
 voice and handout-quality limitations, and [native/CUDA builds](docs/builds.md) for
 optional platform tooling.
 
-## Credits
+## Contributors
 
-- OpenAI Codex — AI coding assistance, [**Contributor**](https://github.com/czarist/know-giver/graphs/contributors).
+- OpenAI Codex
+- Grok
+
+## Credits
 
 - Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
   SIL Open Font License (`crates/ui/assets/fonts`).

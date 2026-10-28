@@ -432,5 +432,3 @@ error:
     io: "Não foi possível ler o arquivo %{path}."
     parse: "Não foi possível abrir o PDF %{path}. Ele pode estar corrompido ou protegido."
     no_text: "O PDF %{path} não tem texto extraível. Talvez seja digitalizado."
-voice_platform:
-  kokoro_windows: "Kokoro local ainda está indisponível no Windows. Para voz feminina, configure um serviço de voz compatível."

@@ -3,10 +3,11 @@
 //!
 //! - Capture and playback: cpal / rodio (pure Rust on Windows, macOS, Linux).
 //! - STT: Whisper running on candle (pure Rust, CPU), weights from Hugging Face.
-//! - TTS: the official Piper binary run as a child process with a pt-BR voice,
-//!   so no C/C++ code is compiled into the app.
+//! - TTS: Piper or Kokoro as a child process, plus an optional HTTP speech service.
+//!   No C/C++ code is compiled into the app.
 
 mod capture;
+mod kokoro_runtime;
 mod models;
 mod piper;
 mod playback;
@@ -17,6 +18,7 @@ mod voice;
 mod whisper;
 
 pub use capture::{RecordOptions, Recording};
+pub use kokoro_runtime::prepare_kokoro_executable;
 pub use models::{ModelId, ModelStore, PiperVoice, WhisperModel};
 pub use piper::PiperTts;
 pub use playback::Speaker;
