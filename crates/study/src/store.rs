@@ -571,6 +571,18 @@ impl Store {
         Ok(())
     }
 
+    /// Original extracted text, retained so another plan can reuse a document.
+    pub fn board_document_text(&self, id: DocumentId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT text FROM board_documents WHERE id = ?1",
+                [id.0],
+                |row| row.get(0),
+            )
+            .optional()?)
+    }
+
     /// All questions taken from the plan's documents.
     pub fn board_questions(&self, plan: PlanId) -> Result<Vec<BoardQuestion>> {
         let mut stmt = self.conn.prepare(

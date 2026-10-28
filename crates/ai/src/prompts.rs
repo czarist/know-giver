@@ -11,6 +11,7 @@ pub const HANDOUT: &str = include_str!("../prompts/handout.md");
 pub const BOARD_EXAM: &str = include_str!("../prompts/board_exam.md");
 pub const BOARD_KEY: &str = include_str!("../prompts/board_key.md");
 pub const BOARD_MATERIAL: &str = include_str!("../prompts/board_material.md");
+pub const BOARD_RELEVANCE: &str = include_str!("../prompts/board_relevance.md");
 pub const REFERENCE: &str = include_str!("../prompts/reference.md");
 
 /// Replaces `{name}` placeholders. Unknown placeholders are left as they are.

@@ -6,6 +6,7 @@
 //! that [`Engine::poll`] applies on the UI thread.
 
 mod board;
+mod documents;
 mod handouts;
 mod lesson;
 mod models;
@@ -99,6 +100,8 @@ pub enum Command {
     },
     CancelBoard,
     DeleteBoardDocument(DocumentId),
+    /// Reclassify material from another saved plan for the active plan.
+    ReuseBoardDocument(DocumentId),
     /// Use an item for a topic, or set it aside (`topic: None`).
     SetBoardItem {
         item: BoardItem,
@@ -187,7 +190,7 @@ pub enum ImportState {
 
 /// Results from worker threads.
 pub(crate) enum Event {
-    EditalExtracted(Result<Edital, PdfError>),
+    EditalExtracted(Result<Edital, EngineError>),
     PlanGenerated {
         edital: Edital,
         prefs: PlanPrefs,
@@ -500,6 +503,7 @@ impl Engine {
             Command::FinishOnboarding => self.finish_onboarding(),
             Command::ExportHandout(request) => self.export_handout(request),
             Command::ImportBoard { path, kind } => self.import_board(path, kind),
+            Command::ReuseBoardDocument(id) => self.reuse_board_document(id),
             Command::ImportAnswerKey { path, exam } => self.import_answer_key(path, exam),
             Command::CancelBoard => {
                 self.cancel_board();

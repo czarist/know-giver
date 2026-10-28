@@ -88,6 +88,88 @@ impl Engine {
         self.board_job.as_ref()
     }
 
+    /// Documents belonging to other plans, available for independent reclassification.
+    pub fn reusable_board_documents(&self) -> Result<Vec<BoardDocument>, EngineError> {
+        let Some(active) = self.active.as_ref() else {
+            return Ok(Vec::new());
+        };
+        let mut documents = Vec::new();
+        for plan in &self.plans {
+            if plan.id != active.id {
+                documents.extend(
+                    self.store
+                        .board_documents(plan.id)?
+                        .into_iter()
+                        .filter(|document| document.kind != DocumentKind::AnswerKey),
+                );
+            }
+        }
+        Ok(documents)
+    }
+
+    /// Reuses the extracted content, preserving answer keys while recalculating relevance.
+    pub(crate) fn reuse_board_document(&mut self, id: DocumentId) -> Result<(), EngineError> {
+        if self.board_job.is_some() {
+            return Ok(());
+        }
+        let Some(document) = self
+            .reusable_board_documents()?
+            .into_iter()
+            .find(|d| d.id == id)
+        else {
+            return Err(kg_ai::AiError::InvalidResponse(
+                "source document is not available for reuse".into(),
+            )
+            .into());
+        };
+        let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
+        let context = BoardContext {
+            exam: if plan.exam.is_empty() {
+                plan.title.clone()
+            } else {
+                plan.exam.clone()
+            },
+            topics: plan
+                .topics()
+                .map(|(s, t)| format!("{} — {}", s.name, t.title))
+                .collect(),
+        };
+        let topic_ids: Vec<_> = plan.topics().map(|(_, t)| t.id).collect();
+        let plan_id = plan.id;
+        let text = self
+            .store
+            .board_document_text(id)?
+            .ok_or_else(|| kg_ai::AiError::InvalidResponse("source document disappeared".into()))?;
+        let questions: Vec<_> = self
+            .store
+            .board_questions(document.plan_id)?
+            .into_iter()
+            .filter(|q| q.document_id == id)
+            .collect();
+        let excerpts: Vec<_> = self
+            .store
+            .board_excerpts(document.plan_id)?
+            .into_iter()
+            .filter(|e| e.document_id == id)
+            .collect();
+        let job = self.start_board_job(std::path::Path::new(&document.file_name), document.kind);
+        let client = self.ai_client();
+        self.spawn(move || {
+            let result = reclassify(&client, &context, &topic_ids, questions, excerpts, &job).map(
+                |(questions, excerpts)| BoardImport {
+                    plan: plan_id,
+                    kind: document.kind,
+                    file_name: document.file_name,
+                    text,
+                    questions,
+                    excerpts,
+                },
+            );
+            Event::BoardImported(result)
+        });
+        Ok(())
+    }
+
     /// Questions from past exams about this topic.
     pub fn board_emphasis(&self, topic: TopicId) -> usize {
         self.board.emphasis.get(&topic).copied().unwrap_or(0)
@@ -181,7 +263,7 @@ impl Engine {
         let client = self.ai_client();
         self.spawn(move || {
             let result = (|| {
-                let edital = kg_pdf::extract(&path)?;
+                let edital = crate::documents::extract_document(&client, &path, &job.cancel)?;
                 let chunks = kg_ai::chunk_text(edital.text.as_str());
                 job.total.store(chunks.len(), Ordering::Relaxed);
                 let mut answers = Vec::new();
@@ -380,6 +462,100 @@ struct JobHandles {
 
 type ReadResult = (String, String, Vec<NewBoardQuestion>, Vec<NewBoardExcerpt>);
 
+fn reclassify(
+    client: &kg_ai::Client,
+    context: &BoardContext,
+    topic_ids: &[TopicId],
+    questions: Vec<BoardQuestion>,
+    excerpts: Vec<BoardExcerpt>,
+    job: &JobHandles,
+) -> Result<(Vec<NewBoardQuestion>, Vec<NewBoardExcerpt>), EngineError> {
+    // Bound each classification request, including large banks of short questions.
+    const BATCH_ITEMS: usize = 30;
+    let items: Vec<String> = questions
+        .iter()
+        .map(|q| format!("{}\n{}", q.prompt, q.options.join("\n")))
+        .chain(excerpts.iter().map(|e| e.summary.clone()))
+        .collect();
+    let mut classes = Vec::with_capacity(items.len());
+    job.total
+        .store(items.len().div_ceil(BATCH_ITEMS), Ordering::Relaxed);
+    for batch in items.chunks(BATCH_ITEMS) {
+        if job.cancel.load(Ordering::Relaxed) {
+            return Err(EngineError::Cancelled);
+        }
+        let mut classified: HashMap<usize, kg_ai::RelevanceDraft> = HashMap::new();
+        for item in kg_ai::classify_board_items(client, context, batch)? {
+            if item.item < batch.len() {
+                classified.entry(item.item).or_insert(item);
+            }
+        }
+        classes.extend((0..batch.len()).map(|index| classified.remove(&index)));
+        job.done.fetch_add(1, Ordering::Relaxed);
+    }
+    if job.cancel.load(Ordering::Relaxed) {
+        return Err(EngineError::Cancelled);
+    }
+    Ok(apply_reclassification(
+        context, topic_ids, questions, excerpts, classes,
+    ))
+}
+
+fn apply_reclassification(
+    context: &BoardContext,
+    topic_ids: &[TopicId],
+    questions: Vec<BoardQuestion>,
+    excerpts: Vec<BoardExcerpt>,
+    classes: Vec<Option<kg_ai::RelevanceDraft>>,
+) -> (Vec<NewBoardQuestion>, Vec<NewBoardExcerpt>) {
+    let mut classes = classes.into_iter();
+    let classify = |draft: Option<kg_ai::RelevanceDraft>| {
+        let Some(draft) = draft else {
+            return (None, Relevance::OutOfScope, "classification missing".into());
+        };
+        let topic = context
+            .topic_index(draft.topic)
+            .and_then(|i| topic_ids.get(i))
+            .copied();
+        let relevance = if topic.is_some() {
+            Relevance::parse_lenient(&draft.relevance)
+        } else {
+            Relevance::OutOfScope
+        };
+        (topic, relevance, draft.reason)
+    };
+    let questions = questions
+        .into_iter()
+        .map(|q| {
+            let (topic_id, relevance, reason) = classify(classes.next().flatten());
+            NewBoardQuestion {
+                number: q.number,
+                prompt: q.prompt,
+                options: q.options,
+                correct: q.correct,
+                topic_id,
+                relevance,
+                reason,
+            }
+            .normalized()
+        })
+        .collect();
+    let excerpts = excerpts
+        .into_iter()
+        .map(|e| {
+            let (topic_id, relevance, reason) = classify(classes.next().flatten());
+            NewBoardExcerpt {
+                summary: e.summary,
+                topic_id,
+                relevance,
+                reason,
+            }
+            .normalized()
+        })
+        .collect();
+    (questions, excerpts)
+}
+
 /// Extracts the PDF and sends its chunks to the model, a few at a time.
 fn read_board(
     client: &kg_ai::Client,
@@ -389,7 +565,7 @@ fn read_board(
     topic_ids: &[TopicId],
     job: &JobHandles,
 ) -> Result<ReadResult, EngineError> {
-    let edital = kg_pdf::extract(path)?;
+    let edital = crate::documents::extract_document(client, path, &job.cancel)?;
     let chunks = kg_ai::chunk_text(edital.text.as_str());
     job.total.store(chunks.len(), Ordering::Relaxed);
 
@@ -507,6 +683,45 @@ fn dedupe(questions: impl Iterator<Item = BoardQuestionDraft>) -> Vec<BoardQuest
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reuse_keeps_answers_and_reassigns_topics_without_mutating_source() {
+        let question = BoardQuestion {
+            id: BoardQuestionId(1),
+            document_id: DocumentId(1),
+            number: Some(9),
+            prompt: "A crase é obrigatória?".into(),
+            options: vec!["Certo".into(), "Errado".into()],
+            correct: Some(1),
+            topic_id: Some(TopicId(1)),
+            relevance: Relevance::Relevant,
+            reason: "source plan".into(),
+        };
+        let context = BoardContext {
+            exam: "Destination".into(),
+            topics: vec!["Português".into()],
+        };
+        let (reused, _) = apply_reclassification(
+            &context,
+            &[TopicId(42)],
+            vec![question.clone()],
+            vec![],
+            vec![Some(kg_ai::RelevanceDraft {
+                item: 0,
+                topic: Some(1),
+                relevance: "partial".into(),
+                reason: "destination plan".into(),
+            })],
+        );
+        assert_eq!(reused[0].correct, Some(1));
+        assert_eq!(reused[0].options, question.options);
+        assert_eq!(reused[0].topic_id, Some(TopicId(42)));
+        assert_eq!(question.topic_id, Some(TopicId(1)));
+        let (missing, _) =
+            apply_reclassification(&context, &[TopicId(42)], vec![question], vec![], vec![]);
+        assert_eq!(missing[0].relevance, Relevance::OutOfScope);
+        assert_eq!(missing[0].topic_id, None);
+    }
 
     fn draft(number: Option<u32>, prompt: &str) -> BoardQuestionDraft {
         BoardQuestionDraft {

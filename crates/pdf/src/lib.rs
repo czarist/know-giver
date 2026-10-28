@@ -2,6 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
+mod ocr;
+pub use ocr::read_scanned_pages;
+
 /// Plain text extracted from an edital, with whitespace normalized.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditalText(String);
