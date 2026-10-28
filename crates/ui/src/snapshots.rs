@@ -6,7 +6,10 @@
 use chrono::Days;
 use egui_kittest::Harness;
 use kg_engine::{AiConfig, AppPaths, Command, Engine};
-use kg_study::{Difficulty, NewPlan, NewSubject, NewTopic, ReviewGrade, Store, TopicStatus};
+use kg_study::{
+    Difficulty, DocumentKind, NewBoardQuestion, NewPlan, NewSubject, NewTopic, Relevance,
+    ReviewGrade, Store, TopicStatus,
+};
 
 use crate::app::{KnowGiverApp, Screen};
 
@@ -64,6 +67,32 @@ fn seed(paths: &AppPaths) {
     let t = &mut plan.subjects[1].topics[0];
     t.complete_lesson(today);
     store.update_topic(t).unwrap();
+
+    let crase = plan.subjects[0].topics[1].id;
+    let question = |n: u32, prompt: &str, topic, relevance, reason: &str| NewBoardQuestion {
+        number: Some(n),
+        prompt: prompt.into(),
+        options: vec!["Certo".into(), "Errado".into()],
+        correct: Some(0),
+        topic_id: topic,
+        relevance,
+        reason: reason.into(),
+    };
+    store
+        .insert_board_document(
+            plan.id,
+            DocumentKind::Exam,
+            "prova-trf6-2024.pdf",
+            "texto",
+            &[
+                question(12, "A supressão do acento indicativo de crase em “àquilo” manteria a correção gramatical do texto.", Some(crase), Relevance::Relevant, ""),
+                question(13, "No trecho “O direito se constitui em esfera especial”, o pronome poderia ser deslocado para depois do verbo.", Some(crase), Relevance::Partial, ""),
+                question(17, "Considerando a Lei n.º 8.112/1990, é proibido ao servidor atuar como procurador junto a repartições públicas.", None, Relevance::OutOfScope, "Lei 8.112/1990 não consta no edital"),
+            ],
+            &[],
+            today,
+        )
+        .unwrap();
 }
 
 fn render(harness: &mut Harness<'_, KnowGiverApp>, dir: Option<&std::path::Path>, name: &str) {
@@ -92,6 +121,7 @@ fn snapshots() {
         for (screen, name) in [
             (Screen::Edital, "edital"),
             (Screen::Plan, "plan"),
+            (Screen::Board, "board"),
             (Screen::Review, "review"),
             (Screen::Progress, "progress"),
             (Screen::Settings, "settings"),

@@ -4,6 +4,29 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-10-27
+
+### Added
+- Exam board material ("Banca" screen): upload past exams and board handouts as PDF.
+  The AI extracts every question (multiple choice or Certo/Errado items) or summarizes
+  each passage, and checks it against the plan's topics.
+- Relevance filter: each item gets a topic and a level (relevant, partial, out of scope)
+  with a short reason. Out-of-scope items (other roles, subjects not in the edital) are
+  kept but never used; the student can move any item in or out by hand.
+- Answer keys: attach the gabarito to an imported exam; answers are matched by question
+  number (letters, or C/E for Certo/Errado).
+- Quizzes start with real past exam questions on the topic and generate only the rest;
+  a quiz made only of real questions needs no model call. Real questions are marked.
+- Tutor, quiz, review and handout prompts receive the board's material on the topic.
+- Plan screen shows how many past exam questions cover each topic.
+- SQLite migration 3 (board documents, questions, excerpts).
+- `board_check` example: edital → plan → past exam → answer key → quiz, against the real
+  endpoint. Tested with a real Cebraspe exam: 50 questions read, 31 used, 19 set aside
+  with the right reasons, answer key applied to 48.
+
+### Changed
+- `pdf_extract` warnings are hidden from the default log.
+
 ## [0.9.0] - 2026-10-27
 
 ### Added

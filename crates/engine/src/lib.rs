@@ -5,6 +5,7 @@
 //! model calls, speech) runs on worker threads; results come back as events
 //! that [`Engine::poll`] applies on the UI thread.
 
+mod board;
 mod handouts;
 mod lesson;
 mod models;
@@ -21,11 +22,15 @@ use std::time::Instant;
 
 use chrono::NaiveDate;
 
+pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{AudioError, ModelId, PiperVoice, WhisperModel};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
 pub use kg_pdf::{Edital, PdfError};
+pub use kg_study::{
+    BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
+};
 pub use kg_study::{
     Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,
     StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
@@ -74,6 +79,25 @@ pub enum Command {
 
     ExportHandout(HandoutRequest),
     CancelHandout,
+
+    /// Upload a past exam or board material for the active plan.
+    ImportBoard {
+        path: PathBuf,
+        kind: DocumentKind,
+    },
+    /// Upload the answer key of an exam already imported.
+    ImportAnswerKey {
+        path: PathBuf,
+        exam: DocumentId,
+    },
+    CancelBoard,
+    DeleteBoardDocument(DocumentId),
+    /// Use an item for a topic, or set it aside (`topic: None`).
+    SetBoardItem {
+        item: BoardItem,
+        relevance: Relevance,
+        topic: Option<TopicId>,
+    },
 
     /// Writes an already formatted progress report.
     ExportProgress {
@@ -124,11 +148,24 @@ pub enum Notice {
     ConnectionOk,
     ModelInstalled(ModelId),
     LessonSaved,
-    ReviewSaved { next_due: Option<NaiveDate> },
-    QuizSaved { correct: u32, total: u32 },
+    ReviewSaved {
+        next_due: Option<NaiveDate>,
+    },
+    QuizSaved {
+        correct: u32,
+        total: u32,
+    },
     NothingHeard,
     Exported(PathBuf),
     HandoutSaved(PathBuf),
+    BoardImported {
+        kind: DocumentKind,
+        used: usize,
+        set_aside: usize,
+    },
+    AnswerKeyApplied {
+        count: usize,
+    },
 }
 
 /// State of the edital import on the Edital screen.
@@ -157,6 +194,11 @@ pub(crate) enum Event {
         json: String,
     },
     HandoutFinished(Result<PathBuf, EngineError>),
+    BoardImported(Result<board::BoardImport, EngineError>),
+    AnswerKeyRead {
+        exam: DocumentId,
+        result: Result<Vec<(u32, String)>, EngineError>,
+    },
 }
 
 /// Called by workers after sending an event, so the UI wakes up.
@@ -187,6 +229,8 @@ pub struct Engine {
     downloads: HashMap<ModelId, models::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
+    board: board::BoardState,
+    board_job: Option<BoardJob>,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -273,6 +317,8 @@ impl Engine {
             downloads: HashMap::new(),
             handout_job: None,
             handouts_cached: 0,
+            board: board::BoardState::default(),
+            board_job: None,
             notices,
             events_tx,
             events_rx,
@@ -358,6 +404,7 @@ impl Engine {
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
             || self.handout_job.is_some()
+            || self.board_job.is_some()
             || self
                 .lesson
                 .as_ref()
@@ -435,6 +482,18 @@ impl Engine {
             Command::RemoveModel(id) => self.remove_model(id),
 
             Command::ExportHandout(request) => self.export_handout(request),
+            Command::ImportBoard { path, kind } => self.import_board(path, kind),
+            Command::ImportAnswerKey { path, exam } => self.import_answer_key(path, exam),
+            Command::CancelBoard => {
+                self.cancel_board();
+                Ok(())
+            }
+            Command::DeleteBoardDocument(id) => self.delete_board_document(id),
+            Command::SetBoardItem {
+                item,
+                relevance,
+                topic,
+            } => self.set_board_item(item, relevance, topic),
             Command::CancelHandout => {
                 self.cancel_handout();
                 Ok(())
@@ -475,6 +534,8 @@ impl Engine {
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
+                Event::BoardImported(result) => self.on_board_imported(result),
+                Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),
             };
             if let Err(err) = result {
                 tracing::warn!(%err, "background task failed");
@@ -550,6 +611,7 @@ impl Engine {
                 exam,
                 subject: subject.name.clone(),
                 topic: topic.title.clone(),
+                reference: self.board_reference(id),
             },
             topic.title.clone(),
         ))

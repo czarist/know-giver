@@ -106,19 +106,23 @@ pub struct HandoutDraft {
 }
 
 /// Which topic a lesson, quiz or review is about.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TopicContext {
     pub exam: String,
     pub subject: String,
     pub topic: String,
+    /// Board material about the topic (see [`crate::reference_block`]); may
+    /// be empty.
+    pub reference: String,
 }
 
 impl TopicContext {
-    fn values(&self) -> [(&str, &str); 3] {
+    fn values(&self) -> [(&str, &str); 4] {
         [
             ("exam", self.exam.as_str()),
             ("subject", self.subject.as_str()),
             ("topic", self.topic.as_str()),
+            ("reference", self.reference.as_str()),
         ]
     }
 }
@@ -246,7 +250,7 @@ pub fn evaluate_review(
 
 /// Sends a JSON-mode request and parses the answer, asking once more if the
 /// first answer is not valid JSON.
-fn chat_json<T: DeserializeOwned>(
+pub(crate) fn chat_json<T: DeserializeOwned>(
     client: &Client,
     task: Task,
     messages: &[ChatMessage],

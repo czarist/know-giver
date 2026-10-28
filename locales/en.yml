@@ -22,6 +22,7 @@ fatal:
 nav:
   edital: "Exam notice"
   plan: "Study plan"
+  board: "Exam board"
   lesson: "Lesson"
   quiz: "Quiz"
   review: "Review"
@@ -93,6 +94,7 @@ plan:
   handout_progress: "Writing the handout: %{done} of %{total} topics"
   handout_missing: "%{count} topics without text yet. Writing them all takes a few minutes."
   handout_all_ready: "Every topic already has text."
+  board_count: "%{count} on exams"
 
 lesson:
   title: "Lesson"
@@ -129,6 +131,7 @@ quiz:
   progress: "Question %{n} of %{total}"
   correct: "Correct."
   wrong: "Not this time."
+  from_board: "Past exam question"
   next: "Next question"
   see_result: "See result"
   score: "%{correct} of %{total}"
@@ -184,6 +187,34 @@ export:
     week: "Week"
     status: "Status"
     next_review: "Next review"
+
+board:
+  title: "Exam board material"
+  subtitle: "Past exams and board material, so quizzes, lessons and handouts feel like the real exam."
+  upload_hint: "Upload PDFs of past exams or board material. The AI keeps what belongs to your exam notice and sets the rest aside (other positions, subjects not asked)."
+  add_exam: "Add past exam"
+  add_material: "Add board material"
+  add_key: "Attach answer key"
+  add_key_hint: "PDF with this exam's answer key. Answers are matched by question number."
+  reading: "Reading %{file}…"
+  analyzing: "Analyzing %{file}: part %{done} of %{total}"
+  no_documents: "No material yet. It is optional: everything works without it."
+  doc_stats: "Added on %{date} · %{used} used · %{set_aside} set aside"
+  unanswered: "%{count} questions without answers: attach the answer key to use them in quizzes."
+  confirm_delete: "Delete this file and everything taken from it?"
+  set_aside: "Set aside (%{count})"
+  set_aside_hint: "Items the AI found outside your exam notice. If one is useful, pick its topic and use it anyway."
+  used: "Used (%{count})"
+  item_question: "Question"
+  item_excerpt: "Excerpt"
+  partial: "partial"
+  pick_topic: "Pick a topic"
+  use_anyway: "Use anyway"
+  set_aside_action: "Set aside"
+  kind:
+    exam: "Exam"
+    answer_key: "Answer key"
+    material: "Material"
 
 handout:
   whole_plan: "Full plan"
@@ -269,6 +300,8 @@ notice:
   nothing_heard: "I did not hear anything. Try speaking a bit closer to the microphone."
   exported: "Report saved to %{path}."
   handout_saved: "Handout saved to %{path}."
+  board_imported: "%{used} items used, %{set_aside} set aside as outside the exam notice."
+  answer_key: "Answer key applied to %{count} questions."
 
 error:
   no_edital: "Upload an exam notice before generating the plan."

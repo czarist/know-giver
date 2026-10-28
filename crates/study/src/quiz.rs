@@ -12,6 +12,8 @@ pub struct QuizQuestion {
     pub options: Vec<String>,
     pub correct: usize,
     pub explanation: String,
+    /// Taken from a real past exam rather than generated.
+    pub from_board: bool,
 }
 
 impl QuizQuestion {
@@ -106,6 +108,7 @@ mod tests {
             options: options.iter().map(|o| (*o).into()).collect(),
             correct,
             explanation: String::new(),
+            from_board: false,
         }
     }
 

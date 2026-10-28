@@ -5,6 +5,10 @@ use std::path::Path;
 use chrono::NaiveDate;
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
+use crate::board::{
+    BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
+    ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance,
+};
 use crate::plan::{
     Difficulty, NewPlan, PlanId, PlanSummary, StudyPlan, Subject, SubjectId, Topic, TopicId,
     TopicStatus,
@@ -83,6 +87,37 @@ const MIGRATIONS: &[&str] = &[
         content TEXT NOT NULL,
         created_on TEXT NOT NULL
     );
+",
+    r"
+    CREATE TABLE board_documents (
+        id INTEGER PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        text TEXT NOT NULL,
+        added_on TEXT NOT NULL
+    );
+    CREATE TABLE board_questions (
+        id INTEGER PRIMARY KEY,
+        document_id INTEGER NOT NULL REFERENCES board_documents(id) ON DELETE CASCADE,
+        number INTEGER,
+        prompt TEXT NOT NULL,
+        options TEXT NOT NULL,
+        correct INTEGER,
+        topic_id INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+        relevance TEXT NOT NULL,
+        reason TEXT NOT NULL
+    );
+    CREATE TABLE board_excerpts (
+        id INTEGER PRIMARY KEY,
+        document_id INTEGER NOT NULL REFERENCES board_documents(id) ON DELETE CASCADE,
+        summary TEXT NOT NULL,
+        topic_id INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+        relevance TEXT NOT NULL,
+        reason TEXT NOT NULL
+    );
+    CREATE INDEX board_questions_topic ON board_questions(topic_id);
+    CREATE INDEX board_excerpts_topic ON board_excerpts(topic_id);
 ",
 ];
 
@@ -383,6 +418,205 @@ impl Store {
         Ok(count as usize)
     }
 
+    /// Stores an uploaded document with what was taken from it.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one row plus its children, inserted together"
+    )]
+    pub fn insert_board_document(
+        &mut self,
+        plan: PlanId,
+        kind: DocumentKind,
+        file_name: &str,
+        text: &str,
+        questions: &[NewBoardQuestion],
+        excerpts: &[NewBoardExcerpt],
+        today: NaiveDate,
+    ) -> Result<DocumentId> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT INTO board_documents (plan_id, kind, file_name, text, added_on)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![plan.0, kind.as_str(), file_name, text, today.to_string()],
+        )?;
+        let doc = tx.last_insert_rowid();
+        for q in questions {
+            let options = serde_json::to_string(&q.options).unwrap_or_else(|_| "[]".into());
+            tx.execute(
+                "INSERT INTO board_questions
+                   (document_id, number, prompt, options, correct, topic_id, relevance, reason)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    doc,
+                    q.number,
+                    q.prompt,
+                    options,
+                    q.correct.map(|c| c as i64),
+                    q.topic_id.map(|t| t.0),
+                    q.relevance.as_str(),
+                    q.reason
+                ],
+            )?;
+        }
+        for e in excerpts {
+            tx.execute(
+                "INSERT INTO board_excerpts (document_id, summary, topic_id, relevance, reason)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![
+                    doc,
+                    e.summary,
+                    e.topic_id.map(|t| t.0),
+                    e.relevance.as_str(),
+                    e.reason
+                ],
+            )?;
+        }
+        tx.commit()?;
+        Ok(DocumentId(doc))
+    }
+
+    pub fn board_documents(&self, plan: PlanId) -> Result<Vec<BoardDocument>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT d.id, d.kind, d.file_name, d.added_on,
+               (SELECT COUNT(*) FROM board_questions q WHERE q.document_id = d.id
+                  AND q.relevance != 'out')
+             + (SELECT COUNT(*) FROM board_excerpts e WHERE e.document_id = d.id
+                  AND e.relevance != 'out'),
+               (SELECT COUNT(*) FROM board_questions q WHERE q.document_id = d.id
+                  AND q.relevance = 'out')
+             + (SELECT COUNT(*) FROM board_excerpts e WHERE e.document_id = d.id
+                  AND e.relevance = 'out'),
+               (SELECT COUNT(*) FROM board_questions q WHERE q.document_id = d.id
+                  AND q.correct IS NULL)
+             FROM board_documents d WHERE d.plan_id = ?1 ORDER BY d.id",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, i64>(4)?,
+                r.get::<_, i64>(5)?,
+                r.get::<_, i64>(6)?,
+            ))
+        })?;
+        rows.map(|row| {
+            let (id, kind, file_name, added_on, used, set_aside, unanswered) = row?;
+            Ok(BoardDocument {
+                id: DocumentId(id),
+                plan_id: plan,
+                kind: DocumentKind::parse(&kind).ok_or(StoreError::Corrupt {
+                    column: "kind",
+                    value: kind.clone(),
+                })?,
+                file_name,
+                added_on: parse_date("added_on", &added_on)?,
+                used: used as usize,
+                set_aside: set_aside as usize,
+                unanswered: unanswered as usize,
+            })
+        })
+        .collect()
+    }
+
+    pub fn delete_board_document(&mut self, id: DocumentId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM board_documents WHERE id = ?1", [id.0])?;
+        Ok(())
+    }
+
+    /// All questions taken from the plan's documents.
+    pub fn board_questions(&self, plan: PlanId) -> Result<Vec<BoardQuestion>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT q.id, q.document_id, q.number, q.prompt, q.options, q.correct, q.topic_id,
+                    q.relevance, q.reason
+             FROM board_questions q JOIN board_documents d ON d.id = q.document_id
+             WHERE d.plan_id = ?1 ORDER BY q.document_id, q.number, q.id",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok(BoardQuestion {
+                id: BoardQuestionId(r.get(0)?),
+                document_id: DocumentId(r.get(1)?),
+                number: r.get(2)?,
+                prompt: r.get(3)?,
+                options: serde_json::from_str(&r.get::<_, String>(4)?).unwrap_or_default(),
+                correct: r.get::<_, Option<i64>>(5)?.map(|c| c as usize),
+                topic_id: r.get::<_, Option<i64>>(6)?.map(TopicId),
+                relevance: Relevance::parse_lenient(&r.get::<_, String>(7)?),
+                reason: r.get(8)?,
+            })
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// All excerpts taken from the plan's documents.
+    pub fn board_excerpts(&self, plan: PlanId) -> Result<Vec<BoardExcerpt>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT e.id, e.document_id, e.summary, e.topic_id, e.relevance, e.reason
+             FROM board_excerpts e JOIN board_documents d ON d.id = e.document_id
+             WHERE d.plan_id = ?1 ORDER BY e.id",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok(BoardExcerpt {
+                id: ExcerptId(r.get(0)?),
+                document_id: DocumentId(r.get(1)?),
+                summary: r.get(2)?,
+                topic_id: r.get::<_, Option<i64>>(3)?.map(TopicId),
+                relevance: Relevance::parse_lenient(&r.get::<_, String>(4)?),
+                reason: r.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    pub fn set_question_relevance(
+        &mut self,
+        id: BoardQuestionId,
+        relevance: Relevance,
+        topic: Option<TopicId>,
+        reason: &str,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE board_questions SET relevance = ?2, topic_id = ?3, reason = ?4 WHERE id = ?1",
+            params![id.0, relevance.as_str(), topic.map(|t| t.0), reason],
+        )?;
+        Ok(())
+    }
+
+    pub fn set_excerpt_relevance(
+        &mut self,
+        id: ExcerptId,
+        relevance: Relevance,
+        topic: Option<TopicId>,
+        reason: &str,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE board_excerpts SET relevance = ?2, topic_id = ?3, reason = ?4 WHERE id = ?1",
+            params![id.0, relevance.as_str(), topic.map(|t| t.0), reason],
+        )?;
+        Ok(())
+    }
+
+    /// Sets answers on an exam's questions by question number. Returns how
+    /// many questions got an answer.
+    pub fn apply_answer_key(
+        &mut self,
+        exam: DocumentId,
+        answers: &[(u32, usize)],
+    ) -> Result<usize> {
+        let tx = self.conn.transaction()?;
+        let mut updated = 0;
+        for (number, index) in answers {
+            updated += tx.execute(
+                "UPDATE board_questions SET correct = ?3 WHERE document_id = ?1 AND number = ?2",
+                params![exam.0, number, *index as i64],
+            )?;
+        }
+        tx.commit()?;
+        Ok(updated)
+    }
+
     pub fn setting(&self, key: &str) -> Result<Option<String>> {
         Ok(self
             .conn
@@ -589,6 +823,64 @@ mod tests {
         assert_eq!(store.handout_count(plan.id).unwrap(), 1);
         store.delete_plan(plan.id).unwrap();
         assert_eq!(store.handout(topic).unwrap(), None);
+    }
+
+    #[test]
+    fn board_material_round_trip() {
+        let mut store = Store::open_in_memory().unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "e.pdf", "", today())
+            .unwrap();
+        let topic = plan.subjects[0].topics[0].id;
+        let question = |number, topic_id, relevance| NewBoardQuestion {
+            number: Some(number),
+            prompt: format!("Questão {number}"),
+            options: vec!["Certo".into(), "Errado".into()],
+            correct: None,
+            topic_id,
+            relevance,
+            reason: "motivo".into(),
+        };
+        let doc = store
+            .insert_board_document(
+                plan.id,
+                DocumentKind::Exam,
+                "prova.pdf",
+                "texto",
+                &[
+                    question(1, Some(topic), Relevance::Relevant),
+                    question(2, None, Relevance::OutOfScope),
+                ],
+                &[NewBoardExcerpt {
+                    summary: "Resumo".into(),
+                    topic_id: Some(topic),
+                    relevance: Relevance::Partial,
+                    reason: String::new(),
+                }],
+                today(),
+            )
+            .unwrap();
+
+        let docs = store.board_documents(plan.id).unwrap();
+        assert_eq!(docs.len(), 1);
+        assert_eq!(
+            (docs[0].used, docs[0].set_aside, docs[0].unanswered),
+            (2, 1, 2)
+        );
+
+        assert_eq!(store.apply_answer_key(doc, &[(1, 1), (7, 0)]).unwrap(), 1);
+        let questions = store.board_questions(plan.id).unwrap();
+        assert_eq!(questions[0].correct, Some(1));
+        assert_eq!(questions[0].options, vec!["Certo", "Errado"]);
+
+        store
+            .set_question_relevance(questions[1].id, Relevance::Relevant, Some(topic), "manual")
+            .unwrap();
+        assert_eq!(store.board_documents(plan.id).unwrap()[0].set_aside, 0);
+        assert_eq!(store.board_excerpts(plan.id).unwrap().len(), 1);
+
+        store.delete_board_document(doc).unwrap();
+        assert!(store.board_questions(plan.id).unwrap().is_empty());
     }
 
     #[test]

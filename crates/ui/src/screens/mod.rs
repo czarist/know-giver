@@ -1,6 +1,7 @@
 //! One module per screen. Each reads engine state and collects user actions,
 //! which run after drawing; none of them contain business rules.
 
+pub mod board;
 pub mod edital;
 pub mod handout;
 pub mod lesson;

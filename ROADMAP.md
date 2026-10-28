@@ -40,27 +40,28 @@ microphone and speakers: the full voice loop and Piper speech (see "Not yet veri
 ## Phase 5 — Exam board material and study handouts
 
 ### Optional upload of past exams and board material
-- [ ] Attach PDFs to a plan: past exams (provas anteriores), answer keys (gabaritos), board handouts
-- [ ] Store them in SQLite, linked to the plan (new `documents` table, kind: exam / key / material)
-- [ ] Extract questions from past exams with the LLM (statement, options, answer from the key)
-- [ ] Link each question to the plan's topics (LLM classification, kept in the database)
-- [ ] Relevance filter: keep only what matches the edital's syllabus
+- [x] Attach PDFs to a plan: past exams (provas anteriores), answer keys (gabaritos), board handouts
+- [x] Store them in SQLite, linked to the plan (`board_documents`, kind: exam / key / material)
+- [x] Extract questions from past exams with the LLM (statement, options, answer from the key)
+- [x] Link each question to the plan's topics (LLM classification, kept in the database)
+- [x] Relevance filter: keep only what matches the edital's syllabus
   - Each extracted question or material section is checked against the plan's topics, and
     gets a topic plus a relevance level (relevant / partly relevant / out of scope)
   - Out of scope (other roles, subjects not in this edital, topics removed from the
     syllabus) is set aside, not used by quizzes, tutor or handouts
   - After each upload, a summary: "42 questions used, 11 set aside (Direito Tributário is
     not in this edital)", with a list to review and move items back in by hand
-  - The same material can be reused in another plan; relevance is computed per plan
-- [ ] Quizzes for a topic: real board questions first, then generated ones in the same style
-- [ ] Tutor and quiz prompts use excerpts of the board material on the topic
-- [ ] Show the board's emphasis per topic (how often it is asked) on the Plan screen
+  - [ ] The same material can be reused in another plan; relevance is computed per plan
+        (today: upload the file again in the other plan)
+- [x] Quizzes for a topic: real board questions first, then generated ones in the same style
+- [x] Tutor, quiz, review and handout prompts use the board material on the topic
+- [x] Show the board's emphasis per topic (how often it is asked) on the Plan screen
 - [ ] Scanned PDFs: OCR fallback with the vision model (`MODEL_VISION`)
 
 ### Written study material as PDF (apostilas)
 - [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
 - [ ] Use the edital and the board material as the source, never content outside the edital
-      (today: scoped to the plan's topic; board material comes with the upload feature)
+      (handouts now receive the board material on each topic)
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version

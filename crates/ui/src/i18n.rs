@@ -135,6 +135,10 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         Notice::NothingHeard => t!("notice.nothing_heard"),
         Notice::Exported(path) => t!("notice.exported", path = path.display()),
         Notice::HandoutSaved(path) => t!("notice.handout_saved", path = path.display()),
+        Notice::BoardImported {
+            used, set_aside, ..
+        } => t!("notice.board_imported", used = used, set_aside = set_aside),
+        Notice::AnswerKeyApplied { count } => t!("notice.answer_key", count = count),
     };
     (text.into_owned(), false)
 }
@@ -229,6 +233,7 @@ mod tests {
             include_str!("widgets.rs"),
             include_str!("export.rs"),
             include_str!("screens/mod.rs"),
+            include_str!("screens/board.rs"),
             include_str!("screens/edital.rs"),
             include_str!("screens/handout.rs"),
             include_str!("screens/plan.rs"),

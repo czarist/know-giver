@@ -22,6 +22,8 @@ pub struct QuizSession {
     pub step: QuizStep,
     quiz: Option<Quiz>,
     correct: u32,
+    /// Past exam questions that open the quiz, before generated ones.
+    board: Vec<QuizQuestion>,
 }
 
 impl QuizSession {
@@ -78,6 +80,23 @@ impl ReviewSession {
     }
 }
 
+fn seed() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(1, |d| d.as_nanos() as u64)
+}
+
+/// Fisher-Yates with a small xorshift; good enough to vary question order.
+fn shuffle<T>(items: &mut [T], seed: u64) {
+    let mut state = seed | 1;
+    for i in (1..items.len()).rev() {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        items.swap(i, (state % (i as u64 + 1)) as usize);
+    }
+}
+
 pub(crate) enum PracticeEvent {
     QuizReady {
         session: u64,
@@ -97,6 +116,14 @@ impl Engine {
     pub(crate) fn start_quiz(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
         let (ctx, topic_title) = self.topic_context(topic_id)?;
         let id = self.next_id();
+        let size = self.settings.quiz_size as usize;
+        let mut board = self.usable_board_questions(topic_id);
+        shuffle(&mut board, seed());
+        board.truncate(size);
+        for (i, q) in board.iter_mut().enumerate() {
+            q.shuffle_options(seed().wrapping_add(i as u64));
+        }
+        let missing = size - board.len();
         self.quiz = Some(QuizSession {
             id,
             topic_id,
@@ -104,13 +131,20 @@ impl Engine {
             step: QuizStep::Loading,
             quiz: None,
             correct: 0,
+            board,
         });
+        if missing == 0 {
+            // Enough real questions: no model call needed.
+            return self.on_practice_event(PracticeEvent::QuizReady {
+                session: id,
+                result: Ok(Vec::new()),
+            });
+        }
         let client = self.ai_client();
-        let count = self.settings.quiz_size;
         self.spawn(move || {
             Event::Practice(PracticeEvent::QuizReady {
                 session: id,
-                result: kg_ai::generate_quiz(&client, &ctx, count),
+                result: kg_ai::generate_quiz(&client, &ctx, missing as u32),
             })
         });
         Ok(())
@@ -246,24 +280,23 @@ impl Engine {
                     return Ok(());
                 };
                 let built = result.map_err(EngineError::from).and_then(|drafts| {
-                    let seed = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_or(1, |d| d.as_nanos() as u64);
-                    let questions = drafts
+                    let seed = seed();
+                    let generated = drafts.into_iter().enumerate().map(|(i, d)| {
+                        let mut question = QuizQuestion {
+                            prompt: d.prompt,
+                            options: d.options,
+                            correct: d.correct,
+                            explanation: d.explanation,
+                            from_board: false,
+                        };
+                        if question.correct < question.options.len() {
+                            question.shuffle_options(seed.wrapping_add(i as u64 * 0x9E37));
+                        }
+                        question
+                    });
+                    let questions = std::mem::take(&mut quiz.board)
                         .into_iter()
-                        .enumerate()
-                        .map(|(i, d)| {
-                            let mut question = QuizQuestion {
-                                prompt: d.prompt,
-                                options: d.options,
-                                correct: d.correct,
-                                explanation: d.explanation,
-                            };
-                            if question.correct < question.options.len() {
-                                question.shuffle_options(seed.wrapping_add(i as u64 * 0x9E37));
-                            }
-                            question
-                        })
+                        .chain(generated)
                         .collect();
                     Ok(Quiz::new(quiz.topic_id, questions)?)
                 });

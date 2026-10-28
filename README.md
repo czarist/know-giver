@@ -14,6 +14,9 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 - **Quizzes**: multiple-choice questions in the style of exam boards, with explanations.
 - **Spaced review (SM-2)**: topics come back when you are about to forget them. The AI
   asks a recall question and grades your answer, or you grade yourself.
+- **Exam board material**: upload past exams, answer keys and board handouts. The AI
+  keeps what belongs to your edital, sets the rest aside with a reason, and uses real
+  past questions in quizzes and as reference for lessons and handouts.
 - **Study handouts**: the AI writes each topic as a handout (explanation, key points,
   examples, exam pitfalls, summary, exercises with answers), exported as a PDF per topic,
   per subject or for the whole plan.
@@ -73,7 +76,8 @@ Manual checks against real services (need `.env` and network):
 
 ```bash
 cargo run -p kg-ai --example live_check                         # every AI task
-cargo run -p kg-engine --example e2e -- edital.pdf               # import → plan → quiz → review
+cargo run -p kg-engine --example e2e -- edital.pdf               # import → plan → quiz → review → handout
+cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pdf
 cargo run --release -p kg-audio --example stt_check -- <models-dir> fala.wav
 KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored # renders every screen to PNG
 ```

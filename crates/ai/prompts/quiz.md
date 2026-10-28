@@ -4,8 +4,10 @@ Concurso: {exam}
 Matéria: {subject}
 Tópico: {topic}
 
+{reference}
+
 Regras:
-- Crie exatamente {count} questões sobre este tópico, no estilo das bancas de concurso.
+- Crie exatamente {count} questões sobre este tópico, no estilo das bancas de concurso. Se houver questões de provas anteriores acima, siga o mesmo estilo e formato (inclusive Certo/Errado, se for o caso), sem repeti-las.
 - Cada questão tem 4 alternativas, e só uma está correta.
 - As alternativas serão embaralhadas depois: não comece alternativas com letras (A, B, C…) e, na explicação, cite o conteúdo da alternativa, nunca a letra ou a posição.
 - Nada de pegadinhas: a questão deve medir entendimento, não atenção a detalhes irrelevantes.

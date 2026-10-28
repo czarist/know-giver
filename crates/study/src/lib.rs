@@ -3,11 +3,16 @@
 //! [`plan`], [`review`] and [`quiz`] are pure rules with no I/O.
 //! [`store`] persists them in SQLite.
 
+pub mod board;
 pub mod plan;
 pub mod quiz;
 pub mod review;
 pub mod store;
 
+pub use board::{
+    BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
+    ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,
+};
 pub use plan::{
     Difficulty, NewPlan, NewSubject, NewTopic, PlanId, PlanSummary, StudyPlan, Subject, SubjectId,
     Topic, TopicId, TopicStatus,

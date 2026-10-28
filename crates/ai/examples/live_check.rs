@@ -47,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         exam: plan.exam.clone(),
         subject: "Língua Portuguesa".into(),
         topic: "Emprego do sinal indicativo de crase".into(),
+        ..TopicContext::default()
     };
 
     let t = std::time::Instant::now();

@@ -8,8 +8,9 @@ use tracing_subscriber::EnvFilter;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // GPU crates are noisy about third-party overlay layers; keep them quiet
     // unless RUST_LOG asks otherwise.
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,wgpu_hal=error,wgpu_core=warn,egui_wgpu=warn"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("info,wgpu_hal=error,wgpu_core=warn,egui_wgpu=warn,pdf_extract=error")
+    });
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
     load_env();

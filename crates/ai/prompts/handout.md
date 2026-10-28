@@ -4,6 +4,8 @@ Concurso: {exam}
 Matéria: {subject}
 Tópico: {topic}
 
+{reference}
+
 Escreva a apostila deste tópico.
 
 Regras:

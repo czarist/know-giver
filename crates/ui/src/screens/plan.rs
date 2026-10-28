@@ -92,8 +92,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     ui.add_space(4.0);
 
     egui::ScrollArea::vertical().show(ui, |ui| match state.plan_view {
-        PlanView::ByWeek => by_week(ui, plan, idle, &mut ask, &mut actions),
-        PlanView::BySubject => by_subject(ui, plan, idle, &mut ask, &mut actions),
+        PlanView::ByWeek => by_week(ui, engine, plan, idle, &mut ask, &mut actions),
+        PlanView::BySubject => by_subject(ui, engine, plan, idle, &mut ask, &mut actions),
     });
 
     if let Some((scope, regenerate)) = ask.0
@@ -145,6 +145,7 @@ fn handout_bar(
 
 fn by_week(
     ui: &mut egui::Ui,
+    engine: &Engine,
     plan: &StudyPlan,
     idle: bool,
     ask: &mut HandoutAsk,
@@ -161,7 +162,8 @@ fn by_week(
             .default_open(week == current)
             .show(ui, |ui| {
                 for (subject, topic) in plan.topics().filter(|(_, t)| t.week == week) {
-                    topic_row(ui, Some(&subject.name), topic, idle, ask, actions);
+                    let emphasis = engine.board_emphasis(topic.id);
+                    topic_row(ui, Some(&subject.name), topic, emphasis, idle, ask, actions);
                 }
             });
     }
@@ -169,6 +171,7 @@ fn by_week(
 
 fn by_subject(
     ui: &mut egui::Ui,
+    engine: &Engine,
     plan: &StudyPlan,
     idle: bool,
     ask: &mut HandoutAsk,
@@ -187,7 +190,8 @@ fn by_subject(
                     idle,
                 );
                 for topic in &subject.topics {
-                    topic_row(ui, None, topic, idle, ask, actions);
+                    let emphasis = engine.board_emphasis(topic.id);
+                    topic_row(ui, None, topic, emphasis, idle, ask, actions);
                 }
             });
     }
@@ -206,6 +210,7 @@ fn topic_row(
     ui: &mut egui::Ui,
     subject: Option<&str>,
     topic: &Topic,
+    emphasis: usize,
     idle: bool,
     ask: &mut HandoutAsk,
     actions: &mut Actions,
@@ -250,6 +255,9 @@ fn topic_row(
             ask.button(ui, &t!("plan.handout"), HandoutScope::Topic(topic.id), idle);
             if topic.is_due(today) {
                 widgets::chip(ui, &t!("plan.review_due"), p.accent);
+            }
+            if emphasis > 0 {
+                widgets::chip(ui, &t!("plan.board_count", count = emphasis), p.muted);
             }
             widgets::chip(
                 ui,

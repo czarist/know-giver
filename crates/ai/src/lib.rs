@@ -5,11 +5,16 @@
 //! `models.fallback` when the main model is rate limited or unavailable.
 //! Prompts live in `crates/ai/prompts/` and follow `docs/tutor-prompts.md`.
 
+mod board;
 mod client;
 mod config;
 mod prompts;
 mod tasks;
 
+pub use board::{
+    AnswerDraft, BoardContext, BoardQuestionDraft, ExcerptDraft, chunk_text, extract_answer_key,
+    extract_board_excerpts, extract_board_questions, reference_block,
+};
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
 pub use tasks::{

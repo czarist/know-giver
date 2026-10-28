@@ -323,3 +323,75 @@ fn export_writes_file() {
         .unwrap();
     assert_eq!(std::fs::read_to_string(path).unwrap(), "# Progresso");
 }
+
+#[test]
+fn board_exam_feeds_quiz_without_model_calls() {
+    let (mut engine, _dir) = engine_with_plan();
+    engine.take_notices();
+    let plan = engine.active_plan().unwrap().id;
+    let topic = first_topic(&engine);
+    let question = |n: u32, topic_id, relevance| kg_study::NewBoardQuestion {
+        number: Some(n),
+        prompt: format!("Item {n} sobre crase."),
+        options: vec!["Certo".into(), "Errado".into()],
+        correct: Some((n % 2) as usize),
+        topic_id,
+        relevance,
+        reason: String::new(),
+    };
+    let mut questions: Vec<_> = (1..=5)
+        .map(|n| question(n, Some(topic), Relevance::Relevant))
+        .collect();
+    questions.push(question(6, None, Relevance::OutOfScope));
+    engine
+        .events_tx
+        .send(Event::BoardImported(Ok(board::BoardImport {
+            plan,
+            kind: DocumentKind::Exam,
+            file_name: "prova.pdf".into(),
+            text: "texto".into(),
+            questions,
+            excerpts: vec![],
+        })))
+        .unwrap();
+    engine.poll();
+
+    assert!(engine.take_notices().iter().any(|n| matches!(
+        n,
+        Notice::BoardImported {
+            used: 5,
+            set_aside: 1,
+            ..
+        }
+    )));
+    assert_eq!(engine.board_documents().len(), 1);
+    assert_eq!(engine.board_emphasis(topic), 5);
+
+    // Five real questions fill a five-question quiz: it is ready at once.
+    engine.handle(Command::StartQuiz(topic)).unwrap();
+    let quiz = engine.quiz().unwrap();
+    assert!(matches!(quiz.step, QuizStep::Question { index: 0, .. }));
+    assert_eq!(quiz.questions().len(), 5);
+    assert!(quiz.questions().iter().all(|q| q.from_board));
+
+    // Moving the set-aside question into use counts it for the topic.
+    let set_aside = engine
+        .board_questions()
+        .iter()
+        .find(|q| q.relevance == Relevance::OutOfScope)
+        .unwrap()
+        .id;
+    engine
+        .handle(Command::SetBoardItem {
+            item: BoardItem::Question(set_aside),
+            relevance: Relevance::Relevant,
+            topic: Some(topic),
+        })
+        .unwrap();
+    assert_eq!(engine.board_emphasis(topic), 6);
+    assert!(
+        engine
+            .board_reference(topic)
+            .contains("Item 1 sobre crase.")
+    );
+}

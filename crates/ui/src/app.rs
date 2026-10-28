@@ -12,6 +12,7 @@ pub enum Screen {
     #[default]
     Edital,
     Plan,
+    Board,
     Lesson,
     Quiz,
     Review,
@@ -20,9 +21,10 @@ pub enum Screen {
 }
 
 impl Screen {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
         Self::Edital,
         Self::Plan,
+        Self::Board,
         Self::Lesson,
         Self::Quiz,
         Self::Review,
@@ -34,6 +36,7 @@ impl Screen {
         match self {
             Self::Edital => t!("nav.edital"),
             Self::Plan => t!("nav.plan"),
+            Self::Board => t!("nav.board"),
             Self::Lesson => t!("nav.lesson"),
             Self::Quiz => t!("nav.quiz"),
             Self::Review => t!("nav.review"),
@@ -71,6 +74,9 @@ pub struct UiState {
     pub lesson_input: String,
     pub review_answer: String,
     pub confirm_delete: Option<PlanId>,
+    pub confirm_delete_doc: Option<kg_engine::DocumentId>,
+    /// Topic picked for a set-aside board item, before "use anyway".
+    pub board_choice: std::collections::HashMap<kg_engine::BoardItem, kg_engine::TopicId>,
     pub plan_view: PlanView,
 }
 
@@ -126,6 +132,8 @@ impl KnowGiverApp {
                 lesson_input: String::new(),
                 review_answer: String::new(),
                 confirm_delete: None,
+                confirm_delete_doc: None,
+                board_choice: std::collections::HashMap::new(),
                 plan_view: PlanView::default(),
             },
             toasts: Vec::new(),
@@ -341,6 +349,7 @@ impl eframe::App for KnowGiverApp {
                 match self.ui.screen {
                     Screen::Edital => screens::edital::show(self, ui),
                     Screen::Plan => screens::plan::show(self, ui),
+                    Screen::Board => screens::board::show(self, ui),
                     Screen::Lesson => screens::lesson::show(self, ui),
                     Screen::Quiz => screens::quiz::show(self, ui),
                     Screen::Review => screens::review::show(self, ui),

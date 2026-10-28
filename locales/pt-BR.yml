@@ -22,6 +22,7 @@ fatal:
 nav:
   edital: "Edital"
   plan: "Plano de estudo"
+  board: "Banca"
   lesson: "Aula"
   quiz: "Quiz"
   review: "Revisão"
@@ -93,6 +94,7 @@ plan:
   handout_progress: "Escrevendo a apostila: %{done} de %{total} tópicos"
   handout_missing: "%{count} tópicos ainda sem texto. Gerar tudo leva alguns minutos."
   handout_all_ready: "Todos os tópicos já têm texto."
+  board_count: "%{count} na prova"
 
 lesson:
   title: "Aula"
@@ -129,6 +131,7 @@ quiz:
   progress: "Questão %{n} de %{total}"
   correct: "Resposta certa."
   wrong: "Não foi dessa vez."
+  from_board: "Questão de prova"
   next: "Próxima questão"
   see_result: "Ver resultado"
   score: "%{correct} de %{total}"
@@ -184,6 +187,34 @@ export:
     week: "Semana"
     status: "Situação"
     next_review: "Próxima revisão"
+
+board:
+  title: "Material da banca"
+  subtitle: "Provas anteriores e materiais da banca para deixar quizzes, aulas e apostilas mais parecidos com a prova."
+  upload_hint: "Envie PDFs de provas anteriores ou de material da banca. A IA separa o que é do seu edital e deixa de lado o resto (outros cargos, matérias que não caem)."
+  add_exam: "Adicionar prova anterior"
+  add_material: "Adicionar material da banca"
+  add_key: "Anexar gabarito"
+  add_key_hint: "PDF com o gabarito desta prova. As respostas são ligadas pelo número da questão."
+  reading: "Lendo %{file}…"
+  analyzing: "Analisando %{file}: parte %{done} de %{total}"
+  no_documents: "Nenhum material ainda. É opcional: tudo funciona sem ele."
+  doc_stats: "Adicionado em %{date} · %{used} aproveitados · %{set_aside} deixados de lado"
+  unanswered: "%{count} questões sem gabarito: anexe o gabarito para usá-las nos quizzes."
+  confirm_delete: "Excluir este arquivo e tudo o que veio dele?"
+  set_aside: "Deixados de lado (%{count})"
+  set_aside_hint: "Itens que a IA considerou fora do seu edital. Se algum serve, escolha o tópico e use mesmo assim."
+  used: "Aproveitados (%{count})"
+  item_question: "Questão"
+  item_excerpt: "Trecho"
+  partial: "parcial"
+  pick_topic: "Escolha o tópico"
+  use_anyway: "Usar mesmo assim"
+  set_aside_action: "Deixar de lado"
+  kind:
+    exam: "Prova"
+    answer_key: "Gabarito"
+    material: "Material"
 
 handout:
   whole_plan: "Plano completo"
@@ -269,6 +300,8 @@ notice:
   nothing_heard: "Não ouvi nada. Tente falar um pouco mais perto do microfone."
   exported: "Relatório salvo em %{path}."
   handout_saved: "Apostila salva em %{path}."
+  board_imported: "%{used} itens aproveitados, %{set_aside} deixados de lado por não estarem no edital."
+  answer_key: "Gabarito aplicado a %{count} questões."
 
 error:
   no_edital: "Envie um edital antes de gerar o plano."

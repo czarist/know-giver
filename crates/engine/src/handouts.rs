@@ -261,6 +261,7 @@ fn topic_from_draft(draft: HandoutDraft, context: &TopicContext, seed: u64) -> T
                 options: q.options,
                 correct: q.correct,
                 explanation: q.explanation,
+                from_board: false,
             };
             if question.correct < question.options.len() {
                 question.shuffle_options(seed.wrapping_add(i as u64));
@@ -321,6 +322,7 @@ mod tests {
             exam: "TJCE".into(),
             subject: "Português".into(),
             topic: "Crase".into(),
+            ..TopicContext::default()
         };
         let topic = topic_from_draft(draft, &context, 42);
         assert_eq!(topic.topic, "Crase");

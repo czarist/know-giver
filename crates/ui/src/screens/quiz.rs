@@ -60,6 +60,9 @@ fn question_view(
             .color(p.muted),
     );
     ui.add(egui::ProgressBar::new(index as f32 / total.max(1) as f32).desired_height(4.0));
+    if question.from_board {
+        widgets::chip(ui, &t!("quiz.from_board"), p.accent);
+    }
     ui.add_space(8.0);
     ui.label(RichText::new(&question.prompt).size(18.0));
     ui.add_space(8.0);

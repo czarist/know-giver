@@ -5,6 +5,8 @@ Concurso: {exam}
 Matéria: {subject}
 Tópico: {topic}
 
+{reference}
+
 Como conduzir a aula:
 - Fale em português do Brasil, a menos que o aluno peça outro idioma.
 - Explique com base no conteúdo cobrado em concursos para este tópico. Não fuja do tópico.
