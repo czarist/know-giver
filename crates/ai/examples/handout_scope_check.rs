@@ -12,12 +12,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir(&output)?;
     let context = TopicContext {
         exam: "Concurso de teste — Técnico Administrativo".into(),
-        subject: "Língua Portuguesa".into(), topic: "Crase".into(),
+        subject: "Língua Portuguesa".into(),
+        topic: "Crase".into(),
         reference: "Questão da banca: Em 'vou à escola', explique o acento grave.".into(),
     };
     for (name, edital) in [
-        ("multi-role", "CONTEÚDO PROGRAMÁTICO\nTÉCNICO ADMINISTRATIVO: Língua Portuguesa: emprego do acento indicativo de crase.\nENGENHEIRO: cálculo diferencial, integrais, resistência dos materiais. Esses assuntos não são exigidos do Técnico Administrativo."),
-        ("truncated", "CONTEÚDO PROGRAMÁTICO\nTÉCNICO ADMINISTRATIVO: Língua Portuguesa: emprego do acento indicativo de crase.\n[Restante do documento não incluído neste trecho.]"),
+        (
+            "multi-role",
+            "CONTEÚDO PROGRAMÁTICO\nTÉCNICO ADMINISTRATIVO: Língua Portuguesa: emprego do acento indicativo de crase.\nENGENHEIRO: cálculo diferencial, integrais, resistência dos materiais. Esses assuntos não são exigidos do Técnico Administrativo.",
+        ),
+        (
+            "truncated",
+            "CONTEÚDO PROGRAMÁTICO\nTÉCNICO ADMINISTRATIVO: Língua Portuguesa: emprego do acento indicativo de crase.\n[Restante do documento não incluído neste trecho.]",
+        ),
     ] {
         let draft = kg_ai::generate_handout(&client, &context, edital)?;
         let path = output.join(format!("{name}.txt"));

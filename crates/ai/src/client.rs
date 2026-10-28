@@ -1,5 +1,6 @@
 //! Minimal blocking client for `/chat/completions`.
 
+use std::io::{BufRead, BufReader, Read};
 use std::time::Duration;
 
 use base64::Engine as _;
@@ -145,6 +146,70 @@ impl Client {
         }
     }
 
+    /// Streams content deltas. A fallback is allowed only before any delta was delivered.
+    pub(crate) fn chat_stream(
+        &self,
+        request: &ChatRequest<'_>,
+        mut on_delta: impl FnMut(&str),
+    ) -> Result<String, AiError> {
+        let mut emitted = false;
+        let result = self.send_stream(request, |delta| {
+            emitted = true;
+            on_delta(delta);
+        });
+        match result {
+            Err(err) if !emitted && should_fall_back(&err) => {
+                let text = self.chat(request)?;
+                on_delta(&text);
+                Ok(text)
+            }
+            other => other,
+        }
+    }
+
+    fn send_stream(
+        &self,
+        request: &ChatRequest<'_>,
+        on_delta: impl FnMut(&str),
+    ) -> Result<String, AiError> {
+        let url = self.config.chat_url();
+        let mut body = json!({
+            "model": self.config.models.for_task(request.task),
+            "messages": request.messages,
+            "max_tokens": request.max_tokens,
+            "temperature": 0.7,
+            "stream": true,
+        });
+        if self.config.fast_responses {
+            body["reasoning_effort"] = json!("low");
+        }
+        let mut call = self.agent.post(&url).header("Accept", "text/event-stream");
+        if !self.config.api_key.is_empty() {
+            call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
+        }
+        let mut response = call.send_json(&body).map_err(|e| AiError::Connection {
+            url: url.clone(),
+            reason: e.to_string(),
+        })?;
+        let status = response.status().as_u16();
+        match status {
+            200..=299 => {}
+            401 | 403 => return Err(AiError::Auth { status }),
+            429 => return Err(AiError::RateLimited),
+            _ => {
+                return Err(AiError::Http {
+                    status,
+                    body: "stream request rejected".into(),
+                });
+            }
+        }
+        // Bound malformed or endless streams without buffering a complete response.
+        read_sse(
+            BufReader::new(response.body_mut().as_reader().take(2 * 1024 * 1024)),
+            on_delta,
+        )
+    }
+
     fn send(&self, model: &str, request: &ChatRequest<'_>) -> Result<String, AiError> {
         let mut body = json!({
             "model": model,
@@ -172,7 +237,7 @@ impl Client {
             call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
         }
         let started = std::time::Instant::now();
-        let mut response = call.send_json(&body).map_err(|e| AiError::Connection {
+        let mut response = call.send_json(body).map_err(|e| AiError::Connection {
             url: url.clone(),
             reason: e.to_string(),
         })?;
@@ -234,4 +299,96 @@ fn should_fall_back(err: &AiError) -> bool {
 
 fn truncate(text: &str) -> String {
     text.chars().take(300).collect()
+}
+
+fn read_sse(mut reader: impl BufRead, mut on_delta: impl FnMut(&str)) -> Result<String, AiError> {
+    let mut text = String::new();
+    let mut event = String::new();
+    let mut completed = false;
+    loop {
+        let mut line = String::new();
+        let bytes = reader
+            .read_line(&mut line)
+            .map_err(|err| AiError::InvalidResponse(format!("could not read stream: {err}")))?;
+        let line = line.trim_end_matches(['\r', '\n']);
+        if line.is_empty() || bytes == 0 {
+            if !event.is_empty() {
+                if event.trim() == "[DONE]" {
+                    completed = true;
+                    break;
+                }
+                let value: serde_json::Value = serde_json::from_str(&event).map_err(|err| {
+                    AiError::InvalidResponse(format!("invalid stream event: {err}"))
+                })?;
+                if value.get("error").is_some() {
+                    return Err(AiError::InvalidResponse(
+                        "server reported a stream error".into(),
+                    ));
+                }
+                if let Some(choice) = value["choices"]
+                    .as_array()
+                    .and_then(|choices| choices.first())
+                {
+                    if let Some(delta) = choice["delta"]["content"]
+                        .as_str()
+                        .filter(|s| !s.is_empty())
+                    {
+                        text.push_str(delta);
+                        on_delta(delta);
+                    }
+                    if choice["finish_reason"].as_str().is_some() {
+                        completed = true;
+                    }
+                }
+                event.clear();
+            }
+            if bytes == 0 {
+                break;
+            }
+        } else if let Some(data) = line.strip_prefix("data:") {
+            if !event.is_empty() {
+                event.push('\n');
+            }
+            event.push_str(data.strip_prefix(' ').unwrap_or(data));
+        }
+    }
+    if !completed || text.trim().is_empty() {
+        return Err(AiError::InvalidResponse(
+            "stream ended without a complete answer".into(),
+        ));
+    }
+    Ok(text)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sse_delivers_text_before_done_and_keeps_unicode() {
+        let data = concat!(
+            ": ping\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"Crase é \"}}]}\n\n",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"a união.\"},\"finish_reason\":\"stop\"}]}\r\n\r\n",
+            "data: [DONE]\n\n",
+        );
+        let mut deltas = Vec::new();
+        let result = read_sse(BufReader::with_capacity(1, data.as_bytes()), |delta| {
+            deltas.push(delta.to_owned())
+        })
+        .unwrap();
+        assert_eq!(result, "Crase é a união.");
+        assert_eq!(deltas, ["Crase é ", "a união."]);
+    }
+
+    #[test]
+    fn interrupted_or_failed_stream_is_not_a_complete_answer() {
+        for data in [
+            "data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n",
+            "data: {\"error\":{\"message\":\"failed\"}}\n\n",
+            "data: [DONE]\n\n",
+        ] {
+            assert!(read_sse(data.as_bytes(), |_| {}).is_err());
+        }
+    }
 }
