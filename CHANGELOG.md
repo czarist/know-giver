@@ -4,6 +4,12 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.1] - 2026-10-28
+
+### Fixed
+- Two clippy lints in the audio crate (`as_chunks` for Piper PCM decoding,
+  `is_multiple_of` for WAV channel checks) that failed `-D warnings` on Rust 1.99.
+
 ## [0.15.0] - 2026-10-27
 
 ### Added

@@ -261,7 +261,7 @@ pub(crate) fn decode_wav(bytes: &[u8]) -> Result<AudioClip, AudioError> {
         }
     };
     if samples.is_empty()
-        || samples.len() % usize::from(spec.channels) != 0
+        || !samples.len().is_multiple_of(usize::from(spec.channels))
         || samples.iter().any(|s| !s.is_finite())
     {
         return Err(AudioError::Tts(
