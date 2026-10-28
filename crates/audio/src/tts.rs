@@ -14,13 +14,25 @@ pub struct SpeechOptions {
     pub rate: f32,
     /// Semitones; synthesis speed is compensated before shifting playback pitch.
     pub pitch: f32,
+    /// Piper intonation variation (`--noise_scale`); higher is livelier.
+    pub expressiveness: f32,
+    /// Piper rhythm variation (`--noise_w`); higher is less regular.
+    pub rhythm_variation: f32,
 }
+
+/// Piper's usual defaults for medium voices.
+pub const DEFAULT_EXPRESSIVENESS: f32 = 0.667;
+pub const DEFAULT_RHYTHM_VARIATION: f32 = 0.8;
+pub const EXPRESSIVENESS_RANGE: std::ops::RangeInclusive<f32> = 0.3..=1.0;
+pub const RHYTHM_VARIATION_RANGE: std::ops::RangeInclusive<f32> = 0.3..=1.2;
 
 impl Default for SpeechOptions {
     fn default() -> Self {
         Self {
             rate: 0.95,
             pitch: 0.0,
+            expressiveness: DEFAULT_EXPRESSIVENESS,
+            rhythm_variation: DEFAULT_RHYTHM_VARIATION,
         }
     }
 }
@@ -78,7 +90,10 @@ impl Synthesizer {
                     .piper_exe()
                     .ok_or_else(|| AudioError::ModelMissing("piper".into()))?;
                 let (model, json) = store.voice_files(voice);
-                Backend::Piper(PiperTts::new(exe, model, &json, 1.0 / rate)?)
+                Backend::Piper(
+                    PiperTts::new(exe, model, &json, 1.0 / rate)?
+                        .with_variation(options.expressiveness, options.rhythm_variation),
+                )
             }
             Voice::Kokoro(voice) => Backend::Kokoro {
                 exe: store
@@ -470,6 +485,7 @@ mod tests {
         let (rate, pitch) = SpeechOptions {
             rate: 1.2,
             pitch: 6.0,
+            ..SpeechOptions::default()
         }
         .factors()
         .unwrap();
@@ -477,7 +493,7 @@ mod tests {
         assert!(
             SpeechOptions {
                 rate: f32::NAN,
-                pitch: 0.0
+                ..SpeechOptions::default()
             }
             .factors()
             .is_err()

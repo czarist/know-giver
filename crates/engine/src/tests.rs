@@ -4,6 +4,7 @@
 use kg_ai::{PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SubjectDraft, TopicDraft};
 use kg_pdf::{Edital, EditalText};
 
+use crate::lesson::LessonEvent;
 use crate::practice::PracticeEvent;
 use crate::*;
 
@@ -472,4 +473,44 @@ fn onboarding_only_without_plans() {
     assert!(!engine.needs_onboarding());
     let (with_plan, _dir) = engine_with_plan();
     assert!(!with_plan.needs_onboarding());
+}
+
+#[test]
+fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    let session = engine.lesson().unwrap().id;
+    for text in ["Olá!", "Hoje vamos ver crase."] {
+        engine
+            .events_tx
+            .send(Event::Lesson(LessonEvent::Sentence {
+                session,
+                text: text.into(),
+            }))
+            .unwrap();
+    }
+    engine.poll();
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.turns.len(), 1);
+    assert_eq!(lesson.turns[0].text, "Olá! Hoje vamos ver crase.");
+    // No voice installed here: the tutor is still "thinking" until the end.
+    assert_eq!(lesson.phase, LessonPhase::Thinking);
+
+    engine
+        .events_tx
+        .send(Event::Lesson(LessonEvent::Reply {
+            session,
+            result: Ok(kg_ai::TutorReply {
+                speech: "Olá! Hoje vamos ver crase. Pronto?".into(),
+                board: vec!["Crase = a + a".into()],
+            }),
+        }))
+        .unwrap();
+    engine.poll();
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.turns.len(), 1);
+    assert_eq!(lesson.turns[0].text, "Olá! Hoje vamos ver crase. Pronto?");
+    assert_eq!(lesson.board, vec!["Crase = a + a"]);
+    assert_eq!(lesson.phase, LessonPhase::Idle);
 }

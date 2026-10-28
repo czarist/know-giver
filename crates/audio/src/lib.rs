@@ -24,7 +24,10 @@ pub use piper::PiperTts;
 pub use playback::Speaker;
 pub use signal::{resample, soften, split_for_speech};
 pub use speech_text::normalize_for_speech;
-pub use tts::{SpeechOptions, Synthesizer};
+pub use tts::{
+    DEFAULT_EXPRESSIVENESS, DEFAULT_RHYTHM_VARIATION, EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE,
+    SpeechOptions, Synthesizer,
+};
 pub use voice::{CloudSpeechConfig, KokoroVoice, TtsBackend, Voice, VoiceGender};
 pub use whisper::WhisperStt;
 

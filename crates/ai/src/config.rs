@@ -10,6 +10,8 @@ pub enum Task {
     Quiz,
     Correction,
     Handout,
+    /// Solves handout exercises blind to check their answer keys.
+    Verify,
     Vision,
 }
 
@@ -27,6 +29,9 @@ pub struct ModelSet {
     /// Writes study handouts. Empty means "same as the study plan model",
     /// which keeps settings saved before this field existed working.
     pub handout: String,
+    /// Solves handout exercises without the key. Empty means "same as the
+    /// correction model"; a different model family catches more wrong keys.
+    pub verifier: String,
     /// Optional OCR model. Empty disables sending scanned PDF pages to the endpoint.
     pub vision: String,
     /// Used when the task's model is rate limited or unavailable.
@@ -43,6 +48,7 @@ impl Default for ModelSet {
             quiz: model.clone(),
             correction: model.clone(),
             handout: String::new(),
+            verifier: String::new(),
             vision: String::new(),
             fallback: model,
         }
@@ -58,6 +64,8 @@ impl ModelSet {
             Task::Correction => &self.correction,
             Task::Handout if self.handout.trim().is_empty() => &self.study_plan,
             Task::Handout => &self.handout,
+            Task::Verify if self.verifier.trim().is_empty() => &self.correction,
+            Task::Verify => &self.verifier,
             Task::Vision => &self.vision,
         }
     }
@@ -120,6 +128,7 @@ impl AiConfig {
             ("MODEL_CORRECTION", &mut m.correction),
             ("MODEL_FALLBACK", &mut m.fallback),
             ("MODEL_HANDOUT", &mut m.handout),
+            ("MODEL_VERIFIER", &mut m.verifier),
             ("MODEL_VISION", &mut m.vision),
         ] {
             if let Some(value) = get(key) {

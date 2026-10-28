@@ -2,20 +2,25 @@
 
 ## Current Status
 
-Version 0.15.2. The implementation below is integrated; unresolved compatibility,
-quality and hardware checks remain explicitly open. Work was closed at the user's
-request to limit further cost; this is not a claim that every roadmap item is finished.
-Work uses a separate branch per feature, merged into `main`, with an annotated tag
-per release (`v0.15.2`). The old `feat/roadmap-v0.8` handoff is superseded.
+Version 0.17.0. Everything an agent can build and check without a human ear, a
+microphone or other platforms is done. What remains open needs a person or hardware
+(listed under "Not yet verified"). Each release is a short-lived branch merged into
+`main` with an annotated tag.
 
 ### Handoff for the next agent
 
 **Next up, in order:**
-1. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
-   voice quality, microphone loop and native packaging on their actual platforms.
+1. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
+   choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
+   speech; installer build and install test.
+2. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
+   claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
+   review of each finished reply shown as a correction, or stronger prompting.
+3. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
+   and compare the drop rate with `handout_check`.
 
-Windows Kokoro voices are selectable. The pinned runtime is launched from a sibling
-copy with a UTF-8 code page. Piper stays the default until the listening comparison.
+Windows Kokoro voices are selectable. Piper stays the default until the listening
+comparison.
 
 **How the code is organized:** `app → ui → engine → {study, ai, audio, pdf, handout}`.
 Engine owns state; slow work runs in workers and returns as events applied in
@@ -94,9 +99,12 @@ Inno Setup 6).
       (both checked examples stayed on topic)
 - [x] Review pass for factual/exercise errors: content review plus blind solve of every
       exercise, keeping only exercises whose independent answer matches the key (v0.16.0)
-- [ ] Measure the residual error rate. Both models can agree on a wrong key: in the live
-      crase check, a kept exercise accepted "à semana passada" where "na semana passada"
-      is correct. Consider a different model family for the blind solve
+- [x] Measure the residual error rate (v0.17.0): over 4 topics in 3 subjects the review
+      made 24 corrections and the blind solve dropped 1 of 20 exercises (5%). Errors still
+      slip through: both models agreed on "à semana passada" (should be "na semana
+      passada"), and the reviewer itself wrote "advérbial" (should be "adverbial")
+- [x] Optional verifier model (`MODEL_VERIFIER`) so a different family can solve blind
+- [ ] Compare the drop rate with a verifier from another model family
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
@@ -146,7 +154,8 @@ and sound somewhat robotic. A female voice needs another engine.
 
 ### Quick wins on the current voice
 - [x] Longer pauses between sentences (`--sentence_silence`), slightly slower default speed
-- [ ] Tune Piper `noise_scale` / `noise_w` by listening tests
+- [x] Expose Piper `noise_scale` / `noise_w` in Settings (expressiveness, rhythm)
+- [ ] Choose their defaults by listening tests (needs a person)
 - [x] Text normalization before speech: legal abbreviations, ordinals, dates, law numbers
       and years, roman numerals after "inciso"/"título", percentages, money, brackets
 - [x] Tutor prompt: short spoken sentences, no parentheses or lists, natural connectors
@@ -156,11 +165,12 @@ and sound somewhat robotic. A female voice needs another engine.
 ### More natural engine (local)
 - [x] Reproducible local listening harness (`kokoro_check`) for the three Portuguese
       voices, pinned runtime/model instructions, timings and logs
-- [ ] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
-      (female), `pm_alex` and `pm_santa` (male)
+- [x] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
+      (female), `pm_alex` and `pm_santa` (male), selectable on Windows since v0.15.2
 - [x] Run it like Piper as a cancellable child process, with model installation/removal
 - [x] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
 - [ ] Listening test against Piper on real tutor answers before making it the default
+      (needs a person)
 
 ### Optional cloud voices (off by default)
 - [x] OpenAI-compatible `/v1/audio/speech` backend: supports the contract used by OpenAI, LiteLLM, or a local
@@ -176,7 +186,9 @@ and sound somewhat robotic. A female voice needs another engine.
 ## Not yet verified
 - Kokoro Portuguese listening comparison against Piper on real tutor answers. Accented
   text now reaches the Windows runtime; subjective quality is still open.
-- Handout factual correctness: live scope checks passed but answer errors were observed.
+- Handout factual correctness: the review pass reduces errors (see Phase 5) but does not
+  eliminate them.
+- Tutor answers in lessons are not fact-checked.
 - Voice loop with a real microphone and speakers.
 - Installer build/run; Inno Setup 6 compiler was prepared locally but the final release
   installer was not built before the user requested closing work.
@@ -184,7 +196,8 @@ and sound somewhat robotic. A female voice needs another engine.
 
 ## Next ideas
 - [x] Streaming AI client with silent whiteboard metadata and sentence callbacks.
-- [ ] Stream sentences into lesson playback before the full reply arrives.
+- [x] Stream sentences into lesson playback before the full reply arrives (v0.17.0:
+      first sentence at 2.7 s instead of 10.8 s in a live check).
 - [x] Optional GPU (CUDA) build of candle; benchmark on supported hardware remains pending.
 - [x] OCR fallback for scanned editais (vision model).
 - [x] Linux/macOS native packaging scripts and CI; native execution remains unverified.

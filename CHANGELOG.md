@@ -4,6 +4,26 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2026-10-28
+
+### Added
+- The tutor starts speaking while its answer is still arriving. Each complete sentence
+  from the streamed reply goes straight to a speech queue and to the live captions; the
+  final reply then replaces the captions and fills the whiteboard. In a live check the
+  first sentence arrived after 2.7 s, against 10.8 s for the full reply that the voice
+  used to wait for.
+- Piper voice tuning in Settings: intonation expressiveness (`--noise_scale`) and rhythm
+  variation (`--noise_w`), to adjust by ear with "Listen to a sample".
+- Optional exercise verifier model (`MODEL_VERIFIER`, or Settings) for the blind solve of
+  handout exercises; empty uses the correction model.
+- `stream_check` example (first-sentence latency) and a multi-topic `handout_check`
+  that reports corrections and dropped exercises.
+
+### Measured
+- Handout review over 4 topics in 3 subjects: 24 content corrections, 1 of 20 exercises
+  dropped by the blind solve (5%). The reviewer also occasionally introduces small
+  errors of its own (for example a misspelling), see ROADMAP.
+
 ## [0.16.0] - 2026-10-28
 
 ### Added

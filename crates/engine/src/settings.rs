@@ -32,6 +32,10 @@ pub struct Settings {
     pub tts_backend: TtsBackend,
     pub cloud_speech: CloudSpeechConfig,
     pub speech_pitch: f32,
+    /// Piper intonation variation (`noise_scale`).
+    pub speech_expressiveness: f32,
+    /// Piper rhythm variation (`noise_w`).
+    pub speech_rhythm_variation: f32,
     pub avatar_style: AvatarStyle,
     /// Speech speed multiplier: 1.0 is normal, 1.2 is 20% faster.
     pub speech_rate: f32,
@@ -54,6 +58,8 @@ impl Default for Settings {
             tts_backend: TtsBackend::default(),
             cloud_speech: CloudSpeechConfig::default(),
             speech_pitch: 0.0,
+            speech_expressiveness: kg_audio::DEFAULT_EXPRESSIVENESS,
+            speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
             avatar_style: AvatarStyle::default(),
             speech_rate: 0.95,
             quiz_size: 5,
@@ -100,6 +106,23 @@ impl Settings {
         } else {
             0.0
         };
+        let clamp = |value: f32, range: std::ops::RangeInclusive<f32>, default: f32| {
+            if value.is_finite() {
+                value.clamp(*range.start(), *range.end())
+            } else {
+                default
+            }
+        };
+        self.speech_expressiveness = clamp(
+            self.speech_expressiveness,
+            kg_audio::EXPRESSIVENESS_RANGE,
+            kg_audio::DEFAULT_EXPRESSIVENESS,
+        );
+        self.speech_rhythm_variation = clamp(
+            self.speech_rhythm_variation,
+            kg_audio::RHYTHM_VARIATION_RANGE,
+            kg_audio::DEFAULT_RHYTHM_VARIATION,
+        );
     }
 
     /// Saves settings. A key equal to the `.env` one is not copied into the

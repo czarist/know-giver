@@ -32,6 +32,7 @@ pub use kg_audio::{
     AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, TtsBackend, Voice,
     VoiceGender, WhisperModel,
 };
+pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
 pub use kg_pdf::{Edital, PdfError};
 pub use kg_study::{
@@ -586,6 +587,8 @@ impl Engine {
             || settings.tts_backend != self.settings.tts_backend
             || settings.cloud_speech != self.settings.cloud_speech
             || settings.speech_pitch != self.settings.speech_pitch
+            || settings.speech_expressiveness != self.settings.speech_expressiveness
+            || settings.speech_rhythm_variation != self.settings.speech_rhythm_variation
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;

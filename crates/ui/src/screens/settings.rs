@@ -125,6 +125,7 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
                     (t!("settings.ai.model_quiz"), &mut models.quiz),
                     (t!("settings.ai.model_correction"), &mut models.correction),
                     (t!("settings.ai.model_handout"), &mut models.handout),
+                    (t!("settings.ai.model_verifier"), &mut models.verifier),
                     (t!("settings.ai.model_vision"), &mut models.vision),
                     (t!("settings.ai.model_fallback"), &mut models.fallback),
                 ] {
@@ -192,6 +193,30 @@ pub(crate) fn voice_section(
 
                 ui.label(t!("settings.voice.pitch"));
                 ui.add(egui::Slider::new(&mut draft.speech_pitch, -6.0..=6.0).step_by(0.5));
+                ui.end_row();
+
+                ui.label(t!("settings.voice.expressiveness"))
+                    .on_hover_text(t!("settings.voice.piper_only"));
+                ui.add(
+                    egui::Slider::new(
+                        &mut draft.speech_expressiveness,
+                        kg_engine::EXPRESSIVENESS_RANGE,
+                    )
+                    .step_by(0.05)
+                    .fixed_decimals(2),
+                );
+                ui.end_row();
+
+                ui.label(t!("settings.voice.rhythm"))
+                    .on_hover_text(t!("settings.voice.piper_only"));
+                ui.add(
+                    egui::Slider::new(
+                        &mut draft.speech_rhythm_variation,
+                        kg_engine::RHYTHM_VARIATION_RANGE,
+                    )
+                    .step_by(0.05)
+                    .fixed_decimals(2),
+                );
                 ui.end_row();
 
                 ui.label(t!("settings.voice.avatar"));

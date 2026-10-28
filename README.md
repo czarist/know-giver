@@ -14,7 +14,8 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 - **Edital → plan**: reads the PDF locally, sends only the syllabus to the AI, and builds
   a plan for your role, number of weeks and hours per week. Several editais can be kept.
 - **Voice lessons**: local speech recognition (Whisper), tutor via any OpenAI-compatible
-  model, spoken answers with a Brazilian Portuguese Piper voice. Hands-free mode, or type.
+  model, spoken answers with a Brazilian Portuguese Piper voice. The tutor starts
+  speaking with the first sentence of its answer. Hands-free mode, or type.
 - **Quizzes**: multiple-choice questions in the style of exam boards, with explanations.
 - **Spaced review (SM-2)**: topics come back when you are about to forget them. The AI
   asks a recall question and grades your answer, or you grade yourself.
@@ -101,14 +102,6 @@ For the next local voice backend, see the [Kokoro evaluation](docs/kokoro-evalua
 Piper remains the default. See [validation notes](docs/validation-v0.15.md) for remaining
 voice and handout-quality limitations, and [native/CUDA builds](docs/builds.md) for
 optional platform tooling.
-
-## Contributors
-
-- Cezar Trentin ([@czarist](https://github.com/czarist)), author
-- Claude (Anthropic): AI coding assistant
-- Codex (OpenAI): AI coding assistant, v0.14–v0.15
-- Grok (xAI): AI coding assistant, v0.15.2. Grok has no GitHub account, so it does not
-  appear in GitHub's contributor list.
 
 ## Credits
 

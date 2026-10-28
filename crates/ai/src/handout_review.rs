@@ -115,7 +115,7 @@ fn solve_blind(
         ChatMessage::system(fill(prompts::EXERCISE_CHECK, &topic.values())),
         ChatMessage::user(blind_questions(exercises)),
     ];
-    let reply: BlindReply = chat_json(client, Task::Correction, &messages, 8_000)?;
+    let reply: BlindReply = chat_json(client, Task::Verify, &messages, 8_000)?;
     Ok(reply
         .answers
         .iter()

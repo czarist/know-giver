@@ -17,6 +17,8 @@ pub struct PiperTts {
     sample_rate: u32,
     /// Speech speed: >1.0 is slower, <1.0 is faster.
     length_scale: f32,
+    /// `--noise_scale` and `--noise_w`; `None` keeps the voice's defaults.
+    variation: Option<(f32, f32)>,
 }
 
 impl PiperTts {
@@ -40,7 +42,33 @@ impl PiperTts {
             model,
             sample_rate,
             length_scale: length_scale.clamp(0.25, 4.0),
+            variation: None,
         })
+    }
+
+    /// Sets intonation (`noise_scale`) and rhythm (`noise_w`) variation,
+    /// clamped to ranges that keep speech intelligible.
+    pub fn with_variation(mut self, noise_scale: f32, noise_w: f32) -> Self {
+        let clamp = |value: f32, range: std::ops::RangeInclusive<f32>, default: f32| {
+            if value.is_finite() {
+                value.clamp(*range.start(), *range.end())
+            } else {
+                default
+            }
+        };
+        self.variation = Some((
+            clamp(
+                noise_scale,
+                crate::tts::EXPRESSIVENESS_RANGE,
+                crate::tts::DEFAULT_EXPRESSIVENESS,
+            ),
+            clamp(
+                noise_w,
+                crate::tts::RHYTHM_VARIATION_RANGE,
+                crate::tts::DEFAULT_RHYTHM_VARIATION,
+            ),
+        ));
+        self
     }
 
     pub fn synthesize(&self, text: &str) -> Result<AudioClip, AudioError> {
@@ -65,6 +93,13 @@ impl PiperTts {
             .arg(format!("{:.6}", self.length_scale))
             .arg("--sentence_silence")
             .arg(SENTENCE_SILENCE_SECS);
+        if let Some((noise_scale, noise_w)) = self.variation {
+            command
+                .arg("--noise_scale")
+                .arg(format!("{noise_scale:.3}"))
+                .arg("--noise_w")
+                .arg(format!("{noise_w:.3}"));
+        }
         if let Some(dir) = exe.parent() {
             command.current_dir(dir);
         }
