@@ -38,7 +38,7 @@ impl Engine {
             Ok(edital) => self.import = ImportState::Ready(edital),
             Err(err) => {
                 self.import = ImportState::Failed;
-                self.notices.push(Notice::Error(err.into()));
+                self.notices.push(Notice::Error(err));
             }
         }
     }
