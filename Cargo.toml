@@ -24,6 +24,9 @@ kg-handout = { path = "crates/handout" }
 candle-core = "0.11"
 candle-nn = "0.11"
 candle-transformers = "0.11"
+bzip2 = "0.6"
+hound = "3.5"
+tar = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
 cpal = "0.18"
 directories = "6"
