@@ -4,7 +4,7 @@ members = ["crates/*"]
 default-members = ["crates/app"]
 
 [workspace.package]
-version = "0.19.0"
+version = "0.19.1"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"

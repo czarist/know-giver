@@ -87,6 +87,7 @@ plan:
   prepare_writing: "Escrevendo e revisando: %{topics}"
   prepare_saving: "Montando o PDF completo"
   prepare_cancelling: "Cancelando depois dos tópicos em andamento"
+  prepare_paused: "O servidor da IA pediu uma pausa; continuando em %{seconds} s, sem perder o que já foi feito"
   prepare_count: "%{done} de %{total} tópicos prontos"
   prepare_left: "faltam cerca de %{time}"
   prepare_long: "isso pode demorar alguns minutos"

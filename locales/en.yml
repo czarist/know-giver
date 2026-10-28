@@ -87,6 +87,7 @@ plan:
   prepare_writing: "Writing and reviewing: %{topics}"
   prepare_saving: "Putting the full PDF together"
   prepare_cancelling: "Cancelling after the topics in progress"
+  prepare_paused: "The AI server asked for a pause; resuming in %{seconds} s without losing what is done"
   prepare_count: "%{done} of %{total} topics ready"
   prepare_left: "about %{time} left"
   prepare_long: "this can take a few minutes"

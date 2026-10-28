@@ -7,19 +7,20 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use kg_ai::{AiError, QuestionDraft, TopicContext};
+use kg_ai::{AiError, QuestionDraft, Throttle, TopicContext};
 use kg_handout::{Document, Labels, TopicHandout};
 use kg_study::TopicId;
 
 use crate::handouts::{HandoutSource, seed, write_pdf, write_topic};
 use crate::{Engine, EngineError, Event, Notice};
 
-/// Topics prepared at the same time. Each one makes several requests, so
-/// more would run into rate limits.
+/// Topics prepared at the same time. Requests are also paced by a shared
+/// [`Throttle`], which slows down when the server asks to.
 const PARALLEL_TOPICS: usize = 3;
 /// Questions kept per topic; each quiz draws from them.
 pub(crate) const QUIZ_BANK_SIZE: u32 = 10;
-/// Waits before retrying a request the server turned away.
+/// Waits before retrying when the server cannot be reached. Rate limits are
+/// handled per request by the throttle.
 const RETRY_WAITS: [Duration; 2] = [Duration::from_secs(15), Duration::from_secs(45)];
 
 /// The translated words of the PDF, decided by the UI. The file goes to
@@ -45,9 +46,15 @@ pub struct PrepareJob {
     failed: Arc<AtomicUsize>,
     working_on: Arc<Mutex<Vec<String>>>,
     cancel: Arc<AtomicBool>,
+    throttle: Arc<Throttle>,
 }
 
 impl PrepareJob {
+    /// How long the AI server asked everyone to wait, if it did.
+    pub fn paused_for(&self) -> Option<Duration> {
+        self.throttle.paused_for()
+    }
+
     /// Topics finished (successfully or not).
     pub fn done(&self) -> usize {
         self.done.load(Ordering::Relaxed)
@@ -104,6 +111,12 @@ struct Item {
     has_quiz_bank: bool,
 }
 
+/// What is ready for one topic while the job runs.
+struct Ready {
+    handout: Option<TopicHandout>,
+    quiz_bank: bool,
+}
+
 impl Engine {
     pub fn prepare_job(&self) -> Option<&PrepareJob> {
         self.prepare_job.as_ref()
@@ -154,13 +167,16 @@ impl Engine {
             });
         }
 
+        let cancel = Arc::new(AtomicBool::new(false));
+        let throttle = Arc::new(Throttle::new(Arc::clone(&cancel)));
         let job = PrepareJob {
             total: items.len(),
             started: Instant::now(),
             done: Arc::default(),
             failed: Arc::default(),
             working_on: Arc::default(),
-            cancel: Arc::default(),
+            cancel,
+            throttle: Arc::clone(&throttle),
         };
         let progress = Progress {
             done: Arc::clone(&job.done),
@@ -170,7 +186,7 @@ impl Engine {
         };
         self.prepare_job = Some(job);
         tracing::info!(topics = items.len(), "preparing plan content");
-        let client = self.ai_client();
+        let client = self.ai_client().paced(throttle);
         let (tx, waker) = self.sender();
         self.spawn(move || {
             let send = |event: PrepareEvent| {
@@ -252,10 +268,16 @@ fn prepare(
     progress: &Progress,
     send: &(dyn Fn(PrepareEvent) + Sync),
 ) -> Result<PrepareSummary, EngineError> {
-    let slots: Vec<Mutex<Option<TopicHandout>>> = items
+    let ready: Vec<Mutex<Ready>> = items
         .iter()
-        .map(|item| Mutex::new(item.handout.clone()))
+        .map(|item| {
+            Mutex::new(Ready {
+                handout: item.handout.clone(),
+                quiz_bank: item.has_quiz_bank,
+            })
+        })
         .collect();
+    let retry_later = Mutex::new(Vec::new());
     let next = AtomicUsize::new(0);
 
     std::thread::scope(|scope| {
@@ -268,23 +290,43 @@ fn prepare(
                         break;
                     }
                     progress.set_working(&item.title, true);
-                    let ok = prepare_topic(client, item, i, &slots[i], progress, send);
+                    let ok = prepare_topic(client, item, i, &ready[i], progress, send);
                     progress.set_working(&item.title, false);
-                    if !ok && !progress.cancelled() {
-                        progress.failed.fetch_add(1, Ordering::Relaxed);
+                    if ok {
+                        progress.done.fetch_add(1, Ordering::Relaxed);
+                    } else if let Ok(mut list) = retry_later.lock() {
+                        list.push(i);
                     }
-                    progress.done.fetch_add(1, Ordering::Relaxed);
                 }
             });
         }
     });
 
+    // One more pass, one topic at a time, over what failed: usually a busy
+    // moment on the server that has passed by now.
+    let mut retry_later = retry_later.into_inner().unwrap_or_default();
+    retry_later.sort_unstable();
+    for i in retry_later {
+        if progress.cancelled() {
+            break;
+        }
+        let Some(item) = items.get(i) else { continue };
+        tracing::info!(topic = %item.title, "trying a failed topic again");
+        progress.set_working(&item.title, true);
+        let ok = prepare_topic(client, item, i, &ready[i], progress, send);
+        progress.set_working(&item.title, false);
+        if !ok && !progress.cancelled() {
+            progress.failed.fetch_add(1, Ordering::Relaxed);
+        }
+        progress.done.fetch_add(1, Ordering::Relaxed);
+    }
+
     if progress.cancelled() {
         return Err(EngineError::Cancelled);
     }
-    document.topics = slots
+    document.topics = ready
         .into_iter()
-        .filter_map(|slot| slot.into_inner().ok().flatten())
+        .filter_map(|slot| slot.into_inner().ok().and_then(|r| r.handout))
         .collect();
     let pdf = if document.topics.is_empty() {
         None
@@ -298,17 +340,21 @@ fn prepare(
     })
 }
 
-/// Writes what is missing for one topic. False when something failed.
+/// Writes what is still missing for one topic. False when something failed.
 fn prepare_topic(
     client: &kg_ai::Client,
     item: &Item,
     i: usize,
-    slot: &Mutex<Option<TopicHandout>>,
+    ready: &Mutex<Ready>,
     progress: &Progress,
     send: &(dyn Fn(PrepareEvent) + Sync),
 ) -> bool {
+    let (has_handout, has_quiz_bank) = match ready.lock() {
+        Ok(r) => (r.handout.is_some(), r.quiz_bank),
+        Err(_) => return false,
+    };
     let mut ok = true;
-    if item.handout.is_none() {
+    if !has_handout {
         match with_retry(progress, || {
             write_topic(client, &item.context, &item.source, seed(i))
         }) {
@@ -319,8 +365,8 @@ fn prepare_topic(
                         json,
                     });
                 }
-                if let Ok(mut slot) = slot.lock() {
-                    *slot = Some(topic);
+                if let Ok(mut r) = ready.lock() {
+                    r.handout = Some(topic);
                 }
             }
             Err(error) => {
@@ -329,15 +375,20 @@ fn prepare_topic(
             }
         }
     }
-    if !item.has_quiz_bank && !progress.cancelled() {
+    if !has_quiz_bank && !progress.cancelled() {
         let questions = with_retry(progress, || {
             kg_ai::generate_quiz(client, &item.context, QUIZ_BANK_SIZE)
         });
         match questions.map(|q| serde_json::to_string(&q)) {
-            Ok(Ok(json)) => send(PrepareEvent::QuizBank {
-                topic: item.topic_id,
-                json,
-            }),
+            Ok(Ok(json)) => {
+                send(PrepareEvent::QuizBank {
+                    topic: item.topic_id,
+                    json,
+                });
+                if let Ok(mut r) = ready.lock() {
+                    r.quiz_bank = true;
+                }
+            }
             Ok(Err(error)) => {
                 tracing::warn!(topic = %item.title, %error, "quiz bank not serializable");
                 ok = false;
@@ -351,7 +402,7 @@ fn prepare_topic(
     ok
 }
 
-/// Retries after a pause when the server is busy or unreachable.
+/// Retries after a pause when the server cannot be reached.
 fn with_retry<T>(
     progress: &Progress,
     mut attempt: impl FnMut() -> Result<T, AiError>,
@@ -359,11 +410,11 @@ fn with_retry<T>(
     let mut waits = RETRY_WAITS.iter();
     loop {
         match attempt() {
-            Err(error @ (AiError::RateLimited | AiError::Connection { .. })) => {
+            Err(error @ AiError::Connection { .. }) => {
                 let Some(wait) = waits.next() else {
                     return Err(error);
                 };
-                tracing::info!(%error, secs = wait.as_secs(), "server busy; retrying");
+                tracing::info!(%error, secs = wait.as_secs(), "server unreachable; retrying");
                 let until = Instant::now() + *wait;
                 while Instant::now() < until {
                     if progress.cancelled() {
@@ -421,6 +472,7 @@ mod tests {
             failed: Arc::default(),
             working_on: Arc::default(),
             cancel: Arc::default(),
+            throttle: Arc::new(Throttle::new(Arc::default())),
         };
         let left = job.remaining().unwrap().as_secs();
         assert!((59..=61).contains(&left), "{left}");
