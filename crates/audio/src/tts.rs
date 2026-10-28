@@ -68,6 +68,11 @@ impl Synthesizer {
         voice: Voice,
         options: SpeechOptions,
     ) -> Result<Self, AudioError> {
+        if cfg!(windows) && matches!(voice, Voice::Kokoro(_)) {
+            return Err(AudioError::Unsupported(
+                "the pinned Kokoro runtime cannot receive accented UTF-8 text on Windows".into(),
+            ));
+        }
         let (rate, pitch) = options.factors()?;
         if !store.is_installed(voice.model_id()) || !store.is_installed(voice.runtime_id()) {
             return Err(AudioError::ModelMissing(voice.id().into()));
