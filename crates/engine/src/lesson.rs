@@ -6,12 +6,12 @@ use std::time::Duration;
 
 use kg_ai::{AiError, ChatMessage, TopicContext, TutorReply};
 use kg_audio::{
-    AudioClip, AudioError, ModelId, ModelStore, PiperTts, RecordOptions, Recording, WhisperModel,
-    WhisperStt, split_for_speech,
+    AudioClip, AudioError, ModelId, ModelStore, RecordOptions, Recording, SpeechOptions,
+    Synthesizer, TtsBackend, WhisperModel, WhisperStt, split_for_speech,
 };
 use kg_study::{TopicId, TopicStatus};
 
-use crate::{Engine, EngineError, Event, Notice};
+use crate::{Engine, EngineError, Event, Notice, Settings};
 
 /// Language code passed to Whisper.
 const STT_LANGUAGE: &str = "pt";
@@ -88,6 +88,10 @@ impl LessonSession {
 }
 
 pub(crate) enum LessonEvent {
+    PreviewReady {
+        generation: u64,
+        result: Result<AudioClip, AudioError>,
+    },
     Reply {
         session: u64,
         result: Result<TutorReply, AiError>,
@@ -106,7 +110,8 @@ pub(crate) enum LessonEvent {
 #[derive(Default)]
 pub(crate) struct VoiceRuntime {
     speaker: Option<kg_audio::Speaker>,
-    tts: Option<PiperTts>,
+    tts: Option<Synthesizer>,
+    preview_job: Option<Arc<AtomicBool>>,
     /// Bumped to cancel speech that is still being synthesized.
     generation: Arc<AtomicU64>,
 }
@@ -120,6 +125,7 @@ impl VoiceRuntime {
 
 impl Engine {
     pub(crate) fn start_lesson(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+        self.stop_voice_preview();
         if self.lesson.is_some() {
             self.end_lesson()?;
         }
@@ -288,6 +294,7 @@ impl Engine {
     }
 
     pub(crate) fn stop_speaking(&mut self) {
+        self.voice.preview_job = None;
         self.voice.generation.fetch_add(1, Ordering::Relaxed);
         if let Some(speaker) = &self.voice.speaker {
             speaker.stop();
@@ -348,6 +355,26 @@ impl Engine {
     pub(crate) fn on_lesson_event(&mut self, event: LessonEvent) -> Result<(), EngineError> {
         let current = self.lesson.as_ref().map(|l| l.id);
         match event {
+            LessonEvent::PreviewReady { generation, result }
+                if self.voice.preview_job.is_some()
+                    && self.voice.generation.load(Ordering::Relaxed) == generation =>
+            {
+                match result {
+                    Ok(clip) => {
+                        if let Some(speaker) = &self.voice.speaker {
+                            speaker.play(clip);
+                        }
+                        if let Some(job) = &self.voice.preview_job {
+                            job.store(false, Ordering::Relaxed);
+                        }
+                    }
+                    Err(AudioError::Cancelled) => self.voice.preview_job = None,
+                    Err(error) => {
+                        self.voice.preview_job = None;
+                        return Err(error.into());
+                    }
+                }
+            }
             LessonEvent::Reply { session, result } if Some(session) == current => {
                 let reply = match result {
                     Ok(reply) => reply,
@@ -407,6 +434,7 @@ impl Engine {
 
     /// Speaks `text` sentence by sentence, so playback starts early.
     fn speak(&mut self, text: String) -> Result<(), EngineError> {
+        self.stop_voice_preview();
         let tts = self.tts()?;
         if self.voice.speaker.is_none() {
             self.voice.speaker = Some(kg_audio::Speaker::open()?);
@@ -432,11 +460,14 @@ impl Engine {
                     if current_generation.load(Ordering::Relaxed) != generation {
                         break;
                     }
-                    match tts.synthesize(&chunk) {
+                    match tts.synthesize(&chunk, &|| {
+                        current_generation.load(Ordering::Relaxed) != generation
+                    }) {
                         Ok(clip) if current_generation.load(Ordering::Relaxed) == generation => {
                             speaker.play(clip);
                         }
                         Ok(_) => break,
+                        Err(AudioError::Cancelled) => break,
                         Err(error) => {
                             let _ = tx
                                 .send(Event::Lesson(LessonEvent::SpeechFailed { session, error }));
@@ -454,23 +485,85 @@ impl Engine {
         Ok(())
     }
 
-    fn tts(&mut self) -> Result<PiperTts, EngineError> {
+    fn tts(&mut self) -> Result<Synthesizer, EngineError> {
         if let Some(tts) = &self.voice.tts {
             return Ok(tts.clone());
         }
-        let voice = self.settings.voice;
-        let exe = self
-            .models
-            .piper_exe()
-            .ok_or(EngineError::SpeechModelMissing(ModelId::PiperRuntime))?;
-        let (onnx, json) = self.models.voice_files(voice);
-        if !onnx.is_file() {
-            return Err(EngineError::SpeechModelMissing(ModelId::Voice(voice)));
-        }
-        let length_scale = 1.0 / self.settings.speech_rate.max(0.1);
-        let tts = PiperTts::new(exe, onnx, &json, length_scale)?;
+        let tts = self.synthesizer(&self.settings)?;
         self.voice.tts = Some(tts.clone());
         Ok(tts)
+    }
+
+    fn synthesizer(&self, settings: &Settings) -> Result<Synthesizer, EngineError> {
+        let options = SpeechOptions {
+            rate: settings.speech_rate,
+            pitch: settings.speech_pitch,
+        };
+        match settings.tts_backend {
+            TtsBackend::Local => {
+                for id in [settings.voice.runtime_id(), settings.voice.model_id()] {
+                    if !self.models.is_installed(id) {
+                        return Err(EngineError::SpeechModelMissing(id));
+                    }
+                }
+                Ok(Synthesizer::local(&self.models, settings.voice, options)?)
+            }
+            TtsBackend::Cloud => Ok(Synthesizer::cloud(settings.cloud_speech.clone(), options)?),
+        }
+    }
+
+    /// Whether the voice sample is being generated or played.
+    pub fn voice_preview_active(&self) -> bool {
+        self.voice.preview_job.as_ref().is_some_and(|job| {
+            job.load(Ordering::Relaxed)
+                || self
+                    .voice
+                    .speaker
+                    .as_ref()
+                    .is_some_and(|speaker| speaker.is_playing())
+        })
+    }
+
+    pub(crate) fn stop_voice_preview(&mut self) {
+        if self.voice.preview_job.is_some() {
+            self.stop_speaking();
+        }
+    }
+
+    /// Samples draft settings without changing the user's saved voice.
+    pub(crate) fn preview_voice(
+        &mut self,
+        mut settings: Settings,
+        text: String,
+    ) -> Result<(), EngineError> {
+        self.stop_audio();
+        settings.normalize();
+        let tts = self.synthesizer(&settings)?;
+        if self.voice.speaker.is_none() {
+            self.voice.speaker = Some(kg_audio::Speaker::open()?);
+        }
+        let generation = self.voice.generation.fetch_add(1, Ordering::Relaxed) + 1;
+        let current = Arc::clone(&self.voice.generation);
+        self.voice.preview_job = Some(Arc::new(AtomicBool::new(true)));
+        let (tx, waker) = self.sender();
+        let spawned = std::thread::Builder::new()
+            .name("kg-voice-preview".into())
+            .spawn(move || {
+                let text =
+                    kg_audio::normalize_for_speech(&text.chars().take(500).collect::<String>());
+                let result =
+                    tts.synthesize(&text, &|| current.load(Ordering::Relaxed) != generation);
+                let _ = tx.send(Event::Lesson(LessonEvent::PreviewReady {
+                    generation,
+                    result,
+                }));
+                waker();
+            });
+        if let Err(error) = spawned {
+            self.voice.preview_job = None;
+            return Err(AudioError::Tts(format!("could not start voice preview: {error}")).into());
+        }
+        Ok(())
     }
 
     /// Loads Whisper in the background so the first answer is not delayed.

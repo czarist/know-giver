@@ -28,7 +28,10 @@ use chrono::NaiveDate;
 pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
-pub use kg_audio::{AudioError, ModelId, PiperVoice, WhisperModel};
+pub use kg_audio::{
+    AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, TtsBackend, Voice,
+    VoiceGender, WhisperModel,
+};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
 pub use kg_pdf::{Edital, PdfError};
 pub use kg_study::{
@@ -43,7 +46,7 @@ pub use models::ModelStatus;
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use progress::Milestone;
-pub use settings::Settings;
+pub use settings::{AvatarStyle, Settings};
 pub use study_time::StudyPresence;
 
 use kg_audio::{ModelStore, WhisperStt};
@@ -65,6 +68,11 @@ pub enum Command {
     StopListening,
     SendMessage(String),
     StopSpeaking,
+    PreviewVoice {
+        settings: Settings,
+        text: String,
+    },
+    StopVoicePreview,
 
     StartQuiz(TopicId),
     AnswerQuiz(usize),
@@ -462,6 +470,11 @@ impl Engine {
                 self.stop_speaking();
                 Ok(())
             }
+            Command::PreviewVoice { settings, text } => self.preview_voice(settings, text),
+            Command::StopVoicePreview => {
+                self.stop_voice_preview();
+                Ok(())
+            }
 
             Command::StartQuiz(id) => self.start_quiz(id),
             Command::AnswerQuiz(option) => {
@@ -567,12 +580,17 @@ impl Engine {
         self.tick_lesson();
     }
 
-    fn save_settings(&mut self, settings: Settings) -> Result<(), EngineError> {
+    fn save_settings(&mut self, mut settings: Settings) -> Result<(), EngineError> {
+        settings.normalize();
         let voice_changed = settings.voice != self.settings.voice
+            || settings.tts_backend != self.settings.tts_backend
+            || settings.cloud_speech != self.settings.cloud_speech
+            || settings.speech_pitch != self.settings.speech_pitch
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;
         if voice_changed {
+            self.stop_audio();
             self.voice.reset_tts();
         }
         self.notices.push(Notice::SettingsSaved);
