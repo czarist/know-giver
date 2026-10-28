@@ -1,6 +1,6 @@
 //! The app icon, rasterized from the logo SVG.
 
-/// The Know Giver mark (open book in a speech bubble).
+/// The Know Giver mark (Thoth's ibis head under the lunar disc).
 pub const LOGO_SVG: &[u8] = include_bytes!("../assets/logo.svg");
 
 /// Icon pixels as straight (not premultiplied) RGBA, `size × size`.
@@ -51,14 +51,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn logo_renders_with_transparent_corners() {
+    fn logo_renders_as_a_square_mark() {
         let size = 64;
         let px = render(LOGO_SVG, size).unwrap();
         assert_eq!(px.len(), (size * size * 4) as usize);
-        // Top-left corner is outside the bubble.
-        assert_eq!(px[3], 0);
-        // The middle of the bubble's top edge is teal and opaque.
-        let i = ((8 * size + size / 2) * 4) as usize;
-        assert_eq!(&px[i..i + 4], &[0x2F, 0x6F, 0x68, 0xFF]);
+        // A full square: the corner is the dark background, opaque.
+        assert_eq!(&px[..4], &[0x1C, 0x1B, 0x19, 0xFF]);
+        // The ibis neck near the bottom is light.
+        let i = (((size - 2) * size + size * 25 / 64) * 4) as usize;
+        assert_eq!(&px[i..i + 4], &[0xF6, 0xF4, 0xEF, 0xFF]);
     }
 }

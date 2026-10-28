@@ -7,6 +7,7 @@ use rust_i18n::t;
 
 use super::{Actions, current_week};
 use crate::app::{KnowGiverApp, Screen};
+use crate::art::Art;
 use crate::icons::Icon;
 use crate::{i18n, theme, widgets};
 
@@ -34,11 +35,22 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         12..=17 => t!("today.greeting.afternoon"),
         _ => t!("today.greeting.evening"),
     };
-    widgets::header(
+    let name = engine.settings().student_name.trim();
+    let title = if name.is_empty() {
+        greeting.into_owned()
+    } else {
+        t!("today.greeting_named", greeting = greeting, name = name).into_owned()
+    };
+    widgets::cover(
         ui,
-        &greeting,
+        &plan.title,
+        &title,
         &t!("today.subtitle", date = i18n::date(Engine::today())),
+        Art::Head,
+        150.0,
+        |_| {},
     );
+    ui.add_space(14.0);
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         stats(ui, engine, plan);
@@ -127,8 +139,8 @@ fn stat_card(ui: &mut egui::Ui, width: f32, icon: Icon, color: Color32, value: &
     let p = theme::palette(ui.ctx());
     egui::Frame::new()
         .fill(p.surface)
-        .stroke(egui::Stroke::new(1.0, p.border))
-        .corner_radius(12)
+        .stroke(egui::Stroke::new(1.2, p.ink.gamma_multiply(0.85)))
+        .corner_radius(0)
         .inner_margin(egui::Margin::symmetric(16, 14))
         .show(ui, |ui| {
             ui.set_width(width - 34.0);

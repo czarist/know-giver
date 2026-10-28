@@ -25,6 +25,10 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     widgets::header(ui, &t!("settings.title"), &t!("settings.subtitle"));
 
     egui::ScrollArea::vertical().show(ui, |ui| {
+        section(ui, &t!("settings.you.title"), |ui| {
+            name_field(ui, &mut draft.student_name);
+        });
+        ui.add_space(12.0);
         language(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
         ai_section(ui, engine, draft, &mut actions);
@@ -61,9 +65,27 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     actions.run(app);
 }
 
+/// "What should we call you?", shared with the welcome screen. Returns the
+/// text field's response.
+pub(crate) fn name_field(ui: &mut egui::Ui, name: &mut String) -> egui::Response {
+    ui.label(t!("settings.you.name"));
+    let response = ui.add(
+        egui::TextEdit::singleline(name)
+            .hint_text(t!("settings.you.name_placeholder"))
+            .char_limit(40)
+            .desired_width(280.0),
+    );
+    widgets::hint(ui, &t!("settings.you.name_hint"));
+    response
+}
+
 fn section(ui: &mut egui::Ui, title: &str, add: impl FnOnce(&mut egui::Ui)) {
     widgets::card(ui, |ui| {
-        ui.label(RichText::new(title).strong().size(17.0));
+        ui.label(
+            RichText::new(title.to_uppercase())
+                .family(theme::heading_family())
+                .size(15.0),
+        );
         ui.add_space(4.0);
         add(ui);
     });

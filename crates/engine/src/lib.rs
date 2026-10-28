@@ -685,6 +685,7 @@ impl Engine {
                 subject: subject.name.clone(),
                 topic: topic.title.clone(),
                 reference: self.board_reference(id),
+                student: self.settings.student_name.trim().to_owned(),
             },
             topic.title.clone(),
         ))

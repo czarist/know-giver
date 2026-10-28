@@ -6,7 +6,8 @@ use rust_i18n::t;
 
 use super::Actions;
 use crate::app::{KnowGiverApp, Screen};
-use crate::icons::{self, Icon};
+use crate::art::Art;
+use crate::icons::Icon;
 use crate::{theme, widgets};
 
 /// Models the voice step downloads.
@@ -21,21 +22,33 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let Ok(engine) = &app.engine else {
         return;
     };
+    let name = app
+        .ui
+        .welcome_name
+        .get_or_insert_with(|| engine.settings().student_name.clone());
     egui::ScrollArea::vertical().show(ui, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.set_max_width(600.0);
-            ui.add_space(12.0);
-            ui.add(icons::logo(76.0, ui.visuals().dark_mode));
-            ui.label(
-                RichText::new(t!("welcome.title"))
-                    .family(theme::heading_family())
-                    .size(30.0),
-            );
-            widgets::hint(ui, &t!("welcome.subtitle"));
-            ui.add_space(16.0);
-        });
         ui.vertical_centered_justified(|ui| {
-            ui.set_max_width(600.0);
+            ui.set_max_width(680.0);
+            ui.add_space(4.0);
+            widgets::cover(
+                ui,
+                &t!("app.tagline"),
+                &t!("welcome.title"),
+                &t!("welcome.subtitle"),
+                Art::Seated,
+                230.0,
+                |ui| {
+                    ui.add_space(12.0);
+                    let response = super::settings::name_field(ui, name);
+                    let typed = name.trim();
+                    if response.lost_focus() && typed != engine.settings().student_name.trim() {
+                        let mut settings = engine.settings().clone();
+                        settings.student_name = typed.to_owned();
+                        actions.send(Command::SaveSettings(settings));
+                    }
+                },
+            );
+            ui.add_space(16.0);
             ai_step(ui, engine, &mut actions);
             voice_step(ui, engine, &mut actions);
             edital_step(ui, &mut actions);

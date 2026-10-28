@@ -212,6 +212,7 @@ export:
     next_review: "Next review"
 
 today:
+  greeting_named: "%{greeting}, %{name}"
   study_time: "Study time today: %{duration}"
   study_time_hint: "Counts active study; breaks and inactivity are excluded."
   study_zero: "0 min"
@@ -308,6 +309,11 @@ handout:
     answers: "Answer key"
 
 settings:
+  you:
+    title: "You"
+    name: "What should we call you?"
+    name_placeholder: "Your name or nickname"
+    name_hint: "The teacher uses this name in lessons."
   title: "Settings"
   subtitle: "Language, AI, voice and local models."
   language: "Language"
