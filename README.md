@@ -23,7 +23,8 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
   past questions in quizzes and as reference for lessons and handouts.
 - **Study handouts**: the AI writes each topic as a handout (explanation, key points,
   examples, exam pitfalls, summary, exercises with answers), exported as a PDF per topic,
-  per subject or for the whole plan.
+  per subject or for the whole plan. Generation receives the original edital excerpt
+  and board references; cached text is reused only while those sources remain unchanged.
 - **Progress**: per subject, quiz accuracy, lessons taken, Markdown export.
 - **Portuguese and English UI**, calm light/dark theme.
 
@@ -85,6 +86,9 @@ cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pd
 cargo run --release -p kg-audio --example stt_check -- <models-dir> fala.wav
 KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored # renders every screen to PNG
 ```
+
+For the next local voice backend, see the [Kokoro evaluation](docs/kokoro-evaluation.md).
+It is a developer listening harness; Piper remains the app's voice engine.
 
 ## Credits
 

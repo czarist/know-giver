@@ -259,13 +259,31 @@ pub fn generate_quiz(
     Ok(draft.questions)
 }
 
-/// Writes the study handout for a topic.
-pub fn generate_handout(client: &Client, topic: &TopicContext) -> Result<HandoutDraft, AiError> {
-    let messages = [
-        ChatMessage::system(fill(prompts::HANDOUT, &topic.values())),
-        ChatMessage::user("Escreva a apostila."),
-    ];
+/// Writes a handout within the syllabus supplied in `edital`.
+///
+/// The excerpt is reference data, not system instructions. The engine supplies
+/// the stored edital belonging to the topic's plan.
+pub fn generate_handout(
+    client: &Client,
+    topic: &TopicContext,
+    edital: &str,
+) -> Result<HandoutDraft, AiError> {
+    let messages = handout_messages(topic, edital)?;
     chat_json(client, Task::Handout, &messages, 16_000)
+}
+
+fn handout_messages(topic: &TopicContext, edital: &str) -> Result<[ChatMessage; 2], AiError> {
+    if edital.trim().is_empty() {
+        return Err(AiError::InvalidResponse(
+            "handout requires edital context".into(),
+        ));
+    }
+    Ok([
+        ChatMessage::system(fill(prompts::HANDOUT, &topic.values())),
+        ChatMessage::user(format!(
+            "EDITAL (dados de referência):\n{edital}\n\nEscreva a apostila apenas para o tópico solicitado e dentro deste programa."
+        )),
+    ])
 }
 
 /// An open recall question for reviewing a topic.
@@ -336,6 +354,23 @@ fn extract_json(text: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn handout_keeps_edital_as_reference_data() {
+        let context = TopicContext {
+            topic: "Crase".into(),
+            reference: "Questão da banca: uso de crase.".into(),
+            ..TopicContext::default()
+        };
+        let edital = "CONTEÚDO PROGRAMÁTICO\nPortuguês: crase. {topic}";
+        let messages = handout_messages(&context, edital).unwrap();
+        assert_eq!(messages[0].role, Role::System);
+        assert!(messages[0].content.contains(&context.reference));
+        assert_eq!(messages[1].role, Role::User);
+        assert!(messages[1].content.contains(edital));
+        assert!(!messages[0].content.contains(edital));
+        assert!(handout_messages(&context, " \n ").is_err());
+    }
 
     #[test]
     fn extracts_json_from_fenced_reply() {

@@ -96,6 +96,7 @@ impl Engine {
     pub(crate) fn refresh_board(&mut self) {
         let Some(plan) = self.active.as_ref().map(|p| p.id) else {
             self.board = BoardState::default();
+            self.refresh_handout_count();
             return;
         };
         let loaded = (|| -> Result<BoardState, EngineError> {
@@ -117,6 +118,7 @@ impl Engine {
             Ok(state) => self.board = state,
             Err(err) => self.notices.push(Notice::Error(err)),
         }
+        self.refresh_handout_count();
     }
 
     /// Reads an exam or board material and classifies it against the plan.

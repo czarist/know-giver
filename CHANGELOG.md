@@ -4,6 +4,24 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - 2026-10-27
+
+### Added
+- Kokoro listening evaluation example: nine Portuguese samples across Dora, Alex and
+  Santa, with normalized text, process logs and cold-start timings. Uses locally
+  supplied sherpa-onnx v1.12.20 and Kokoro v1.0 files; no automatic download or app
+  voice selection yet. Setup and acceptance checks in `docs/kokoro-evaluation.md`.
+- Handout requests include the original plan's syllabus-aware edital excerpt as
+  reference data. Prompts constrain board material to that scope and reject document
+  instructions. Empty edital context is rejected before a model call.
+
+### Fixed
+- Handout cache reuse now requires identical edital, exam, subject, topic, board
+  reference and prompt. Legacy or changed-source entries are regenerated on the next
+  export; unchanged entries still avoid model calls. Existing exported PDFs are kept.
+- Cached-handout counts refresh after board changes and clear when no plan is active.
+- Roadmap handoff reflects the integrated main branch and remaining validation work.
+
 ## [0.13.0] - 2026-10-27
 
 ### Added

@@ -2,15 +2,15 @@
 
 ## Current Status
 
-Version 0.13.0. Phases 1–6 are done (see the open items marked `[ ]`); phase 7 has its
-quick wins done. Work happens on branch `feat/roadmap-v0.8` (pushed, one commit and tag
-per version); `main` still has only the first commits, so it needs a PR/merge.
+Version 0.14.0. Phases 1–4 are implemented; phases 5–7 retain the open items below.
+Work uses a separate branch per feature, merged into `main`, with an annotated tag
+per release (`v0.14.0`). The old `feat/roadmap-v0.8` handoff is superseded.
 
 ### Handoff for the next agent
 
 **Next up, in order:**
-1. Phase 7 — Kokoro-82M voices (female `pf_dora`, male `pm_alex`/`pm_santa`): run like
-   Piper as a child process (candidate: sherpa-onnx prebuilt TTS), add to `ModelStore`,
+1. Phase 7 — run the Kokoro listening evaluation in `docs/kokoro-evaluation.md`
+   (harness implemented; real audio not yet evaluated). If accepted, add to `ModelStore`,
    voice picker with female/male + "listen to a sample", then a female avatar variant
    (`crates/ui/src/avatar.rs`) that follows the chosen voice.
 2. Open items left in phases 5–6 (per-plan reuse of board material, whiteboard diagrams,
@@ -88,8 +88,10 @@ Inno Setup 6).
 
 ### Written study material as PDF (apostilas)
 - [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
-- [ ] Use the edital and the board material as the source, never content outside the edital
-      (handouts now receive the board material on each topic)
+- [x] Supply the stored edital excerpt and relevant board material to handout generation;
+      constrain the prompt to the requested topic and invalidate caches when sources change
+- [ ] Review live handouts for syllabus fidelity, including multi-role and truncated editais
+      (prompt constraints alone do not guarantee that the model stays within scope)
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
@@ -147,6 +149,8 @@ and sound somewhat robotic. A female voice needs another engine.
       high-frequency roll-off
 
 ### More natural engine (local)
+- [x] Reproducible local listening harness (`kokoro_check`) for the three Portuguese
+      voices, pinned runtime/model instructions, timings and logs
 - [ ] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
       (female), `pm_alex` and `pm_santa` (male)
 - [ ] Run it like Piper, as a child process (candidate: sherpa-onnx's prebuilt TTS tool), or
@@ -165,6 +169,9 @@ and sound somewhat robotic. A female voice needs another engine.
 - [ ] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Kokoro runtime synthesis and listening comparison against Piper (see evaluation doc).
+- Live handout generation with edital context; automated tests cover request assembly,
+  active-plan source selection and cache invalidation, not model factual accuracy.
 - Voice loop with a real microphone and speakers.
 - Piper download and speech (downloading and running `piper.exe` needs the user's go-ahead).
 - Installer build (needs Inno Setup 6 installed).

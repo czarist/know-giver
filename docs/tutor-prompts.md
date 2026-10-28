@@ -37,6 +37,19 @@ When creating or correcting quizzes:
 - Explain the correct answer after the user responds.
 - Avoid trick questions.
 
+## Handouts
+
+- The engine loads the active plan's original edital from SQLite and supplies a
+  syllabus-aware excerpt (up to 150,000 characters) as reference data in a user message.
+- The requested subject/topic and relevant board material still guide the explanation;
+  the board material must not expand the edital's scope. Document text is not an
+  instruction source. Empty edital context is rejected before contacting the model.
+- Cached text records the exact excerpt, topic context, board reference and prompt.
+  Legacy entries or changed inputs are rewritten on the next export; unchanged inputs
+  reuse the cached text without another model call. Already exported PDFs are untouched.
+- Prompt constraints do not prove factual accuracy or syllabus compliance. Live review
+  of generated handouts, especially multi-role or truncated editais, remains necessary.
+
 ## Tone
 
 - Patient and supportive
