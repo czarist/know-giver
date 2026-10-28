@@ -2,7 +2,7 @@
 //!
 //! Presentation only: all state lives in [`kg_engine::Engine`], and user
 //! actions are sent to it as [`kg_engine::Command`]s. Every visible string
-//! comes from the translation files in `locales/` (see [`i18n`]).
+//! comes from the translation files in `locales/` through the internal `i18n` module.
 
 // Embeds `locales/*.yml` and defines the lookup used by `t!`.
 rust_i18n::i18n!("../../locales", fallback = "pt-BR");
