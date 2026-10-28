@@ -6,6 +6,7 @@ use rust_i18n::t;
 
 use super::Actions;
 use crate::app::{KnowGiverApp, Screen};
+use crate::icons::Icon;
 use crate::{theme, widgets};
 
 pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
@@ -15,9 +16,13 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     };
 
     let Some(session) = engine.quiz() else {
-        widgets::header(ui, &t!("quiz.title"), &t!("quiz.subtitle"));
-        widgets::hint(ui, &t!("quiz.none"));
-        if ui.button(t!("quiz.go_to_plan")).clicked() {
+        if widgets::empty_state(
+            ui,
+            Icon::Quiz,
+            &t!("quiz.title"),
+            &t!("quiz.none"),
+            Some(&t!("quiz.go_to_plan")),
+        ) {
             actions.go_to(Screen::Plan);
         }
         actions.run(app);

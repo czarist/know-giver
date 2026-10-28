@@ -10,6 +10,8 @@ pub mod progress;
 pub mod quiz;
 pub mod review;
 pub mod settings;
+pub mod today;
+pub mod welcome;
 
 use kg_engine::{Command, Engine, StudyPlan};
 

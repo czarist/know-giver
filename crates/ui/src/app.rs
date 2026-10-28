@@ -10,6 +10,9 @@ use crate::{i18n, screens, theme, widgets};
 /// Top-level screens, in sidebar order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Screen {
+    Today,
+    /// First-run steps; not in the sidebar.
+    Welcome,
     #[default]
     Edital,
     Plan,
@@ -22,7 +25,8 @@ pub enum Screen {
 }
 
 impl Screen {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 9] = [
+        Self::Today,
         Self::Edital,
         Self::Plan,
         Self::Board,
@@ -35,6 +39,8 @@ impl Screen {
 
     fn icon(self) -> Icon {
         match self {
+            Self::Today => Icon::Today,
+            Self::Welcome => Icon::Sparkles,
             Self::Edital => Icon::Edital,
             Self::Plan => Icon::Plan,
             Self::Board => Icon::Board,
@@ -48,6 +54,8 @@ impl Screen {
 
     fn label(self) -> String {
         match self {
+            Self::Today => t!("nav.today"),
+            Self::Welcome => t!("nav.welcome"),
             Self::Edital => t!("nav.edital"),
             Self::Plan => t!("nav.plan"),
             Self::Board => t!("nav.board"),
@@ -63,6 +71,10 @@ impl Screen {
 
 /// How long confirmations stay on screen. Errors stay until closed.
 const TOAST_TTL: Duration = Duration::from_secs(6);
+/// Seconds a toast takes to fade in or out.
+const TOAST_FADE: f32 = 0.25;
+/// Seconds a screen takes to fade in.
+const SCREEN_FADE: f64 = 0.18;
 
 #[derive(Debug)]
 struct Toast {
@@ -103,6 +115,9 @@ pub struct KnowGiverApp {
     pub(crate) engine: Result<Engine, String>,
     pub(crate) ui: UiState,
     toasts: Vec<Toast>,
+    /// Screen shown last frame and when it appeared, for the fade-in.
+    shown_screen: Screen,
+    shown_since: f64,
 }
 
 impl std::fmt::Debug for KnowGiverApp {
@@ -135,7 +150,8 @@ impl KnowGiverApp {
             }
         };
         let screen = match &engine {
-            Ok(e) if e.active_plan().is_some() => Screen::Plan,
+            Ok(e) if e.needs_onboarding() => Screen::Welcome,
+            Ok(e) if e.active_plan().is_some() => Screen::Today,
             _ => Screen::Edital,
         };
         Self {
@@ -158,6 +174,8 @@ impl KnowGiverApp {
                 plan_view: PlanView::default(),
             },
             toasts: Vec::new(),
+            shown_screen: screen,
+            shown_since: 0.0,
         }
     }
 
@@ -271,13 +289,31 @@ impl KnowGiverApp {
             .show(ui, |ui| {
                 for (i, toast) in self.toasts.iter().enumerate() {
                     let color = if toast.is_error { p.danger } else { p.success };
+                    // Fade in, and fade out before a confirmation goes away.
+                    let age = toast.shown_at.elapsed().as_secs_f32();
+                    let left = TOAST_TTL.as_secs_f32() - age;
+                    let mut opacity = (age / TOAST_FADE).min(1.0);
+                    if !toast.is_error {
+                        opacity = opacity.min(left / TOAST_FADE);
+                    }
+                    if opacity < 1.0 {
+                        ui.ctx().request_repaint();
+                    }
+                    ui.set_opacity(opacity.clamp(0.0, 1.0));
                     widgets::callout(ui, color, |ui| {
                         ui.horizontal(|ui| {
                             ui.label(egui::RichText::new(&toast.text).color(color));
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    if ui.small_button(t!("common.close")).clicked() {
+                                    if ui
+                                        .add(
+                                            egui::Button::image(Icon::Close.image(14.0, p.muted))
+                                                .frame(false),
+                                        )
+                                        .on_hover_text(t!("common.close"))
+                                        .clicked()
+                                    {
                                         close = Some(i);
                                     }
                                 },
@@ -378,9 +414,22 @@ impl eframe::App for KnowGiverApp {
                     });
                     return;
                 }
+                // A short fade when the screen changes.
+                let now = ui.input(|i| i.time);
+                if self.shown_screen != self.ui.screen {
+                    self.shown_screen = self.ui.screen;
+                    self.shown_since = now;
+                }
+                let fade = ((now - self.shown_since) / SCREEN_FADE).min(1.0) as f32;
+                if fade < 1.0 {
+                    ui.ctx().request_repaint();
+                }
+                ui.set_opacity(fade);
                 // Keep line length readable on wide monitors.
                 ui.set_max_width(860.0);
                 match self.ui.screen {
+                    Screen::Today => screens::today::show(self, ui),
+                    Screen::Welcome => screens::welcome::show(self, ui),
                     Screen::Edital => screens::edital::show(self, ui),
                     Screen::Plan => screens::plan::show(self, ui),
                     Screen::Board => screens::board::show(self, ui),

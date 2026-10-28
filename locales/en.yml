@@ -20,6 +20,8 @@ fatal:
   subtitle: "Know Giver could not open your data."
 
 nav:
+  today: "Today"
+  welcome: "Welcome"
   edital: "Exam notice"
   plan: "Study plan"
   board: "Exam board"
@@ -191,6 +193,45 @@ export:
     status: "Status"
     next_review: "Next review"
 
+today:
+  greeting:
+    morning: "Good morning"
+    afternoon: "Good afternoon"
+    evening: "Good evening"
+  subtitle: "Today is %{date}. One step at a time."
+  no_plan_title: "Let's begin"
+  no_plan: "Upload your exam notice and Know Giver builds your study plan."
+  streak: "%{count} days in a row"
+  streak_kept: "You already studied today."
+  streak_keep: "Study today to keep the streak."
+  streak_start: "A lesson today starts a streak."
+  due: "%{count} reviews"
+  due_note: "for today"
+  week: "week %{n} of %{total}"
+  next_step: "NEXT STEP"
+  next:
+    review: "Review %{count} topics"
+    review_note: "Reviewing at the right time is what makes it stick."
+    review_action: "Review now"
+  all_done: "All caught up. How about a review quiz?"
+
+welcome:
+  title: "Welcome to Know Giver"
+  subtitle: "Three quick steps and you can start studying."
+  skip: "Skip for now"
+  ai:
+    title: "Connect the AI"
+    from_env: "The AI key was loaded from the .env file. Test the connection to confirm."
+    ready: "AI configured. Test the connection to confirm."
+    missing: "Enter the AI address and key in Settings."
+  voice:
+    title: "Voice (optional)"
+    text: "To talk to the tutor and hear it, download speech recognition and a Portuguese voice. About 380 MB, once."
+    download: "Download voice models"
+  edital:
+    title: "Your exam notice"
+    text: "Upload the exam notice PDF and your study plan is ready in under a minute."
+
 board:
   title: "Exam board material"
   subtitle: "Past exams and board material, so quizzes, lessons and handouts feel like the real exam."
@@ -305,6 +346,8 @@ notice:
   handout_saved: "Handout saved to %{path}."
   board_imported: "%{used} items used, %{set_aside} set aside as outside the exam notice."
   answer_key: "Answer key applied to %{count} questions."
+  milestone_streak: "%{days} days of study in a row. Consistency is what passes exams."
+  milestone_progress: "%{percent}% of the plan done. Good work."
 
 error:
   no_edital: "Upload an exam notice before generating the plan."

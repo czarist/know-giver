@@ -38,6 +38,35 @@ pub fn chip(ui: &mut egui::Ui, text: &str, color: Color32) {
     ui.painter().galley(rect.min + padding, galley, color);
 }
 
+/// A friendly empty screen: a large faded icon, a title, one sentence and
+/// at most one action. Returns true when the action was clicked.
+pub fn empty_state(
+    ui: &mut egui::Ui,
+    icon: crate::icons::Icon,
+    title: &str,
+    text: &str,
+    action: Option<&str>,
+) -> bool {
+    let p = theme::palette(ui.ctx());
+    let mut clicked = false;
+    ui.vertical_centered(|ui| {
+        ui.add_space(48.0);
+        ui.add(icon.image(56.0, p.accent.gamma_multiply(0.6)));
+        ui.add_space(8.0);
+        ui.label(
+            RichText::new(title)
+                .family(theme::heading_family())
+                .size(22.0),
+        );
+        ui.label(RichText::new(text).color(p.muted));
+        if let Some(action) = action {
+            ui.add_space(8.0);
+            clicked = primary_button(ui, action).clicked();
+        }
+    });
+    clicked
+}
+
 /// Muted helper text.
 pub fn hint(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).color(theme::palette(ui.ctx()).muted));

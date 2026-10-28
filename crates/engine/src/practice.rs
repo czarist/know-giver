@@ -206,6 +206,7 @@ impl Engine {
         })?;
         let grade = ReviewGrade::from_score(correct, total);
         self.update_topic(topic_id, |t| t.apply_review(grade, today))?;
+        self.record_activity(kg_study::ActivityKind::Quiz)?;
         self.notices.push(Notice::QuizSaved { correct, total });
         Ok(())
     }
@@ -269,6 +270,7 @@ impl Engine {
             t.apply_review(grade, today);
             next_due = t.review.due;
         })?;
+        self.record_activity(kg_study::ActivityKind::Review)?;
         self.notices.push(Notice::ReviewSaved { next_due });
         Ok(())
     }

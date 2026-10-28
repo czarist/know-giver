@@ -395,3 +395,45 @@ fn board_exam_feeds_quiz_without_model_calls() {
             .contains("Item 1 sobre crase.")
     );
 }
+
+#[test]
+fn quiz_counts_toward_streak_and_milestones_show_once() {
+    let (mut engine, _dir) = engine_with_plan();
+    assert_eq!(engine.streak(), 0);
+    assert!(!engine.studied_today());
+    let id = first_topic(&engine);
+
+    // Marking 1 of 3 topics done crosses 25%: celebrated once.
+    engine
+        .handle(Command::SetTopicStatus(id, TopicStatus::Done))
+        .unwrap();
+    engine
+        .handle(Command::SetTopicStatus(id, TopicStatus::Reviewing))
+        .unwrap();
+    engine
+        .handle(Command::SetTopicStatus(id, TopicStatus::Done))
+        .unwrap();
+    let progress_notices = engine
+        .take_notices()
+        .into_iter()
+        .filter(|n| matches!(n, Notice::Milestone(Milestone::Progress(25))))
+        .count();
+    assert_eq!(progress_notices, 1);
+
+    engine.handle(Command::StartReview(id)).unwrap();
+    engine
+        .handle(Command::GradeReview(ReviewGrade::Good))
+        .unwrap();
+    assert_eq!(engine.streak(), 1);
+    assert!(engine.studied_today());
+}
+
+#[test]
+fn onboarding_only_without_plans() {
+    let (mut engine, _dir) = engine();
+    assert!(engine.needs_onboarding());
+    engine.handle(Command::FinishOnboarding).unwrap();
+    assert!(!engine.needs_onboarding());
+    let (with_plan, _dir) = engine_with_plan();
+    assert!(!with_plan.needs_onboarding());
+}

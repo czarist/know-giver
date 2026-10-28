@@ -6,6 +6,7 @@ use rust_i18n::t;
 
 use super::Actions;
 use crate::app::{KnowGiverApp, Screen};
+use crate::icons::Icon;
 use crate::{export, theme, widgets};
 
 pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
@@ -16,8 +17,13 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     widgets::header(ui, &t!("progress.title"), &t!("progress.subtitle"));
 
     let Some(plan) = engine.active_plan() else {
-        widgets::hint(ui, &t!("progress.empty"));
-        if ui.button(t!("plan.go_to_edital")).clicked() {
+        if widgets::empty_state(
+            ui,
+            Icon::Progress,
+            &t!("progress.title"),
+            &t!("progress.empty"),
+            Some(&t!("plan.go_to_edital")),
+        ) {
             actions.go_to(Screen::Edital);
         }
         actions.run(app);
@@ -88,7 +94,12 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         }
 
         ui.add_space(16.0);
-        if ui.button(t!("progress.export")).clicked() {
+        let p = theme::palette(ui.ctx());
+        let export = egui::Button::image_and_text(
+            Icon::Download.image(16.0, p.accent),
+            t!("progress.export"),
+        );
+        if ui.add(export).clicked() {
             let default_name = format!("{}-{}.md", t!("export.file_prefix"), today);
             if let Some(path) = rfd::FileDialog::new()
                 .set_file_name(default_name)

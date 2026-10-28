@@ -164,6 +164,7 @@ impl Engine {
             let today = Self::today();
             self.store.record_lesson(lesson.topic_id, today)?;
             self.update_topic(lesson.topic_id, |t| t.complete_lesson(today))?;
+            self.record_activity(kg_study::ActivityKind::Lesson)?;
             self.notices.push(Notice::LessonSaved);
         }
         Ok(())

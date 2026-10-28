@@ -4,6 +4,22 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-10-27
+
+### Added
+- "Today" screen, where the app opens: greeting, study streak, reviews due, plan
+  progress and week, one "next step" (reviews first, then the next lesson of the week)
+  and the topics of the current week.
+- First-run welcome with three steps: connect the AI (with connection test), download the
+  voice models (one click, with progress), upload the edital. Shown only while there is no
+  plan and it was never closed.
+- Study activity per day (SQLite migration 4) for streaks; lessons, quizzes and reviews
+  count. Milestones shown once: 3, 7, 14 and 30 days in a row; 25, 50, 75 and 100% of
+  the plan.
+- Empty states with an icon, one sentence and one action (Today, Plan, Quiz, Progress).
+- Short fade when the screen changes; toasts fade in and out.
+- Icons on the handout, export and toast close buttons.
+
 ## [0.12.0] - 2026-10-27
 
 ### Added

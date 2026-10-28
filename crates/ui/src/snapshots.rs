@@ -119,6 +119,8 @@ fn snapshots() {
         // The app applies the saved language on start; override it here.
         crate::i18n::set(locale);
         for (screen, name) in [
+            (Screen::Today, "today"),
+            (Screen::Welcome, "welcome"),
             (Screen::Edital, "edital"),
             (Screen::Plan, "plan"),
             (Screen::Board, "board"),

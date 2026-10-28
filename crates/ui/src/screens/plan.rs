@@ -6,6 +6,7 @@ use rust_i18n::t;
 
 use super::{Actions, current_week, handout};
 use crate::app::{KnowGiverApp, PlanView, Screen};
+use crate::icons::Icon;
 use crate::{i18n, theme, widgets};
 
 /// Room kept on the right of a topic row for its chips and buttons.
@@ -42,9 +43,13 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let state = &mut app.ui;
 
     let Some(plan) = engine.active_plan() else {
-        widgets::header(ui, &t!("plan.title"), &t!("plan.subtitle"));
-        widgets::hint(ui, &t!("plan.empty"));
-        if ui.button(t!("plan.go_to_edital")).clicked() {
+        if widgets::empty_state(
+            ui,
+            Icon::Plan,
+            &t!("plan.title"),
+            &t!("plan.empty"),
+            Some(&t!("plan.go_to_edital")),
+        ) {
             actions.go_to(Screen::Edital);
         }
         actions.run(app);
@@ -134,6 +139,7 @@ fn handout_bar(
             }
         }
         None => {
+            ui.add(Icon::Handout.image(18.0, p.accent));
             ask.button(ui, &t!("plan.handout_all"), HandoutScope::Plan, true);
             let missing = plan.topic_count().saturating_sub(engine.handouts_cached());
             let note = if missing == 0 {

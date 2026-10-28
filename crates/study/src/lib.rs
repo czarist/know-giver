@@ -3,12 +3,17 @@
 //! [`plan`], [`review`] and [`quiz`] are pure rules with no I/O.
 //! [`store`] persists them in SQLite.
 
+pub mod activity;
 pub mod board;
 pub mod plan;
 pub mod quiz;
 pub mod review;
 pub mod store;
 
+pub use activity::{
+    ActivityKind, PROGRESS_MILESTONES, STREAK_MILESTONES, progress_milestone, streak,
+    streak_milestone,
+};
 pub use board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,

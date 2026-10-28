@@ -12,6 +12,7 @@ mod models;
 mod paths;
 mod plans;
 mod practice;
+mod progress;
 mod settings;
 
 use std::collections::HashMap;
@@ -39,6 +40,7 @@ pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
+pub use progress::Milestone;
 pub use settings::Settings;
 
 use kg_audio::{ModelStore, WhisperStt};
@@ -76,6 +78,9 @@ pub enum Command {
     DownloadModel(ModelId),
     CancelDownload(ModelId),
     RemoveModel(ModelId),
+
+    /// Closes the first-run welcome steps for good.
+    FinishOnboarding,
 
     ExportHandout(HandoutRequest),
     CancelHandout,
@@ -166,6 +171,7 @@ pub enum Notice {
     AnswerKeyApplied {
         count: usize,
     },
+    Milestone(Milestone),
 }
 
 /// State of the edital import on the Edital screen.
@@ -231,6 +237,8 @@ pub struct Engine {
     handouts_cached: usize,
     board: board::BoardState,
     board_job: Option<BoardJob>,
+    streak: u32,
+    studied_today: bool,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -319,6 +327,8 @@ impl Engine {
             handouts_cached: 0,
             board: board::BoardState::default(),
             board_job: None,
+            streak: 0,
+            studied_today: false,
             notices,
             events_tx,
             events_rx,
@@ -326,6 +336,7 @@ impl Engine {
             next_session_id: 1,
         };
         engine.reload_plans();
+        engine.refresh_activity();
         engine
     }
 
@@ -481,6 +492,7 @@ impl Engine {
             }
             Command::RemoveModel(id) => self.remove_model(id),
 
+            Command::FinishOnboarding => self.finish_onboarding(),
             Command::ExportHandout(request) => self.export_handout(request),
             Command::ImportBoard { path, kind } => self.import_board(path, kind),
             Command::ImportAnswerKey { path, exam } => self.import_answer_key(path, exam),
@@ -630,7 +642,7 @@ impl Engine {
         change(topic);
         self.store.update_topic(topic)?;
         self.refresh_stats();
-        Ok(())
+        self.check_progress_milestone()
     }
 }
 

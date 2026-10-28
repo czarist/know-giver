@@ -20,6 +20,8 @@ fatal:
   subtitle: "O Know Giver não conseguiu abrir seus dados."
 
 nav:
+  today: "Hoje"
+  welcome: "Boas-vindas"
   edital: "Edital"
   plan: "Plano de estudo"
   board: "Banca"
@@ -191,6 +193,45 @@ export:
     status: "Situação"
     next_review: "Próxima revisão"
 
+today:
+  greeting:
+    morning: "Bom dia"
+    afternoon: "Boa tarde"
+    evening: "Boa noite"
+  subtitle: "Hoje é %{date}. Um passo de cada vez."
+  no_plan_title: "Vamos começar"
+  no_plan: "Envie o edital do seu concurso e o Know Giver monta seu plano de estudo."
+  streak: "%{count} dias seguidos"
+  streak_kept: "Você já estudou hoje."
+  streak_keep: "Estude hoje para manter a sequência."
+  streak_start: "Uma aula hoje começa a sequência."
+  due: "%{count} revisões"
+  due_note: "para hoje"
+  week: "semana %{n} de %{total}"
+  next_step: "PRÓXIMO PASSO"
+  next:
+    review: "Revisar %{count} tópicos"
+    review_note: "Revisar na hora certa é o que fixa o conteúdo."
+    review_action: "Revisar agora"
+  all_done: "Tudo em dia. Que tal um quiz de revisão?"
+
+welcome:
+  title: "Bem-vindo ao Know Giver"
+  subtitle: "Três passos rápidos e você começa a estudar."
+  skip: "Pular por agora"
+  ai:
+    title: "Conecte a IA"
+    from_env: "A chave da IA foi carregada do arquivo .env. Teste a conexão para confirmar."
+    ready: "IA configurada. Teste a conexão para confirmar."
+    missing: "Informe o endereço e a chave da IA em Configurações."
+  voice:
+    title: "Voz (opcional)"
+    text: "Para falar com o tutor e ouvi-lo, baixe o reconhecimento de voz e uma voz em português. Cerca de 380 MB, uma vez só."
+    download: "Baixar modelos de voz"
+  edital:
+    title: "Seu edital"
+    text: "Envie o PDF do edital e o plano de estudo fica pronto em menos de um minuto."
+
 board:
   title: "Material da banca"
   subtitle: "Provas anteriores e materiais da banca para deixar quizzes, aulas e apostilas mais parecidos com a prova."
@@ -305,6 +346,8 @@ notice:
   handout_saved: "Apostila salva em %{path}."
   board_imported: "%{used} itens aproveitados, %{set_aside} deixados de lado por não estarem no edital."
   answer_key: "Gabarito aplicado a %{count} questões."
+  milestone_streak: "%{days} dias seguidos de estudo. Constância é o que aprova."
+  milestone_progress: "%{percent}% do plano concluído. Bom trabalho."
 
 error:
   no_edital: "Envie um edital antes de gerar o plano."

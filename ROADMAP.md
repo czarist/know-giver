@@ -2,10 +2,38 @@
 
 ## Current Status
 
-All planned phases are implemented. Verified against the real GLM endpoint and a real
-edital (TJ-CE 2023, 32 pages → 7 subjects, 92 topics in ~17 s). Speech recognition was
-verified offline with Whisper base and small. Still to verify by hand on a machine with
-microphone and speakers: the full voice loop and Piper speech (see "Not yet verified").
+Version 0.13.0. Phases 1–6 are done (see the open items marked `[ ]`); phase 7 has its
+quick wins done. Work happens on branch `feat/roadmap-v0.8` (pushed, one commit and tag
+per version); `main` still has only the first commits, so it needs a PR/merge.
+
+### Handoff for the next agent
+
+**Next up, in order:**
+1. Phase 7 — Kokoro-82M voices (female `pf_dora`, male `pm_alex`/`pm_santa`): run like
+   Piper as a child process (candidate: sherpa-onnx prebuilt TTS), add to `ModelStore`,
+   voice picker with female/male + "listen to a sample", then a female avatar variant
+   (`crates/ui/src/avatar.rs`) that follows the chosen voice.
+2. Open items left in phases 5–6 (per-plan reuse of board material, whiteboard diagrams,
+   logo dark variant, time studied, illustrations).
+3. "Next ideas" below (streaming tutor answers is the biggest latency win).
+
+**How the code is organized:** `app → ui → engine → {study, ai, audio, pdf, handout}`.
+Engine owns state; slow work runs in workers and returns as events applied in
+`Engine::poll`. UI text only via `locales/*.yml` (`t!`); tests fail on missing keys.
+Repo text in English; user-facing app text pt-BR first. No `unwrap/expect/panic` outside
+tests (workspace lints).
+
+**How to verify:**
+- `cargo fmt && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
+- Screens to PNG: `KG_SNAPSHOT_DIR=<dir> cargo test -p kg-ui -- --ignored`
+- Against the real AI (`.env`, which overrides global env vars):
+  `cargo run -p kg-ai --example live_check`,
+  `cargo run -p kg-engine --example e2e -- edital.pdf`,
+  `cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pdf`
+- Voice: `cargo run --release -p kg-audio --example voice_check -- %LOCALAPPDATA%/KnowGiver/models small out.wav`
+
+**Not verified by an agent:** live microphone loop end to end, installer build (needs
+Inno Setup 6).
 
 ## Phase 1 — Foundation
 - [x] Cargo workspace setup
@@ -95,12 +123,14 @@ microphone and speakers: the full voice loop and Piper speech (see "Not yet veri
 - [x] Icon set (Lucide SVG rendered with resvg, pure Rust) for navigation
 
 ### UX
-- [ ] "Today" home screen: what to study today, reviews due, next lesson, time studied
-- [ ] First-run onboarding: AI key → speech models → upload edital → first plan
-- [ ] Empty states with illustrations and a single clear next step
-- [ ] Streaks and gentle milestones (no gamified noise)
-- [ ] Micro-animations: screen transitions, progress filling, toast entry
-- [ ] Review the whole flow for clicks saved (e.g. start a lesson straight from Today)
+- [x] "Today" home screen: what to study today, reviews due, next step, streak
+- [ ] Time studied per day on the Today screen
+- [x] First-run onboarding: AI key → speech models → upload edital → first plan
+- [x] Empty states with an icon and a single clear next step
+- [ ] Real illustrations for empty states
+- [x] Streaks and gentle milestones (no gamified noise)
+- [x] Micro-animations: screen transitions, progress filling, toast entry
+- [x] Review the whole flow for clicks saved (start a lesson straight from Today)
 
 ## Phase 7 — Natural voice, male and female
 

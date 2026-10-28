@@ -5,6 +5,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
+use crate::activity::ActivityKind;
 use crate::board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance,
@@ -118,6 +119,14 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX board_questions_topic ON board_questions(topic_id);
     CREATE INDEX board_excerpts_topic ON board_excerpts(topic_id);
+",
+    r"
+    CREATE TABLE activity (
+        id INTEGER PRIMARY KEY,
+        day TEXT NOT NULL,
+        kind TEXT NOT NULL
+    );
+    CREATE INDEX activity_day ON activity(day);
 ",
 ];
 
@@ -617,6 +626,24 @@ impl Store {
         Ok(updated)
     }
 
+    /// Notes that the student studied today.
+    pub fn record_activity(&mut self, kind: ActivityKind, day: NaiveDate) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO activity (day, kind) VALUES (?1, ?2)",
+            params![day.to_string(), kind.as_str()],
+        )?;
+        Ok(())
+    }
+
+    /// Distinct days with activity, newest first, at most `limit`.
+    pub fn activity_days(&self, limit: u32) -> Result<Vec<NaiveDate>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT day FROM activity ORDER BY day DESC LIMIT ?1")?;
+        let rows = stmt.query_map([limit], |r| r.get::<_, String>(0))?;
+        rows.map(|row| parse_date("day", &row?)).collect()
+    }
+
     pub fn setting(&self, key: &str) -> Result<Option<String>> {
         Ok(self
             .conn
@@ -881,6 +908,16 @@ mod tests {
 
         store.delete_board_document(doc).unwrap();
         assert!(store.board_questions(plan.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn activity_days_are_distinct_and_newest_first() {
+        let mut store = Store::open_in_memory().unwrap();
+        let day = |d| NaiveDate::from_ymd_opt(2026, 5, d).unwrap();
+        store.record_activity(ActivityKind::Lesson, day(2)).unwrap();
+        store.record_activity(ActivityKind::Quiz, day(3)).unwrap();
+        store.record_activity(ActivityKind::Review, day(3)).unwrap();
+        assert_eq!(store.activity_days(10).unwrap(), vec![day(3), day(2)]);
     }
 
     #[test]

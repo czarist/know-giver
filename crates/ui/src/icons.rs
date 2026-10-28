@@ -4,10 +4,6 @@
 use egui::{Color32, Image, ImageSource, include_image, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[expect(
-    dead_code,
-    reason = "the Today screen and the meeting view use the rest"
-)]
 pub enum Icon {
     Edital,
     Plan,

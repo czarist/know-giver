@@ -25,6 +25,8 @@ pub struct Settings {
     pub quiz_size: u32,
     /// UI locale, e.g. "pt-BR".
     pub locale: String,
+    /// The first-run welcome steps were closed.
+    pub onboarding_done: bool,
 }
 
 impl Default for Settings {
@@ -39,6 +41,7 @@ impl Default for Settings {
             speech_rate: 0.95,
             quiz_size: 5,
             locale: "pt-BR".into(),
+            onboarding_done: false,
         }
     }
 }

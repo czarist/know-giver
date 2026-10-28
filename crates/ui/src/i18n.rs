@@ -5,8 +5,8 @@
 
 use chrono::NaiveDate;
 use kg_engine::{
-    AiError, AudioError, Difficulty, EngineError, HandoutError, LessonPhase, ModelId, Notice,
-    PdfError, PiperVoice, ReviewGrade, StoreError, StudyError, TopicStatus, WhisperModel,
+    AiError, AudioError, Difficulty, EngineError, HandoutError, LessonPhase, Milestone, ModelId,
+    Notice, PdfError, PiperVoice, ReviewGrade, StoreError, StudyError, TopicStatus, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -139,6 +139,10 @@ pub fn notice(notice: &Notice) -> (String, bool) {
             used, set_aside, ..
         } => t!("notice.board_imported", used = used, set_aside = set_aside),
         Notice::AnswerKeyApplied { count } => t!("notice.answer_key", count = count),
+        Notice::Milestone(Milestone::Streak(days)) => t!("notice.milestone_streak", days = days),
+        Notice::Milestone(Milestone::Progress(percent)) => {
+            t!("notice.milestone_progress", percent = percent)
+        }
     };
     (text.into_owned(), false)
 }
@@ -242,6 +246,8 @@ mod tests {
             include_str!("screens/review.rs"),
             include_str!("screens/progress.rs"),
             include_str!("screens/settings.rs"),
+            include_str!("screens/today.rs"),
+            include_str!("screens/welcome.rs"),
         ];
         let known = keys(DEFAULT_LOCALE);
         let mut unknown = Vec::new();
