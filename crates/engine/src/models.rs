@@ -44,6 +44,10 @@ impl Engine {
         if self.downloads.contains_key(&id) || self.models.is_installed(id) {
             return;
         }
+        // Parakeet runs on the same sherpa-onnx runtime as Kokoro.
+        if id == ModelId::Parakeet {
+            self.download_model(ModelId::KokoroRuntime);
+        }
         let progress = Arc::new(AtomicU64::new(0));
         let cancel = Arc::new(AtomicBool::new(false));
         self.downloads.insert(
@@ -99,12 +103,7 @@ impl Engine {
         }
         self.stop_voice_preview();
         self.stop_speaking();
-        if let ModelId::Whisper(model) = id
-            && let Ok(mut stt) = self.stt.lock()
-            && stt.as_ref().is_some_and(|(loaded, _)| *loaded == model)
-        {
-            *stt = None;
-        }
+        self.stt.unload(id);
         self.voice.reset_tts();
         self.models.remove(id)?;
         Ok(())
@@ -112,8 +111,7 @@ impl Engine {
 
     /// True when speech recognition can run.
     pub fn stt_ready(&self) -> bool {
-        self.models
-            .is_installed(ModelId::Whisper(self.settings.whisper_model))
+        self.stt_job().is_some()
     }
 
     /// True when the tutor can speak.

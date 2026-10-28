@@ -2,13 +2,15 @@
 //! and local model management.
 //!
 //! - Capture and playback: cpal / rodio (pure Rust on Windows, macOS, Linux).
-//! - STT: Whisper running on candle (pure Rust, CPU), weights from Hugging Face.
+//! - STT: Parakeet through the sherpa-onnx runtime as a local server (fast), or
+//!   Whisper running on candle (pure Rust, CPU), weights from Hugging Face.
 //! - TTS: Piper or Kokoro as a child process, plus an optional HTTP speech service.
 //!   No C/C++ code is compiled into the app.
 
 mod capture;
 mod kokoro_runtime;
 mod models;
+mod parakeet;
 mod piper;
 mod playback;
 mod signal;
@@ -19,7 +21,8 @@ mod whisper;
 
 pub use capture::{RecordOptions, Recording};
 pub use kokoro_runtime::prepare_kokoro_executable;
-pub use models::{ModelId, ModelStore, PiperVoice, WhisperModel};
+pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
+pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
 pub use playback::Speaker;
 pub use signal::{resample, soften, split_for_speech};

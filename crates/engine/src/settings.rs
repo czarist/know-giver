@@ -1,7 +1,7 @@
 //! User settings, stored as JSON in the database.
 
 use kg_ai::AiConfig;
-use kg_audio::{CloudSpeechConfig, TtsBackend, Voice, WhisperModel};
+use kg_audio::{CloudSpeechConfig, SttEngine, TtsBackend, Voice, WhisperModel};
 use kg_study::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,10 @@ pub struct Settings {
     pub hands_free: bool,
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
+    /// Speech recognizer; falls back to whichever is installed.
+    pub stt_engine: SttEngine,
+    /// Whisper model, used when Whisper is the recognizer and to double-check
+    /// one-word answers with Parakeet.
     pub whisper_model: WhisperModel,
     pub voice: Voice,
     pub tts_backend: TtsBackend,
@@ -53,6 +57,7 @@ impl Default for Settings {
             voice_enabled: true,
             hands_free: true,
             auto_stop: true,
+            stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),
             tts_backend: TtsBackend::default(),

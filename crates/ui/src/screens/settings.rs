@@ -2,8 +2,8 @@
 
 use egui::RichText;
 use kg_engine::{
-    AvatarStyle, Command, Engine, ModelId, ModelStatus, Settings, TtsBackend, Voice, VoiceGender,
-    WhisperModel,
+    AvatarStyle, Command, Engine, ModelId, ModelStatus, Settings, SttEngine, TtsBackend, Voice,
+    VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -234,17 +234,39 @@ pub(crate) fn voice_section(
                 ui.end_row();
 
                 ui.label(t!("settings.voice.stt_model"));
-                egui::ComboBox::from_id_salt("stt_model")
-                    .selected_text(i18n::whisper_model(draft.whisper_model))
-                    .show_ui(ui, |ui| {
-                        for model in WhisperModel::ALL {
-                            ui.selectable_value(
-                                &mut draft.whisper_model,
-                                model,
-                                i18n::whisper_model(model),
-                            );
-                        }
-                    });
+                ui.vertical(|ui| {
+                    let selected = match draft.stt_engine {
+                        SttEngine::Parakeet => i18n::model_name(ModelId::Parakeet),
+                        SttEngine::Whisper => i18n::whisper_model(draft.whisper_model),
+                    };
+                    egui::ComboBox::from_id_salt("stt_model")
+                        .selected_text(selected)
+                        .show_ui(ui, |ui| {
+                            if ui
+                                .selectable_label(
+                                    draft.stt_engine == SttEngine::Parakeet,
+                                    i18n::model_name(ModelId::Parakeet),
+                                )
+                                .clicked()
+                            {
+                                draft.stt_engine = SttEngine::Parakeet;
+                            }
+                            for model in WhisperModel::ALL {
+                                let chosen = draft.stt_engine == SttEngine::Whisper
+                                    && draft.whisper_model == model;
+                                if ui
+                                    .selectable_label(chosen, i18n::whisper_model(model))
+                                    .clicked()
+                                {
+                                    draft.stt_engine = SttEngine::Whisper;
+                                    draft.whisper_model = model;
+                                }
+                            }
+                        });
+                    if draft.stt_engine == SttEngine::Parakeet {
+                        widgets::hint(ui, &t!("settings.voice.parakeet_hint"));
+                    }
+                });
                 ui.end_row();
 
                 ui.label(t!("settings.quiz_size"));
@@ -395,8 +417,11 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
     section(ui, &t!("settings.models.title"), |ui| {
         widgets::hint(ui, &t!("settings.models.hint"));
         for id in ModelId::all() {
+            let parakeet = draft.stt_engine == SttEngine::Parakeet;
             let in_use = match id {
                 ModelId::Whisper(m) => m == draft.whisper_model,
+                ModelId::Parakeet => parakeet,
+                ModelId::KokoroRuntime if parakeet => true,
                 _ => {
                     draft.tts_backend == TtsBackend::Local
                         && (id == draft.voice.model_id() || id == draft.voice.runtime_id())

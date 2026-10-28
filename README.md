@@ -13,8 +13,9 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 
 - **Edital → plan**: reads the PDF locally, sends only the syllabus to the AI, and builds
   a plan for your role, number of weeks and hours per week. Several editais can be kept.
-- **Voice lessons**: local speech recognition (Whisper), tutor via any OpenAI-compatible
-  model, spoken answers with a Brazilian Portuguese Piper voice. The tutor starts
+- **Voice lessons**: local speech recognition (Parakeet or Whisper) with live captions,
+  tutor via any OpenAI-compatible model, spoken answers with a Brazilian Portuguese Piper
+  voice. The tutor starts
   speaking with the first sentence of its answer. Hands-free mode, or type.
 - **Quizzes**: multiple-choice questions in the style of exam boards, with explanations.
 - **Spaced review (SM-2)**: topics come back when you are about to forget them. The AI
@@ -69,7 +70,7 @@ crates/
   engine/   # app state, commands, background work, voice loop
   study/    # plans, reviews (SM-2), quizzes, SQLite storage
   ai/       # OpenAI-compatible client + tutor prompts (crates/ai/prompts)
-  audio/    # mic capture, Whisper STT, Piper TTS, playback, model downloads
+  audio/    # mic capture, Parakeet/Whisper STT, Piper/Kokoro TTS, playback, model downloads
   pdf/      # edital text extraction
   handout/  # study handouts rendered to PDF with Typst
 locales/    # UI translations (pt-BR, en)

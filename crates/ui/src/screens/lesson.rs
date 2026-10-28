@@ -176,14 +176,19 @@ fn paint_stage(
 
 /// The latest line of the conversation, over the bottom of the teacher area.
 fn paint_captions(ui: &egui::Ui, area: egui::Rect, lesson: &LessonSession) {
-    let Some(turn) = lesson.turns.last() else {
-        return;
+    let text = if let Some(live) = lesson.live_caption() {
+        // What the student is saying, as they say it.
+        format!("{}: {live}…", t!("lesson.you"))
+    } else {
+        let Some(turn) = lesson.turns.last() else {
+            return;
+        };
+        let prefix = match turn.speaker {
+            Speaker::Tutor => String::new(),
+            Speaker::Student => format!("{}: ", t!("lesson.you")),
+        };
+        format!("{prefix}{}", turn.text)
     };
-    let prefix = match turn.speaker {
-        Speaker::Tutor => String::new(),
-        Speaker::Student => format!("{}: ", t!("lesson.you")),
-    };
-    let text = format!("{prefix}{}", turn.text);
     let width = (area.width() - 80.0).max(200.0);
     let galley = ui.painter().layout(
         last_lines(&text, 220),

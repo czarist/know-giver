@@ -116,6 +116,7 @@ pub fn model_name(id: ModelId) -> String {
         ModelId::PiperRuntime => t!("models.piper").into_owned(),
         ModelId::KokoroRuntime => t!("models.kokoro_runtime").into_owned(),
         ModelId::KokoroModel => t!("models.kokoro_model").into_owned(),
+        ModelId::Parakeet => t!("models.parakeet").into_owned(),
     }
 }
 
@@ -126,6 +127,7 @@ pub fn model_description(id: ModelId) -> String {
         ModelId::PiperRuntime => t!("models.piper_description"),
         ModelId::KokoroRuntime => t!("models.kokoro_runtime_description"),
         ModelId::KokoroModel => t!("models.kokoro_model_description"),
+        ModelId::Parakeet => t!("models.parakeet_description"),
     }
     .into_owned()
 }

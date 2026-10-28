@@ -4,6 +4,29 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.20.0] - 2026-10-28
+
+### Added
+- Parakeet speech recognition (NVIDIA Parakeet TDT 0.6B v3, about 490 MB) as the
+  default recognizer. The pinned sherpa-onnx runtime runs it as a local server that
+  keeps the model loaded: about 0.3 s per answer on CPU, against 4.7 s for Whisper small
+  on the same 4-second recording. Audio stays on 127.0.0.1.
+- Live captions in lessons: what the student says appears under the teacher as they
+  speak, refreshed every 0.4 s of new audio.
+- A turn ends 0.7 s after a finished sentence (1.4 s otherwise), and the live caption
+  becomes the transcript directly, so the tutor starts answering about 3 s after the
+  student stops instead of about 8.5 s.
+- One-word answers ("sim", "não"), where Parakeet sometimes picks the wrong language,
+  are double-checked by Whisper with a short window (under a second) when Whisper is
+  installed.
+
+### Changed
+- Settings › Speech recognition lists Parakeet and the Whisper models; the recognizer
+  falls back to whichever is installed. Downloading Parakeet also installs the
+  sherpa-onnx runtime.
+- The microphone learns the room noise from the median level of the first half second,
+  so answering right away no longer raises the speech threshold.
+
 ## [0.19.1] - 2026-10-28
 
 ### Fixed
