@@ -364,6 +364,8 @@ settings:
     enabled: "Ler as respostas do tutor em voz alta"
     hands_free: "Mãos livres: voltar a ouvir quando o tutor terminar de falar"
     auto_stop: "Parar de ouvir quando eu fizer uma pausa"
+    barge_in: "Posso interromper o tutor ou continuar falando enquanto ele pensa"
+    barge_in_hint: "O microfone fica aberto enquanto o tutor pensa e fala. Se você falar por cima, ele para e escuta; a voz dele saindo das caixas de som é reconhecida e ignorada. Funciona melhor com fone de ouvido. Precisa do reconhecimento Parakeet."
     voice: "Voz do tutor"
     rate: "Velocidade da fala"
     stt_model: "Reconhecimento de voz"

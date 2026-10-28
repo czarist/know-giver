@@ -20,6 +20,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ChatMessage::assistant("Olá! Vamos estudar crase. O que você já sabe?"),
         ChatMessage::user("Quando uso crase antes de horas?"),
     ];
+    let rounds: usize = std::env::var("KG_ROUNDS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1);
+    for _ in 1..rounds {
+        // Same client: later rounds reuse the open connection.
+        let started = Instant::now();
+        let mut first = None;
+        tutor_reply_stream(&client, &topic, &history, |_| {
+            first.get_or_insert(started.elapsed());
+        })?;
+        println!(
+            "warm-up round: first sentence after {:.2}s",
+            first.map_or(0.0, |d| d.as_secs_f32())
+        );
+    }
     let started = Instant::now();
     let mut first = None;
     let mut count = 0;

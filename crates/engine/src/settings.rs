@@ -27,6 +27,9 @@ pub struct Settings {
     pub hands_free: bool,
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
+    /// Keep the microphone open while the tutor thinks or speaks, so the
+    /// student can go on talking or interrupt (needs live captions).
+    pub barge_in: bool,
     /// Speech recognizer; falls back to whichever is installed.
     pub stt_engine: SttEngine,
     /// Whisper model, used when Whisper is the recognizer and to double-check
@@ -57,6 +60,7 @@ impl Default for Settings {
             voice_enabled: true,
             hands_free: true,
             auto_stop: true,
+            barge_in: true,
             stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),

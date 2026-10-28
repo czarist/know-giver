@@ -135,12 +135,17 @@ impl Recording {
 
     /// A copy of the audio so far, for live captions while still recording.
     pub fn snapshot(&self) -> AudioClip {
+        self.snapshot_from(0)
+    }
+
+    /// A copy of the audio from sample `start` on.
+    pub fn snapshot_from(&self, start: usize) -> AudioClip {
         AudioClip {
             samples: self
                 .shared
                 .samples
                 .lock()
-                .map(|s| s.clone())
+                .map(|s| s.get(start..).unwrap_or_default().to_vec())
                 .unwrap_or_default(),
             sample_rate: self.sample_rate,
         }

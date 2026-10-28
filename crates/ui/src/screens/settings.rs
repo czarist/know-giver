@@ -162,6 +162,8 @@ pub(crate) fn voice_section(
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
         ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));
+        ui.checkbox(&mut draft.barge_in, t!("settings.voice.barge_in"))
+            .on_hover_text(t!("settings.voice.barge_in_hint"));
         ui.horizontal(|ui| {
             ui.label(t!("settings.voice.backend"));
             ui.selectable_value(

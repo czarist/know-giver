@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.20.0. Everything an agent can build and check without a human ear, a
+Version 0.21.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person or hardware
 (listed under "Not yet verified"). Each release is a short-lived branch merged into
 `main` with an annotated tag.
@@ -10,13 +10,14 @@ microphone or other platforms is done. What remains open needs a person or hardw
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Conversation flow (v0.20.0): Parakeet with live captions and early end of turn.
-   Measured per step on the user's machine before the change: silence 1.4 s, Whisper
-   small 4.7 s, first tutor sentence 2.1 s, first Piper chunk ~0.4 s. Still to check
-   with a real microphone: whether 0.7 s after a sentence cuts students off, and how
-   often one-word answers need the Whisper check. Next candidates: keep Piper running
-   between sentences (saves ~0.3 s per chunk), and barge-in (talking over the tutor),
-   which needs echo cancellation or headphones.
+0. Conversation flow (v0.20.0–v0.21.0): Parakeet with live captions, end of turn
+   0.55 s after a sentence, continuation while the tutor thinks, barge-in with echo
+   recognized by comparing words, Piper kept running. Measured before: silence 1.4 s,
+   Whisper small 4.7 s, first tutor sentence 1.5–2.2 s (server time; reusing the
+   connection did not help), first Piper chunk ~0.6 s. Still to check with a real
+   microphone and speakers: false interruptions from echo (raise the word threshold if
+   they happen), CPU load of checks while the tutor speaks, and how often one-word
+   answers need the Whisper check.
 1. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.

@@ -49,6 +49,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     let started = Instant::now();
     let clip = tts.synthesize(&kg_audio::normalize_for_speech(sentence), &|| false)?;
+    // Later sentences reuse the running voice.
+    for text in ["Boa pergunta!", "Vamos ver mais um exemplo de crase."] {
+        let t = Instant::now();
+        let next = tts.synthesize(text, &|| false)?;
+        println!(
+            "{text:?}: {:.2}s audio in {:.2}s",
+            next.duration_secs(),
+            t.elapsed().as_secs_f64()
+        );
+    }
     println!(
         "{id}: {:.2}s audio, {} Hz, {:.2}s including startup",
         clip.duration_secs(),
