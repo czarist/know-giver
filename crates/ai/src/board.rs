@@ -94,6 +94,45 @@ struct AnswersReply {
     answers: Vec<AnswerDraft>,
 }
 
+/// Classification of an existing item against another plan's syllabus.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct RelevanceDraft {
+    pub item: usize,
+    #[serde(default, deserialize_with = "lenient_u32")]
+    pub topic: Option<u32>,
+    pub relevance: String,
+    #[serde(default)]
+    pub reason: String,
+}
+
+#[derive(Deserialize)]
+struct RelevanceReply {
+    items: Vec<RelevanceDraft>,
+}
+
+/// Reclassifies existing content without rewriting questions, options or answers.
+pub fn classify_board_items(
+    client: &Client,
+    context: &BoardContext,
+    items: &[String],
+) -> Result<Vec<RelevanceDraft>, AiError> {
+    let topics = context.topics_list();
+    let values = items
+        .iter()
+        .enumerate()
+        .map(|(index, text)| serde_json::json!({"item": index, "text": text}))
+        .collect::<Vec<_>>();
+    let messages = [
+        ChatMessage::system(fill(
+            prompts::BOARD_RELEVANCE,
+            &[("exam", &context.exam), ("topics", &topics)],
+        )),
+        ChatMessage::user(serde_json::Value::Array(values).to_string()),
+    ];
+    let reply: RelevanceReply = chat_json(client, Task::StudyPlan, &messages, 8_000)?;
+    Ok(reply.items)
+}
+
 /// Numbers may come as `12`, `"12"` or `null`.
 fn lenient_u32<'de, D: Deserializer<'de>>(de: D) -> Result<Option<u32>, D::Error> {
     Ok(match serde_json::Value::deserialize(de)? {

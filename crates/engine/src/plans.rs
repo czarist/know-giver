@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use kg_ai::{PlanDraft, PlanPrefs};
-use kg_pdf::{Edital, PdfError};
+use kg_pdf::Edital;
 use kg_study::{
     Difficulty, NewPlan, NewSubject, NewTopic, PlanId, QuizStats, TopicId, TopicStatus,
 };
@@ -22,11 +22,18 @@ impl Engine {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         self.import = ImportState::Extracting { file };
-        self.spawn(move || Event::EditalExtracted(kg_pdf::extract(&path)));
+        let client = self.ai_client();
+        self.spawn(move || {
+            Event::EditalExtracted(crate::documents::extract_document(
+                &client,
+                &path,
+                &std::sync::atomic::AtomicBool::new(false),
+            ))
+        });
         Ok(())
     }
 
-    pub(crate) fn on_edital_extracted(&mut self, result: Result<Edital, PdfError>) {
+    pub(crate) fn on_edital_extracted(&mut self, result: Result<Edital, EngineError>) {
         match result {
             Ok(edital) => self.import = ImportState::Ready(edital),
             Err(err) => {
