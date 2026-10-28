@@ -12,6 +12,8 @@ mod piper;
 mod playback;
 mod signal;
 mod speech_text;
+mod tts;
+mod voice;
 mod whisper;
 
 pub use capture::{RecordOptions, Recording};
@@ -20,6 +22,8 @@ pub use piper::PiperTts;
 pub use playback::Speaker;
 pub use signal::{resample, soften, split_for_speech};
 pub use speech_text::normalize_for_speech;
+pub use tts::{SpeechOptions, Synthesizer};
+pub use voice::{CloudSpeechConfig, KokoroVoice, TtsBackend, Voice, VoiceGender};
 pub use whisper::WhisperStt;
 
 use std::path::PathBuf;

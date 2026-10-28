@@ -14,6 +14,10 @@ use crate::AudioError;
 const HF: &str = "https://huggingface.co";
 const PIPER_RELEASE: &str =
     "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
+const KOKORO_RUNTIME_DIR: &str = "sherpa-onnx-v1.12.20-win-x64-shared";
+const KOKORO_RUNTIME_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-win-x64-shared.tar.bz2";
+const KOKORO_MODEL_DIR: &str = "kokoro-multi-lang-v1_0";
+const KOKORO_MODEL_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2";
 
 /// Multilingual Whisper checkpoints. Bigger is more accurate and slower.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -82,6 +86,10 @@ pub enum ModelId {
     Voice(PiperVoice),
     /// The Piper executable itself.
     PiperRuntime,
+    /// Pinned sherpa-onnx runtime; no native compilation in the app.
+    KokoroRuntime,
+    /// Shared Kokoro v1.0 model containing all three Portuguese voices.
+    KokoroModel,
 }
 
 impl ModelId {
@@ -89,6 +97,7 @@ impl ModelId {
         let mut all: Vec<Self> = WhisperModel::ALL.into_iter().map(Self::Whisper).collect();
         all.push(Self::PiperRuntime);
         all.extend(PiperVoice::ALL.into_iter().map(Self::Voice));
+        all.extend([Self::KokoroRuntime, Self::KokoroModel]);
         all
     }
 
@@ -98,6 +107,8 @@ impl ModelId {
             Self::Whisper(m) => m.approx_bytes(),
             Self::Voice(_) => 63_500_000,
             Self::PiperRuntime => 22_000_000,
+            Self::KokoroRuntime => 26_700_000,
+            Self::KokoroModel => 350_000_000,
         }
     }
 }
@@ -134,6 +145,36 @@ impl ModelStore {
         self.root.join("piper")
     }
 
+    pub fn kokoro_dir(&self) -> PathBuf {
+        self.root.join("kokoro").join(KOKORO_MODEL_DIR)
+    }
+
+    /// Downloaded runtime on Windows, or an explicitly installed executable on PATH.
+    pub fn kokoro_exe(&self) -> Option<PathBuf> {
+        let name = if cfg!(windows) {
+            "sherpa-onnx-offline-tts.exe"
+        } else {
+            "sherpa-onnx-offline-tts"
+        };
+        let local = self
+            .root
+            .join("sherpa-onnx")
+            .join(KOKORO_RUNTIME_DIR)
+            .join("bin")
+            .join(name);
+        if local.is_file() {
+            return Some(local);
+        }
+        if cfg!(windows) {
+            return None;
+        }
+        std::env::var_os("PATH").and_then(|paths| {
+            std::env::split_paths(&paths)
+                .map(|p| p.join(name))
+                .find(|p| p.is_file())
+        })
+    }
+
     /// The Piper executable: the downloaded one, or `piper` on `PATH`
     /// outside Windows.
     pub fn piper_exe(&self) -> Option<PathBuf> {
@@ -163,6 +204,8 @@ impl ModelStore {
                 onnx.is_file() && json.is_file()
             }
             ModelId::PiperRuntime => self.piper_exe().is_some(),
+            ModelId::KokoroRuntime => self.kokoro_exe().is_some(),
+            ModelId::KokoroModel => kokoro_model_complete(&self.kokoro_dir()),
         }
     }
 
@@ -175,6 +218,8 @@ impl ModelStore {
                 vec![a, b]
             }
             ModelId::PiperRuntime => vec![self.piper_dir()],
+            ModelId::KokoroRuntime => vec![self.root.join("sherpa-onnx")],
+            ModelId::KokoroModel => vec![self.root.join("kokoro")],
         };
         paths.iter().map(|p| disk_usage(p)).sum()
     }
@@ -187,6 +232,8 @@ impl ModelStore {
         match id {
             ModelId::Whisper(m) => remove_dir(self.whisper_dir(m)),
             ModelId::PiperRuntime => remove_dir(self.piper_dir()),
+            ModelId::KokoroRuntime => remove_dir(self.root.join("sherpa-onnx")),
+            ModelId::KokoroModel => remove_dir(self.root.join("kokoro")),
             ModelId::Voice(v) => {
                 let (a, b) = self.voice_files(v);
                 for path in [a, b] {
@@ -241,6 +288,44 @@ impl ModelStore {
                 let _ = fs::remove_file(&zip_path);
                 result?;
             }
+            ModelId::KokoroRuntime | ModelId::KokoroModel => {
+                if id == ModelId::KokoroRuntime && !cfg!(all(windows, target_arch = "x86_64")) {
+                    return Err(AudioError::Unsupported(
+                        "install sherpa-onnx v1.12.20 on PATH".into(),
+                    ));
+                }
+                let (url, directory) = if id == ModelId::KokoroRuntime {
+                    (KOKORO_RUNTIME_URL, "sherpa-onnx")
+                } else {
+                    (KOKORO_MODEL_URL, "kokoro")
+                };
+                fs::create_dir_all(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+                // Stage the whole bundle: interruption never leaves an installed-looking tree.
+                let staging =
+                    tempfile::tempdir_in(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+                let archive = staging.path().join("download.tar.bz2");
+                fetcher.fetch(url, &archive)?;
+                let unpacked = staging.path().join("unpacked");
+                unpack_bzip_tar(&archive, &unpacked, cancel)?;
+                let complete = match id {
+                    ModelId::KokoroRuntime => unpacked
+                        .join(KOKORO_RUNTIME_DIR)
+                        .join("bin/sherpa-onnx-offline-tts.exe")
+                        .is_file(),
+                    _ => kokoro_model_complete(&unpacked.join(KOKORO_MODEL_DIR)),
+                };
+                if !complete {
+                    return Err(AudioError::Tts("incomplete Kokoro bundle".into()));
+                }
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(AudioError::Cancelled);
+                }
+                let dest = self.root.join(directory);
+                if dest.exists() {
+                    fs::remove_dir_all(&dest).map_err(|e| AudioError::io(&dest, e))?;
+                }
+                fs::rename(&unpacked, &dest).map_err(|e| AudioError::io(&dest, e))?;
+            }
         }
         tracing::info!(?id, "model installed");
         Ok(())
@@ -248,6 +333,41 @@ impl ModelStore {
 }
 
 const WHISPER_FILES: [&str; 3] = ["config.json", "tokenizer.json", "model.safetensors"];
+
+fn kokoro_model_complete(dir: &Path) -> bool {
+    [
+        "model.onnx",
+        "voices.bin",
+        "tokens.txt",
+        "espeak-ng-data/phontab",
+        "espeak-ng-data/phonindex",
+        "espeak-ng-data/phondata",
+        "espeak-ng-data/intonations",
+    ]
+    .iter()
+    .all(|name| fs::metadata(dir.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0))
+}
+
+fn unpack_bzip_tar(path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), AudioError> {
+    fs::create_dir_all(dest).map_err(|e| AudioError::io(dest, e))?;
+    let file = fs::File::open(path).map_err(|e| AudioError::io(path, e))?;
+    let mut archive = tar::Archive::new(bzip2::read::BzDecoder::new(file));
+    let entries = archive.entries().map_err(|e| AudioError::io(path, e))?;
+    for entry in entries {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(AudioError::Cancelled);
+        }
+        let mut entry = entry.map_err(|e| AudioError::io(path, e))?;
+        // Model/runtime bundles contain regular files and directories only.
+        if !entry.header().entry_type().is_file() && !entry.header().entry_type().is_dir() {
+            return Err(AudioError::Tts("unsupported link in model archive".into()));
+        }
+        if !entry.unpack_in(dest).map_err(|e| AudioError::io(dest, e))? {
+            return Err(AudioError::Tts("unsafe path in model archive".into()));
+        }
+    }
+    Ok(())
+}
 
 struct Fetcher<'a> {
     agent: ureq::Agent,
@@ -261,6 +381,7 @@ impl<'a> Fetcher<'a> {
     fn new(expected: u64, progress: &'a dyn Fn(u64, u64), cancel: &'a AtomicBool) -> Self {
         let agent = ureq::Agent::config_builder()
             .timeout_connect(Some(Duration::from_secs(30)))
+            .timeout_recv_body(Some(Duration::from_secs(900)))
             .build()
             .into();
         Self {
@@ -275,6 +396,9 @@ impl<'a> Fetcher<'a> {
     /// Streams `url` into `dest` through a `.part` file, so an interrupted
     /// download never looks installed.
     fn fetch(&mut self, url: &str, dest: &Path) -> Result<(), AudioError> {
+        if self.cancel.load(Ordering::Relaxed) {
+            return Err(AudioError::Cancelled);
+        }
         let fail = |reason: String| AudioError::Download {
             url: url.to_owned(),
             reason,
@@ -342,11 +466,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn extracts_bundle_into_a_new_staging_directory() {
+        let root = tempfile::tempdir().unwrap();
+        let archive_path = root.path().join("bundle.tar.bz2");
+        let file = fs::File::create(&archive_path).unwrap();
+        let encoder = bzip2::write::BzEncoder::new(file, bzip2::Compression::fast());
+        let mut archive = tar::Builder::new(encoder);
+        let mut header = tar::Header::new_gnu();
+        header.set_size(5);
+        header.set_mode(0o644);
+        header.set_cksum();
+        archive
+            .append_data(&mut header, "bundle/model.onnx", b"model".as_slice())
+            .unwrap();
+        archive.into_inner().unwrap().finish().unwrap();
+        let dest = root.path().join("not-yet-created");
+        unpack_bzip_tar(&archive_path, &dest, &AtomicBool::new(false)).unwrap();
+        assert_eq!(fs::read(dest.join("bundle/model.onnx")).unwrap(), b"model");
+        assert!(matches!(
+            unpack_bzip_tar(
+                &archive_path,
+                &root.path().join("cancelled"),
+                &AtomicBool::new(true)
+            ),
+            Err(AudioError::Cancelled)
+        ));
+    }
+
+    #[test]
+    fn incomplete_kokoro_model_is_not_installed() {
+        let root = tempfile::tempdir().unwrap();
+        let store = ModelStore::new(root.path());
+        fs::create_dir_all(store.kokoro_dir()).unwrap();
+        fs::write(store.kokoro_dir().join("model.onnx"), b"model").unwrap();
+        assert!(!store.is_installed(ModelId::KokoroModel));
+        store.remove(ModelId::KokoroModel).unwrap();
+        assert!(!store.kokoro_dir().exists());
+    }
+
+    #[test]
     fn nothing_installed_in_empty_dir() {
         let dir = tempfile::tempdir().unwrap();
         let store = ModelStore::new(dir.path());
         for id in ModelId::all() {
-            if id == ModelId::PiperRuntime && !cfg!(windows) {
+            if matches!(id, ModelId::PiperRuntime | ModelId::KokoroRuntime) && !cfg!(windows) {
                 continue;
             }
             assert!(!store.is_installed(id), "{id:?}");
