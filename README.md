@@ -102,11 +102,6 @@ Piper remains the default. See [validation notes](docs/validation-v0.15.md) for 
 voice and handout-quality limitations, and [native/CUDA builds](docs/builds.md) for
 optional platform tooling.
 
-## Contributors
-
-- OpenAI Codex
-- Grok
-
 ## Credits
 
 - Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
