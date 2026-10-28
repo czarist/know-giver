@@ -191,6 +191,9 @@ impl KnowGiverApp {
     }
 
     pub(crate) fn go_to(&mut self, screen: Screen) {
+        if self.ui.screen == Screen::Settings && screen != Screen::Settings {
+            self.dispatch(Command::StopVoicePreview);
+        }
         self.ui.screen = screen;
     }
 
@@ -252,7 +255,7 @@ impl KnowGiverApp {
                             .right_text(egui::RichText::new(badge).small().color(p.highlight));
                     }
                     if ui.add(button).clicked() {
-                        self.ui.screen = screen;
+                        self.go_to(screen);
                     }
                 }
 
@@ -378,6 +381,37 @@ impl eframe::App for KnowGiverApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let badges = match self.engine.as_mut() {
             Ok(engine) => {
+                let study_surface = match self.ui.screen {
+                    Screen::Plan | Screen::Board => engine.active_plan().is_some(),
+                    Screen::Lesson => engine.lesson().is_some(),
+                    Screen::Quiz => engine.quiz().is_some(),
+                    Screen::Review => engine.review().is_some(),
+                    _ => false,
+                };
+                let presence = ui.input(|input| {
+                    if !input.focused || !study_surface {
+                        kg_engine::StudyPresence::Inactive
+                    } else if input.pointer.any_down()
+                        || input.pointer.delta() != egui::Vec2::ZERO
+                        || input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::MouseWheel { .. }))
+                        || !input.keys_down.is_empty()
+                        || input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Text(_)))
+                    {
+                        kg_engine::StudyPresence::Interacting
+                    } else {
+                        kg_engine::StudyPresence::Visible
+                    }
+                });
+                engine.set_study_presence(presence);
+                if study_surface {
+                    ui.ctx().request_repaint_after(Duration::from_secs(1));
+                }
                 engine.poll();
                 let notices = engine.take_notices();
                 let busy = engine.is_busy();
