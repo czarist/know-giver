@@ -241,12 +241,7 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
     let width = board.width() - 52.0;
     let mut y = board.top() + 46.0;
     let newest = lesson.board.len().saturating_sub(1);
-    for (i, point) in lesson
-        .board
-        .iter()
-        .enumerate()
-        .skip(lesson.board.len().saturating_sub(3))
-    {
+    for (i, point) in lesson.board.iter().enumerate().rev().take(3) {
         // Remember when each point first appeared, to animate its writing.
         let id = ui.id().with(("board_point", lesson.id, i, point.as_str()));
         let first_seen = ui
@@ -457,6 +452,23 @@ fn side_panel(
 ) {
     let p = theme::palette(ui.ctx());
     ui.label(RichText::new(t!("lesson.transcript")).family(theme::strong_family()));
+    if !lesson.board.is_empty() {
+        egui::CollapsingHeader::new(t!("lesson.board"))
+            .id_salt("board_transcript")
+            .show(ui, |ui| {
+                for entry in &lesson.board {
+                    match crate::whiteboard::parse(entry) {
+                        crate::whiteboard::Entry::Formula(text)
+                        | crate::whiteboard::Entry::Text(text) => {
+                            ui.label(text);
+                        }
+                        crate::whiteboard::Entry::Diagram(nodes) => {
+                            ui.label(nodes.join(" → "));
+                        }
+                    }
+                }
+            });
+    }
     let busy = matches!(
         lesson.phase,
         LessonPhase::Thinking | LessonPhase::Transcribing

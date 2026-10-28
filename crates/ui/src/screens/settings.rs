@@ -151,7 +151,12 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     });
 }
 
-fn voice_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &mut Actions) {
+pub(crate) fn voice_section(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    draft: &mut Settings,
+    actions: &mut Actions,
+) {
     section(ui, &t!("settings.voice.title"), |ui| {
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
         ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
