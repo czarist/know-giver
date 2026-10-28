@@ -25,6 +25,7 @@ tempfile.workspace = true
 tracing-subscriber.workspace = true
 
 [features]
+cuda = ["kg-audio/cuda"]
 # Hooks for UI tests that need engine states without a model or audio device.
 test-support = []
 

@@ -106,7 +106,7 @@ pub struct HandoutDraft {
 }
 
 /// Marker of the whiteboard line at the end of a tutor answer.
-const BOARD_MARKER: &str = "QUADRO:";
+const BOARD_MARKERS: [&str; 3] = ["QUADRO:", "FORMULA:", "DIAGRAMA:"];
 /// Longest whiteboard point kept, in characters.
 const BOARD_POINT_CHARS: usize = 90;
 
@@ -124,11 +124,12 @@ impl TutorReply {
         let mut board = Vec::new();
         for line in text.lines() {
             let clean = line.trim().trim_matches('*').trim();
-            let is_marker = clean
-                .get(..BOARD_MARKER.len())
-                .is_some_and(|head| head.eq_ignore_ascii_case(BOARD_MARKER));
-            if is_marker {
-                board = clean[BOARD_MARKER.len()..]
+            if let Some(marker) = BOARD_MARKERS.into_iter().find(|marker| {
+                clean
+                    .get(..marker.len())
+                    .is_some_and(|head| head.eq_ignore_ascii_case(marker))
+            }) {
+                let points = clean[marker.len()..]
                     .split('|')
                     .map(|p| {
                         p.trim_matches(|c: char| c == '*' || c.is_whitespace())
@@ -136,9 +137,16 @@ impl TutorReply {
                             .trim()
                     })
                     .filter(|p| !p.is_empty())
-                    .map(|p| p.chars().take(BOARD_POINT_CHARS).collect())
-                    .take(3)
-                    .collect();
+                    .map(|p| {
+                        let point: String = p.chars().take(BOARD_POINT_CHARS).collect();
+                        if marker == "QUADRO:" {
+                            point
+                        } else {
+                            format!("{marker} {point}")
+                        }
+                    })
+                    .take(3);
+                board.extend(points);
             } else {
                 speech.push(line);
             }
@@ -392,6 +400,18 @@ mod tests {
         let plain = TutorReply::parse("Sem lousa hoje.");
         assert_eq!(plain.speech, "Sem lousa hoje.");
         assert!(plain.board.is_empty());
+        let illustrated = TutorReply::parse(
+            "Uma taxa incide sobre o valor.\nQUADRO: Taxa\nFORMULA: juros = valor * taxa\nDIAGRAMA: Lei -> Aplicação -> Recurso",
+        );
+        assert_eq!(illustrated.speech, "Uma taxa incide sobre o valor.");
+        assert_eq!(
+            illustrated.board,
+            vec![
+                "Taxa",
+                "FORMULA: juros = valor * taxa",
+                "DIAGRAMA: Lei -> Aplicação -> Recurso"
+            ]
+        );
     }
 
     #[test]

@@ -19,8 +19,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
 
     $dist = Join-Path $root 'dist'
-    $stage = Join-Path $dist 'KnowGiver'
-    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+    $stage = [System.IO.Path]::GetFullPath((Join-Path $dist 'KnowGiver'))
+    $expectedStage = [System.IO.Path]::GetFullPath((Join-Path $root 'dist\KnowGiver'))
+    if ($stage -ne $expectedStage -or -not $stage.StartsWith([System.IO.Path]::GetFullPath($dist) + [System.IO.Path]::DirectorySeparatorChar)) {
+        throw 'Refusing to clean a staging directory outside dist'
+    }
+    if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item 'target\release\know-giver.exe' $stage
     Copy-Item '.env.example' (Join-Path $stage '.env.example')
