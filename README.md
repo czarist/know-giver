@@ -102,6 +102,14 @@ Piper remains the default. See [validation notes](docs/validation-v0.15.md) for 
 voice and handout-quality limitations, and [native/CUDA builds](docs/builds.md) for
 optional platform tooling.
 
+## Contributors
+
+- Cezar Trentin ([@czarist](https://github.com/czarist)), author
+- Claude (Anthropic): AI coding assistant
+- Codex (OpenAI): AI coding assistant, v0.14–v0.15
+- Grok (xAI): AI coding assistant, v0.15.2. Grok has no GitHub account, so it does not
+  appear in GitHub's contributor list.
+
 ## Credits
 
 - Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
