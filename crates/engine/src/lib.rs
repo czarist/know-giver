@@ -14,6 +14,7 @@ mod plans;
 mod practice;
 mod progress;
 mod settings;
+mod study_time;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -42,6 +43,7 @@ pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use progress::Milestone;
 pub use settings::Settings;
+pub use study_time::StudyPresence;
 
 use kg_audio::{ModelStore, WhisperStt};
 use kg_study::Store;
@@ -239,6 +241,7 @@ pub struct Engine {
     board_job: Option<BoardJob>,
     streak: u32,
     studied_today: bool,
+    study_clock: study_time::StudyClock,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -329,6 +332,7 @@ impl Engine {
             board_job: None,
             streak: 0,
             studied_today: false,
+            study_clock: study_time::StudyClock::new(Self::today(), Instant::now()),
             notices,
             events_tx,
             events_rx,
@@ -337,6 +341,7 @@ impl Engine {
         };
         engine.reload_plans();
         engine.refresh_activity();
+        engine.load_study_time();
         engine
     }
 
@@ -524,6 +529,7 @@ impl Engine {
     /// Applies finished background work and advances audio state. Call once
     /// per frame.
     pub fn poll(&mut self) {
+        self.tick_study_time();
         while let Ok(event) = self.events_rx.try_recv() {
             let result = match event {
                 Event::EditalExtracted(result) => {
