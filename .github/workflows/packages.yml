@@ -1,0 +1,39 @@
+name: Native packages
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        shell: bash
+        run: rustup update stable --no-self-update && rustup default stable
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev
+      - name: Verify
+        run: cargo test --locked --workspace
+      - name: Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/package.ps1
+      - name: Unix package
+        if: runner.os != 'Windows'
+        run: bash scripts/package-unix.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KnowGiver-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            dist/*.zip
+            dist/*.exe
+            dist/*.tar.gz
+          if-no-files-found: error

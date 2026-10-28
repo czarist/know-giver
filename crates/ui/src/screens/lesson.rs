@@ -136,6 +136,14 @@ fn paint_stage(
             mic: lesson.input_level(),
         },
         p.accent,
+        avatar::Appearance {
+            female: if engine.settings().tts_backend == kg_engine::TtsBackend::Cloud {
+                engine.settings().cloud_speech.gender == kg_engine::VoiceGender::Female
+            } else {
+                engine.settings().voice.gender() == kg_engine::VoiceGender::Female
+            },
+            minimal: engine.settings().avatar_style == kg_engine::AvatarStyle::Minimal,
+        },
     );
 
     // Name tag, bottom left, like a video call.
@@ -233,13 +241,31 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
     let width = board.width() - 52.0;
     let mut y = board.top() + 46.0;
     let newest = lesson.board.len().saturating_sub(1);
-    for (i, point) in lesson.board.iter().enumerate() {
+    for (i, point) in lesson.board.iter().enumerate().rev().take(3) {
         // Remember when each point first appeared, to animate its writing.
         let id = ui.id().with(("board_point", lesson.id, i, point.as_str()));
         let first_seen = ui
             .ctx()
             .data_mut(|d| *d.get_temp_mut_or_insert_with(id, || now));
         let shown = ((now - first_seen) as f32 * BOARD_WRITE_SPEED) as usize;
+        let entry = crate::whiteboard::parse(point);
+        if !matches!(entry, crate::whiteboard::Entry::Text(_)) {
+            let area = egui::Rect::from_min_max(
+                pos2(board.left() + 24.0, y),
+                pos2(board.right() - 24.0, board.bottom() - 14.0),
+            );
+            if area.height() <= 20.0 {
+                break;
+            }
+            let opacity = ((now - first_seen) as f32 / 0.25).clamp(0.0, 1.0);
+            y += crate::whiteboard::paint(
+                &painter.with_clip_rect(area),
+                area,
+                &entry,
+                BOARD_INK.gamma_multiply(opacity),
+            );
+            continue;
+        }
         let text: String = point.chars().take(shown.max(1)).collect();
         let alpha = if i == newest { 1.0 } else { 0.7 };
         let galley = painter.layout(
@@ -426,6 +452,23 @@ fn side_panel(
 ) {
     let p = theme::palette(ui.ctx());
     ui.label(RichText::new(t!("lesson.transcript")).family(theme::strong_family()));
+    if !lesson.board.is_empty() {
+        egui::CollapsingHeader::new(t!("lesson.board"))
+            .id_salt("board_transcript")
+            .show(ui, |ui| {
+                for entry in &lesson.board {
+                    match crate::whiteboard::parse(entry) {
+                        crate::whiteboard::Entry::Formula(text)
+                        | crate::whiteboard::Entry::Text(text) => {
+                            ui.label(text);
+                        }
+                        crate::whiteboard::Entry::Diagram(nodes) => {
+                            ui.label(nodes.join(" → "));
+                        }
+                    }
+                }
+            });
+    }
     let busy = matches!(
         lesson.phase,
         LessonPhase::Thinking | LessonPhase::Transcribing

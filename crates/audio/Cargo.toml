@@ -7,6 +7,10 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
+bzip2.workspace = true
+hound.workspace = true
+tar.workspace = true
+tempfile.workspace = true
 candle-core.workspace = true
 candle-nn.workspace = true
 candle-transformers.workspace = true
@@ -21,8 +25,11 @@ ureq.workspace = true
 zip.workspace = true
 
 [dev-dependencies]
-tempfile.workspace = true
 tracing-subscriber.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+default = []
+cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]

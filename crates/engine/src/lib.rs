@@ -6,6 +6,7 @@
 //! that [`Engine::poll`] applies on the UI thread.
 
 mod board;
+mod documents;
 mod handouts;
 mod lesson;
 mod models;
@@ -14,6 +15,7 @@ mod plans;
 mod practice;
 mod progress;
 mod settings;
+mod study_time;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -26,7 +28,10 @@ use chrono::NaiveDate;
 pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
-pub use kg_audio::{AudioError, ModelId, PiperVoice, WhisperModel};
+pub use kg_audio::{
+    AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, TtsBackend, Voice,
+    VoiceGender, WhisperModel,
+};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
 pub use kg_pdf::{Edital, PdfError};
 pub use kg_study::{
@@ -41,7 +46,8 @@ pub use models::ModelStatus;
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use progress::Milestone;
-pub use settings::Settings;
+pub use settings::{AvatarStyle, Settings};
+pub use study_time::StudyPresence;
 
 use kg_audio::{ModelStore, WhisperStt};
 use kg_study::Store;
@@ -62,6 +68,11 @@ pub enum Command {
     StopListening,
     SendMessage(String),
     StopSpeaking,
+    PreviewVoice {
+        settings: Settings,
+        text: String,
+    },
+    StopVoicePreview,
 
     StartQuiz(TopicId),
     AnswerQuiz(usize),
@@ -97,6 +108,8 @@ pub enum Command {
     },
     CancelBoard,
     DeleteBoardDocument(DocumentId),
+    /// Reclassify material from another saved plan for the active plan.
+    ReuseBoardDocument(DocumentId),
     /// Use an item for a topic, or set it aside (`topic: None`).
     SetBoardItem {
         item: BoardItem,
@@ -185,7 +198,7 @@ pub enum ImportState {
 
 /// Results from worker threads.
 pub(crate) enum Event {
-    EditalExtracted(Result<Edital, PdfError>),
+    EditalExtracted(Result<Edital, EngineError>),
     PlanGenerated {
         edital: Edital,
         prefs: PlanPrefs,
@@ -239,6 +252,7 @@ pub struct Engine {
     board_job: Option<BoardJob>,
     streak: u32,
     studied_today: bool,
+    study_clock: study_time::StudyClock,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -329,6 +343,7 @@ impl Engine {
             board_job: None,
             streak: 0,
             studied_today: false,
+            study_clock: study_time::StudyClock::new(Self::today(), Instant::now()),
             notices,
             events_tx,
             events_rx,
@@ -337,6 +352,7 @@ impl Engine {
         };
         engine.reload_plans();
         engine.refresh_activity();
+        engine.load_study_time();
         engine
     }
 
@@ -454,6 +470,11 @@ impl Engine {
                 self.stop_speaking();
                 Ok(())
             }
+            Command::PreviewVoice { settings, text } => self.preview_voice(settings, text),
+            Command::StopVoicePreview => {
+                self.stop_voice_preview();
+                Ok(())
+            }
 
             Command::StartQuiz(id) => self.start_quiz(id),
             Command::AnswerQuiz(option) => {
@@ -495,6 +516,7 @@ impl Engine {
             Command::FinishOnboarding => self.finish_onboarding(),
             Command::ExportHandout(request) => self.export_handout(request),
             Command::ImportBoard { path, kind } => self.import_board(path, kind),
+            Command::ReuseBoardDocument(id) => self.reuse_board_document(id),
             Command::ImportAnswerKey { path, exam } => self.import_answer_key(path, exam),
             Command::CancelBoard => {
                 self.cancel_board();
@@ -524,6 +546,7 @@ impl Engine {
     /// Applies finished background work and advances audio state. Call once
     /// per frame.
     pub fn poll(&mut self) {
+        self.tick_study_time();
         while let Ok(event) = self.events_rx.try_recv() {
             let result = match event {
                 Event::EditalExtracted(result) => {
@@ -557,12 +580,17 @@ impl Engine {
         self.tick_lesson();
     }
 
-    fn save_settings(&mut self, settings: Settings) -> Result<(), EngineError> {
+    fn save_settings(&mut self, mut settings: Settings) -> Result<(), EngineError> {
+        settings.normalize();
         let voice_changed = settings.voice != self.settings.voice
+            || settings.tts_backend != self.settings.tts_backend
+            || settings.cloud_speech != self.settings.cloud_speech
+            || settings.speech_pitch != self.settings.speech_pitch
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;
         if voice_changed {
+            self.stop_audio();
             self.voice.reset_tts();
         }
         self.notices.push(Notice::SettingsSaved);

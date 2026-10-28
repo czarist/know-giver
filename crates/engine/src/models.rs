@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use kg_audio::{AudioError, ModelId};
+use kg_audio::{AudioError, ModelId, TtsBackend, Voice};
 
 use crate::{Engine, EngineError, Event, Notice};
 
@@ -93,6 +93,12 @@ impl Engine {
     }
 
     pub(crate) fn remove_model(&mut self, id: ModelId) -> Result<(), EngineError> {
+        if self.downloads.contains_key(&id) {
+            self.cancel_download(id);
+            return Ok(());
+        }
+        self.stop_voice_preview();
+        self.stop_speaking();
         if let ModelId::Whisper(model) = id
             && let Ok(mut stt) = self.stt.lock()
             && stt.as_ref().is_some_and(|(loaded, _)| *loaded == model)
@@ -112,9 +118,21 @@ impl Engine {
 
     /// True when the tutor can speak.
     pub fn tts_ready(&self) -> bool {
-        self.models.is_installed(ModelId::PiperRuntime)
-            && self
-                .models
-                .is_installed(ModelId::Voice(self.settings.voice))
+        match self.settings.tts_backend {
+            TtsBackend::Local => self.voice_available(self.settings.voice),
+            TtsBackend::Cloud => {
+                !self.settings.cloud_speech.base_url.trim().is_empty()
+                    && !self.settings.cloud_speech.model.trim().is_empty()
+                    && !self.settings.cloud_speech.voice.trim().is_empty()
+            }
+        }
+    }
+
+    /// True when both the selected local model and its runtime are installed.
+    pub fn voice_available(&self, voice: Voice) -> bool {
+        if cfg!(windows) && matches!(voice, Voice::Kokoro(_)) {
+            return false;
+        }
+        self.models.is_installed(voice.model_id()) && self.models.is_installed(voice.runtime_id())
     }
 }

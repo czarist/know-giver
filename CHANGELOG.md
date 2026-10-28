@@ -4,6 +4,39 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - 2026-10-27
+
+### Added
+- Reuse previously imported board documents in another plan, preserving original
+  questions/answers while classifying relevance against the destination syllabus.
+- Opt-in scanned PDF OCR using `MODEL_VISION`, with local pure Rust page rasterization
+  and an explicit notice before sending page images to the configured AI service.
+- Daily active study time in Today, persisted in SQLite; pauses for unfocused windows,
+  inactivity and suspend gaps, with calendar-day rollover.
+- Whiteboard formulas and small flow diagrams, two avatar styles, voice-matched avatar,
+  a dark logo variant and vector illustrations in empty states.
+- Installed-voice gender filtering, sample playback/cancel, speed and pitch controls.
+- Optional OpenAI-compatible speech service, off by default, with a text-sharing notice.
+- Experimental Kokoro synthesis/model management with cancellable child processes.
+- Streaming tutor client with SSE parsing and sentence callbacks; connecting it to
+  the lesson speech queue remains pending.
+- Optional CUDA Whisper build; Linux/macOS packaging scripts and native package CI.
+- OpenAI Codex credit linked to Contributors in the README.
+
+### Fixed
+- Declared Rust minimum updated to 1.95 to match the existing desktop dependency.
+- Voice child processes are stopped on cancellation, with bounded output and timeout.
+- Model archives are installed through staging directories; incomplete Kokoro bundles
+  are not treated as installed.
+
+### Known limitations
+- Local Kokoro is unavailable on Windows: the pinned sherpa executable crashes on
+  accented UTF-8 arguments. The picker excludes it; Piper remains the local default.
+- Live handout review stayed within the supplied syllabus but found factual/answer
+  errors. Automatic factual correction remains pending; generated text needs review.
+- CUDA hardware, native Linux/macOS packages, installer execution and the physical
+  microphone loop were not validated in this release. See `docs/validation-v0.15.md`.
+
 ## [0.14.0] - 2026-10-27
 
 ### Added

@@ -1,7 +1,10 @@
 //! Settings: language, AI server, voice and local models.
 
 use egui::RichText;
-use kg_engine::{Command, Engine, ModelId, ModelStatus, PiperVoice, Settings, WhisperModel};
+use kg_engine::{
+    AvatarStyle, Command, Engine, ModelId, ModelStatus, Settings, TtsBackend, Voice, VoiceGender,
+    WhisperModel,
+};
 use rust_i18n::t;
 
 use super::Actions;
@@ -26,7 +29,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.add_space(12.0);
         ai_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
-        voice_section(ui, draft);
+        voice_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
         models_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
@@ -122,6 +125,7 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
                     (t!("settings.ai.model_quiz"), &mut models.quiz),
                     (t!("settings.ai.model_correction"), &mut models.correction),
                     (t!("settings.ai.model_handout"), &mut models.handout),
+                    (t!("settings.ai.model_vision"), &mut models.vision),
                     (t!("settings.ai.model_fallback"), &mut models.fallback),
                 ] {
                     ui.label(label);
@@ -129,6 +133,7 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
                     ui.end_row();
                 }
             });
+        widgets::hint(ui, &t!("settings.ai.vision_notice"));
         ui.checkbox(&mut draft.ai.fast_responses, t!("settings.ai.fast"));
         ui.horizontal(|ui| {
             let testing = engine.is_testing_connection();
@@ -146,31 +151,61 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     });
 }
 
-fn voice_section(ui: &mut egui::Ui, draft: &mut Settings) {
+pub(crate) fn voice_section(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    draft: &mut Settings,
+    actions: &mut Actions,
+) {
     section(ui, &t!("settings.voice.title"), |ui| {
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
         ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));
+        ui.horizontal(|ui| {
+            ui.label(t!("settings.voice.backend"));
+            ui.selectable_value(
+                &mut draft.tts_backend,
+                TtsBackend::Local,
+                t!("settings.voice.local"),
+            );
+            ui.selectable_value(
+                &mut draft.tts_backend,
+                TtsBackend::Cloud,
+                t!("settings.voice.cloud"),
+            );
+        });
+        match draft.tts_backend {
+            TtsBackend::Local => local_voice(ui, engine, draft),
+            TtsBackend::Cloud => cloud_voice(ui, draft),
+        }
         egui::Grid::new("voice_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
             .show(ui, |ui| {
-                ui.label(t!("settings.voice.voice"));
-                egui::ComboBox::from_id_salt("voice")
-                    .selected_text(i18n::voice(draft.voice))
-                    .show_ui(ui, |ui| {
-                        for voice in PiperVoice::ALL {
-                            ui.selectable_value(&mut draft.voice, voice, i18n::voice(voice));
-                        }
-                    });
-                ui.end_row();
-
                 ui.label(t!("settings.voice.rate"));
                 ui.add(
                     egui::Slider::new(&mut draft.speech_rate, 0.7..=1.5)
                         .step_by(0.05)
                         .fixed_decimals(2),
                 );
+                ui.end_row();
+
+                ui.label(t!("settings.voice.pitch"));
+                ui.add(egui::Slider::new(&mut draft.speech_pitch, -6.0..=6.0).step_by(0.5));
+                ui.end_row();
+
+                ui.label(t!("settings.voice.avatar"));
+                egui::ComboBox::from_id_salt("avatar_style")
+                    .selected_text(avatar_style(draft.avatar_style))
+                    .show_ui(ui, |ui| {
+                        for style in [AvatarStyle::Classic, AvatarStyle::Minimal] {
+                            ui.selectable_value(
+                                &mut draft.avatar_style,
+                                style,
+                                avatar_style(style),
+                            );
+                        }
+                    });
                 ui.end_row();
 
                 ui.label(t!("settings.voice.stt_model"));
@@ -191,7 +226,146 @@ fn voice_section(ui: &mut egui::Ui, draft: &mut Settings) {
                 ui.add(egui::Slider::new(&mut draft.quiz_size, 3..=10));
                 ui.end_row();
             });
+        ui.horizontal(|ui| {
+            if engine.voice_preview_active() {
+                ui.spinner();
+                ui.label(t!("settings.voice.preview_active"));
+                if ui.button(t!("settings.voice.stop_preview")).clicked() {
+                    actions.send(Command::StopVoicePreview);
+                }
+            } else {
+                let available = match draft.tts_backend {
+                    TtsBackend::Local => engine.voice_available(draft.voice),
+                    TtsBackend::Cloud => {
+                        !draft.cloud_speech.base_url.trim().is_empty()
+                            && !draft.cloud_speech.model.trim().is_empty()
+                            && !draft.cloud_speech.voice.trim().is_empty()
+                    }
+                };
+                if ui
+                    .add_enabled(available, egui::Button::new(t!("settings.voice.preview")))
+                    .clicked()
+                {
+                    actions.send(Command::PreviewVoice {
+                        settings: draft.clone(),
+                        text: t!("settings.voice.sample").into_owned(),
+                    });
+                }
+            }
+            widgets::hint(ui, &t!("settings.voice.preview_hint"));
+        });
     });
+}
+
+fn avatar_style(style: AvatarStyle) -> String {
+    match style {
+        AvatarStyle::Classic => t!("settings.voice.avatar_classic"),
+        AvatarStyle::Minimal => t!("settings.voice.avatar_minimal"),
+    }
+    .into_owned()
+}
+
+fn local_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
+    if cfg!(windows) {
+        widgets::hint(ui, &t!("voice_platform.kokoro_windows"));
+    }
+    let filter_id = ui.id().with("voice_gender_filter");
+    let mut gender = ui
+        .ctx()
+        .data_mut(|data| data.get_temp::<VoiceGender>(filter_id))
+        .unwrap_or(draft.voice.gender());
+    let before = gender;
+    ui.horizontal(|ui| {
+        ui.label(t!("settings.voice.gender"));
+        for option in [VoiceGender::Female, VoiceGender::Male] {
+            ui.selectable_value(&mut gender, option, i18n::voice_gender(option));
+        }
+    });
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(filter_id, gender));
+    let installed: Vec<_> = Voice::ALL
+        .into_iter()
+        .filter(|voice| voice.gender() == gender && engine.voice_available(*voice))
+        .collect();
+    if before != gender
+        && let Some(voice) = installed.first()
+    {
+        draft.voice = *voice;
+    }
+    if installed.is_empty() {
+        widgets::hint(ui, &t!("settings.voice.none_installed"));
+        let voice = Voice::ALL
+            .into_iter()
+            .find(|voice| voice.gender() == gender);
+        if let Some(voice) = voice {
+            ui.label(
+                RichText::new(t!(
+                    "settings.voice.download_hint",
+                    runtime = i18n::model_name(voice.runtime_id()),
+                    model = i18n::model_name(voice.model_id())
+                ))
+                .small(),
+            );
+        }
+    } else {
+        let selected = if installed.contains(&draft.voice) {
+            i18n::voice(draft.voice)
+        } else {
+            t!("settings.voice.choose").into_owned()
+        };
+        ui.horizontal(|ui| {
+            ui.label(t!("settings.voice.voice"));
+            egui::ComboBox::from_id_salt("installed_voice")
+                .selected_text(selected)
+                .show_ui(ui, |ui| {
+                    for voice in installed {
+                        ui.selectable_value(&mut draft.voice, voice, i18n::voice(voice));
+                    }
+                });
+        });
+    }
+    ui.label(
+        RichText::new(t!(
+            "settings.voice.current",
+            voice = i18n::voice(draft.voice)
+        ))
+        .small(),
+    );
+}
+
+fn cloud_voice(ui: &mut egui::Ui, draft: &mut Settings) {
+    widgets::callout(ui, theme::palette(ui.ctx()).warning, |ui| {
+        ui.label(t!("settings.voice.cloud_notice"));
+    });
+    egui::Grid::new("cloud_voice_settings")
+        .num_columns(2)
+        .spacing([16.0, 10.0])
+        .show(ui, |ui| {
+            let cloud = &mut draft.cloud_speech;
+            for (label, value) in [
+                (t!("settings.voice.cloud_url"), &mut cloud.base_url),
+                (t!("settings.voice.cloud_model"), &mut cloud.model),
+                (t!("settings.voice.cloud_voice"), &mut cloud.voice),
+            ] {
+                ui.label(label);
+                ui.add(egui::TextEdit::singleline(value).desired_width(FIELD_WIDTH));
+                ui.end_row();
+            }
+            ui.label(t!("settings.ai.api_key"));
+            ui.add(
+                egui::TextEdit::singleline(&mut cloud.api_key)
+                    .password(true)
+                    .desired_width(FIELD_WIDTH),
+            );
+            ui.end_row();
+            ui.label(t!("settings.voice.gender"));
+            ui.horizontal(|ui| {
+                for gender in [VoiceGender::Female, VoiceGender::Male] {
+                    ui.selectable_value(&mut cloud.gender, gender, i18n::voice_gender(gender));
+                }
+            });
+            ui.end_row();
+        });
 }
 
 fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions: &mut Actions) {
@@ -199,10 +373,15 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
     section(ui, &t!("settings.models.title"), |ui| {
         widgets::hint(ui, &t!("settings.models.hint"));
         for id in ModelId::all() {
+            if cfg!(windows) && matches!(id, ModelId::KokoroRuntime | ModelId::KokoroModel) {
+                continue;
+            }
             let in_use = match id {
                 ModelId::Whisper(m) => m == draft.whisper_model,
-                ModelId::Voice(v) => v == draft.voice,
-                ModelId::PiperRuntime => true,
+                _ => {
+                    draft.tts_backend == TtsBackend::Local
+                        && (id == draft.voice.model_id() || id == draft.voice.runtime_id())
+                }
             };
             ui.separator();
             ui.horizontal(|ui| {

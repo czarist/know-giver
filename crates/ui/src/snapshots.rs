@@ -193,6 +193,7 @@ fn avatar_states() {
                         rect,
                         crate::avatar::Mood { phase, speech, mic },
                         accent,
+                        crate::avatar::Appearance::default(),
                     );
                 }
             });
@@ -202,4 +203,115 @@ fn avatar_states() {
     if let Some(dir) = out {
         image.save(dir.join("avatar-states.png")).unwrap();
     }
+}
+
+/// New visual primitives in light and dark themes, without external models or AI.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn roadmap_components() {
+    use crate::{avatar, icons, illustrations, whiteboard};
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for (name, theme) in [("light", egui::Theme::Light), ("dark", egui::Theme::Dark)] {
+        let mut harness = Harness::builder()
+            .with_size([1040.0, 720.0])
+            .build_ui(move |ui| {
+                crate::theme::apply(ui.ctx());
+                ui.ctx().set_theme(theme);
+                egui_extras::install_image_loaders(ui.ctx());
+                let palette = crate::theme::palette(ui.ctx());
+                ui.horizontal(|ui| {
+                    ui.add(icons::logo(48.0, theme == egui::Theme::Dark));
+                    ui.heading("Know Giver");
+                });
+                ui.horizontal(|ui| {
+                    for kind in [
+                        icons::Icon::Edital,
+                        icons::Icon::Plan,
+                        icons::Icon::Quiz,
+                        icons::Icon::Progress,
+                    ] {
+                        illustrations::empty(ui, kind);
+                    }
+                });
+                ui.horizontal(|ui| {
+                    for (female, minimal) in
+                        [(false, false), (true, false), (false, true), (true, true)]
+                    {
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(240.0, 240.0), egui::Sense::hover());
+                        avatar::paint(
+                            ui,
+                            rect,
+                            avatar::Mood {
+                                phase: kg_engine::LessonPhase::Idle,
+                                speech: 0.0,
+                                mic: 0.0,
+                            },
+                            palette.accent,
+                            avatar::Appearance { female, minimal },
+                        );
+                    }
+                });
+                ui.horizontal(|ui| {
+                    for text in [
+                        "FORMULA: juros = capital × taxa × tempo",
+                        "DIAGRAMA: Edital -> Plano de estudo -> Revisão",
+                    ] {
+                        let (area, _) =
+                            ui.allocate_exact_size(egui::vec2(485.0, 180.0), egui::Sense::hover());
+                        whiteboard::paint(
+                            &ui.painter_at(area),
+                            area.shrink(14.0),
+                            &whiteboard::parse(text),
+                            palette.text,
+                        );
+                    }
+                });
+            });
+        harness.run_steps(8);
+        let image = harness.render().unwrap();
+        if let Some(dir) = &out {
+            image.save(dir.join(format!("roadmap-{name}.png"))).unwrap();
+        }
+    }
+}
+
+/// Voice choices and the optional remote-service notice in both supported languages.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn voice_settings_states() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in ["pt-BR", "en"] {
+        crate::i18n::set(locale);
+        for backend in [kg_engine::TtsBackend::Local, kg_engine::TtsBackend::Cloud] {
+            let data = tempfile::tempdir().unwrap();
+            let engine =
+                Engine::in_memory(AppPaths::new(data.path()), AiConfig::default()).unwrap();
+            let mut draft = kg_engine::Settings {
+                tts_backend: backend,
+                ..Default::default()
+            };
+            let mut harness = Harness::builder()
+                .with_size([900.0, 900.0])
+                .build_ui(move |ui| {
+                    crate::theme::apply(ui.ctx());
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        crate::screens::settings::voice_section(
+                            ui,
+                            &engine,
+                            &mut draft,
+                            &mut crate::screens::Actions::default(),
+                        );
+                    });
+                });
+            harness.run_steps(5);
+            let image = harness.render().unwrap();
+            if let Some(dir) = &out {
+                image
+                    .save(dir.join(format!("{locale}-voice-{backend:?}.png")))
+                    .unwrap();
+            }
+        }
+    }
+    crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }

@@ -2,20 +2,20 @@
 
 ## Current Status
 
-Version 0.14.0. Phases 1–4 are implemented; phases 5–7 retain the open items below.
+Version 0.15.0. The implementation below is integrated; unresolved compatibility,
+quality and hardware checks remain explicitly open. Work was closed at the user's
+request to limit further cost; this is not a claim that every roadmap item is finished.
 Work uses a separate branch per feature, merged into `main`, with an annotated tag
-per release (`v0.14.0`). The old `feat/roadmap-v0.8` handoff is superseded.
+per release (`v0.15.0`). The old `feat/roadmap-v0.8` handoff is superseded.
 
 ### Handoff for the next agent
 
 **Next up, in order:**
-1. Phase 7 — run the Kokoro listening evaluation in `docs/kokoro-evaluation.md`
-   (harness implemented; real audio not yet evaluated). If accepted, add to `ModelStore`,
-   voice picker with female/male + "listen to a sample", then a female avatar variant
-   (`crates/ui/src/avatar.rs`) that follows the chosen voice.
-2. Open items left in phases 5–6 (per-plan reuse of board material, whiteboard diagrams,
-   logo dark variant, time studied, illustrations).
-3. "Next ideas" below (streaming tutor answers is the biggest latency win).
+1. Fix Windows Kokoro UTF-8 arguments before enabling its local voices. Runtime/model
+   management, voice settings and preview are implemented; Windows selection is disabled.
+2. Correct factual/exercise errors found in real handouts; see `docs/validation-v0.15.md`.
+3. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
+   voice quality, microphone loop and native packaging on their actual platforms.
 
 **How the code is organized:** `app → ui → engine → {study, ai, audio, pdf, handout}`.
 Engine owns state; slow work runs in workers and returns as events applied in
@@ -79,19 +79,21 @@ Inno Setup 6).
     syllabus) is set aside, not used by quizzes, tutor or handouts
   - After each upload, a summary: "42 questions used, 11 set aside (Direito Tributário is
     not in this edital)", with a list to review and move items back in by hand
-  - [ ] The same material can be reused in another plan; relevance is computed per plan
-        (today: upload the file again in the other plan)
+  - [x] The same material can be reused in another plan; relevance is computed per plan
+        while question wording, alternatives and known answers are preserved
 - [x] Quizzes for a topic: real board questions first, then generated ones in the same style
 - [x] Tutor, quiz, review and handout prompts use the board material on the topic
 - [x] Show the board's emphasis per topic (how often it is asked) on the Plan screen
-- [ ] Scanned PDFs: OCR fallback with the vision model (`MODEL_VISION`)
+- [x] Scanned PDFs: opt-in OCR fallback with the vision model (`MODEL_VISION`)
 
 ### Written study material as PDF (apostilas)
 - [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
 - [x] Supply the stored edital excerpt and relevant board material to handout generation;
       constrain the prompt to the requested topic and invalidate caches when sources change
-- [ ] Review live handouts for syllabus fidelity, including multi-role and truncated editais
-      (prompt constraints alone do not guarantee that the model stays within scope)
+- [x] Review live handouts for syllabus fidelity, including multi-role and truncated editais
+      (both checked examples stayed on topic)
+- [ ] Correct factual/exercise errors found by that review; syllabus fidelity does not
+      guarantee correct explanations or answer keys
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
@@ -111,13 +113,13 @@ Inno Setup 6).
       side panel that can be closed
 - [x] Whiteboard next to the tutor: the model returns a few key points with each answer,
       written on the board while it speaks
-- [ ] Small diagrams or formulas on the whiteboard
+- [x] Small diagrams or formulas on the whiteboard
 - [x] Keyboard: hold Space to talk, Esc to interrupt
-- [ ] Optional: a few avatar styles to choose from in Settings
+- [x] Optional: a few avatar styles to choose from in Settings
 
 ### Visual identity
 - [x] Logo: symbol + wordmark, as SVG: an open book inside a speech bubble
-- [ ] Logo variant for dark backgrounds (today the same mark works on both)
+- [x] Logo variant for dark backgrounds
 - [x] App icon, installer and window title bar generated from the logo
 - [x] Brand palette: keep the calm teal and add a warm accent (amber) for highlights,
       progress and achievements
@@ -126,10 +128,10 @@ Inno Setup 6).
 
 ### UX
 - [x] "Today" home screen: what to study today, reviews due, next step, streak
-- [ ] Time studied per day on the Today screen
+- [x] Time studied per day on the Today screen
 - [x] First-run onboarding: AI key → speech models → upload edital → first plan
 - [x] Empty states with an icon and a single clear next step
-- [ ] Real illustrations for empty states
+- [x] Vector illustrations for empty states
 - [x] Streaks and gentle milestones (no gamified noise)
 - [x] Micro-animations: screen transitions, progress filling, toast entry
 - [x] Review the whole flow for clicks saved (start a lesson straight from Today)
@@ -153,31 +155,32 @@ and sound somewhat robotic. A female voice needs another engine.
       voices, pinned runtime/model instructions, timings and logs
 - [ ] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
       (female), `pm_alex` and `pm_santa` (male)
-- [ ] Run it like Piper, as a child process (candidate: sherpa-onnx's prebuilt TTS tool), or
-      in-process with a pure Rust ONNX runtime if quality and speed allow (to evaluate)
+- [x] Run it like Piper as a cancellable child process, with model installation/removal
+- [ ] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
 - [ ] Listening test against Piper on real tutor answers before making it the default
 
 ### Optional cloud voices (off by default)
-- [ ] OpenAI-compatible `/v1/audio/speech` backend: works with OpenAI, LiteLLM, or a local
+- [x] OpenAI-compatible `/v1/audio/speech` backend: supports the contract used by OpenAI, LiteLLM, or a local
       Kokoro-FastAPI server
-- [ ] Clear notice that the tutor's text is sent to that service
+- [x] Clear notice that the tutor's text is sent to that service
 
 ### Voice settings
-- [ ] Choose **female or male**, then the voice, filtered by what is installed
-- [ ] "Listen to a sample" button for each voice
-- [ ] Speed and pitch sliders
-- [ ] The teacher avatar (Phase 6) matches the chosen voice
+- [x] Choose **female or male**, then the voice, filtered by what is installed and supported
+- [x] "Listen to a sample" button for the selected voice
+- [x] Speed and pitch sliders
+- [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
-- Kokoro runtime synthesis and listening comparison against Piper (see evaluation doc).
-- Live handout generation with edital context; automated tests cover request assembly,
-  active-plan source selection and cache invalidation, not model factual accuracy.
+- Kokoro Portuguese listening comparison: Windows UTF-8 failure blocks acceptance.
+- Handout factual correctness: live scope checks passed but answer errors were observed.
 - Voice loop with a real microphone and speakers.
-- Piper download and speech (downloading and running `piper.exe` needs the user's go-ahead).
-- Installer build (needs Inno Setup 6 installed).
+- Installer build/run; Inno Setup 6 compiler was prepared locally but the final release
+  installer was not built before the user requested closing work.
+- CUDA execution and native Linux/macOS packages (tooling is implemented).
 
 ## Next ideas
-- Stream tutor answers so speech starts before the full reply arrives.
-- Optional GPU (CUDA) build of candle for faster Whisper small.
-- OCR fallback for scanned editais (vision model).
-- Linux/macOS packages.
+- [x] Streaming AI client with silent whiteboard metadata and sentence callbacks.
+- [ ] Stream sentences into lesson playback before the full reply arrives.
+- [x] Optional GPU (CUDA) build of candle; benchmark on supported hardware remains pending.
+- [x] OCR fallback for scanned editais (vision model).
+- [x] Linux/macOS native packaging scripts and CI; native execution remains unverified.

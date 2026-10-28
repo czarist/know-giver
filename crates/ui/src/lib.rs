@@ -13,8 +13,10 @@ mod export;
 mod i18n;
 mod icon;
 mod icons;
+mod illustrations;
 mod screens;
 mod theme;
+mod whiteboard;
 mod widgets;
 
 #[cfg(test)]

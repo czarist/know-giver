@@ -128,6 +128,12 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX activity_day ON activity(day);
 ",
+    r"
+    CREATE TABLE study_time (
+        day TEXT PRIMARY KEY,
+        milliseconds INTEGER NOT NULL DEFAULT 0 CHECK(milliseconds >= 0)
+    );
+",
 ];
 
 /// Handle to the app database.
@@ -137,6 +143,36 @@ pub struct Store {
 }
 
 impl Store {
+    /// Adds active study time to a local calendar day.
+    pub fn add_study_millis(&mut self, day: NaiveDate, milliseconds: u64) -> Result<()> {
+        let milliseconds = i64::try_from(milliseconds).map_err(|_| StoreError::Corrupt {
+            column: "milliseconds",
+            value: milliseconds.to_string(),
+        })?;
+        self.conn.execute(
+            "INSERT INTO study_time (day, milliseconds) VALUES (?1, ?2)
+             ON CONFLICT(day) DO UPDATE SET milliseconds = study_time.milliseconds + excluded.milliseconds",
+            params![day.to_string(), milliseconds],
+        )?;
+        Ok(())
+    }
+
+    /// Active study time already saved for a local calendar day.
+    pub fn study_millis(&self, day: NaiveDate) -> Result<u64> {
+        let value: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT milliseconds FROM study_time WHERE day = ?1",
+                [day.to_string()],
+                |row| row.get(0),
+            )
+            .optional()?;
+        u64::try_from(value.unwrap_or(0)).map_err(|_| StoreError::Corrupt {
+            column: "milliseconds",
+            value: value.unwrap_or(0).to_string(),
+        })
+    }
+
     pub fn open(path: &Path) -> Result<Self> {
         Self::init(Connection::open(path)?)
     }
@@ -533,6 +569,18 @@ impl Store {
         self.conn
             .execute("DELETE FROM board_documents WHERE id = ?1", [id.0])?;
         Ok(())
+    }
+
+    /// Original extracted text, retained so another plan can reuse a document.
+    pub fn board_document_text(&self, id: DocumentId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT text FROM board_documents WHERE id = ?1",
+                [id.0],
+                |row| row.get(0),
+            )
+            .optional()?)
     }
 
     /// All questions taken from the plan's documents.

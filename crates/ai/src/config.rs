@@ -10,6 +10,7 @@ pub enum Task {
     Quiz,
     Correction,
     Handout,
+    Vision,
 }
 
 /// Model names per task.
@@ -26,6 +27,8 @@ pub struct ModelSet {
     /// Writes study handouts. Empty means "same as the study plan model",
     /// which keeps settings saved before this field existed working.
     pub handout: String,
+    /// Optional OCR model. Empty disables sending scanned PDF pages to the endpoint.
+    pub vision: String,
     /// Used when the task's model is rate limited or unavailable.
     pub fallback: String,
 }
@@ -40,6 +43,7 @@ impl Default for ModelSet {
             quiz: model.clone(),
             correction: model.clone(),
             handout: String::new(),
+            vision: String::new(),
             fallback: model,
         }
     }
@@ -54,6 +58,7 @@ impl ModelSet {
             Task::Correction => &self.correction,
             Task::Handout if self.handout.trim().is_empty() => &self.study_plan,
             Task::Handout => &self.handout,
+            Task::Vision => &self.vision,
         }
     }
 }
@@ -115,6 +120,7 @@ impl AiConfig {
             ("MODEL_CORRECTION", &mut m.correction),
             ("MODEL_FALLBACK", &mut m.fallback),
             ("MODEL_HANDOUT", &mut m.handout),
+            ("MODEL_VISION", &mut m.vision),
         ] {
             if let Some(value) = get(key) {
                 *slot = value;
@@ -170,5 +176,15 @@ mod tests {
     fn empty_env_keeps_local_defaults() {
         let config = AiConfig::from_env(|_| None);
         assert_eq!(config, AiConfig::default());
+    }
+
+    #[test]
+    fn vision_is_opt_in_and_loads_from_env() {
+        assert!(AiConfig::default().models.vision.is_empty());
+        let config =
+            AiConfig::from_env(|key| (key == "MODEL_VISION").then(|| "vision-model".into()));
+        assert_eq!(config.models.for_task(Task::Vision), "vision-model");
+        let legacy: ModelSet = serde_json::from_str("{}").unwrap();
+        assert!(legacy.vision.is_empty());
     }
 }

@@ -1,11 +1,20 @@
 //! User settings, stored as JSON in the database.
 
 use kg_ai::AiConfig;
-use kg_audio::{PiperVoice, WhisperModel};
+use kg_audio::{CloudSpeechConfig, TtsBackend, Voice, WhisperModel};
 use kg_study::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 
 const SETTINGS_KEY: &str = "app_settings";
+
+/// Teacher illustration style. Voice gender is applied independently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum AvatarStyle {
+    #[default]
+    Classic,
+    Minimal,
+}
 
 /// Everything the user can change in Settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -19,7 +28,11 @@ pub struct Settings {
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
     pub whisper_model: WhisperModel,
-    pub voice: PiperVoice,
+    pub voice: Voice,
+    pub tts_backend: TtsBackend,
+    pub cloud_speech: CloudSpeechConfig,
+    pub speech_pitch: f32,
+    pub avatar_style: AvatarStyle,
     /// Speech speed multiplier: 1.0 is normal, 1.2 is 20% faster.
     pub speech_rate: f32,
     pub quiz_size: u32,
@@ -37,7 +50,11 @@ impl Default for Settings {
             hands_free: true,
             auto_stop: true,
             whisper_model: WhisperModel::default(),
-            voice: PiperVoice::default(),
+            voice: Voice::default(),
+            tts_backend: TtsBackend::default(),
+            cloud_speech: CloudSpeechConfig::default(),
+            speech_pitch: 0.0,
+            avatar_style: AvatarStyle::default(),
             speech_rate: 0.95,
             quiz_size: 5,
             locale: "pt-BR".into(),
@@ -67,9 +84,22 @@ impl Settings {
         if settings.ai.api_key.is_empty() {
             settings.ai.api_key = env_ai.api_key.clone();
         }
-        settings.quiz_size = settings.quiz_size.clamp(3, 10);
-        settings.speech_rate = settings.speech_rate.clamp(0.7, 1.5);
+        settings.normalize();
         Ok(settings)
+    }
+
+    pub(crate) fn normalize(&mut self) {
+        self.quiz_size = self.quiz_size.clamp(3, 10);
+        self.speech_rate = if self.speech_rate.is_finite() {
+            self.speech_rate.clamp(0.7, 1.5)
+        } else {
+            0.95
+        };
+        self.speech_pitch = if self.speech_pitch.is_finite() {
+            self.speech_pitch.clamp(-6.0, 6.0)
+        } else {
+            0.0
+        };
     }
 
     /// Saves settings. A key equal to the `.env` one is not copied into the

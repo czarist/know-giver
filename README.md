@@ -21,6 +21,13 @@ with voice lessons (you speak, the tutor answers out loud), quizzes, and spaced 
 - **Exam board material**: upload past exams, answer keys and board handouts. The AI
   keeps what belongs to your edital, sets the rest aside with a reason, and uses real
   past questions in quizzes and as reference for lessons and handouts.
+  Imported material can also be reused in another plan with independent relevance.
+- **Scanned PDFs**: configure a vision model to transcribe pages that have no extractable
+  text. The app explains that page images are sent to that configured service.
+- **Daily study time**: Today shows active time, excluding inactivity and unfocused windows.
+- **Voice controls**: preview, speed, pitch and avatar styles; an optional compatible
+  speech service supports remote voices. Local Kokoro remains disabled on Windows
+  until its UTF-8 runtime issue is resolved.
 - **Study handouts**: the AI writes each topic as a handout (explanation, key points,
   examples, exam pitfalls, summary, exercises with answers), exported as a PDF per topic,
   per subject or for the whole plan. Generation receives the original edital excerpt
@@ -71,6 +78,8 @@ the lower layers directly. See [docs/architecture.md](docs/architecture.md).
 
 ## Development
 
+Rust 1.95 or newer is required by the current desktop dependencies.
+
 ```bash
 cargo fmt
 cargo clippy --workspace --all-targets -- -D warnings
@@ -88,9 +97,13 @@ KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored # renders every
 ```
 
 For the next local voice backend, see the [Kokoro evaluation](docs/kokoro-evaluation.md).
-It is a developer listening harness; Piper remains the app's voice engine.
+Piper remains the default. See [validation notes](docs/validation-v0.15.md) for remaining
+voice and handout-quality limitations, and [native/CUDA builds](docs/builds.md) for
+optional platform tooling.
 
 ## Credits
+
+- OpenAI Codex — AI coding assistance, [**Contributor**](https://github.com/czarist/know-giver/graphs/contributors).
 
 - Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
   SIL Open Font License (`crates/ui/assets/fonts`).

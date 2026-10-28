@@ -65,6 +65,17 @@ The main flow is:
 
 ## Decisions
 
+- **Scanned documents**: configuring `MODEL_VISION` enables OCR only when local text
+  extraction finds no text. Hayro rasterizes bounded page images locally; the configured
+  vision endpoint transcribes them. UI copy explains the image upload.
+- **Study time**: the UI reports focus/interaction while the engine accounts elapsed
+  time, skips suspend gaps and persists daily totals in SQLite migration 5.
+- **Voice backends**: Piper remains the local default. Optional HTTP speech sends text
+  only after the user selects it. Kokoro uses a cancellable child process; its pinned
+  Windows runtime is disabled after a real UTF-8 compatibility failure.
+- **Streaming**: the AI client supports SSE and sentence callbacks. The lesson engine
+  still uses complete replies; streaming playback remains follow-up work.
+
 - **Speech recognition**: Whisper runs on [candle](https://github.com/huggingface/candle)
   (pure Rust, CPU), with weights downloaded from Hugging Face. `whisper-rs` would need
   clang and cmake to build whisper.cpp. Whisper base is the default: about 3 s for 10 s

@@ -1,8 +1,7 @@
 //! Text-to-speech with the Piper executable.
 
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use crate::signal::soften;
 use crate::{AudioClip, AudioError};
@@ -40,63 +39,44 @@ impl PiperTts {
             exe,
             model,
             sample_rate,
-            length_scale: length_scale.clamp(0.5, 2.0),
+            length_scale: length_scale.clamp(0.25, 4.0),
         })
     }
 
     pub fn synthesize(&self, text: &str) -> Result<AudioClip, AudioError> {
+        self.synthesize_cancellable(text, &|| false)
+    }
+
+    pub(crate) fn synthesize_cancellable(
+        &self,
+        text: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<AudioClip, AudioError> {
         let text = text.replace(['\r', '\n'], " ");
-        let mut command = Command::new(&self.exe);
+        let exe = std::fs::canonicalize(&self.exe).map_err(|e| AudioError::io(&self.exe, e))?;
+        let model =
+            std::fs::canonicalize(&self.model).map_err(|e| AudioError::io(&self.model, e))?;
+        let mut command = Command::new(&exe);
         command
             .arg("--model")
-            .arg(&self.model)
+            .arg(model)
             .arg("--output_raw")
             .arg("--length_scale")
-            .arg(format!("{:.2}", self.length_scale))
+            .arg(format!("{:.6}", self.length_scale))
             .arg("--sentence_silence")
-            .arg(SENTENCE_SILENCE_SECS)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        if let Some(dir) = self.exe.parent() {
+            .arg(SENTENCE_SILENCE_SECS);
+        if let Some(dir) = exe.parent() {
             command.current_dir(dir);
         }
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-            command.creation_flags(CREATE_NO_WINDOW);
+        let raw = crate::tts::run_child(&mut command, Some(&format!("{text}\n")), cancelled)?;
+        if raw.is_empty() || raw.len() % 2 != 0 {
+            return Err(AudioError::Tts(
+                "piper returned empty or incomplete PCM audio".into(),
+            ));
         }
-
-        let mut child = command
-            .spawn()
-            .map_err(|e| AudioError::Tts(format!("could not start piper: {e}")))?;
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(format!("{text}\n").as_bytes())
-                .map_err(|e| AudioError::Tts(e.to_string()))?;
-        }
-        let mut raw = Vec::new();
-        if let Some(mut stdout) = child.stdout.take() {
-            stdout
-                .read_to_end(&mut raw)
-                .map_err(|e| AudioError::Tts(e.to_string()))?;
-        }
-        let mut stderr = String::new();
-        if let Some(mut err) = child.stderr.take() {
-            let _ = err.read_to_string(&mut stderr);
-        }
-        let status = child.wait().map_err(|e| AudioError::Tts(e.to_string()))?;
-        if !status.success() {
-            return Err(AudioError::Tts(format!(
-                "piper exited with {status}: {}",
-                stderr.lines().last().unwrap_or_default()
-            )));
-        }
-
         let samples: Vec<f32> = raw
             .chunks_exact(2)
-            .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / f32::from(i16::MAX))
+            .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32768.0)
             .collect();
         Ok(AudioClip {
             samples: soften(&samples, self.sample_rate),

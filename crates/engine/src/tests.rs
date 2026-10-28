@@ -321,7 +321,7 @@ fn settings_are_saved() {
     let (mut engine, _dir) = engine();
     let mut settings = engine.settings().clone();
     settings.quiz_size = 7;
-    settings.voice = PiperVoice::Cadu;
+    settings.voice = Voice::Piper(PiperVoice::Cadu);
     engine.handle(Command::SaveSettings(settings)).unwrap();
     assert_eq!(engine.settings().quiz_size, 7);
     assert!(

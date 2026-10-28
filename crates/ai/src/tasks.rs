@@ -106,7 +106,7 @@ pub struct HandoutDraft {
 }
 
 /// Marker of the whiteboard line at the end of a tutor answer.
-const BOARD_MARKER: &str = "QUADRO:";
+const BOARD_MARKERS: [&str; 3] = ["QUADRO:", "FORMULA:", "DIAGRAMA:"];
 /// Longest whiteboard point kept, in characters.
 const BOARD_POINT_CHARS: usize = 90;
 
@@ -124,11 +124,12 @@ impl TutorReply {
         let mut board = Vec::new();
         for line in text.lines() {
             let clean = line.trim().trim_matches('*').trim();
-            let is_marker = clean
-                .get(..BOARD_MARKER.len())
-                .is_some_and(|head| head.eq_ignore_ascii_case(BOARD_MARKER));
-            if is_marker {
-                board = clean[BOARD_MARKER.len()..]
+            if let Some(marker) = BOARD_MARKERS.into_iter().find(|marker| {
+                clean
+                    .get(..marker.len())
+                    .is_some_and(|head| head.eq_ignore_ascii_case(marker))
+            }) {
+                let points = clean[marker.len()..]
                     .split('|')
                     .map(|p| {
                         p.trim_matches(|c: char| c == '*' || c.is_whitespace())
@@ -136,9 +137,16 @@ impl TutorReply {
                             .trim()
                     })
                     .filter(|p| !p.is_empty())
-                    .map(|p| p.chars().take(BOARD_POINT_CHARS).collect())
-                    .take(3)
-                    .collect();
+                    .map(|p| {
+                        let point: String = p.chars().take(BOARD_POINT_CHARS).collect();
+                        if marker == "QUADRO:" {
+                            point
+                        } else {
+                            format!("{marker} {point}")
+                        }
+                    })
+                    .take(3);
+                board.extend(points);
             } else {
                 speech.push(line);
             }
@@ -212,6 +220,96 @@ pub fn start_lesson(client: &Client, topic: &TopicContext) -> Result<TutorReply,
             max_tokens: 4_096,
         })
         .map(|text| TutorReply::parse(&text))
+}
+
+/// Starts a lesson, delivering complete spoken sentences before the reply is finished.
+/// Whiteboard lines are retained only in the final reply and never reach `on_sentence`.
+pub fn start_lesson_stream(
+    client: &Client,
+    topic: &TopicContext,
+    on_sentence: impl FnMut(&str),
+) -> Result<TutorReply, AiError> {
+    let messages = [
+        tutor_system(topic),
+        ChatMessage::user(prompts::LESSON_START.trim()),
+    ];
+    stream_tutor(client, &messages, on_sentence)
+}
+
+/// Streams the next tutor answer with the same history contract as [`tutor_reply`].
+pub fn tutor_reply_stream(
+    client: &Client,
+    topic: &TopicContext,
+    history: &[ChatMessage],
+    on_sentence: impl FnMut(&str),
+) -> Result<TutorReply, AiError> {
+    let mut messages = vec![
+        tutor_system(topic),
+        ChatMessage::user(prompts::LESSON_START.trim()),
+    ];
+    messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
+    stream_tutor(client, &messages, on_sentence)
+}
+
+fn stream_tutor(
+    client: &Client,
+    messages: &[ChatMessage],
+    mut on_sentence: impl FnMut(&str),
+) -> Result<TutorReply, AiError> {
+    let mut speech = SpokenStream::default();
+    let text = client.chat_stream(
+        &ChatRequest {
+            task: Task::Tutor,
+            messages,
+            json: false,
+            max_tokens: 4_096,
+        },
+        |delta| speech.push(delta, &mut on_sentence),
+    )?;
+    speech.finish(&mut on_sentence);
+    Ok(TutorReply::parse(&text))
+}
+
+/// Holds the start of each line until it can be distinguished from board metadata.
+#[derive(Default)]
+struct SpokenStream {
+    pending: String,
+    board_line: bool,
+}
+
+impl SpokenStream {
+    fn push(&mut self, delta: &str, on_sentence: &mut impl FnMut(&str)) {
+        for ch in delta.chars() {
+            if ch == '\n' {
+                self.finish(on_sentence);
+                self.board_line = false;
+                continue;
+            }
+            if self.board_line {
+                continue;
+            }
+            let end_of_sentence = ch.is_whitespace() && self.pending.ends_with(['.', '!', '?']);
+            self.pending.push(ch);
+            let clean = self.pending.trim_start().trim_start_matches('*');
+            if BOARD_MARKERS.iter().any(|marker| {
+                clean
+                    .get(..marker.len())
+                    .is_some_and(|head| head.eq_ignore_ascii_case(marker))
+            }) {
+                self.board_line = true;
+                self.pending.clear();
+            } else if end_of_sentence {
+                self.finish(on_sentence);
+            }
+        }
+    }
+
+    fn finish(&mut self, on_sentence: &mut impl FnMut(&str)) {
+        if !self.board_line && !self.pending.trim().is_empty() {
+            on_sentence(self.pending.trim());
+        }
+        self.pending.clear();
+    }
 }
 
 /// The tutor's next answer. `history` alternates student and tutor turns,
@@ -356,6 +454,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn streamed_sentences_exclude_fragmented_whiteboard_lines() {
+        let mut stream = SpokenStream::default();
+        let mut spoken = Vec::new();
+        for delta in [
+            "A crase é ",
+            "uma união. ",
+            "Repare no acento!\n**QUA",
+            "DRO:** a + a | às horas\nFOR",
+            "MULA: a + a = à\nDIA",
+            "GRAMA: Regra -> Exemplo\nUma pergunta?",
+        ] {
+            stream.push(delta, &mut |text| spoken.push(text.to_owned()));
+        }
+        stream.finish(&mut |text| spoken.push(text.to_owned()));
+        assert_eq!(
+            spoken,
+            ["A crase é uma união.", "Repare no acento!", "Uma pergunta?"]
+        );
+    }
+
+    #[test]
     fn handout_keeps_edital_as_reference_data() {
         let context = TopicContext {
             topic: "Crase".into(),
@@ -392,6 +511,18 @@ mod tests {
         let plain = TutorReply::parse("Sem lousa hoje.");
         assert_eq!(plain.speech, "Sem lousa hoje.");
         assert!(plain.board.is_empty());
+        let illustrated = TutorReply::parse(
+            "Uma taxa incide sobre o valor.\nQUADRO: Taxa\nFORMULA: juros = valor * taxa\nDIAGRAMA: Lei -> Aplicação -> Recurso",
+        );
+        assert_eq!(illustrated.speech, "Uma taxa incide sobre o valor.");
+        assert_eq!(
+            illustrated.board,
+            vec![
+                "Taxa",
+                "FORMULA: juros = valor * taxa",
+                "DIAGRAMA: Lei -> Aplicação -> Recurso"
+            ]
+        );
     }
 
     #[test]

@@ -194,6 +194,12 @@ export:
     next_review: "Next review"
 
 today:
+  study_time: "Study time today: %{duration}"
+  study_time_hint: "Counts active study; breaks and inactivity are excluded."
+  study_zero: "0 min"
+  study_under_minute: "less than 1 min"
+  study_minutes: "%{minutes} min"
+  study_hours: "%{hours} h %{minutes} min"
   greeting:
     morning: "Good morning"
     afternoon: "Good afternoon"
@@ -233,6 +239,13 @@ welcome:
     text: "Upload the exam notice PDF and your study plan is ready in under a minute."
 
 board:
+  reuse:
+    title: "Reuse material from another plan"
+    hint: "Relevance will be checked again against this exam notice. The original plan's material will be preserved."
+    empty: "There is no material in other plans yet."
+    choose: "Choose a document"
+    document: "%{file} — %{plan}"
+    action: "Analyze for this plan"
   title: "Exam board material"
   subtitle: "Past exams and board material, so quizzes, lessons and handouts feel like the real exam."
   upload_hint: "Upload PDFs of past exams or board material. The AI keeps what belongs to your exam notice and sets the rest aside (other positions, subjects not asked)."
@@ -295,12 +308,37 @@ settings:
     model_quiz: "Quiz model"
     model_correction: "Correction model"
     model_handout: "Handout model (empty = plan model)"
+    model_vision: "Vision model for scanned PDFs (optional)"
+    vision_notice: "When a vision model is set, pages without text are sent as images to your configured AI endpoint for recognition. Leave empty to disable."
     model_fallback: "Fallback model"
     fast: "Fast answers (less reasoning in lessons and quizzes)"
     test: "Test connection"
     test_hint: "Uses the saved settings."
   voice:
     title: "Voice"
+    backend: "Speech synthesis"
+    local: "On this computer"
+    cloud: "Configured service"
+    gender: "Voice type"
+    female: "Female"
+    male: "Male"
+    choose: "Choose an installed voice"
+    none_installed: "No voice of this type is installed."
+    download_hint: "In Local models, download %{runtime} and %{model}."
+    current: "Selected voice: %{voice}"
+    pitch: "Pitch (semitones)"
+    avatar: "Tutor style"
+    avatar_classic: "Classic"
+    avatar_minimal: "Simple"
+    preview: "Listen to a sample"
+    preview_active: "Preparing or playing sample…"
+    stop_preview: "Stop sample"
+    preview_hint: "Uses the options above without saving."
+    sample: "Olá! Vamos estudar com calma, um tópico de cada vez. Qual assunto você quer revisar hoje?"
+    cloud_notice: "When this service is selected, tutor and sample text is sent to the address below. A local server keeps this processing on your computer."
+    cloud_url: "Speech service address"
+    cloud_model: "Speech model"
+    cloud_voice: "Voice identifier"
     enabled: "Read the tutor's answers out loud"
     hands_free: "Hands-free: listen again when the tutor stops speaking"
     auto_stop: "Stop listening when I pause"
@@ -319,6 +357,10 @@ settings:
     piper_note: "Piper is downloaded from the project's official GitHub page (rhasspy/piper)."
 
 models:
+  kokoro_runtime: "Sherpa-ONNX (Kokoro synthesizer)"
+  kokoro_runtime_description: "Local program that runs Kokoro voices"
+  kokoro_model: "Kokoro — Dora, Alex and Santa"
+  kokoro_model_description: "Female and male Brazilian Portuguese voices"
   piper: "Piper (speech synthesizer)"
   piper_description: "Program that turns the tutor's text into speech"
   whisper:
@@ -331,6 +373,9 @@ models:
     faber: "Faber voice"
     cadu: "Cadu voice"
     jeff: "Jeff voice"
+    dora: "Dora · Kokoro"
+    alex: "Alex · Kokoro"
+    santa: "Santa · Kokoro"
 
 notice:
   plan_created: "Study plan created."
@@ -387,3 +432,5 @@ error:
     io: "Could not read the file %{path}."
     parse: "Could not open the PDF %{path}. It may be damaged or protected."
     no_text: "The PDF %{path} has no extractable text. It may be scanned."
+voice_platform:
+  kokoro_windows: "Local Kokoro is not yet available on Windows. For a female voice, configure a compatible speech service."

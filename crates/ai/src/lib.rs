@@ -12,8 +12,9 @@ mod prompts;
 mod tasks;
 
 pub use board::{
-    AnswerDraft, BoardContext, BoardQuestionDraft, ExcerptDraft, chunk_text, extract_answer_key,
-    extract_board_excerpts, extract_board_questions, reference_block,
+    AnswerDraft, BoardContext, BoardQuestionDraft, ExcerptDraft, RelevanceDraft, chunk_text,
+    classify_board_items, extract_answer_key, extract_board_excerpts, extract_board_questions,
+    reference_block,
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
@@ -21,7 +22,8 @@ pub use prompts::HANDOUT as HANDOUT_PROMPT;
 pub use tasks::{
     HandoutDraft, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft, SubjectDraft,
     TopicContext, TopicDraft, TutorReply, evaluate_review, generate_handout, generate_plan,
-    generate_quiz, review_question, start_lesson, tutor_reply,
+    generate_quiz, review_question, start_lesson, start_lesson_stream, tutor_reply,
+    tutor_reply_stream,
 };
 
 /// Errors from talking to the model.

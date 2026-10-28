@@ -1,7 +1,8 @@
 # Kokoro evaluation
 
-Status: evaluation harness only; not installed by ModelStore or selected in the app.
-Piper remains the default. No listening or performance result has been recorded yet.
+Status in v0.15: backend, model management and preview are implemented, but local
+Kokoro is disabled on Windows because the pinned executable fails on accented UTF-8
+arguments. Piper remains the default. See [validation notes](validation-v0.15.md).
 
 ## Reproducible candidate
 
