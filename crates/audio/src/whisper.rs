@@ -1,4 +1,4 @@
-//! Speech-to-text with Whisper on candle (pure Rust, CPU).
+//! Speech-to-text with Whisper on candle (CPU by default, optional CUDA build).
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -34,6 +34,17 @@ fn model_err(e: impl std::fmt::Display) -> AudioError {
     AudioError::Model(e.to_string())
 }
 
+fn inference_device() -> Device {
+    #[cfg(feature = "cuda")]
+    if std::env::var("KG_WHISPER_DEVICE").as_deref() != Ok("cpu") {
+        match Device::new_cuda(0) {
+            Ok(device) => return device,
+            Err(error) => tracing::warn!(%error, "CUDA unavailable; using CPU for Whisper"),
+        }
+    }
+    Device::Cpu
+}
+
 impl WhisperStt {
     /// Loads `config.json`, `tokenizer.json` and `model.safetensors` from `dir`.
     pub fn load(dir: &Path) -> Result<Self, AudioError> {
@@ -47,7 +58,7 @@ impl WhisperStt {
         let config: Config = serde_json::from_str(&read("config.json")?).map_err(model_err)?;
         let tokenizer = Tokenizer::parse(&read("tokenizer.json")?)?;
 
-        let device = Device::Cpu;
+        let device = inference_device();
         let weights = dir.join("model.safetensors");
         let tensors = candle_core::safetensors::load(&weights, &device).map_err(model_err)?;
         let vb = VarBuilder::from_tensors(tensors, m::DTYPE, &device);
@@ -65,7 +76,7 @@ impl WhisperStt {
             .collect();
         let suppress = Tensor::new(suppress.as_slice(), &device).map_err(model_err)?;
         let mel_filters = mel_filters(config.num_mel_bins, m::N_FFT, m::SAMPLE_RATE as f64);
-        tracing::info!(dir = %dir.display(), "whisper loaded");
+        tracing::info!(dir = %dir.display(), ?device, "whisper loaded");
         Ok(Self {
             model,
             config,
