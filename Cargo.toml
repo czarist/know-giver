@@ -4,7 +4,7 @@ members = ["crates/*"]
 default-members = ["crates/app"]
 
 [workspace.package]
-version = "0.19.1"
+version = "0.20.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
@@ -48,6 +48,7 @@ tempfile = "3"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tungstenite = "0.30"
 ureq = { version = "3", features = ["json"] }
 zip = "9"
 

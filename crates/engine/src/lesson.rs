@@ -1,25 +1,30 @@
 //! Voice lessons: listen → transcribe → tutor → speak, in a loop.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 use kg_ai::{AiError, ChatMessage, TopicContext, TutorReply};
 use kg_audio::{
-    AudioClip, AudioError, ModelId, ModelStore, RecordOptions, Recording, SpeechOptions,
-    Synthesizer, TtsBackend, WhisperModel, WhisperStt, split_for_speech,
+    AudioClip, AudioError, ModelId, RecordOptions, Recording, SpeechOptions, SttEngine,
+    Synthesizer, TtsBackend, split_for_speech,
 };
 use kg_study::{TopicId, TopicStatus};
 
+use crate::stt::{SttJob, ends_sentence, word_count};
 use crate::{Engine, EngineError, Event, Notice, Settings};
 
-/// Language code passed to Whisper.
-const STT_LANGUAGE: &str = "pt";
 /// Turns of conversation sent back to the tutor.
 const HISTORY_TURNS: usize = 24;
 /// In hands-free mode, stop waiting if the student says nothing.
 const HANDS_FREE_IDLE: Duration = Duration::from_secs(12);
 const SILENCE_TO_STOP: Duration = Duration::from_millis(1_400);
+/// With live captions, a finished sentence followed by this much quiet ends
+/// the turn (as in meeting assistants: 0.7 s after a sentence, longer
+/// otherwise, so a pause mid-thought does not cut the student off).
+const QUIET_AFTER_SENTENCE: Duration = Duration::from_millis(700);
+/// New audio needed before the live caption is refreshed (seconds).
+const PARTIAL_STEP_SECS: f32 = 0.4;
 /// Whiteboard points kept on screen (the newest ones).
 const BOARD_POINTS: usize = 6;
 /// Shorter clips are treated as accidental clicks.
@@ -68,6 +73,16 @@ pub struct LessonSession {
     speech_job: Option<Arc<AtomicBool>>,
     /// The last tutor turn is still arriving, sentence by sentence.
     streaming: bool,
+    /// What the student is saying, while they speak.
+    partial: Option<Partial>,
+    partial_running: bool,
+}
+
+/// A live caption and how much of the recording it covers.
+#[derive(Debug, Clone)]
+struct Partial {
+    text: String,
+    samples: usize,
 }
 
 impl LessonSession {
@@ -76,6 +91,25 @@ impl LessonSession {
         self.recording
             .as_ref()
             .map_or(0.0, |r| (r.level() * 6.0).min(1.0))
+    }
+
+    /// What the student is saying right now, while listening.
+    pub fn live_caption(&self) -> Option<&str> {
+        match (&self.partial, self.phase) {
+            (Some(p), LessonPhase::Listening | LessonPhase::Transcribing) if !p.text.is_empty() => {
+                Some(&p.text)
+            }
+            _ => None,
+        }
+    }
+
+    /// The live caption, when it already covers everything said and is
+    /// long enough to trust without a second check.
+    fn usable_partial(&self, voice_end: usize) -> Option<String> {
+        self.partial
+            .as_ref()
+            .filter(|p| p.samples >= voice_end && word_count(&p.text) >= 2)
+            .map(|p| p.text.clone())
     }
 
     fn history(&self) -> Vec<ChatMessage> {
@@ -107,6 +141,12 @@ pub(crate) enum LessonEvent {
     },
     Transcribed {
         session: u64,
+        result: Result<String, EngineError>,
+    },
+    /// Live caption of the audio recorded so far.
+    Partial {
+        session: u64,
+        samples: usize,
         result: Result<String, EngineError>,
     },
     SpeechFailed {
@@ -159,6 +199,8 @@ impl Engine {
             recording: None,
             speech_job: None,
             streaming: false,
+            partial: None,
+            partial_running: false,
         });
         let speech = self.open_speech_stream();
         let (tx, waker) = self.sender();
@@ -195,10 +237,24 @@ impl Engine {
         self.listen(None)
     }
 
+    /// How speech is recognized right now, if it can be.
+    pub(crate) fn stt_job(&self) -> Option<SttJob> {
+        SttJob::resolve(
+            &self.stt,
+            &self.models,
+            self.settings.stt_engine,
+            self.settings.whisper_model,
+        )
+    }
+
     fn listen(&mut self, idle_timeout: Option<Duration>) -> Result<(), EngineError> {
-        let model = self.settings.whisper_model;
         if !self.stt_ready() {
-            return Err(EngineError::SpeechModelMissing(ModelId::Whisper(model)));
+            return Err(EngineError::SpeechModelMissing(
+                match self.settings.stt_engine {
+                    SttEngine::Parakeet => ModelId::Parakeet,
+                    SttEngine::Whisper => ModelId::Whisper(self.settings.whisper_model),
+                },
+            ));
         }
         self.stop_speaking();
         let options = RecordOptions {
@@ -217,10 +273,13 @@ impl Engine {
         }
         lesson.recording = Some(Recording::start(options)?);
         lesson.phase = LessonPhase::Listening;
+        lesson.partial = None;
+        lesson.partial_running = false;
         Ok(())
     }
 
     pub(crate) fn stop_listening(&mut self) {
+        let stt = self.stt_job();
         let Some(lesson) = self.lesson.as_mut() else {
             return;
         };
@@ -229,6 +288,7 @@ impl Engine {
         };
         let stopped_by_itself = recording.is_finished();
         let heard = recording.heard_speech();
+        let ready_text = lesson.usable_partial(recording.voice_end());
         let clip = recording.finish();
         if !heard || clip.duration_secs() < MIN_CLIP_SECS {
             lesson.phase = LessonPhase::Idle;
@@ -237,11 +297,20 @@ impl Engine {
             }
             return;
         }
+        let last_recording = self.paths.last_recording();
+        if let Some(text) = ready_text {
+            // The live caption already has every word: answer right away.
+            tracing::info!(%text, "using the live caption as the transcript");
+            save_recording(clip, last_recording);
+            self.send_student_message(text);
+            return;
+        }
+        let Some(stt) = stt else {
+            lesson.phase = LessonPhase::Idle;
+            return;
+        };
         lesson.phase = LessonPhase::Transcribing;
         let session = lesson.id;
-        let stt = Arc::clone(&self.stt);
-        let models = self.models.clone();
-        let model = self.settings.whisper_model;
         // What the tutor said last helps Whisper read short answers.
         let context = lesson
             .turns
@@ -250,7 +319,6 @@ impl Engine {
             .find(|t| t.speaker == Speaker::Tutor)
             .map(|t| tail_chars(&t.text, STT_CONTEXT_CHARS).to_owned())
             .unwrap_or_default();
-        let last_recording = self.paths.last_recording();
         self.spawn(move || {
             // Kept so a bad transcription can be checked against the audio.
             if let Err(error) = clip.write_wav(&last_recording) {
@@ -263,7 +331,49 @@ impl Engine {
             );
             Event::Lesson(LessonEvent::Transcribed {
                 session,
-                result: transcribe(&stt, &models, model, &clip, &context),
+                result: stt.transcribe(&clip, &context),
+            })
+        });
+    }
+
+    /// While listening with live captions: refresh the caption, and end the
+    /// turn once a finished sentence is followed by a short silence.
+    fn tick_live_caption(&mut self) {
+        let Some(stt) = self.stt_job().filter(SttJob::live) else {
+            return;
+        };
+        let Some(lesson) = self.lesson.as_mut() else {
+            return;
+        };
+        let Some(recording) = lesson.recording.as_ref() else {
+            return;
+        };
+        let voice_end = recording.voice_end();
+        let finished_sentence = lesson.partial.as_ref().is_some_and(|p| {
+            p.samples >= voice_end && word_count(&p.text) >= 2 && ends_sentence(&p.text)
+        });
+        if finished_sentence
+            && recording
+                .quiet_for()
+                .is_some_and(|quiet| quiet >= QUIET_AFTER_SENTENCE)
+        {
+            self.stop_listening();
+            return;
+        }
+        let covered = lesson.partial.as_ref().map_or(0, |p| p.samples);
+        let step = (PARTIAL_STEP_SECS * recording.sample_rate() as f32) as usize;
+        if lesson.partial_running || !recording.heard_speech() || recording.len() < covered + step {
+            return;
+        }
+        let clip = recording.snapshot();
+        lesson.partial_running = true;
+        let session = lesson.id;
+        self.spawn(move || {
+            let samples = clip.samples.len();
+            Event::Lesson(LessonEvent::Partial {
+                session,
+                samples,
+                result: stt.partial(&clip),
             })
         });
     }
@@ -367,6 +477,7 @@ impl Engine {
             {
                 self.stop_listening();
             }
+            LessonPhase::Listening => self.tick_live_caption(),
             LessonPhase::Speaking => {
                 let synthesizing = lesson
                     .speech_job
@@ -486,6 +597,22 @@ impl Engine {
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);
                         return Err(err);
+                    }
+                }
+            }
+            LessonEvent::Partial {
+                session,
+                samples,
+                result,
+            } if Some(session) == current => {
+                if let Some(lesson) = self.lesson.as_mut() {
+                    lesson.partial_running = false;
+                    match result {
+                        Ok(text) if lesson.phase == LessonPhase::Listening => {
+                            lesson.partial = Some(Partial { text, samples });
+                        }
+                        Ok(_) => {}
+                        Err(err) => tracing::warn!(%err, "live caption failed"),
                     }
                 }
             }
@@ -710,23 +837,11 @@ impl Engine {
         Ok(())
     }
 
-    /// Loads Whisper in the background so the first answer is not delayed.
+    /// Loads speech recognition in the background so the first answer is
+    /// not delayed.
     fn preload_stt(&self) {
-        if !self.stt_ready() {
-            return;
-        }
-        let stt = Arc::clone(&self.stt);
-        let models = self.models.clone();
-        let model = self.settings.whisper_model;
-        let spawned = std::thread::Builder::new()
-            .name("kg-stt-load".into())
-            .spawn(move || {
-                if let Err(err) = with_stt(&stt, &models, model, |_| Ok(())) {
-                    tracing::warn!(%err, "whisper preload failed");
-                }
-            });
-        if let Err(err) = spawned {
-            tracing::warn!(%err, "could not spawn whisper preload");
+        if let Some(stt) = self.stt_job() {
+            stt.preload();
         }
     }
 }
@@ -749,16 +864,19 @@ fn relay_sentence(
     waker();
 }
 
-fn transcribe(
-    stt: &Mutex<Option<(WhisperModel, WhisperStt)>>,
-    models: &ModelStore,
-    model: WhisperModel,
-    clip: &AudioClip,
-    context: &str,
-) -> Result<String, EngineError> {
-    with_stt(stt, models, model, |whisper| {
-        Ok(whisper.transcribe_with_context(clip, STT_LANGUAGE, context)?)
-    })
+/// Keeps the last recording, so a bad transcription can be checked against
+/// the audio.
+fn save_recording(clip: AudioClip, path: std::path::PathBuf) {
+    let spawned = std::thread::Builder::new()
+        .name("kg-save-recording".into())
+        .spawn(move || {
+            if let Err(error) = clip.write_wav(&path) {
+                tracing::debug!(%error, "could not save the last recording");
+            }
+        });
+    if let Err(error) = spawned {
+        tracing::debug!(%error, "could not save the last recording");
+    }
 }
 
 /// The last `max` characters of `text`, starting at a word boundary.
@@ -770,27 +888,6 @@ fn tail_chars(text: &str, max: usize) -> &str {
     let start = text.char_indices().nth(count - max).map_or(0, |(i, _)| i);
     let tail = &text[start..];
     tail.split_once(' ').map_or(tail, |(_, rest)| rest)
-}
-
-/// Runs `f` with the requested Whisper model, loading it if needed.
-fn with_stt<T>(
-    stt: &Mutex<Option<(WhisperModel, WhisperStt)>>,
-    models: &ModelStore,
-    model: WhisperModel,
-    f: impl FnOnce(&mut WhisperStt) -> Result<T, EngineError>,
-) -> Result<T, EngineError> {
-    let mut guard = stt
-        .lock()
-        .map_err(|_| AudioError::Model("speech model lock poisoned".into()))?;
-    if guard.as_ref().is_none_or(|(loaded, _)| *loaded != model) {
-        *guard = None;
-        let whisper = WhisperStt::load(&models.whisper_dir(model))?;
-        *guard = Some((model, whisper));
-    }
-    match guard.as_mut() {
-        Some((_, whisper)) => f(whisper),
-        None => Err(EngineError::SpeechModelMissing(ModelId::Whisper(model))),
-    }
 }
 
 #[cfg(test)]

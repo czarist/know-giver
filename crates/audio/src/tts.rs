@@ -201,7 +201,7 @@ fn kokoro(
 
 /// Removes the `\\?\` prefix `canonicalize` adds on Windows when the rest is
 /// an ordinary drive or network path.
-fn plain_path(path: PathBuf) -> PathBuf {
+pub(crate) fn plain_path(path: PathBuf) -> PathBuf {
     let Some(text) = path.to_str() else {
         return path;
     };

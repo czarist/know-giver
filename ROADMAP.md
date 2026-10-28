@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.19.1. Everything an agent can build and check without a human ear, a
+Version 0.20.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person or hardware
 (listed under "Not yet verified"). Each release is a short-lived branch merged into
 `main` with an annotated tag.
@@ -10,12 +10,13 @@ microphone or other platforms is done. What remains open needs a person or hardw
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Speech recognition of short answers (reported by the user in v0.17.0: "sim" heard as
-   "fiii", "seu"). v0.18.0 adds tutor context and drops typical hallucinations; with
-   synthetic clips a lone "sim" is still misread by `base` and read correctly by
-   `small`. Next: listen to `last-recording.wav` from a real failing case (check level,
-   clipping, start cut off), then decide between a larger default model, a level
-   normalization before Whisper, or beam search.
+0. Conversation flow (v0.20.0): Parakeet with live captions and early end of turn.
+   Measured per step on the user's machine before the change: silence 1.4 s, Whisper
+   small 4.7 s, first tutor sentence 2.1 s, first Piper chunk ~0.4 s. Still to check
+   with a real microphone: whether 0.7 s after a sentence cuts students off, and how
+   often one-word answers need the Whisper check. Next candidates: keep Piper running
+   between sentences (saves ~0.3 s per chunk), and barge-in (talking over the tutor),
+   which needs echo cancellation or headphones.
 1. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.

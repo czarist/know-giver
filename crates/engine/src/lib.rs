@@ -16,12 +16,13 @@ mod practice;
 mod prepare;
 mod progress;
 mod settings;
+mod stt;
 mod study_time;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use chrono::NaiveDate;
@@ -30,7 +31,7 @@ pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{
-    AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, TtsBackend, Voice,
+    AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, SttEngine, TtsBackend, Voice,
     VoiceGender, WhisperModel,
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
@@ -52,7 +53,7 @@ pub use progress::Milestone;
 pub use settings::{AvatarStyle, Settings};
 pub use study_time::StudyPresence;
 
-use kg_audio::{ModelStore, WhisperStt};
+use kg_audio::ModelStore;
 use kg_study::Store;
 
 /// Requests from the UI.
@@ -254,7 +255,7 @@ pub struct Engine {
     quiz: Option<QuizSession>,
     review: Option<ReviewSession>,
     voice: lesson::VoiceRuntime,
-    stt: Arc<Mutex<Option<(WhisperModel, WhisperStt)>>>,
+    stt: stt::Recognizers,
     downloads: HashMap<ModelId, models::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
@@ -348,7 +349,7 @@ impl Engine {
             quiz: None,
             review: None,
             voice: lesson::VoiceRuntime::default(),
-            stt: Arc::new(Mutex::new(None)),
+            stt: stt::Recognizers::default(),
             downloads: HashMap::new(),
             handout_job: None,
             handouts_cached: 0,

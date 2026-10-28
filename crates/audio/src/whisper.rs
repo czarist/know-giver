@@ -106,6 +106,29 @@ impl WhisperStt {
         language: &str,
         context: &str,
     ) -> Result<String, AudioError> {
+        self.run(clip, language, context, m::N_FRAMES)
+    }
+
+    /// Like [`Self::transcribe_with_context`], but the encoder only sees the
+    /// clip plus a second of padding instead of a 30-second window: about
+    /// four times faster on a short answer, a little less accurate on long
+    /// speech. Meant for double-checking one or two words.
+    pub fn transcribe_short_with_context(
+        &mut self,
+        clip: &AudioClip,
+        language: &str,
+        context: &str,
+    ) -> Result<String, AudioError> {
+        self.run(clip, language, context, 0)
+    }
+
+    fn run(
+        &mut self,
+        clip: &AudioClip,
+        language: &str,
+        context: &str,
+        min_window: usize,
+    ) -> Result<String, AudioError> {
         let pcm = resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE);
         if pcm.len() < STT_SAMPLE_RATE as usize / 4 || rms(&pcm) < SILENCE_RMS {
             return Ok(String::new());
@@ -142,7 +165,9 @@ impl WhisperStt {
         let mut text = String::new();
         let mut seek = 0;
         while seek < content_frames {
-            let size = m::N_FRAMES.min(total_frames - seek);
+            // A second of padding after the speech; even, for the strided conv.
+            let want = (content_frames - seek + 100).max(min_window).div_ceil(2) * 2;
+            let size = m::N_FRAMES.min(want).min(total_frames - seek);
             let segment = mel.narrow(2, seek, size).map_err(model_err)?;
             let tokens = self.decode(&segment, &prompt).map_err(model_err)?;
             text.push_str(&self.tokenizer.decode(&tokens));

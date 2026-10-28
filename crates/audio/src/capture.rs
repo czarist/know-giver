@@ -1,6 +1,6 @@
 //! Microphone capture with a simple energy-based end-of-speech detector.
 
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -45,6 +45,12 @@ struct Shared {
     /// Set when the recorder stopped by itself (silence or time limit).
     finished: AtomicBool,
     heard_speech: AtomicBool,
+    /// Samples recorded when speech was last heard.
+    voice_end: AtomicUsize,
+    /// Milliseconds since the start when speech was last heard.
+    voice_at_ms: AtomicU64,
+    /// Milliseconds since the start, updated by the detector.
+    now_ms: AtomicU64,
 }
 
 /// A recording in progress. The capture stream lives on its own thread
@@ -98,6 +104,48 @@ impl Recording {
         self.shared.heard_speech.load(Ordering::Relaxed)
     }
 
+    /// How long the student has been quiet after speaking; `None` before
+    /// any speech.
+    pub fn quiet_for(&self) -> Option<Duration> {
+        if !self.heard_speech() {
+            return None;
+        }
+        let now = self.shared.now_ms.load(Ordering::Relaxed);
+        let voice = self.shared.voice_at_ms.load(Ordering::Relaxed);
+        Some(Duration::from_millis(now.saturating_sub(voice)))
+    }
+
+    /// Samples recorded up to the last moment speech was heard.
+    pub fn voice_end(&self) -> usize {
+        self.shared.voice_end.load(Ordering::Relaxed)
+    }
+
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    /// Samples recorded so far.
+    pub fn len(&self) -> usize {
+        self.shared.samples.lock().map_or(0, |s| s.len())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// A copy of the audio so far, for live captions while still recording.
+    pub fn snapshot(&self) -> AudioClip {
+        AudioClip {
+            samples: self
+                .shared
+                .samples
+                .lock()
+                .map(|s| s.clone())
+                .unwrap_or_default(),
+            sample_rate: self.sample_rate,
+        }
+    }
+
     /// Stops recording and returns the captured audio.
     pub fn finish(mut self) -> AudioClip {
         self.shared.stop.store(true, Ordering::Relaxed);
@@ -140,23 +188,34 @@ fn capture_thread(
     };
 
     let started = Instant::now();
+    let mut learning = Vec::new();
     let mut noise_floor: Option<f32> = None;
     let mut heard_speech = false;
     let mut last_voice = Instant::now();
     while !shared.stop.load(Ordering::Relaxed) {
         std::thread::sleep(Duration::from_millis(30));
         let level = f32::from_bits(shared.level.load(Ordering::Relaxed));
+        shared
+            .now_ms
+            .store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
 
-        // Learn the room's noise during the first half second.
+        // Learn the room's noise during the first half second. The median
+        // keeps a student who answers right away from counting as noise.
         if started.elapsed() < Duration::from_millis(500) {
-            noise_floor = Some(noise_floor.map_or(level, |n| n.max(level)));
+            learning.push(level);
             continue;
         }
-        let threshold = (noise_floor.unwrap_or(0.0) * 2.5).max(MIN_SPEECH_LEVEL);
+        let floor = *noise_floor.get_or_insert_with(|| median(&mut learning));
+        let threshold = (floor * 2.5).max(MIN_SPEECH_LEVEL);
         if level > threshold {
             heard_speech = true;
             shared.heard_speech.store(true, Ordering::Relaxed);
             last_voice = Instant::now();
+            shared
+                .voice_at_ms
+                .store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
+            let recorded = shared.samples.lock().map_or(0, |s| s.len());
+            shared.voice_end.store(recorded, Ordering::Relaxed);
         }
 
         let silence_done = options
@@ -171,6 +230,14 @@ fn capture_thread(
         }
     }
     drop(stream);
+}
+
+fn median(values: &mut [f32]) -> f32 {
+    if values.is_empty() {
+        return 0.0;
+    }
+    values.sort_by(f32::total_cmp);
+    values[values.len() / 2]
 }
 
 fn open_stream(shared: &Arc<Shared>) -> Result<(cpal::Stream, u32), AudioError> {
@@ -230,4 +297,17 @@ where
             None,
         )
         .map_err(|e| AudioError::Device(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::median;
+
+    #[test]
+    fn noise_floor_ignores_an_early_answer() {
+        // Quiet room, then the student starts talking within the first half second.
+        let mut levels = vec![0.002, 0.003, 0.002, 0.004, 0.09, 0.12, 0.1];
+        assert_eq!(median(&mut levels), 0.004);
+        assert_eq!(median(&mut []), 0.0);
+    }
 }

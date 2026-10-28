@@ -367,6 +367,7 @@ settings:
     voice: "Voz do tutor"
     rate: "Velocidade da fala"
     stt_model: "Reconhecimento de voz"
+    parakeet_hint: "Mostra o que você diz enquanto fala e responde logo que você termina. Respostas de uma palavra, como \"sim\", são conferidas pelo Whisper quando ele está instalado."
   models:
     title: "Modelos locais"
     hint: "Rodam no seu computador, sem enviar áudio para a internet. Baixe uma vez e use offline."
@@ -379,8 +380,10 @@ settings:
     piper_note: "O Piper é baixado da página oficial do projeto no GitHub (rhasspy/piper)."
 
 models:
-  kokoro_runtime: "Sherpa-ONNX (sintetizador Kokoro)"
-  kokoro_runtime_description: "Programa local que executa as vozes Kokoro"
+  kokoro_runtime: "Sherpa-ONNX (Kokoro e Parakeet)"
+  kokoro_runtime_description: "Programa local que executa as vozes Kokoro e o reconhecimento Parakeet"
+  parakeet: "Parakeet (rápido, recomendado)"
+  parakeet_description: "Transforma sua fala em texto enquanto você fala, em menos de meio segundo"
   kokoro_model: "Kokoro — Dora, Alex e Santa"
   kokoro_model_description: "Voz feminina e vozes masculinas em português do Brasil"
   piper: "Piper (sintetizador de voz)"

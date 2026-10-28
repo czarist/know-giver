@@ -367,6 +367,7 @@ settings:
     voice: "Tutor voice"
     rate: "Speech speed"
     stt_model: "Speech recognition"
+    parakeet_hint: "Shows what you say as you speak and answers as soon as you finish. One-word answers like \"yes\" are double-checked by Whisper when it is installed."
   models:
     title: "Local models"
     hint: "They run on your computer, with no audio sent to the internet. Download once, use offline."
@@ -379,8 +380,10 @@ settings:
     piper_note: "Piper is downloaded from the project's official GitHub page (rhasspy/piper)."
 
 models:
-  kokoro_runtime: "Sherpa-ONNX (Kokoro synthesizer)"
-  kokoro_runtime_description: "Local program that runs Kokoro voices"
+  kokoro_runtime: "Sherpa-ONNX (Kokoro and Parakeet)"
+  kokoro_runtime_description: "Local program that runs Kokoro voices and Parakeet recognition"
+  parakeet: "Parakeet (fast, recommended)"
+  parakeet_description: "Turns your speech into text as you speak, in under half a second"
   kokoro_model: "Kokoro — Dora, Alex and Santa"
   kokoro_model_description: "Female and male Brazilian Portuguese voices"
   piper: "Piper (speech synthesizer)"

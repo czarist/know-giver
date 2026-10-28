@@ -18,6 +18,14 @@ const KOKORO_RUNTIME_DIR: &str = "sherpa-onnx-v1.12.20-win-x64-shared";
 const KOKORO_RUNTIME_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-win-x64-shared.tar.bz2";
 const KOKORO_MODEL_DIR: &str = "kokoro-multi-lang-v1_0";
 const KOKORO_MODEL_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2";
+const PARAKEET_DIR: &str = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8";
+const PARAKEET_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2";
+const PARAKEET_FILES: [&str; 4] = [
+    "encoder.int8.onnx",
+    "decoder.int8.onnx",
+    "joiner.int8.onnx",
+    "tokens.txt",
+];
 
 /// Multilingual Whisper checkpoints. Bigger is more accurate and slower.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -47,6 +55,16 @@ impl WhisperModel {
             Self::Small => 970_000_000,
         }
     }
+}
+
+/// Which speech recognizer the lessons use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SttEngine {
+    /// Parakeet through the sherpa-onnx runtime: fast enough for live captions.
+    #[default]
+    Parakeet,
+    Whisper,
 }
 
 /// Brazilian Portuguese Piper voices.
@@ -90,11 +108,15 @@ pub enum ModelId {
     KokoroRuntime,
     /// Shared Kokoro v1.0 model containing all three Portuguese voices.
     KokoroModel,
+    /// NVIDIA Parakeet TDT 0.6B v3 speech recognition (needs the sherpa-onnx
+    /// runtime, [`ModelId::KokoroRuntime`]).
+    Parakeet,
 }
 
 impl ModelId {
     pub fn all() -> Vec<Self> {
-        let mut all: Vec<Self> = WhisperModel::ALL.into_iter().map(Self::Whisper).collect();
+        let mut all = vec![Self::Parakeet];
+        all.extend(WhisperModel::ALL.into_iter().map(Self::Whisper));
         all.push(Self::PiperRuntime);
         all.extend(PiperVoice::ALL.into_iter().map(Self::Voice));
         all.extend([Self::KokoroRuntime, Self::KokoroModel]);
@@ -109,6 +131,7 @@ impl ModelId {
             Self::PiperRuntime => 22_000_000,
             Self::KokoroRuntime => 26_700_000,
             Self::KokoroModel => 350_000_000,
+            Self::Parakeet => 487_200_000,
         }
     }
 }
@@ -149,19 +172,32 @@ impl ModelStore {
         self.root.join("kokoro").join(KOKORO_MODEL_DIR)
     }
 
+    pub fn parakeet_dir(&self) -> PathBuf {
+        self.root.join("parakeet").join(PARAKEET_DIR)
+    }
+
     /// Downloaded runtime on Windows, or an explicitly installed executable on PATH.
     pub fn kokoro_exe(&self) -> Option<PathBuf> {
+        self.sherpa_exe("sherpa-onnx-offline-tts")
+    }
+
+    /// The sherpa-onnx speech recognition server used for Parakeet.
+    pub fn asr_server_exe(&self) -> Option<PathBuf> {
+        self.sherpa_exe("sherpa-onnx-offline-websocket-server")
+    }
+
+    fn sherpa_exe(&self, program: &str) -> Option<PathBuf> {
         let name = if cfg!(windows) {
-            "sherpa-onnx-offline-tts.exe"
+            format!("{program}.exe")
         } else {
-            "sherpa-onnx-offline-tts"
+            program.to_owned()
         };
         let local = self
             .root
             .join("sherpa-onnx")
             .join(KOKORO_RUNTIME_DIR)
             .join("bin")
-            .join(name);
+            .join(&name);
         if local.is_file() {
             return Some(local);
         }
@@ -170,7 +206,7 @@ impl ModelStore {
         }
         std::env::var_os("PATH").and_then(|paths| {
             std::env::split_paths(&paths)
-                .map(|p| p.join(name))
+                .map(|p| p.join(&name))
                 .find(|p| p.is_file())
         })
     }
@@ -206,6 +242,7 @@ impl ModelStore {
             ModelId::PiperRuntime => self.piper_exe().is_some(),
             ModelId::KokoroRuntime => self.kokoro_exe().is_some(),
             ModelId::KokoroModel => kokoro_model_complete(&self.kokoro_dir()),
+            ModelId::Parakeet => parakeet_complete(&self.parakeet_dir()),
         }
     }
 
@@ -220,6 +257,7 @@ impl ModelStore {
             ModelId::PiperRuntime => vec![self.piper_dir()],
             ModelId::KokoroRuntime => vec![self.root.join("sherpa-onnx")],
             ModelId::KokoroModel => vec![self.root.join("kokoro")],
+            ModelId::Parakeet => vec![self.root.join("parakeet")],
         };
         paths.iter().map(|p| disk_usage(p)).sum()
     }
@@ -234,6 +272,7 @@ impl ModelStore {
             ModelId::PiperRuntime => remove_dir(self.piper_dir()),
             ModelId::KokoroRuntime => remove_dir(self.root.join("sherpa-onnx")),
             ModelId::KokoroModel => remove_dir(self.root.join("kokoro")),
+            ModelId::Parakeet => remove_dir(self.root.join("parakeet")),
             ModelId::Voice(v) => {
                 let (a, b) = self.voice_files(v);
                 for path in [a, b] {
@@ -288,16 +327,16 @@ impl ModelStore {
                 let _ = fs::remove_file(&zip_path);
                 result?;
             }
-            ModelId::KokoroRuntime | ModelId::KokoroModel => {
+            ModelId::KokoroRuntime | ModelId::KokoroModel | ModelId::Parakeet => {
                 if id == ModelId::KokoroRuntime && !cfg!(all(windows, target_arch = "x86_64")) {
                     return Err(AudioError::Unsupported(
                         "install sherpa-onnx v1.12.20 on PATH".into(),
                     ));
                 }
-                let (url, directory) = if id == ModelId::KokoroRuntime {
-                    (KOKORO_RUNTIME_URL, "sherpa-onnx")
-                } else {
-                    (KOKORO_MODEL_URL, "kokoro")
+                let (url, directory) = match id {
+                    ModelId::KokoroRuntime => (KOKORO_RUNTIME_URL, "sherpa-onnx"),
+                    ModelId::Parakeet => (PARAKEET_URL, "parakeet"),
+                    _ => (KOKORO_MODEL_URL, "kokoro"),
                 };
                 fs::create_dir_all(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
                 // Stage the whole bundle: interruption never leaves an installed-looking tree.
@@ -312,10 +351,11 @@ impl ModelStore {
                         .join(KOKORO_RUNTIME_DIR)
                         .join("bin/sherpa-onnx-offline-tts.exe")
                         .is_file(),
+                    ModelId::Parakeet => parakeet_complete(&unpacked.join(PARAKEET_DIR)),
                     _ => kokoro_model_complete(&unpacked.join(KOKORO_MODEL_DIR)),
                 };
                 if !complete {
-                    return Err(AudioError::Tts("incomplete Kokoro bundle".into()));
+                    return Err(AudioError::Model(format!("incomplete {id:?} bundle")));
                 }
                 if cancel.load(Ordering::Relaxed) {
                     return Err(AudioError::Cancelled);
@@ -346,6 +386,12 @@ fn kokoro_model_complete(dir: &Path) -> bool {
     ]
     .iter()
     .all(|name| fs::metadata(dir.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0))
+}
+
+fn parakeet_complete(dir: &Path) -> bool {
+    PARAKEET_FILES
+        .iter()
+        .all(|name| fs::metadata(dir.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0))
 }
 
 fn unpack_bzip_tar(path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), AudioError> {
@@ -529,6 +575,22 @@ mod tests {
         assert_eq!(store.size_on_disk(ModelId::Voice(PiperVoice::Faber)), 3);
         store.remove(ModelId::Voice(PiperVoice::Faber)).unwrap();
         assert!(!store.is_installed(ModelId::Voice(PiperVoice::Faber)));
+    }
+
+    #[test]
+    fn parakeet_needs_all_its_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ModelStore::new(dir.path());
+        let model = store.parakeet_dir();
+        fs::create_dir_all(&model).unwrap();
+        for name in &PARAKEET_FILES[..3] {
+            fs::write(model.join(name), b"x").unwrap();
+        }
+        assert!(!store.is_installed(ModelId::Parakeet));
+        fs::write(model.join("tokens.txt"), b"x").unwrap();
+        assert!(store.is_installed(ModelId::Parakeet));
+        store.remove(ModelId::Parakeet).unwrap();
+        assert!(!store.is_installed(ModelId::Parakeet));
     }
 
     #[test]

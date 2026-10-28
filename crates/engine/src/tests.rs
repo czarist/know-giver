@@ -341,7 +341,7 @@ fn lesson_without_speech_model_reports_missing_model() {
     assert_eq!(topic(&engine, id).status, TopicStatus::Studying);
     assert!(matches!(
         engine.handle(Command::StartListening),
-        Err(EngineError::SpeechModelMissing(ModelId::Whisper(_)))
+        Err(EngineError::SpeechModelMissing(ModelId::Parakeet))
     ));
     // Ending a lesson without any student turn does not count as studied.
     engine.handle(Command::EndLesson).unwrap();
