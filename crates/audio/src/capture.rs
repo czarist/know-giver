@@ -21,6 +21,9 @@ pub struct RecordOptions {
     pub idle_timeout: Option<Duration>,
     /// Hard limit on recording length.
     pub max_duration: Duration,
+    /// Room noise level measured by an earlier recording. Without it, the
+    /// first half second is used to measure it.
+    pub noise_floor: Option<f32>,
 }
 
 impl Default for RecordOptions {
@@ -29,6 +32,7 @@ impl Default for RecordOptions {
             auto_stop_after: Some(Duration::from_millis(1_400)),
             idle_timeout: None,
             max_duration: Duration::from_secs(90),
+            noise_floor: None,
         }
     }
 }
@@ -51,6 +55,8 @@ struct Shared {
     voice_at_ms: AtomicU64,
     /// Milliseconds since the start, updated by the detector.
     now_ms: AtomicU64,
+    /// Room noise level (f32 bits), once known.
+    noise_floor: AtomicU32,
 }
 
 /// A recording in progress. The capture stream lives on its own thread
@@ -113,6 +119,12 @@ impl Recording {
         let now = self.shared.now_ms.load(Ordering::Relaxed);
         let voice = self.shared.voice_at_ms.load(Ordering::Relaxed);
         Some(Duration::from_millis(now.saturating_sub(voice)))
+    }
+
+    /// Room noise level, once measured.
+    pub fn noise_floor(&self) -> Option<f32> {
+        let floor = f32::from_bits(self.shared.noise_floor.load(Ordering::Relaxed));
+        (floor > 0.0).then_some(floor)
     }
 
     /// Samples recorded up to the last moment speech was heard.
@@ -194,7 +206,10 @@ fn capture_thread(
 
     let started = Instant::now();
     let mut learning = Vec::new();
-    let mut noise_floor: Option<f32> = None;
+    let mut noise_floor = options.noise_floor.filter(|f| f.is_finite() && *f > 0.0);
+    if let Some(floor) = noise_floor {
+        shared.noise_floor.store(floor.to_bits(), Ordering::Relaxed);
+    }
     let mut heard_speech = false;
     let mut last_voice = Instant::now();
     while !shared.stop.load(Ordering::Relaxed) {
@@ -206,11 +221,16 @@ fn capture_thread(
 
         // Learn the room's noise during the first half second. The median
         // keeps a student who answers right away from counting as noise.
-        if started.elapsed() < Duration::from_millis(500) {
+        if noise_floor.is_none() && started.elapsed() < Duration::from_millis(500) {
             learning.push(level);
             continue;
         }
-        let floor = *noise_floor.get_or_insert_with(|| median(&mut learning));
+        let floor = *noise_floor.get_or_insert_with(|| {
+            // Never zero, so it reads as "measured".
+            let floor = median(&mut learning).max(1e-6);
+            shared.noise_floor.store(floor.to_bits(), Ordering::Relaxed);
+            floor
+        });
         let threshold = (floor * 2.5).max(MIN_SPEECH_LEVEL);
         if level > threshold {
             heard_speech = true;

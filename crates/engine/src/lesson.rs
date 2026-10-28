@@ -11,7 +11,10 @@ use kg_audio::{
 };
 use kg_study::{TopicId, TopicStatus};
 
-use crate::stt::{SttJob, ends_sentence, is_student_speech, word_count};
+use crate::stt::{
+    SttJob, ends_sentence, has_new_words, is_student_speech, needs_second_opinion, same_words,
+    word_count,
+};
 use crate::{Engine, EngineError, Event, Notice, Settings};
 
 /// Turns of conversation sent back to the tutor.
@@ -23,7 +26,9 @@ const SILENCE_TO_STOP: Duration = Duration::from_millis(1_400);
 /// the turn (1.4 s otherwise, so a pause mid-thought does not cut the student
 /// off). If the student goes on talking while the tutor thinks, the turn
 /// continues and this wait grows for the rest of the lesson.
-const QUIET_AFTER_SENTENCE: Duration = Duration::from_millis(550);
+const QUIET_AFTER_SENTENCE: Duration = Duration::from_millis(450);
+/// Without a finished sentence, the caption must stay the same this long.
+const STABLE_WITHOUT_SENTENCE: Duration = Duration::from_millis(1_200);
 const QUIET_STEP: Duration = Duration::from_millis(250);
 /// Longest monitored stretch while the tutor thinks or speaks.
 const MONITOR_LIMIT: Duration = Duration::from_secs(300);
@@ -32,7 +37,10 @@ const MONITOR_STEP_SECS: f32 = 0.6;
 /// Audio checked each time: enough for two or three words.
 const MONITOR_WINDOW_SECS: f32 = 2.0;
 /// New audio needed before the live caption is refreshed (seconds).
-const PARTIAL_STEP_SECS: f32 = 0.4;
+const PARTIAL_STEP_SECS: f32 = 0.25;
+/// What the tutor says right away while the answer is being written. Spoken
+/// Portuguese, like the prompts; neutral, so they fit right and wrong answers.
+const FILLERS: [&str; 4] = ["Hum.", "Entendi.", "Hum, tá.", "Tá."];
 /// Whiteboard points kept on screen (the newest ones).
 const BOARD_POINTS: usize = 6;
 /// Shorter clips are treated as accidental clicks.
@@ -97,6 +105,10 @@ pub struct LessonSession {
     carry: Option<String>,
     /// Quiet after a finished sentence that ends the turn.
     quiet_after_sentence: Duration,
+    /// Room noise measured while listening, reused by later recordings.
+    noise_floor: Option<f32>,
+    /// When the last student turn ended, for timing logs.
+    turn_ended: Option<std::time::Instant>,
 }
 
 /// A live caption and how much of the recording it covers.
@@ -104,6 +116,17 @@ pub struct LessonSession {
 struct Partial {
     text: String,
     samples: usize,
+    /// Recording position when the text last changed.
+    changed_at: usize,
+}
+
+impl Partial {
+    /// How long the caption has stayed the same, in recorded audio. Unlike
+    /// loudness, this does not depend on room noise or microphone gain.
+    fn stable_for(&self, sample_rate: u32) -> Duration {
+        let samples = self.samples.saturating_sub(self.changed_at);
+        Duration::from_secs_f64(samples as f64 / f64::from(sample_rate.max(1)))
+    }
 }
 
 impl LessonSession {
@@ -137,12 +160,16 @@ impl LessonSession {
         (!text.is_empty()).then(|| text.to_owned())
     }
 
-    /// The live caption, when it already covers everything said and is
-    /// long enough to trust without a second check.
-    fn usable_partial(&self, voice_end: usize) -> Option<String> {
+    /// The live caption, when it already has everything said and needs no
+    /// second check.
+    fn usable_partial(&self, voice_end: usize, sample_rate: u32) -> Option<String> {
         self.partial
             .as_ref()
-            .filter(|p| p.samples >= voice_end && word_count(&p.text) >= 2)
+            .filter(|p| {
+                let complete = p.samples >= voice_end
+                    || p.stable_for(sample_rate) >= Duration::from_millis(300);
+                complete && word_count(&p.text) >= 1 && !needs_second_opinion(&p.text)
+            })
             .map(|p| p.text.clone())
     }
 
@@ -204,12 +231,15 @@ pub(crate) struct VoiceRuntime {
     preview_job: Option<Arc<AtomicBool>>,
     /// Bumped to cancel speech that is still being synthesized.
     generation: Arc<AtomicU64>,
+    /// "Hum." and friends in the current voice, made when a lesson starts.
+    fillers: Arc<std::sync::Mutex<Vec<AudioClip>>>,
 }
 
 impl VoiceRuntime {
     /// Forgets the TTS so it is rebuilt with new settings or files.
     pub(crate) fn reset_tts(&mut self) {
         self.tts = None;
+        self.fillers = Arc::default();
     }
 }
 
@@ -250,6 +280,8 @@ impl Engine {
             listen_from: 0,
             carry: None,
             quiet_after_sentence: QUIET_AFTER_SENTENCE,
+            noise_floor: None,
+            turn_ended: None,
         });
         self.warm_up_voice();
         let speech = self.open_speech_stream();
@@ -276,9 +308,23 @@ impl Engine {
         let Ok(tts) = self.tts() else {
             return;
         };
+        let fillers = Arc::clone(&self.voice.fillers);
+        let want_fillers = self.settings.fillers && fillers.lock().is_ok_and(|f| f.is_empty());
         let spawned = std::thread::Builder::new()
             .name("kg-voice-warm-up".into())
-            .spawn(move || tts.warm_up());
+            .spawn(move || {
+                tts.warm_up();
+                if !want_fillers {
+                    return;
+                }
+                let clips: Vec<AudioClip> = FILLERS
+                    .iter()
+                    .filter_map(|text| tts.synthesize(text, &|| false).ok())
+                    .collect();
+                if let Ok(mut cached) = fillers.lock() {
+                    *cached = clips;
+                }
+            });
         if let Err(err) = spawned {
             tracing::debug!(%err, "could not warm up the voice");
         }
@@ -300,6 +346,7 @@ impl Engine {
             auto_stop_after: None,
             idle_timeout: None,
             max_duration: MONITOR_LIMIT,
+            noise_floor: lesson.noise_floor,
         };
         match Recording::start(options) {
             Ok(recording) => {
@@ -445,13 +492,14 @@ impl Engine {
             ));
         }
         self.stop_speaking();
+        let Some(lesson) = self.lesson.as_mut() else {
+            return Ok(());
+        };
         let options = RecordOptions {
             auto_stop_after: self.settings.auto_stop.then_some(SILENCE_TO_STOP),
             idle_timeout,
+            noise_floor: lesson.noise_floor,
             ..RecordOptions::default()
-        };
-        let Some(lesson) = self.lesson.as_mut() else {
-            return Ok(());
         };
         if matches!(
             lesson.phase,
@@ -479,7 +527,10 @@ impl Engine {
         };
         let stopped_by_itself = recording.is_finished();
         let heard = recording.heard_speech() && recording.voice_end() > lesson.listen_from;
-        let ready_text = lesson.usable_partial(recording.voice_end());
+        let ready_text = lesson.usable_partial(recording.voice_end(), recording.sample_rate());
+        if lesson.noise_floor.is_none() {
+            lesson.noise_floor = recording.noise_floor();
+        }
         let mut clip = recording.finish();
         let start = lesson.listen_from.min(clip.samples.len());
         clip.samples.drain(..start);
@@ -487,7 +538,7 @@ impl Engine {
             lesson.phase = LessonPhase::Idle;
             if lesson.carry.is_some() {
                 // Nothing more was said: the turn ends as it was.
-                self.send_student_message(String::new());
+                self.answer_student(String::new(), true);
                 return;
             }
             if !stopped_by_itself {
@@ -500,7 +551,7 @@ impl Engine {
             // The live caption already has every word: answer right away.
             tracing::info!(%text, "using the live caption as the transcript");
             save_recording(clip, last_recording);
-            self.send_student_message(text);
+            self.answer_student(text, true);
             return;
         }
         let Some(stt) = stt else {
@@ -547,14 +598,36 @@ impl Engine {
             return;
         };
         let voice_end = recording.voice_end();
-        let finished_sentence = lesson.partial.as_ref().is_some_and(|p| {
-            p.samples >= voice_end && word_count(&p.text) >= 2 && ends_sentence(&p.text)
-        });
+        let rate = recording.sample_rate();
         let quiet = recording.quiet_for().unwrap_or_default();
         let spoke = voice_end > lesson.listen_from;
+        let (by_caption, by_level) = match &lesson.partial {
+            Some(p) if word_count(&p.text) >= 1 => {
+                let stable = p.stable_for(rate);
+                let sentence = ends_sentence(&p.text);
+                (
+                    // The caption stopped changing: robust to room noise.
+                    (sentence && stable >= lesson.quiet_after_sentence)
+                        || stable >= STABLE_WITHOUT_SENTENCE,
+                    // Or the microphone went quiet after a finished sentence.
+                    sentence && p.samples >= voice_end && quiet >= lesson.quiet_after_sentence,
+                )
+            }
+            _ => (false, false),
+        };
         // A monitor turned into a recording has no automatic stop of its own.
-        let long_pause = self.settings.auto_stop && spoke && quiet >= SILENCE_TO_STOP;
-        if (finished_sentence && quiet >= lesson.quiet_after_sentence) || long_pause {
+        let long_pause = spoke && quiet >= SILENCE_TO_STOP;
+        if self.settings.auto_stop && (by_caption || by_level || long_pause) {
+            let waited = lesson
+                .partial
+                .as_ref()
+                .map_or(0, |p| p.stable_for(rate).as_millis() as u64);
+            tracing::info!(
+                stable_ms = waited,
+                quiet_ms = quiet.as_millis() as u64,
+                by_caption,
+                "end of turn"
+            );
             self.stop_listening();
             return;
         }
@@ -580,7 +653,14 @@ impl Engine {
         });
     }
 
+    /// A typed message from the student.
     pub(crate) fn send_student_message(&mut self, text: String) {
+        self.answer_student(text, false);
+    }
+
+    /// Sends the student's turn to the tutor. `spoken` turns get an
+    /// immediate "Hum." while the answer is written.
+    fn answer_student(&mut self, text: String, spoken: bool) {
         let text = text.trim().to_owned();
         let carried = self.lesson.as_ref().is_some_and(|l| l.carry.is_some());
         if text.is_empty() && !carried {
@@ -605,11 +685,14 @@ impl Engine {
         lesson.phase = LessonPhase::Thinking;
         lesson.reply = reply;
         lesson.listen_from = 0;
+        lesson.turn_ended = Some(std::time::Instant::now());
+        let turn = lesson.turns.len();
         let session = reply;
         let ctx = lesson.context.clone();
         let history = lesson.history();
         let client = self.ai_client();
         let speech = self.open_speech_stream();
+        let speaking_enabled = speech.is_some();
         let (tx, waker) = self.sender();
         self.spawn(move || {
             let result = kg_ai::tutor_reply_stream(&client, &ctx, &history, |sentence| {
@@ -617,7 +700,27 @@ impl Engine {
             });
             Event::Lesson(LessonEvent::Reply { session, result })
         });
+        if spoken && speaking_enabled {
+            self.play_filler(turn);
+        }
         self.start_monitor();
+    }
+
+    /// Plays a short "Hum." right away, so the tutor reacts while the answer
+    /// is still being written.
+    fn play_filler(&mut self, turn: usize) {
+        if !self.settings.fillers {
+            return;
+        }
+        let clip = self
+            .voice
+            .fillers
+            .lock()
+            .ok()
+            .and_then(|f| (!f.is_empty()).then(|| f[turn % f.len()].clone()));
+        if let (Some(clip), Some(speaker)) = (clip, &self.voice.speaker) {
+            speaker.play(clip);
+        }
     }
 
     /// Test hook: applies a tutor reply to the current lesson as if the
@@ -761,6 +864,12 @@ impl Engine {
                             turn.text.push_str(&text);
                         }
                     } else {
+                        if let Some(ended) = lesson.turn_ended.take() {
+                            tracing::info!(
+                                after_ms = ended.elapsed().as_millis() as u64,
+                                "first tutor sentence"
+                            );
+                        }
                         lesson.streaming = true;
                         lesson.turns.push(LessonTurn {
                             speaker: Speaker::Tutor,
@@ -820,9 +929,9 @@ impl Engine {
             }
             LessonEvent::Transcribed { session, result } if Some(session) == current => {
                 match result {
-                    Ok(text) if !text.trim().is_empty() => self.send_student_message(text),
+                    Ok(text) if !text.trim().is_empty() => self.answer_student(text, true),
                     Ok(_) if self.lesson.as_ref().is_some_and(|l| l.carry.is_some()) => {
-                        self.send_student_message(String::new());
+                        self.answer_student(String::new(), true);
                     }
                     Ok(_) => {
                         self.set_phase(LessonPhase::Idle);
@@ -843,7 +952,15 @@ impl Engine {
                     lesson.partial_running = false;
                     match result {
                         Ok(text) if lesson.phase == LessonPhase::Listening => {
-                            lesson.partial = Some(Partial { text, samples });
+                            let changed_at = match &lesson.partial {
+                                Some(p) if same_words(&p.text, &text) => p.changed_at,
+                                _ => samples,
+                            };
+                            lesson.partial = Some(Partial {
+                                text,
+                                samples,
+                                changed_at,
+                            });
                         }
                         Ok(_) => {}
                         Err(err) => tracing::warn!(%err, "live caption failed"),
@@ -871,8 +988,9 @@ impl Engine {
                     }
                 };
                 match lesson.phase {
-                    // No tutor voice yet, so any word is the student.
-                    LessonPhase::Thinking if word_count(&text) >= 1 => {
+                    // Only the short "Hum." may be playing, so any other word
+                    // is the student.
+                    LessonPhase::Thinking if has_new_words(&text, &FILLERS.join(" ")) => {
                         if lesson
                             .turns
                             .last()
@@ -1174,7 +1292,23 @@ fn tail_chars(text: &str, max: usize) -> &str {
 
 #[cfg(test)]
 mod stt_context_tests {
-    use super::tail_chars;
+    use super::{Partial, tail_chars};
+    use std::time::Duration;
+
+    #[test]
+    fn stability_is_measured_in_recorded_audio() {
+        let partial = Partial {
+            text: "Sim, entendi.".into(),
+            samples: 48_000 * 3,
+            changed_at: 48_000 * 2,
+        };
+        assert_eq!(partial.stable_for(48_000), Duration::from_secs(1));
+        let fresh = Partial {
+            changed_at: partial.samples,
+            ..partial
+        };
+        assert_eq!(fresh.stable_for(48_000), Duration::ZERO);
+    }
 
     #[test]
     fn tail_keeps_whole_words_from_the_end() {
