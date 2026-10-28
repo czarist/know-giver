@@ -1,7 +1,7 @@
 //! Edital import, plan generation and the list of saved plans.
 
 use egui::RichText;
-use kg_engine::{Command, Edital, ImportState, PlanPrefs, PlanSummary};
+use kg_engine::{Command, Edital, Engine, ImportState, PlanPrefs, PlanSummary};
 use rust_i18n::t;
 
 use super::Actions;
@@ -48,6 +48,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 }
                 None => ready_card(
                     ui,
+                    engine,
                     edital,
                     &mut state.prefs,
                     &mut state.prepare_all,
@@ -88,6 +89,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
 
 fn ready_card(
     ui: &mut egui::Ui,
+    engine: &Engine,
     edital: &Edital,
     prefs: &mut PlanPrefs,
     prepare_all: &mut bool,
@@ -115,6 +117,16 @@ fn ready_card(
             });
 
         ui.add_space(8.0);
+        let roles = engine.edital_roles();
+        let choose_role = roles.len() >= 2;
+        if choose_role {
+            role_picker(ui, roles, &mut prefs.role);
+            ui.add_space(8.0);
+        } else if let [only] = roles
+            && prefs.role.trim().is_empty()
+        {
+            prefs.role.clone_from(&only.name);
+        }
         egui::Grid::new("plan_prefs")
             .num_columns(2)
             .spacing([16.0, 10.0])
@@ -135,21 +147,38 @@ fn ready_card(
                 );
                 ui.end_row();
 
-                ui.label(t!("edital.role"));
-                ui.add(
-                    egui::TextEdit::singleline(&mut prefs.role)
-                        .hint_text(t!("edital.role_hint"))
-                        .desired_width(360.0),
-                );
-                ui.end_row();
+                if !choose_role {
+                    ui.label(t!("edital.role"));
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut prefs.role)
+                                .hint_text(t!("edital.role_hint"))
+                                .desired_width(360.0),
+                        );
+                        if engine.finding_roles() {
+                            ui.spinner();
+                            widgets::hint(ui, &t!("edital.finding_roles"));
+                        }
+                    });
+                    ui.end_row();
+                }
             });
 
         ui.add_space(8.0);
         ui.checkbox(prepare_all, t!("edital.prepare_all"));
         widgets::hint(ui, &t!("edital.prepare_all_hint"));
         ui.add_space(8.0);
+        let role_chosen = !choose_role || roles.iter().any(|r| r.name == prefs.role);
         ui.horizontal(|ui| {
-            if widgets::primary_button(ui, &t!("edital.generate")).clicked() {
+            let generate = ui
+                .add_enabled_ui(role_chosen, |ui| {
+                    widgets::primary_button(ui, &t!("edital.generate"))
+                })
+                .inner;
+            if !role_chosen {
+                widgets::hint(ui, &t!("edital.pick_role_first"));
+            }
+            if generate.clicked() {
                 actions.send(Command::GeneratePlan(prefs.clone()));
                 if *prepare_all {
                     actions.send(Command::PrepareContent(super::handout::prepare_request()));
@@ -162,6 +191,29 @@ fn ready_card(
             }
         });
     });
+}
+
+/// One option per role; the plan covers only the chosen one.
+fn role_picker(ui: &mut egui::Ui, roles: &[kg_engine::Role], chosen: &mut String) {
+    let p = theme::palette(ui.ctx());
+    ui.label(RichText::new(t!("edital.roles_title", count = roles.len())).strong());
+    widgets::hint(ui, &t!("edital.roles_hint"));
+    ui.add_space(4.0);
+    for role in roles {
+        let selected = *chosen == role.name;
+        let label = match role.number {
+            Some(n) => format!("{}  ·  {}", t!("edital.role_number", number = n), role.name),
+            None => role.name.clone(),
+        };
+        let text = if selected {
+            RichText::new(label).strong().color(p.text)
+        } else {
+            RichText::new(label).color(p.text)
+        };
+        if ui.add(egui::RadioButton::new(selected, text)).clicked() {
+            chosen.clone_from(&role.name);
+        }
+    }
 }
 
 fn plan_row(

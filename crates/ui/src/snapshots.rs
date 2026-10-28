@@ -170,38 +170,44 @@ fn snapshots() {
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }
 
-/// The teacher in each lesson phase, side by side.
+/// Every teacher in each lesson phase: one row per teacher.
 #[test]
 #[ignore = "needs a GPU; run with --ignored"]
 fn avatar_states() {
-    use kg_engine::LessonPhase;
+    use kg_engine::{LessonPhase, Teacher};
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
     let phases = [
         (LessonPhase::Idle, 0.0, 0.0),
         (LessonPhase::Listening, 0.0, 0.7),
         (LessonPhase::Thinking, 0.0, 0.0),
-        (LessonPhase::Speaking, 0.8, 0.0),
+        (LessonPhase::Speaking, 0.3, 0.0),
+        (LessonPhase::Speaking, 0.9, 0.0),
     ];
     let mut harness = Harness::builder()
-        .with_size([1000.0, 300.0])
+        .with_size([1120.0, 1080.0])
         .build_ui(move |ui| {
             crate::theme::apply(ui.ctx());
-            let accent = crate::theme::palette(ui.ctx()).accent;
-            ui.horizontal(|ui| {
-                for (phase, speech, mic) in phases {
-                    let (rect, _) =
-                        ui.allocate_exact_size(egui::vec2(240.0, 280.0), egui::Sense::hover());
-                    crate::avatar::paint(
-                        ui,
-                        rect,
-                        crate::avatar::Mood { phase, speech, mic },
-                        accent,
-                        crate::avatar::Appearance::default(),
-                    );
-                }
-            });
+            egui_extras::install_image_loaders(ui.ctx());
+            for teacher in Teacher::ALL {
+                ui.horizontal(|ui| {
+                    for (phase, speech, mic) in phases {
+                        let (rect, _) =
+                            ui.allocate_exact_size(egui::vec2(210.0, 205.0), egui::Sense::hover());
+                        crate::teacher::paint(
+                            ui,
+                            rect,
+                            crate::teacher::Mood { phase, speech, mic },
+                            teacher,
+                        );
+                    }
+                });
+            }
         });
-    harness.run_steps(8);
+    // The mouth eases toward the voice level; give it time, and SVGs time to load.
+    for _ in 0..4 {
+        harness.run_steps(10);
+        std::thread::sleep(std::time::Duration::from_millis(150));
+    }
     let image = harness.render().unwrap();
     if let Some(dir) = out {
         image.save(dir.join("avatar-states.png")).unwrap();
@@ -212,14 +218,19 @@ fn avatar_states() {
 #[test]
 #[ignore = "needs a GPU; run with --ignored"]
 fn roadmap_components() {
-    use crate::{avatar, icons, illustrations, whiteboard};
+    use crate::{icons, illustrations, teacher, whiteboard};
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
     for (name, theme) in [("light", egui::Theme::Light), ("dark", egui::Theme::Dark)] {
+        let mut fonts_ready = false;
         let mut harness = Harness::builder()
-            .with_size([1040.0, 720.0])
+            .with_size([1040.0, 1180.0])
             .build_ui(move |ui| {
                 crate::theme::apply(ui.ctx());
                 ui.ctx().set_theme(theme);
+                // Fonts set in a frame are used from the next one.
+                if !std::mem::replace(&mut fonts_ready, true) {
+                    return;
+                }
                 egui_extras::install_image_loaders(ui.ctx());
                 let palette = crate::theme::palette(ui.ctx());
                 ui.horizontal(|ui| {
@@ -237,39 +248,50 @@ fn roadmap_components() {
                     }
                 });
                 ui.horizontal(|ui| {
-                    for (female, minimal) in
-                        [(false, false), (true, false), (false, true), (true, true)]
-                    {
+                    for who in kg_engine::Teacher::ALL {
                         let (rect, _) =
-                            ui.allocate_exact_size(egui::vec2(240.0, 240.0), egui::Sense::hover());
-                        avatar::paint(
+                            ui.allocate_exact_size(egui::vec2(190.0, 190.0), egui::Sense::hover());
+                        teacher::paint(
                             ui,
                             rect,
-                            avatar::Mood {
+                            teacher::Mood {
                                 phase: kg_engine::LessonPhase::Idle,
                                 speech: 0.0,
                                 mic: 0.0,
                             },
-                            palette.accent,
-                            avatar::Appearance { female, minimal },
+                            who,
                         );
                     }
                 });
-                ui.horizontal(|ui| {
-                    for text in [
+                for pair in [
+                    [
                         "FORMULA: juros = capital × taxa × tempo",
                         "DIAGRAMA: Edital -> Plano de estudo -> Revisão",
-                    ] {
-                        let (area, _) =
-                            ui.allocate_exact_size(egui::vec2(485.0, 180.0), egui::Sense::hover());
-                        whiteboard::paint(
-                            &ui.painter_at(area),
-                            area.shrink(14.0),
-                            &whiteboard::parse(text),
-                            palette.text,
-                        );
-                    }
-                });
+                    ],
+                    [
+                        "TABELA: Lei | Vigência | Aprova ; PPA | 4 anos | Congresso ; LDO | 1 ano | Congresso ; LOA | 1 ano | Congresso",
+                        "LINHA DO TEMPO: 1964: Lei 4.320 | 1988: Constituição | 2000: LRF | 2021: Nova lei de licitações",
+                    ],
+                    [
+                        "MAPA: Orçamento público: PPA | LDO | LOA | Créditos adicionais",
+                        "DESTAQUE: A LOA não pode ter dispositivo estranho à receita e à despesa.",
+                    ],
+                ] {
+                    ui.horizontal(|ui| {
+                        for text in pair {
+                            let (area, _) = ui
+                                .allocate_exact_size(egui::vec2(485.0, 200.0), egui::Sense::hover());
+                            whiteboard::paint(
+                                ui,
+                                &ui.painter_at(area),
+                                area.shrink(14.0),
+                                &whiteboard::parse(text),
+                                palette.text,
+                                None,
+                            );
+                        }
+                    });
+                }
             });
         harness.run_steps(8);
         let image = harness.render().unwrap();
@@ -355,6 +377,22 @@ fn content_preparation() {
     }
     harness.state_mut().ui.screen = Screen::Edital;
     render(&mut harness, out.as_deref(), "pt-BR-edital-generating");
+
+    if let Ok(engine) = harness.state_mut().engine.as_mut() {
+        engine.simulate_import(kg_engine::Edital {
+            file_name: "edital-cgu.pdf".into(),
+            pages: 69,
+            text: kg_engine::EditalText::from_raw(
+                "2.1.1 CARGO 1: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: AUDITORIA\n\n\
+                 2.1.2 CARGO 2: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
+                 INFORMAÇÃO – CIÊNCIA DE DADOS\n\n\
+                 2.1.3 CARGO 3: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
+                 INFORMAÇÃO – INFRAESTRUTURA DE TI\n",
+            ),
+        });
+    }
+    harness.state_mut().ui.prefs.role = "Auditor Federal de Finanças e Controle (AFFC) – Especialidade: Tecnologia da Informação – Ciência de Dados".into();
+    render(&mut harness, out.as_deref(), "pt-BR-edital-roles");
     harness.state_mut().dispatch(Command::CancelPrepare);
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }

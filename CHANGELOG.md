@@ -4,6 +4,35 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.24.0] - 2026-10-28
+
+### Added
+- Editais with several roles (cargos): the app finds them ("CARGO 2: …", also
+  wrapped onto the next line) and asks which one you are applying for before
+  building the plan. Only the chosen role's specific syllabus is sent to the model,
+  together with the shared subjects; the other roles' specific sections are left
+  out. When an edital does not number its roles, the model lists them and only
+  names found in the text are offered. Plans made before picked a role on their
+  own: import the edital again to choose.
+- Teachers: Helena, Lia, Rafael, Otávio and Thoth (Settings › Who teaches). Ink
+  portraits on a paper card replace the drawn character: they breathe, blink, lean
+  in and nod while listening, show a thought bubble while thinking, and the mouth
+  follows the voice. Picking a teacher picks the matching voice when it is
+  installed. The tutor uses the teacher's name and speaks of itself in the right
+  gender.
+- More female voices: Dii (Piper, Brazilian Portuguese, OpenVoiceOS, CC BY-NC-ND),
+  and Sara, Heart and Emma from the Kokoro bundle already used for Dora, reading
+  Portuguese with a light accent.
+- Richer whiteboard: besides key points, formulas and diagrams the tutor can write
+  tables, timelines, mind maps, "on the exam" tips and worked examples, and show
+  pictures from Portuguese Wikipedia (the lesson opens with one of the topic when
+  it exists). Only the search term is sent; pictures are cached on disk. Turn it
+  off in Settings › Voice.
+
+### Removed
+- The teacher style option (classic / simple); the teacher is now a person you
+  choose.
+
 ## [0.23.0] - 2026-10-28
 
 ### Added

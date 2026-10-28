@@ -6,7 +6,7 @@ use egui::{RichText, vec2};
 use kg_engine::{Engine, LessonPhase};
 use rust_i18n::t;
 
-use crate::{avatar, theme};
+use crate::{teacher, theme};
 
 /// Seconds each tip stays on screen.
 const TIP_SECS: f64 = 7.0;
@@ -45,16 +45,15 @@ pub fn panel(
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 let (rect, _) = ui.allocate_exact_size(vec2(130.0, 150.0), egui::Sense::hover());
-                avatar::paint(
+                teacher::paint(
                     ui,
                     rect,
-                    avatar::Mood {
+                    teacher::Mood {
                         phase: LessonPhase::Thinking,
                         speech: 0.0,
                         mic: 0.0,
                     },
-                    p.accent,
-                    avatar::appearance(engine),
+                    teacher::current(engine),
                 );
                 ui.add_space(12.0);
                 ui.vertical(|ui| {

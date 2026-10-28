@@ -9,13 +9,13 @@ rust_i18n::i18n!("../../locales", fallback = "pt-BR");
 
 mod app;
 mod art;
-mod avatar;
 mod export;
 mod i18n;
 mod icon;
 mod icons;
 mod illustrations;
 mod screens;
+mod teacher;
 mod theme;
 mod whiteboard;
 mod widgets;

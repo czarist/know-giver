@@ -1,20 +1,13 @@
 //! User settings, stored as JSON in the database.
 
 use kg_ai::AiConfig;
-use kg_audio::{CloudSpeechConfig, SttEngine, TtsBackend, Voice, WhisperModel};
+use kg_audio::{CloudSpeechConfig, SttEngine, TtsBackend, Voice, VoiceGender, WhisperModel};
 use kg_study::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 
 const SETTINGS_KEY: &str = "app_settings";
 
-/// Teacher illustration style. Voice gender is applied independently.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum AvatarStyle {
-    #[default]
-    Classic,
-    Minimal,
-}
+use crate::Teacher;
 
 /// Everything the user can change in Settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,7 +41,12 @@ pub struct Settings {
     pub speech_expressiveness: f32,
     /// Piper rhythm variation (`noise_w`).
     pub speech_rhythm_variation: f32,
-    pub avatar_style: AvatarStyle,
+    /// Look up pictures for the lesson whiteboard on Portuguese Wikipedia
+    /// (only the search term is sent).
+    pub board_images: bool,
+    /// Who teaches; `None` in settings saved before teachers existed (see
+    /// [`Settings::teacher`]).
+    pub teacher: Option<Teacher>,
     /// Speech speed multiplier: 1.0 is normal, 1.2 is 20% faster.
     pub speech_rate: f32,
     pub quiz_size: u32,
@@ -76,7 +74,8 @@ impl Default for Settings {
             speech_pitch: 0.0,
             speech_expressiveness: kg_audio::DEFAULT_EXPRESSIVENESS,
             speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
-            avatar_style: AvatarStyle::default(),
+            board_images: true,
+            teacher: None,
             speech_rate: 0.95,
             quiz_size: 5,
             locale: "pt-BR".into(),
@@ -108,6 +107,20 @@ impl Settings {
         }
         settings.normalize();
         Ok(settings)
+    }
+
+    /// The chosen teacher, or one matching the voice's gender.
+    pub fn teacher(&self) -> Teacher {
+        self.teacher
+            .unwrap_or_else(|| Teacher::for_gender(self.voice_gender()))
+    }
+
+    /// Gender of the voice that speaks the lessons.
+    pub fn voice_gender(&self) -> VoiceGender {
+        match self.tts_backend {
+            TtsBackend::Cloud => self.cloud_speech.gender,
+            TtsBackend::Local => self.voice.gender(),
+        }
     }
 
     pub(crate) fn normalize(&mut self) {

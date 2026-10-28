@@ -1,6 +1,7 @@
 //! Prompt templates, embedded from `crates/ai/prompts/`.
 
 pub const PLAN: &str = include_str!("../prompts/plan.md");
+pub const ROLES: &str = include_str!("../prompts/roles.md");
 pub const TUTOR: &str = include_str!("../prompts/tutor.md");
 pub const LESSON_START: &str = include_str!("../prompts/lesson_start.md");
 pub const QUIZ: &str = include_str!("../prompts/quiz.md");

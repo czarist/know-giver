@@ -105,10 +105,39 @@ pub struct HandoutDraft {
     pub exercises: Vec<QuestionDraft>,
 }
 
-/// Marker of the whiteboard line at the end of a tutor answer.
+/// Markers of whiteboard lines at the end of a tutor answer. The first ones
+/// hold several points separated by `|`; matched in any case.
 const BOARD_MARKERS: [&str; 3] = ["QUADRO:", "FORMULA:", "DIAGRAMA:"];
+/// Markers whose whole line is one board entry (tables, timelines...).
+/// Matched in capitals only, so speech such as "Exemplo: imagine..." is
+/// never taken for the board.
+const BOARD_BLOCK_MARKERS: [&str; 6] = [
+    "IMAGEM:",
+    "TABELA:",
+    "LINHA DO TEMPO:",
+    "MAPA:",
+    "DESTAQUE:",
+    "EXEMPLO:",
+];
 /// Longest whiteboard point kept, in characters.
 const BOARD_POINT_CHARS: usize = 90;
+/// Longest single-entry board line kept, in characters.
+const BOARD_BLOCK_CHARS: usize = 320;
+
+/// The board marker a line starts with, if any.
+fn board_marker(line: &str) -> Option<&'static str> {
+    BOARD_MARKERS
+        .into_iter()
+        .find(|marker| {
+            line.get(..marker.len())
+                .is_some_and(|head| head.eq_ignore_ascii_case(marker))
+        })
+        .or_else(|| {
+            BOARD_BLOCK_MARKERS
+                .into_iter()
+                .find(|marker| line.starts_with(marker))
+        })
+}
 
 /// A tutor answer: what is spoken, and the key points for the whiteboard.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -124,11 +153,18 @@ impl TutorReply {
         let mut board = Vec::new();
         for line in text.lines() {
             let clean = line.trim().trim_matches('*').trim();
-            if let Some(marker) = BOARD_MARKERS.into_iter().find(|marker| {
-                clean
-                    .get(..marker.len())
-                    .is_some_and(|head| head.eq_ignore_ascii_case(marker))
-            }) {
+            let marker = board_marker(clean);
+            if let Some(marker) = marker
+                && BOARD_BLOCK_MARKERS.contains(&marker)
+            {
+                let body = clean[marker.len()..]
+                    .trim_matches(|c: char| c == '*' || c.is_whitespace())
+                    .trim_end_matches('.');
+                if !body.is_empty() {
+                    let body: String = body.chars().take(BOARD_BLOCK_CHARS).collect();
+                    board.push(format!("{marker} {body}"));
+                }
+            } else if let Some(marker) = marker {
                 let points = clean[marker.len()..]
                     .split('|')
                     .map(|p| {
@@ -169,6 +205,10 @@ pub struct TopicContext {
     pub reference: String,
     /// What the student wants to be called in lessons; may be empty.
     pub student: String,
+    /// The tutor's own name in lessons; may be empty.
+    pub teacher_name: String,
+    /// The tutor speaks of itself in the feminine.
+    pub teacher_female: bool,
 }
 
 impl TopicContext {
@@ -206,6 +246,35 @@ pub fn generate_plan(
         ChatMessage::user(format!("EDITAL:\n{edital}")),
     ];
     chat_json(client, Task::StudyPlan, &messages, 32_000)
+}
+
+#[derive(Debug, Deserialize)]
+struct RolesDraft {
+    #[serde(default)]
+    roles: Vec<String>,
+}
+
+/// Roles (cargos) the edital offers, as the model reads them. Used when the
+/// edital does not number its roles; callers should check each name against
+/// the text, as the model may paraphrase.
+pub fn find_roles(client: &Client, edital: &str) -> Result<Vec<String>, AiError> {
+    let messages = [
+        ChatMessage::system(prompts::ROLES.trim()),
+        ChatMessage::user(format!(
+            "EDITAL:
+{edital}"
+        )),
+    ];
+    let draft: RolesDraft = chat_json(client, Task::StudyPlan, &messages, 2_000)?;
+    let mut roles: Vec<String> = Vec::new();
+    for role in draft.roles {
+        let role = role.split_whitespace().collect::<Vec<_>>().join(" ");
+        if !role.is_empty() && role.chars().count() <= 220 && !roles.contains(&role) {
+            roles.push(role);
+        }
+    }
+    roles.truncate(30);
+    Ok(roles)
 }
 
 /// The tutor's opening message for a lesson.
@@ -293,11 +362,7 @@ impl SpokenStream {
             let end_of_sentence = ch.is_whitespace() && self.pending.ends_with(['.', '!', '?']);
             self.pending.push(ch);
             let clean = self.pending.trim_start().trim_start_matches('*');
-            if BOARD_MARKERS.iter().any(|marker| {
-                clean
-                    .get(..marker.len())
-                    .is_some_and(|head| head.eq_ignore_ascii_case(marker))
-            }) {
+            if board_marker(clean).is_some() {
                 self.board_line = true;
                 self.pending.clear();
             } else if end_of_sentence {
@@ -347,7 +412,20 @@ fn tutor_system(topic: &TopicContext) -> ChatMessage {
             "- O aluno quer ser chamado de {name}. Use esse nome de vez em quando, com naturalidade: no cumprimento, ao elogiar ou ao chamar a atenção, não em toda frase."
         )
     };
+    let name = topic.teacher_name.trim();
+    let teacher = if name.is_empty() {
+        String::new()
+    } else if topic.teacher_female {
+        format!(
+            "- Seu nome é {name} e você é a professora. Fale de si no feminino (por exemplo, \"obrigada\", \"estou pronta\")."
+        )
+    } else {
+        format!(
+            "- Seu nome é {name} e você é o professor. Fale de si no masculino (por exemplo, \"obrigado\", \"estou pronto\")."
+        )
+    };
     // Last, so a name cannot be mistaken for another placeholder.
+    values.push(("teacher", &teacher));
     values.push(("student", &student));
     ChatMessage::system(fill(prompts::TUTOR, &values))
 }
@@ -536,6 +614,11 @@ mod tests {
         topic.student = "Lucas".into();
         let with = tutor_system(&topic).content;
         assert!(with.contains("quer ser chamado de Lucas"));
+        assert!(!with.contains("{teacher}"));
+        topic.teacher_name = "Helena".into();
+        topic.teacher_female = true;
+        let persona = tutor_system(&topic).content;
+        assert!(persona.contains("Seu nome é Helena e você é a professora"));
     }
 
     #[test]
@@ -548,7 +631,8 @@ mod tests {
             "Repare no acento!\n**QUA",
             "DRO:** a + a | às horas\nFOR",
             "MULA: a + a = à\nDIA",
-            "GRAMA: Regra -> Exemplo\nUma pergunta?",
+            "GRAMA: Regra -> Exemplo\nTAB",
+            "ELA: a | b ; c | d\nIMAGEM: Crase\nUma pergunta?",
         ] {
             stream.push(delta, &mut |text| spoken.push(text.to_owned()));
         }
@@ -606,6 +690,19 @@ mod tests {
                 "Taxa",
                 "FORMULA: juros = valor * taxa",
                 "DIAGRAMA: Lei -> Aplicação -> Recurso"
+            ]
+        );
+        let rich = TutorReply::parse(
+            "Exemplo: pense numa prefeitura.\nTABELA: Lei | Prazo ; PPA | 4 anos ; LOA | 1 ano\nIMAGEM: Palácio do Planalto\n**DESTAQUE:** A LOA não pode conter matéria estranha.\nLINHA DO TEMPO: 1988: Constituição | 2000: LRF",
+        );
+        assert_eq!(rich.speech, "Exemplo: pense numa prefeitura.");
+        assert_eq!(
+            rich.board,
+            vec![
+                "TABELA: Lei | Prazo ; PPA | 4 anos ; LOA | 1 ano",
+                "IMAGEM: Palácio do Planalto",
+                "DESTAQUE: A LOA não pode conter matéria estranha",
+                "LINHA DO TEMPO: 1988: Constituição | 2000: LRF",
             ]
         );
     }

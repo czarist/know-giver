@@ -259,6 +259,12 @@ impl Engine {
         let reply = self.next_id();
         let client = self.ai_client();
         let ctx = context.clone();
+        // The board opens with a picture of the topic, when one exists.
+        let opening_board = if self.settings.board_images {
+            vec![format!("IMAGEM: {topic_title}")]
+        } else {
+            Vec::new()
+        };
         self.lesson = Some(LessonSession {
             id,
             topic_id,
@@ -266,7 +272,7 @@ impl Engine {
             subject: context.subject.clone(),
             turns: Vec::new(),
             phase: LessonPhase::Thinking,
-            board: Vec::new(),
+            board: opening_board,
             context,
             recording: None,
             speech_job: None,
@@ -283,6 +289,9 @@ impl Engine {
             noise_floor: None,
             turn_ended: None,
         });
+        if let Some(title) = self.lesson.as_ref().map(|l| l.topic_title.clone()) {
+            self.request_illustration(&title);
+        }
         self.warm_up_voice();
         let speech = self.open_speech_stream();
         let (tx, waker) = self.sender();
@@ -894,6 +903,7 @@ impl Engine {
                 };
                 let text = reply.speech;
                 let mut spoken_live = false;
+                let mut pictures: Vec<String> = Vec::new();
                 if let Some(lesson) = self.lesson.as_mut() {
                     // The full reply replaces the streamed captions.
                     if std::mem::take(&mut lesson.streaming)
@@ -906,6 +916,12 @@ impl Engine {
                             text: text.clone(),
                         });
                     }
+                    pictures = reply
+                        .board
+                        .iter()
+                        .filter_map(|entry| entry.strip_prefix("IMAGEM:"))
+                        .map(|query| query.trim().to_owned())
+                        .collect();
                     lesson.board.extend(reply.board);
                     let excess = lesson.board.len().saturating_sub(BOARD_POINTS);
                     lesson.board.drain(..excess);
@@ -913,6 +929,9 @@ impl Engine {
                     if spoken_live && lesson.phase == LessonPhase::Thinking {
                         lesson.phase = LessonPhase::Speaking;
                     }
+                }
+                for query in &pictures {
+                    self.request_illustration(query);
                 }
                 if spoken_live {
                     // Sentences were already queued for speech as they arrived;

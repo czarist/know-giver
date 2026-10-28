@@ -10,7 +10,9 @@ use crate::*;
 
 fn engine() -> (Engine, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let engine = Engine::in_memory(AppPaths::new(dir.path()), AiConfig::default()).unwrap();
+    let mut engine = Engine::in_memory(AppPaths::new(dir.path()), AiConfig::default()).unwrap();
+    // Tests never reach Wikipedia.
+    engine.settings.board_images = false;
     (engine, dir)
 }
 
@@ -514,6 +516,23 @@ fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
     assert_eq!(lesson.turns[0].text, "Olá! Hoje vamos ver crase. Pronto?");
     assert_eq!(lesson.board, vec!["Crase = a + a"]);
     assert_eq!(lesson.phase, LessonPhase::Idle);
+}
+
+#[test]
+fn board_opens_with_a_topic_picture_and_asks_for_tutor_pictures() {
+    let (mut engine, _dir) = engine_with_plan();
+    engine.settings.board_images = true;
+    let id = first_topic(&engine);
+    let title = topic(&engine, id).title;
+    // Pretend the topic's picture was already looked up, so no request leaves.
+    engine.on_illustration(crate::illustration_key(&title), None);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.board, vec![format!("IMAGEM: {title}")]);
+    assert_eq!(
+        engine.illustration(&title),
+        Some(&crate::Illustration::Missing)
+    );
 }
 
 fn prepare_request() -> PrepareRequest {

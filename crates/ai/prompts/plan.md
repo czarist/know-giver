@@ -3,7 +3,7 @@ Sua tarefa é transformar o edital abaixo em um plano de estudo estruturado.
 
 Regras:
 - Use somente matérias e tópicos que estão no edital. Não invente conteúdo.
-- Se o edital tiver vários cargos, considere apenas o cargo: {role}.
+- Se o edital tiver vários cargos, considere apenas o cargo: {role}. Inclua os conhecimentos comuns a todos os cargos (básicos, gerais, complementares) e somente os conhecimentos específicos desse cargo. Ignore matérias específicas de outros cargos ou especialidades.
 - Agrupe itens muito pequenos do conteúdo programático em tópicos de estudo coerentes, com no máximo 15 tópicos por matéria.
 - Títulos de tópicos curtos e claros, com no máximo 12 palavras.
 - Estime a dificuldade de cada tópico: "easy", "medium" ou "hard".

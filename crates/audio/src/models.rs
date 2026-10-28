@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 use crate::AudioError;
 
 const HF: &str = "https://huggingface.co";
+/// OpenVoiceOS "Dii" pt-BR voice (CC BY-NC-ND 4.0), pinned to a revision.
+const DII_BASE: &str = "https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii/resolve/38281189bdbc6a0346041925b56da6d71d6fba3d/dii_pt-BR";
 const PIPER_RELEASE: &str =
     "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
 const KOKORO_RUNTIME_DIR: &str = "sherpa-onnx-v1.12.20-win-x64-shared";
@@ -75,25 +77,34 @@ pub enum PiperVoice {
     Faber,
     Cadu,
     Jeff,
+    /// Female voice by OpenVoiceOS, fine-tuned for pt-BR.
+    Dii,
 }
 
 impl PiperVoice {
-    pub const ALL: [Self; 3] = [Self::Faber, Self::Cadu, Self::Jeff];
+    pub const ALL: [Self; 4] = [Self::Faber, Self::Cadu, Self::Jeff, Self::Dii];
 
     pub fn id(self) -> &'static str {
         match self {
             Self::Faber => "pt_BR-faber-medium",
             Self::Cadu => "pt_BR-cadu-medium",
             Self::Jeff => "pt_BR-jeff-medium",
+            Self::Dii => "pt_BR-dii-ovos",
         }
     }
 
-    fn speaker(self) -> &'static str {
-        match self {
+    /// Download URL without the `.onnx` / `.onnx.json` extension.
+    fn download_base(self) -> String {
+        let speaker = match self {
             Self::Faber => "faber",
             Self::Cadu => "cadu",
             Self::Jeff => "jeff",
-        }
+            Self::Dii => return DII_BASE.to_owned(),
+        };
+        format!(
+            "{HF}/rhasspy/piper-voices/resolve/main/pt/pt_BR/{speaker}/medium/{}",
+            self.id()
+        )
     }
 }
 
@@ -307,11 +318,7 @@ impl ModelStore {
             }
             ModelId::Voice(v) => {
                 let (onnx, json) = self.voice_files(v);
-                let base = format!(
-                    "{HF}/rhasspy/piper-voices/resolve/main/pt/pt_BR/{}/medium/{}",
-                    v.speaker(),
-                    v.id()
-                );
+                let base = v.download_base();
                 fetcher.fetch(&format!("{base}.onnx.json"), &json)?;
                 fetcher.fetch(&format!("{base}.onnx"), &onnx)?;
             }

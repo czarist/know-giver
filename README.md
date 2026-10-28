@@ -109,6 +109,13 @@ optional platform tooling.
 - Fonts: [Inter](https://rsms.me/inter/) and [IBM Plex Mono](https://github.com/IBM/plex),
   SIL Open Font License (`crates/ui/assets/fonts`).
 - Thoth engraving (`crates/ui/assets/art`): supplied by the project owner.
+- Teacher portraits (`crates/ui/assets/teachers`): "Lorelei" by Lisa Wischofsky,
+  CC0 1.0, through [DiceBear](https://www.dicebear.com/styles/lorelei/); rebuilt with
+  `python tools/teachers.py`.
+- Dii voice (downloaded on demand): [OpenVoiceOS/pipertts_pt-BR_dii](https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii),
+  CC BY-NC-ND 4.0, personal non-commercial use.
+- Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
+  caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
 
 ## References

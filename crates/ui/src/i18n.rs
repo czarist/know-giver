@@ -97,6 +97,34 @@ pub fn voice(voice: Voice) -> String {
         Voice::Kokoro(KokoroVoice::Dora) => t!("models.voice.dora"),
         Voice::Kokoro(KokoroVoice::Alex) => t!("models.voice.alex"),
         Voice::Kokoro(KokoroVoice::Santa) => t!("models.voice.santa"),
+        Voice::Piper(PiperVoice::Dii) => t!("models.voice.dii"),
+        Voice::Kokoro(KokoroVoice::Sara) => t!("models.voice.sara"),
+        Voice::Kokoro(KokoroVoice::Heart) => t!("models.voice.heart"),
+        Voice::Kokoro(KokoroVoice::Emma) => t!("models.voice.emma"),
+    }
+    .into_owned()
+}
+
+pub fn teacher_name(teacher: kg_engine::Teacher) -> String {
+    use kg_engine::Teacher;
+    match teacher {
+        Teacher::Helena => t!("teachers.helena.name"),
+        Teacher::Lia => t!("teachers.lia.name"),
+        Teacher::Rafael => t!("teachers.rafael.name"),
+        Teacher::Otavio => t!("teachers.otavio.name"),
+        Teacher::Thoth => t!("teachers.thoth.name"),
+    }
+    .into_owned()
+}
+
+pub fn teacher_about(teacher: kg_engine::Teacher) -> String {
+    use kg_engine::Teacher;
+    match teacher {
+        Teacher::Helena => t!("teachers.helena.about"),
+        Teacher::Lia => t!("teachers.lia.about"),
+        Teacher::Rafael => t!("teachers.rafael.about"),
+        Teacher::Otavio => t!("teachers.otavio.about"),
+        Teacher::Thoth => t!("teachers.thoth.about"),
     }
     .into_owned()
 }
@@ -123,6 +151,7 @@ pub fn model_name(id: ModelId) -> String {
 pub fn model_description(id: ModelId) -> String {
     match id {
         ModelId::Whisper(_) => t!("models.whisper.description"),
+        ModelId::Voice(PiperVoice::Dii) => t!("models.voice.dii_description"),
         ModelId::Voice(_) => t!("models.voice.description"),
         ModelId::PiperRuntime => t!("models.piper_description"),
         ModelId::KokoroRuntime => t!("models.kokoro_runtime_description"),

@@ -13,7 +13,9 @@ pub enum VoiceGender {
     Male,
 }
 
-/// Portuguese voices in the 53-speaker Kokoro v1.0 bundle.
+/// Voices of the 53-speaker Kokoro v1.0 bundle used for Portuguese. All of
+/// them read Portuguese phonemes (`--kokoro-lang=pt-br`); Sara, Heart and
+/// Emma were recorded in other languages and keep a light accent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum KokoroVoice {
     #[default]
@@ -23,16 +25,32 @@ pub enum KokoroVoice {
     Alex,
     #[serde(rename = "pm_santa")]
     Santa,
+    #[serde(rename = "if_sara")]
+    Sara,
+    #[serde(rename = "af_heart")]
+    Heart,
+    #[serde(rename = "bf_emma")]
+    Emma,
 }
 
 impl KokoroVoice {
-    pub const ALL: [Self; 3] = [Self::Dora, Self::Alex, Self::Santa];
+    pub const ALL: [Self; 6] = [
+        Self::Dora,
+        Self::Alex,
+        Self::Santa,
+        Self::Sara,
+        Self::Heart,
+        Self::Emma,
+    ];
 
     pub fn id(self) -> &'static str {
         match self {
             Self::Dora => "pf_dora",
             Self::Alex => "pm_alex",
             Self::Santa => "pm_santa",
+            Self::Sara => "if_sara",
+            Self::Heart => "af_heart",
+            Self::Emma => "bf_emma",
         }
     }
 
@@ -42,6 +60,9 @@ impl KokoroVoice {
             Self::Dora => 42,
             Self::Alex => 43,
             Self::Santa => 44,
+            Self::Sara => 35,
+            Self::Heart => 3,
+            Self::Emma => 21,
         }
     }
 }
@@ -61,18 +82,25 @@ impl Default for Voice {
 }
 
 impl Voice {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 10] = [
+        Self::Kokoro(KokoroVoice::Dora),
+        Self::Piper(PiperVoice::Dii),
+        Self::Kokoro(KokoroVoice::Sara),
+        Self::Kokoro(KokoroVoice::Heart),
+        Self::Kokoro(KokoroVoice::Emma),
         Self::Piper(PiperVoice::Faber),
         Self::Piper(PiperVoice::Cadu),
         Self::Piper(PiperVoice::Jeff),
-        Self::Kokoro(KokoroVoice::Dora),
         Self::Kokoro(KokoroVoice::Alex),
         Self::Kokoro(KokoroVoice::Santa),
     ];
 
     pub fn gender(self) -> VoiceGender {
         match self {
-            Self::Kokoro(KokoroVoice::Dora) => VoiceGender::Female,
+            Self::Kokoro(
+                KokoroVoice::Dora | KokoroVoice::Sara | KokoroVoice::Heart | KokoroVoice::Emma,
+            )
+            | Self::Piper(PiperVoice::Dii) => VoiceGender::Female,
             _ => VoiceGender::Male,
         }
     }
@@ -151,6 +179,8 @@ mod tests {
         for (json, expected) in [
             ("\"faber\"", Voice::Piper(PiperVoice::Faber)),
             ("\"pf_dora\"", Voice::Kokoro(KokoroVoice::Dora)),
+            ("\"dii\"", Voice::Piper(PiperVoice::Dii)),
+            ("\"if_sara\"", Voice::Kokoro(KokoroVoice::Sara)),
         ] {
             let voice: Voice = serde_json::from_str(json).unwrap();
             assert_eq!(voice, expected);

@@ -64,6 +64,11 @@ edital:
   hours: "Horas de estudo por semana"
   role: "Cargo"
   role_hint: "Opcional: o cargo que você vai prestar"
+  roles_title: "Este edital tem %{count} cargos. Qual você vai prestar?"
+  roles_hint: "O plano inclui os conhecimentos comuns e só os específicos do cargo escolhido."
+  role_number: "Cargo %{number}"
+  pick_role_first: "Escolha o cargo para gerar o plano."
+  finding_roles: "Procurando os cargos do edital…"
   generate: "Gerar plano de estudo"
   other_file: "Usar outro arquivo"
   generating: "Lendo o conteúdo programático e distribuindo os tópicos pelas semanas. %{seconds} s."
@@ -129,6 +134,9 @@ lesson:
   type_hint: "Digite e tecle Enter"
   board: "Quadro"
   board_empty: "Os pontos-chave da aula aparecem aqui."
+  board_tip: "Cai na prova"
+  board_example: "Exemplo"
+  board_image_source: "Imagem: Wikipédia · %{title}"
   mic_off: "Microfone desligado"
   hint_talk: "Falar (ou segure Espaço)"
   interrupt: "Interromper o tutor (Esc)"
@@ -309,6 +317,9 @@ handout:
     answers: "Gabarito comentado"
 
 settings:
+  teacher:
+    title: "Quem dá a aula"
+    hint: "Escolha o professor ou a professora das aulas. A voz combinando é escolhida junto, se estiver instalada; você pode trocar a voz abaixo."
   you:
     title: "Você"
     name: "Como você quer ser chamado?"
@@ -355,9 +366,6 @@ settings:
     rhythm: "Variação do ritmo"
     piper_only: "Só para vozes Piper. Ajuste e use Ouvir amostra para comparar."
     pitch: "Tom (semitons)"
-    avatar: "Estilo do tutor"
-    avatar_classic: "Clássico"
-    avatar_minimal: "Simples"
     preview: "Ouvir amostra"
     preview_active: "Preparando ou reproduzindo amostra…"
     stop_preview: "Parar amostra"
@@ -372,6 +380,8 @@ settings:
     auto_stop: "Parar de ouvir quando eu fizer uma pausa"
     barge_in: "Posso interromper o tutor ou continuar falando enquanto ele pensa"
     fillers: "O tutor reage na hora (\"hum\", \"entendi\") enquanto prepara a resposta"
+    board_images: "Mostrar imagens da Wikipédia na lousa"
+    board_images_hint: "Busca na Wikipédia em português uma imagem do tópico e das coisas que o tutor citar. Só o termo pesquisado sai do computador; as imagens ficam guardadas para as próximas aulas."
     barge_in_hint: "O microfone fica aberto enquanto o tutor pensa e fala. Se você falar por cima, ele para e escuta; a voz dele saindo das caixas de som é reconhecida e ignorada. Funciona melhor com fone de ouvido. Precisa do reconhecimento Parakeet."
     voice: "Voz do tutor"
     rate: "Velocidade da fala"
@@ -410,6 +420,11 @@ models:
     dora: "Dora · Kokoro"
     alex: "Alex · Kokoro"
     santa: "Santa · Kokoro"
+    dii: "Dii · Piper (feminina)"
+    dii_description: "Voz feminina em português do Brasil, da OpenVoiceOS. Licença CC BY-NC-ND: só para uso pessoal, sem fins comerciais."
+    sara: "Sara · Kokoro (sotaque italiano leve)"
+    heart: "Heart · Kokoro (sotaque inglês leve)"
+    emma: "Emma · Kokoro (sotaque britânico leve)"
 
 working:
   tip_label: "Enquanto isso"
@@ -480,3 +495,20 @@ error:
     io: "Não foi possível ler o arquivo %{path}."
     parse: "Não foi possível abrir o PDF %{path}. Ele pode estar corrompido ou protegido."
     no_text: "O PDF %{path} não tem texto extraível. Talvez seja digitalizado."
+
+teachers:
+  helena:
+    name: "Helena"
+    about: "Calma e organizada. Voz: Dora."
+  lia:
+    name: "Lia"
+    about: "Jovem e animada. Voz: Dii."
+  rafael:
+    name: "Rafael"
+    about: "Direto ao ponto. Voz: Faber."
+  otavio:
+    name: "Otávio"
+    about: "Experiente e paciente. Voz: Cadu."
+  thoth:
+    name: "Thoth"
+    about: "O deus da escrita, em pessoa. Voz: Santa."
