@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.21.0. Everything an agent can build and check without a human ear, a
+Version 0.22.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person or hardware
 (listed under "Not yet verified"). Each release is a short-lived branch merged into
 `main` with an annotated tag.
@@ -10,11 +10,14 @@ microphone or other platforms is done. What remains open needs a person or hardw
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Conversation flow (v0.20.0–v0.21.0): Parakeet with live captions, end of turn
-   0.55 s after a sentence, continuation while the tutor thinks, barge-in with echo
+0. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
+   the caption is stable (0.45 s after a sentence, 1.2 s otherwise), a spoken "Hum."
+   while the answer is written, continuation while the tutor thinks, barge-in with echo
    recognized by comparing words, Piper kept running. Measured before: silence 1.4 s,
    Whisper small 4.7 s, first tutor sentence 1.5–2.2 s (server time; reusing the
-   connection did not help), first Piper chunk ~0.6 s. Still to check with a real
+   connection did not help; glm-4.5-flash/air are not faster), first Piper chunk
+   ~0.6 s. The app logs "end of turn" and "first tutor sentence" timings: ask the user
+   for those lines before tuning further. Still to check with a real
    microphone and speakers: false interruptions from echo (raise the word threshold if
    they happen), CPU load of checks while the tutor speaks, and how often one-word
    answers need the Whisper check.

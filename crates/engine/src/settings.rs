@@ -30,6 +30,9 @@ pub struct Settings {
     /// Keep the microphone open while the tutor thinks or speaks, so the
     /// student can go on talking or interrupt (needs live captions).
     pub barge_in: bool,
+    /// The tutor says "Hum." or "Entendi." right away while the answer is
+    /// being written.
+    pub fillers: bool,
     /// Speech recognizer; falls back to whichever is installed.
     pub stt_engine: SttEngine,
     /// Whisper model, used when Whisper is the recognizer and to double-check
@@ -61,6 +64,7 @@ impl Default for Settings {
             hands_free: true,
             auto_stop: true,
             barge_in: true,
+            fillers: true,
             stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),

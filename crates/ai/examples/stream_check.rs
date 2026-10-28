@@ -9,7 +9,12 @@ use kg_ai::{AiConfig, ChatMessage, Client, TopicContext, tutor_reply_stream};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv_override().ok();
-    let client = Client::new(AiConfig::from_env(|k| std::env::var(k).ok()));
+    let mut config = AiConfig::from_env(|k| std::env::var(k).ok());
+    // KG_TUTOR_MODEL tries another model without editing `.env`.
+    if let Ok(model) = std::env::var("KG_TUTOR_MODEL") {
+        config.models.tutor = model;
+    }
+    let client = Client::new(config);
     let topic = TopicContext {
         exam: "Tribunal Regional – Técnico Judiciário".into(),
         subject: "Língua Portuguesa".into(),

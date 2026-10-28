@@ -365,6 +365,7 @@ settings:
     hands_free: "Hands-free: listen again when the tutor stops speaking"
     auto_stop: "Stop listening when I pause"
     barge_in: "I can interrupt the tutor or keep talking while it thinks"
+    fillers: "The tutor reacts right away (\"hum\", \"got it\") while it prepares the answer"
     barge_in_hint: "The microphone stays open while the tutor thinks and speaks. If you talk over it, it stops and listens; its own voice coming from the speakers is recognized and ignored. Works best with headphones. Needs Parakeet recognition."
     voice: "Tutor voice"
     rate: "Speech speed"

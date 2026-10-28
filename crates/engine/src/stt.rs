@@ -218,9 +218,47 @@ impl SttJob {
     }
 }
 
-/// True when the transcript is at most one word.
+/// Usual one-word answers in Portuguese. When Parakeet hears one of these,
+/// it got the language right and Whisper is not needed.
+const SHORT_ANSWERS: [&str; 16] = [
+    "sim",
+    "nao",
+    "isso",
+    "entendi",
+    "certo",
+    "claro",
+    "exato",
+    "exatamente",
+    "beleza",
+    "pode",
+    "continua",
+    "continue",
+    "talvez",
+    "obrigado",
+    "obrigada",
+    "nenhuma",
+];
+
+/// True when a one-word transcript may be in the wrong language ("Okay",
+/// "No") and is worth a second opinion.
 pub(crate) fn needs_second_opinion(text: &str) -> bool {
-    word_count(text) <= 1
+    if word_count(text) > 1 {
+        return false;
+    }
+    let word: String = content_words_all(text).concat();
+    !SHORT_ANSWERS.contains(&word.as_str())
+}
+
+/// True when `heard` has a meaningful word that is not in `known` (for
+/// example the tutor's "Hum." coming back through the speakers).
+pub(crate) fn has_new_words(heard: &str, known: &str) -> bool {
+    let known: std::collections::HashSet<String> = content_words(known).into_iter().collect();
+    content_words(heard).iter().any(|w| !known.contains(w))
+}
+
+/// Same text, ignoring case, accents and punctuation.
+pub(crate) fn same_words(a: &str, b: &str) -> bool {
+    content_words_all(a) == content_words_all(b)
 }
 
 pub(crate) fn word_count(text: &str) -> usize {
@@ -254,6 +292,14 @@ pub(crate) fn is_student_speech(heard: &str, tutor: &str) -> bool {
 
 /// Lowercase words of three or more letters, without accents.
 fn content_words(text: &str) -> Vec<String> {
+    content_words_all(text)
+        .into_iter()
+        .filter(|w| w.chars().count() >= 3)
+        .collect()
+}
+
+/// Lowercase words without accents.
+fn content_words_all(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_alphanumeric())
         .map(|w| {
             w.to_lowercase()
@@ -269,7 +315,7 @@ fn content_words(text: &str) -> Vec<String> {
                 })
                 .collect::<String>()
         })
-        .filter(|w| w.chars().count() >= 3)
+        .filter(|w| !w.is_empty())
         .collect()
 }
 
@@ -289,7 +335,14 @@ mod tests {
         assert_eq!(word_count("Sim, entendi."), 2);
         assert_eq!(word_count(" - "), 0);
         assert!(needs_second_opinion("Okay."));
+        assert!(needs_second_opinion("No,"));
+        assert!(!needs_second_opinion("Sim."));
+        assert!(!needs_second_opinion("Não."));
         assert!(!needs_second_opinion("Pode continuar."));
+        assert!(same_words("Sim, entendi.", "sim entendi"));
+        assert!(!same_words("Sim", "Sim, entendi"));
+        assert!(has_new_words("Hum, espera.", "Hum."));
+        assert!(!has_new_words("Hum.", "Hum."));
     }
 
     #[test]

@@ -4,6 +4,28 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.22.0] - 2026-10-28
+
+### Changed
+- End of turn follows the live caption instead of microphone loudness: the turn ends
+  when the caption has not changed for 0.45 s of recorded audio after a finished
+  sentence, or 1.2 s otherwise. Room noise, breathing or automatic gain no longer keep
+  the app "listening" after the student stops. The loudness rule stays as a second
+  path. Captions refresh every 0.25 s of new audio.
+- The caption becomes the transcript as soon as it has been stable for 0.3 s, also for
+  one-word answers when the word is a usual Portuguese answer ("sim", "não", "isso",
+  "entendi"…); only other single words ("Okay", "No") still go to Whisper.
+- Room noise measured in one recording is reused by the next ones and by the open
+  microphone while the tutor speaks.
+- Tutor prompt: start with a very short sentence (two to six words) and do not open
+  with "Certo", "Entendi", "Ok", "Tá" or "Hum".
+- Logs "end of turn" and "first tutor sentence" with timings, to tune the pauses.
+
+### Added
+- The tutor reacts right away: a short "Hum.", "Entendi.", "Hum, tá." or "Tá." in its
+  own voice (made when the lesson starts) plays as soon as the student finishes, while
+  the answer is written (Settings, on by default). The open microphone ignores it.
+
 ## [0.21.0] - 2026-10-28
 
 ### Added
