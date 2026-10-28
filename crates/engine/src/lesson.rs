@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use kg_ai::{AiError, ChatMessage, TopicContext};
+use kg_ai::{AiError, ChatMessage, TopicContext, TutorReply};
 use kg_audio::{
     AudioClip, AudioError, ModelId, ModelStore, PiperTts, RecordOptions, Recording, WhisperModel,
     WhisperStt, split_for_speech,
@@ -20,6 +20,8 @@ const HISTORY_TURNS: usize = 24;
 /// In hands-free mode, stop waiting if the student says nothing.
 const HANDS_FREE_IDLE: Duration = Duration::from_secs(12);
 const SILENCE_TO_STOP: Duration = Duration::from_millis(1_400);
+/// Whiteboard points kept on screen (the newest ones).
+const BOARD_POINTS: usize = 6;
 /// Shorter clips are treated as accidental clicks.
 const MIN_CLIP_SECS: f32 = 0.4;
 
@@ -57,6 +59,8 @@ pub struct LessonSession {
     pub subject: String,
     pub turns: Vec<LessonTurn>,
     pub phase: LessonPhase,
+    /// Key points the tutor wrote on the whiteboard, oldest first.
+    pub board: Vec<String>,
     context: TopicContext,
     recording: Option<Recording>,
     speech_job: Option<Arc<AtomicBool>>,
@@ -86,7 +90,7 @@ impl LessonSession {
 pub(crate) enum LessonEvent {
     Reply {
         session: u64,
-        result: Result<String, AiError>,
+        result: Result<TutorReply, AiError>,
     },
     Transcribed {
         session: u64,
@@ -135,6 +139,7 @@ impl Engine {
             subject: context.subject.clone(),
             turns: Vec::new(),
             phase: LessonPhase::Thinking,
+            board: Vec::new(),
             context,
             recording: None,
             speech_job: None,
@@ -252,6 +257,35 @@ impl Engine {
         });
     }
 
+    /// Test hook: applies a tutor reply to the current lesson as if the
+    /// model had answered.
+    #[cfg(feature = "test-support")]
+    pub fn simulate_tutor_reply(&mut self, speech: &str, board: &[&str]) {
+        let Some(session) = self.lesson.as_ref().map(|l| l.id) else {
+            return;
+        };
+        let reply = TutorReply {
+            speech: speech.to_owned(),
+            board: board.iter().map(|p| (*p).to_owned()).collect(),
+        };
+        let _ = self.on_lesson_event(LessonEvent::Reply {
+            session,
+            result: Ok(reply),
+        });
+    }
+
+    /// Loudness of the tutor's voice right now, `0.0..=1.0`, for lip-sync.
+    pub fn speech_level(&self) -> f32 {
+        let speaking = self
+            .lesson
+            .as_ref()
+            .is_some_and(|l| l.phase == LessonPhase::Speaking);
+        match &self.voice.speaker {
+            Some(speaker) if speaking => (speaker.level() * 4.0).min(1.0),
+            _ => 0.0,
+        }
+    }
+
     pub(crate) fn stop_speaking(&mut self) {
         self.voice.generation.fetch_add(1, Ordering::Relaxed);
         if let Some(speaker) = &self.voice.speaker {
@@ -314,18 +348,22 @@ impl Engine {
         let current = self.lesson.as_ref().map(|l| l.id);
         match event {
             LessonEvent::Reply { session, result } if Some(session) == current => {
-                let text = match result {
-                    Ok(text) => text,
+                let reply = match result {
+                    Ok(reply) => reply,
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);
                         return Err(err.into());
                     }
                 };
+                let text = reply.speech;
                 if let Some(lesson) = self.lesson.as_mut() {
                     lesson.turns.push(LessonTurn {
                         speaker: Speaker::Tutor,
                         text: text.clone(),
                     });
+                    lesson.board.extend(reply.board);
+                    let excess = lesson.board.len().saturating_sub(BOARD_POINTS);
+                    lesson.board.drain(..excess);
                 }
                 if self.settings.voice_enabled && self.tts_ready() {
                     if let Err(err) = self.speak(text) {

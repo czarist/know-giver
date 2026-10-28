@@ -24,5 +24,9 @@ dotenvy.workspace = true
 tempfile.workspace = true
 tracing-subscriber.workspace = true
 
+[features]
+# Hooks for UI tests that need engine states without a model or audio device.
+test-support = []
+
 [lints]
 workspace = true

@@ -8,6 +8,7 @@
 rust_i18n::i18n!("../../locales", fallback = "pt-BR");
 
 mod app;
+mod avatar;
 mod export;
 mod i18n;
 mod icon;

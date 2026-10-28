@@ -106,7 +106,15 @@ lesson:
   tutor: "Tutor"
   you: "Você"
   send: "Enviar"
-  type_hint: "Ou digite sua pergunta e tecle Enter"
+  type_hint: "Digite e tecle Enter"
+  board: "Quadro"
+  board_empty: "Os pontos-chave da aula aparecem aqui."
+  mic_off: "Microfone desligado"
+  hint_talk: "Falar (ou segure Espaço)"
+  interrupt: "Interromper o tutor (Esc)"
+  captions: "Legendas"
+  transcript: "Transcrição e chat"
+  keys: "Segure Espaço para falar · Esc interrompe o tutor"
   open_settings: "Abrir configurações"
   need_stt: "Para falar com o tutor, baixe um modelo de reconhecimento de voz em Configurações."
   need_tts: "Para ouvir o tutor, baixe o Piper e uma voz em Configurações."
@@ -116,11 +124,6 @@ lesson:
     transcribing: "Entendendo o que você disse…"
     thinking: "Pensando…"
     speaking: "Falando…"
-  orb_hint:
-    idle: "Clique no microfone para falar."
-    listening: "Fale à vontade. Clique de novo para enviar."
-    speaking: "Clique no microfone para interromper."
-    wait: "Um instante."
 
 quiz:
   title: "Quiz"

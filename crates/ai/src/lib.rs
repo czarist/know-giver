@@ -19,8 +19,8 @@ pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
 pub use tasks::{
     HandoutDraft, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft, SubjectDraft,
-    TopicContext, TopicDraft, evaluate_review, generate_handout, generate_plan, generate_quiz,
-    review_question, start_lesson, tutor_reply,
+    TopicContext, TopicDraft, TutorReply, evaluate_review, generate_handout, generate_plan,
+    generate_quiz, review_question, start_lesson, tutor_reply,
 };
 
 /// Errors from talking to the model.

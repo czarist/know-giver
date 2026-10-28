@@ -141,13 +141,63 @@ fn snapshots() {
             .map(|p| p.subjects[0].topics[1].id)
             .unwrap();
         harness.state_mut().dispatch(Command::StartLesson(topic));
+        if let Ok(engine) = harness.state_mut().engine.as_mut() {
+            engine.simulate_tutor_reply(
+                "Olá! Hoje vamos ver quando usar a crase. Repare: ela é a fusão da preposição a com o artigo a. Você já sabe quando ela é obrigatória?",
+                &["Crase = preposição a + artigo a", "Teste: troque por palavra masculina"],
+            );
+        }
         harness.state_mut().ui.screen = Screen::Lesson;
         render(
             &mut harness,
             out.as_deref(),
             &format!("{locale}-lesson-active"),
         );
+        harness.state_mut().ui.lesson_panel = true;
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-lesson-panel"),
+        );
+        harness.state_mut().ui.lesson_panel = false;
         harness.state_mut().dispatch(Command::EndLesson);
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}
+
+/// The teacher in each lesson phase, side by side.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn avatar_states() {
+    use kg_engine::LessonPhase;
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    let phases = [
+        (LessonPhase::Idle, 0.0, 0.0),
+        (LessonPhase::Listening, 0.0, 0.7),
+        (LessonPhase::Thinking, 0.0, 0.0),
+        (LessonPhase::Speaking, 0.8, 0.0),
+    ];
+    let mut harness = Harness::builder()
+        .with_size([1000.0, 300.0])
+        .build_ui(move |ui| {
+            crate::theme::apply(ui.ctx());
+            let accent = crate::theme::palette(ui.ctx()).accent;
+            ui.horizontal(|ui| {
+                for (phase, speech, mic) in phases {
+                    let (rect, _) =
+                        ui.allocate_exact_size(egui::vec2(240.0, 280.0), egui::Sense::hover());
+                    crate::avatar::paint(
+                        ui,
+                        rect,
+                        crate::avatar::Mood { phase, speech, mic },
+                        accent,
+                    );
+                }
+            });
+        });
+    harness.run_steps(8);
+    let image = harness.render().unwrap();
+    if let Some(dir) = out {
+        image.save(dir.join("avatar-states.png")).unwrap();
+    }
 }

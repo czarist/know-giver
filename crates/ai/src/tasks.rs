@@ -105,6 +105,51 @@ pub struct HandoutDraft {
     pub exercises: Vec<QuestionDraft>,
 }
 
+/// Marker of the whiteboard line at the end of a tutor answer.
+const BOARD_MARKER: &str = "QUADRO:";
+/// Longest whiteboard point kept, in characters.
+const BOARD_POINT_CHARS: usize = 90;
+
+/// A tutor answer: what is spoken, and the key points for the whiteboard.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TutorReply {
+    pub speech: String,
+    pub board: Vec<String>,
+}
+
+impl TutorReply {
+    /// Splits the "QUADRO: a | b" line off the end of the model's answer.
+    pub fn parse(text: &str) -> Self {
+        let mut speech = Vec::new();
+        let mut board = Vec::new();
+        for line in text.lines() {
+            let clean = line.trim().trim_matches('*').trim();
+            let is_marker = clean
+                .get(..BOARD_MARKER.len())
+                .is_some_and(|head| head.eq_ignore_ascii_case(BOARD_MARKER));
+            if is_marker {
+                board = clean[BOARD_MARKER.len()..]
+                    .split('|')
+                    .map(|p| {
+                        p.trim_matches(|c: char| c == '*' || c.is_whitespace())
+                            .trim_end_matches('.')
+                            .trim()
+                    })
+                    .filter(|p| !p.is_empty())
+                    .map(|p| p.chars().take(BOARD_POINT_CHARS).collect())
+                    .take(3)
+                    .collect();
+            } else {
+                speech.push(line);
+            }
+        }
+        Self {
+            speech: speech.join("\n").trim().to_owned(),
+            board,
+        }
+    }
+}
+
 /// Which topic a lesson, quiz or review is about.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TopicContext {
@@ -154,17 +199,19 @@ pub fn generate_plan(
 }
 
 /// The tutor's opening message for a lesson.
-pub fn start_lesson(client: &Client, topic: &TopicContext) -> Result<String, AiError> {
+pub fn start_lesson(client: &Client, topic: &TopicContext) -> Result<TutorReply, AiError> {
     let messages = [
         tutor_system(topic),
         ChatMessage::user(prompts::LESSON_START.trim()),
     ];
-    client.chat(&ChatRequest {
-        task: Task::Tutor,
-        messages: &messages,
-        json: false,
-        max_tokens: 4_096,
-    })
+    client
+        .chat(&ChatRequest {
+            task: Task::Tutor,
+            messages: &messages,
+            json: false,
+            max_tokens: 4_096,
+        })
+        .map(|text| TutorReply::parse(&text))
 }
 
 /// The tutor's next answer. `history` alternates student and tutor turns,
@@ -173,18 +220,20 @@ pub fn tutor_reply(
     client: &Client,
     topic: &TopicContext,
     history: &[ChatMessage],
-) -> Result<String, AiError> {
+) -> Result<TutorReply, AiError> {
     let mut messages = vec![
         tutor_system(topic),
         ChatMessage::user(prompts::LESSON_START.trim()),
     ];
     messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
-    client.chat(&ChatRequest {
-        task: Task::Tutor,
-        messages: &messages,
-        json: false,
-        max_tokens: 4_096,
-    })
+    client
+        .chat(&ChatRequest {
+            task: Task::Tutor,
+            messages: &messages,
+            json: false,
+            max_tokens: 4_096,
+        })
+        .map(|text| TutorReply::parse(&text))
 }
 
 fn tutor_system(topic: &TopicContext) -> ChatMessage {
@@ -293,6 +342,21 @@ mod tests {
         let reply = "Aqui está:\n```json\n{\"question\": \"O que é crase?\"}\n```";
         let parsed: ReviewQuestionDraft = serde_json::from_str(extract_json(reply)).unwrap();
         assert_eq!(parsed.question, "O que é crase?");
+    }
+
+    #[test]
+    fn tutor_reply_splits_whiteboard_line() {
+        let reply = TutorReply::parse(
+            "A crase é a fusão de duas vogais.\nUse antes de horas.\n**QUADRO:** Crase = a + a | Antes de horas: às 10h | ",
+        );
+        assert_eq!(
+            reply.speech,
+            "A crase é a fusão de duas vogais.\nUse antes de horas."
+        );
+        assert_eq!(reply.board, vec!["Crase = a + a", "Antes de horas: às 10h"]);
+        let plain = TutorReply::parse("Sem lousa hoje.");
+        assert_eq!(plain.speech, "Sem lousa hoje.");
+        assert!(plain.board.is_empty());
     }
 
     #[test]

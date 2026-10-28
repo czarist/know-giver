@@ -52,18 +52,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let t = std::time::Instant::now();
     let opening = start_lesson(&client, &ctx)?;
-    println!("\nlesson start ({:?}): {opening}", t.elapsed());
+    println!(
+        "\nlesson start ({:?}): {}\n  board: {:?}",
+        t.elapsed(),
+        opening.speech,
+        opening.board
+    );
     let history = [
-        ChatMessage::assistant(opening),
+        ChatMessage::assistant(opening.speech),
         ChatMessage::user(
             "Sei que crase é a junção de a com a, mas não sei quando usar antes de horas.",
         ),
     ];
     let t = std::time::Instant::now();
+    let reply = tutor_reply(&client, &ctx, &history)?;
     println!(
-        "\nreply ({:?}): {}",
+        "\nreply ({:?}): {}\n  board: {:?}",
         t.elapsed(),
-        tutor_reply(&client, &ctx, &history)?
+        reply.speech,
+        reply.board
     );
 
     let t = std::time::Instant::now();

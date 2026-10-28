@@ -4,6 +4,24 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-10-27
+
+### Added
+- Lessons look like a video call instead of a chat: a stage with the teacher, captions
+  of the latest line, a name tag with the lesson phase, the student's tile with a live
+  microphone meter, and a control bar (talk, interrupt, captions, transcript, end).
+- Animated teacher drawn in code: breathes and blinks when idle, looks at the student and
+  nods while listening, looks up with a thought bubble while thinking, and moves the
+  mouth with the loudness of the voice being played.
+- Whiteboard: with each answer the tutor writes one to three key points
+  ("QUADRO: a | b" line, not spoken), which appear letter by letter.
+- Transcript and typed chat in a side panel that can be closed.
+- Keyboard: hold Space to talk, Esc interrupts the tutor.
+- Playback measures the loudness of what is being heard, for lip-sync.
+
+### Changed
+- The microphone orb is replaced by the meeting controls.
+
 ## [0.11.0] - 2026-10-27
 
 ### Added

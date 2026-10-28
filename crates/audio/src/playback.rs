@@ -2,9 +2,11 @@
 
 use std::num::NonZero;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::Duration;
+
+use rodio::Source;
 
 use crate::{AudioClip, AudioError};
 
@@ -19,6 +21,8 @@ enum Command {
 pub struct Speaker {
     tx: mpsc::Sender<Command>,
     playing: Arc<AtomicBool>,
+    /// Loudness of what is playing right now (f32 bits), for lip-sync.
+    level: Arc<AtomicU32>,
 }
 
 impl Speaker {
@@ -27,15 +31,17 @@ impl Speaker {
         let (tx, rx) = mpsc::channel::<Command>();
         let (ready_tx, ready_rx) = mpsc::channel::<Result<(), AudioError>>();
         let playing = Arc::new(AtomicBool::new(false));
+        let level = Arc::new(AtomicU32::new(0));
         let thread_playing = Arc::clone(&playing);
+        let thread_level = Arc::clone(&level);
         std::thread::Builder::new()
             .name("kg-playback".into())
-            .spawn(move || playback_thread(rx, ready_tx, thread_playing))
+            .spawn(move || playback_thread(rx, ready_tx, thread_playing, thread_level))
             .map_err(|e| AudioError::Device(e.to_string()))?;
         ready_rx
             .recv()
             .map_err(|_| AudioError::NoOutputDevice("playback thread ended early".into()))??;
-        Ok(Self { tx, playing })
+        Ok(Self { tx, playing, level })
     }
 
     /// Queues a clip after whatever is already playing.
@@ -51,10 +57,80 @@ impl Speaker {
     pub fn stop(&self) {
         let _ = self.tx.send(Command::Stop);
         self.playing.store(false, Ordering::Relaxed);
+        self.level.store(0, Ordering::Relaxed);
     }
 
     pub fn is_playing(&self) -> bool {
         self.playing.load(Ordering::Relaxed)
+    }
+
+    /// Loudness of the audio being played, roughly `0.0..=1.0`.
+    pub fn level(&self) -> f32 {
+        f32::from_bits(self.level.load(Ordering::Relaxed))
+    }
+}
+
+/// Wraps a source and publishes its loudness every few milliseconds, as the
+/// device pulls samples, so animations follow what is actually heard.
+struct Metered<S> {
+    inner: S,
+    level: Arc<AtomicU32>,
+    sum: f32,
+    count: usize,
+    window: usize,
+}
+
+impl<S: Source> Metered<S> {
+    fn new(inner: S, level: Arc<AtomicU32>) -> Self {
+        // About 25 ms of audio per measurement.
+        let window = (inner.sample_rate().get() as usize / 40).max(1);
+        Self {
+            inner,
+            level,
+            sum: 0.0,
+            count: 0,
+            window,
+        }
+    }
+}
+
+impl<S: Source> Iterator for Metered<S> {
+    type Item = rodio::Sample;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let sample = self.inner.next();
+        match sample {
+            Some(value) => {
+                self.sum += value * value;
+                self.count += 1;
+                if self.count >= self.window {
+                    let rms = (self.sum / self.count as f32).sqrt();
+                    self.level.store(rms.to_bits(), Ordering::Relaxed);
+                    self.sum = 0.0;
+                    self.count = 0;
+                }
+            }
+            None => self.level.store(0, Ordering::Relaxed),
+        }
+        sample
+    }
+}
+
+impl<S: Source> Source for Metered<S> {
+    fn current_span_len(&self) -> Option<usize> {
+        self.inner.current_span_len()
+    }
+
+    fn channels(&self) -> rodio::ChannelCount {
+        self.inner.channels()
+    }
+
+    fn sample_rate(&self) -> rodio::SampleRate {
+        self.inner.sample_rate()
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        self.inner.total_duration()
     }
 }
 
@@ -62,6 +138,7 @@ fn playback_thread(
     rx: mpsc::Receiver<Command>,
     ready: mpsc::Sender<Result<(), AudioError>>,
     playing: Arc<AtomicBool>,
+    level: Arc<AtomicU32>,
 ) {
     let mut sink = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,
@@ -82,22 +159,42 @@ fn playback_thread(
                 else {
                     continue;
                 };
-                player.append(rodio::buffer::SamplesBuffer::new(
-                    channels,
-                    rate,
-                    clip.samples,
-                ));
+                let source = rodio::buffer::SamplesBuffer::new(channels, rate, clip.samples);
+                player.append(Metered::new(source, Arc::clone(&level)));
                 player.play();
             }
             Ok(Command::Stop) => {
                 player.clear();
                 player.play();
+                level.store(0, Ordering::Relaxed);
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
         if player.empty() {
             playing.store(false, Ordering::Relaxed);
+            level.store(0, Ordering::Relaxed);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metered_source_reports_loudness() {
+        let rate = NonZero::new(16_000u32).unwrap();
+        let channels = NonZero::new(1u16).unwrap();
+        let level = Arc::new(AtomicU32::new(0));
+        let source = rodio::buffer::SamplesBuffer::new(channels, rate, vec![0.5f32; 1_000]);
+        let mut metered = Metered::new(source, Arc::clone(&level));
+        for _ in 0..400 {
+            metered.next();
+        }
+        let measured = f32::from_bits(level.load(Ordering::Relaxed));
+        assert!((measured - 0.5).abs() < 1e-3);
+        while metered.next().is_some() {}
+        assert_eq!(f32::from_bits(level.load(Ordering::Relaxed)), 0.0);
     }
 }

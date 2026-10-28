@@ -70,18 +70,19 @@ microphone and speakers: the full voice loop and Piper speech (see "Not yet veri
 ## Phase 6 — Identity, UI/UX and meeting-style lessons
 
 ### Lesson as a meeting, not a chat
-- [ ] "Call" layout: a large stage with the tutor, a smaller tile for the student with the
+- [x] "Call" layout: a large stage with the tutor, a smaller tile for the student with the
       mic level, and a control bar at the bottom (mic, interrupt, captions, end lesson)
-- [ ] Animated teacher avatar drawn in code (egui painter, vector shapes, no video):
+- [x] Animated teacher avatar drawn in code (egui painter, vector shapes, no video):
   - idle: breathing and blinking
   - listening: looks at the student and nods while the mic level moves
   - thinking: looks up, with a small "thinking" gesture
   - speaking: mouth driven by the loudness of the TTS audio (simple lip-sync), gestures
-- [ ] Live captions under the stage instead of chat bubbles; the full transcript moves to a
+- [x] Live captions under the stage instead of chat bubbles; the full transcript moves to a
       side panel that can be closed
-- [ ] Whiteboard next to the tutor: the model returns a few key points (or a small diagram
-      or formula) with each answer, written on the board while it speaks
-- [ ] Keyboard: hold Space to talk, Esc to interrupt
+- [x] Whiteboard next to the tutor: the model returns a few key points with each answer,
+      written on the board while it speaks
+- [ ] Small diagrams or formulas on the whiteboard
+- [x] Keyboard: hold Space to talk, Esc to interrupt
 - [ ] Optional: a few avatar styles to choose from in Settings
 
 ### Visual identity
