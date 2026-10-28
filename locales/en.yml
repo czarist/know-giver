@@ -432,3 +432,5 @@ error:
     io: "Could not read the file %{path}."
     parse: "Could not open the PDF %{path}. It may be damaged or protected."
     no_text: "The PDF %{path} has no extractable text. It may be scanned."
+voice_platform:
+  kokoro_windows: "Local Kokoro is not yet available on Windows. For a female voice, configure a compatible speech service."

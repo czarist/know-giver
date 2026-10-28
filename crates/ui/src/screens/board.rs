@@ -94,7 +94,7 @@ fn reuse_card(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
             let selected_text = documents
                 .iter()
                 .find(|doc| Some(doc.id) == selected)
-                .map(&label)
+                .map(label)
                 .unwrap_or_else(|| t!("board.reuse.choose").into_owned());
             ui.add_enabled_ui(engine.board_job().is_none(), |ui| {
                 egui::ComboBox::from_id_salt("reuse_document_picker")
