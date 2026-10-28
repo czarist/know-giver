@@ -81,7 +81,7 @@ impl HandoutSource {
             topic: context.topic.clone(),
             reference: context.reference.clone(),
             edital: edital.to_owned(),
-            prompt: kg_ai::HANDOUT_PROMPT.to_owned(),
+            prompt: kg_ai::handout_pipeline_prompts(),
         }
     }
 
@@ -253,8 +253,19 @@ fn build_handout(
                         break;
                     }
                     if item.cached.is_none() {
-                        match kg_ai::generate_handout(client, &item.context, &item.source.edital) {
-                            Ok(draft) => {
+                        let written =
+                            kg_ai::generate_handout(client, &item.context, &item.source.edital)
+                                .and_then(|draft| {
+                                    kg_ai::review_handout(
+                                        client,
+                                        &item.context,
+                                        &item.source.edital,
+                                        draft,
+                                    )
+                                });
+                        match written {
+                            Ok(reviewed) => {
+                                let draft = reviewed.draft;
                                 let topic = topic_from_draft(draft, &item.context, seed(i));
                                 let cached = CachedHandout {
                                     source: item.source.clone(),

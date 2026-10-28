@@ -1,7 +1,7 @@
 //! Tutor tasks: plan generation, lessons, quizzes and review grading.
 
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 use crate::AiError;
 use crate::client::{ChatMessage, ChatRequest, Client, Role};
@@ -51,7 +51,7 @@ pub struct PlanDraft {
     pub subjects: Vec<SubjectDraft>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct QuestionDraft {
     pub prompt: String,
     pub options: Vec<String>,
@@ -78,7 +78,7 @@ pub struct ReviewFeedback {
     pub feedback: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct SectionDraft {
     #[serde(default)]
     pub heading: String,
@@ -89,7 +89,7 @@ pub struct SectionDraft {
 }
 
 /// A written lesson (apostila) for one topic, before validation.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct HandoutDraft {
     #[serde(default)]
     pub introduction: String,
@@ -170,7 +170,7 @@ pub struct TopicContext {
 }
 
 impl TopicContext {
-    fn values(&self) -> [(&str, &str); 4] {
+    pub(crate) fn values(&self) -> [(&str, &str); 4] {
         [
             ("exam", self.exam.as_str()),
             ("subject", self.subject.as_str()),

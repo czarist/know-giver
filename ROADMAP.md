@@ -11,8 +11,7 @@ per release (`v0.15.2`). The old `feat/roadmap-v0.8` handoff is superseded.
 ### Handoff for the next agent
 
 **Next up, in order:**
-1. Correct factual/exercise errors found in real handouts; see `docs/validation-v0.15.md`.
-2. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
+1. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
    voice quality, microphone loop and native packaging on their actual platforms.
 
 Windows Kokoro voices are selectable. The pinned runtime is launched from a sibling
@@ -93,8 +92,11 @@ Inno Setup 6).
       constrain the prompt to the requested topic and invalidate caches when sources change
 - [x] Review live handouts for syllabus fidelity, including multi-role and truncated editais
       (both checked examples stayed on topic)
-- [ ] Correct factual/exercise errors found by that review; syllabus fidelity does not
-      guarantee correct explanations or answer keys
+- [x] Review pass for factual/exercise errors: content review plus blind solve of every
+      exercise, keeping only exercises whose independent answer matches the key (v0.16.0)
+- [ ] Measure the residual error rate. Both models can agree on a wrong key: in the live
+      crase check, a kept exercise accepted "à semana passada" where "na semana passada"
+      is correct. Consider a different model family for the blind solve
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version

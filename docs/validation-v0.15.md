@@ -12,7 +12,7 @@ WAV. Subjective listening acceptance is still open.
 - Two handout requests used the configured AI endpoint with synthetic multi-role and
   truncated edital excerpts. Both stayed on Crase and excluded engineering content.
   Review nevertheless found factual/exercise errors (including an incorrect answer
-  about hours). No automatic correction pass was added. Local review artifacts are
+  about hours). v0.16.0 adds an automatic review and blind-solve pass (see CHANGELOG); it reduces but does not eliminate such errors. Local review artifacts are
   under `target/handout-scope-review-v015/`; they are not committed.
 - Official sherpa-onnx v1.12.20 with Kokoro v1.0 produced WAVs on Windows when the input
   had lost accents, but failed with the actual UTF-8 Portuguese corpus (`0xC0000409`,

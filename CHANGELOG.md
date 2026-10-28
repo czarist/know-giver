@@ -4,6 +4,23 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - 2026-10-28
+
+### Added
+- Handout review pass. After a handout is written, the correction model reviews it
+  against the edital excerpt and fixes or removes wrong statements, incoherent examples
+  and broken exercises, without adding new content. Each exercise is then solved again
+  without its answer key; exercises whose independent answer differs from the key are
+  dropped.
+- `handout_check` example: writes and reviews a handout on a topic where unreviewed
+  handouts had wrong keys. In a live run on crase it made 7 corrections (including a
+  contradictory rule about "à uma hora") and dropped 1 of 5 exercises.
+
+### Changed
+- Cached handouts written before the review pass are treated as stale, because the
+  cache fingerprint now covers all three handout prompts.
+- Writing a handout takes about twice as long (two extra model calls per topic).
+
 ## [0.15.2] - 2026-10-27
 
 ### Fixed

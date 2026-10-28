@@ -8,6 +8,18 @@ pub const REVIEW_QUESTION: &str = include_str!("../prompts/review_question.md");
 pub const REVIEW_EVAL: &str = include_str!("../prompts/review_eval.md");
 /// Handout instructions, also used to invalidate cached text when the prompt changes.
 pub const HANDOUT: &str = include_str!("../prompts/handout.md");
+pub const HANDOUT_REVIEW: &str = include_str!("../prompts/handout_review.md");
+pub const EXERCISE_CHECK: &str = include_str!("../prompts/exercise_check.md");
+
+/// Every prompt a handout goes through. Cached handouts store it, so any
+/// prompt change makes old handouts stale.
+pub fn handout_pipeline() -> String {
+    [HANDOUT, HANDOUT_REVIEW, EXERCISE_CHECK].join(
+        "
+---
+",
+    )
+}
 pub const BOARD_EXAM: &str = include_str!("../prompts/board_exam.md");
 pub const BOARD_KEY: &str = include_str!("../prompts/board_key.md");
 pub const BOARD_MATERIAL: &str = include_str!("../prompts/board_material.md");

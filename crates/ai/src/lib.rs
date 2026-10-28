@@ -8,6 +8,7 @@
 mod board;
 mod client;
 mod config;
+mod handout_review;
 mod prompts;
 mod tasks;
 
@@ -18,7 +19,8 @@ pub use board::{
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
-pub use prompts::HANDOUT as HANDOUT_PROMPT;
+pub use handout_review::{ReviewedHandout, review_handout};
+pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use tasks::{
     HandoutDraft, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft, SubjectDraft,
     TopicContext, TopicDraft, TutorReply, evaluate_review, generate_handout, generate_plan,
