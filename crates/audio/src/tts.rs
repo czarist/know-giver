@@ -124,6 +124,13 @@ impl Synthesizer {
         })
     }
 
+    /// Loads the voice ahead of the first sentence where that helps (Piper).
+    pub fn warm_up(&self) {
+        if let Backend::Piper(tts) = &self.backend {
+            tts.warm_up();
+        }
+    }
+
     /// Generates a clip, checking cancellation while local child processes run.
     pub fn synthesize(
         &self,

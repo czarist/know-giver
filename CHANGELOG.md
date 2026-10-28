@@ -4,6 +4,32 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.21.0] - 2026-10-28
+
+### Added
+- Interrupt the tutor: the microphone stays open while the tutor thinks and speaks
+  (Settings › "I can interrupt the tutor…", on by default, needs Parakeet). Every 0.6 s
+  of new sound, the last 2 s are transcribed; when at least two meaningful words are
+  mostly not in what the tutor is saying (on screen or as spoken: "art. 5º" is
+  "artigo quinto"), it is the student: the tutor stops and the turn starts from there.
+  The tutor's own voice from the speakers is recognized as echo and ignored.
+- Keep talking while the tutor thinks: if the student goes on after the turn ended,
+  the reply being prepared is dropped and the same turn continues ("…" plus the new
+  words), and the wait after a finished sentence grows by 0.25 s for the rest of the
+  lesson (up to 1.4 s).
+
+### Changed
+- Piper stays running between sentences (JSON lines in, one WAV per sentence out):
+  0.08–0.13 s per sentence instead of about 0.6 s, and it is started when the lesson
+  opens. Falls back to one process per sentence if that fails.
+- A turn ends 0.55 s after a finished sentence (was 0.7 s), now that being cut off is
+  recoverable.
+
+### Fixed
+- Stopping the tutor while its reply was still arriving no longer makes it read the
+  whole reply again when the reply completes; the rest of an interrupted reply is
+  ignored.
+
 ## [0.20.0] - 2026-10-28
 
 ### Added

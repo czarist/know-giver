@@ -480,7 +480,8 @@ fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
     let (mut engine, _dir) = engine_with_plan();
     let id = first_topic(&engine);
     engine.handle(Command::StartLesson(id)).unwrap();
-    let session = engine.lesson().unwrap().id;
+    // Streamed sentences belong to the reply being received.
+    let session = engine.lesson().unwrap().reply_id();
     for text in ["Olá!", "Hoje vamos ver crase."] {
         engine
             .events_tx
@@ -576,4 +577,23 @@ fn prepared_question_bank_fills_quizzes_without_model_calls() {
     assert!(matches!(quiz.step, QuizStep::Question { index: 0, .. }));
     assert_eq!(quiz.questions().len(), 5);
     assert!(quiz.questions().iter().all(|q| !q.from_board));
+}
+
+#[test]
+fn sentences_of_an_older_reply_are_ignored() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    let lesson_id = engine.lesson().unwrap().id;
+    // A reply the student talked over, or the lesson id itself, is not the
+    // reply being received.
+    engine
+        .events_tx
+        .send(Event::Lesson(LessonEvent::Sentence {
+            session: lesson_id,
+            text: "Velho.".into(),
+        }))
+        .unwrap();
+    engine.poll();
+    assert!(engine.lesson().unwrap().turns.is_empty());
 }

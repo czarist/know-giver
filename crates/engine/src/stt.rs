@@ -229,6 +229,50 @@ pub(crate) fn word_count(text: &str) -> usize {
         .count()
 }
 
+/// True when `heard` (what the microphone picked up while the tutor was
+/// speaking) is the student and not the tutor's own voice from the speakers:
+/// at least two meaningful words, most of them not in what the tutor said.
+pub(crate) fn is_student_speech(heard: &str, tutor: &str) -> bool {
+    // Numbers are read out differently from how they are written.
+    let heard: Vec<String> = content_words(heard)
+        .into_iter()
+        .filter(|w| !w.chars().any(|c| c.is_ascii_digit()))
+        .collect();
+    if heard.len() < 2 {
+        return false;
+    }
+    // Both what is on screen ("art. 5º, CF/88") and what is spoken
+    // ("artigo quinto, Constituição Federal").
+    let spoken = kg_audio::normalize_for_speech(tutor);
+    let tutor: std::collections::HashSet<String> = content_words(tutor)
+        .into_iter()
+        .chain(content_words(&spoken))
+        .collect();
+    let echoed = heard.iter().filter(|w| tutor.contains(*w)).count();
+    echoed * 2 <= heard.len()
+}
+
+/// Lowercase words of three or more letters, without accents.
+fn content_words(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .map(|w| {
+            w.to_lowercase()
+                .chars()
+                .map(|c| match c {
+                    'á' | 'à' | 'â' | 'ã' => 'a',
+                    'é' | 'ê' => 'e',
+                    'í' => 'i',
+                    'ó' | 'ô' | 'õ' => 'o',
+                    'ú' | 'ü' => 'u',
+                    'ç' => 'c',
+                    c => c,
+                })
+                .collect::<String>()
+        })
+        .filter(|w| w.chars().count() >= 3)
+        .collect()
+}
+
 /// True when the text ends a sentence, so the student has likely finished.
 pub(crate) fn ends_sentence(text: &str) -> bool {
     let text = text.trim_end_matches(['"', '\'', ')', '»', '”']);
@@ -246,6 +290,28 @@ mod tests {
         assert_eq!(word_count(" - "), 0);
         assert!(needs_second_opinion("Okay."));
         assert!(!needs_second_opinion("Pode continuar."));
+    }
+
+    #[test]
+    fn tells_the_student_from_the_tutor_echo() {
+        let tutor = "Antes de horas, usamos crase sempre que a expressão vier precedida de às. \
+                     Por exemplo: a reunião começa às quatorze horas.";
+        // The tutor's voice coming back through the speakers.
+        assert!(!is_student_speech(
+            "usamos crase sempre que a expressao",
+            tutor
+        ));
+        assert!(!is_student_speech("reunião começa às quatorze", tutor));
+        // The student talking over it.
+        assert!(is_student_speech("Espera, não entendi essa parte", tutor));
+        assert!(is_student_speech("Pera aí, e antes de dias?", tutor));
+        // Too little to tell.
+        assert!(!is_student_speech("Hum", tutor));
+        // Abbreviations on screen are spoken in full.
+        let legal =
+            "Bom dia! Hoje vamos ver o art. 5º, § 2º, da CF/88 e a Lei nº 8.112/90 (servidores).";
+        let echo = "Bom dia! Hoje vamos ver o artigo 5o, parágrafo 2o, da Constituição Federal de 1988 e a Lei número 8112 de 1990, servidores.";
+        assert!(!is_student_speech(echo, legal));
     }
 
     #[test]
