@@ -4,6 +4,17 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.2] - 2026-10-27
+
+### Fixed
+- Local Kokoro on Windows. The pinned sherpa-onnx executable reads command-line
+  text in the active code page, which dropped accented Portuguese. The app now
+  launches a sibling copy whose manifest requests UTF-8, and Dora, Alex and Santa
+  can be installed and selected. Piper remains the default until a listening test.
+
+### Changed
+- README lists project contributors separately from font and icon credits.
+
 ## [0.15.1] - 2026-10-28
 
 ### Fixed

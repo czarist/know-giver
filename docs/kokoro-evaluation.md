@@ -1,8 +1,9 @@
 # Kokoro evaluation
 
-Status in v0.15: backend, model management and preview are implemented, but local
-Kokoro is disabled on Windows because the pinned executable fails on accented UTF-8
-arguments. Piper remains the default. See [validation notes](validation-v0.15.md).
+Status in v0.15.2: backend, model management and preview are implemented. On Windows
+the app launches a sibling copy of the pinned executable whose manifest sets the
+active code page to UTF-8, so accented Portuguese reaches the runtime. Piper remains
+the default until a listening comparison. See [validation notes](validation-v0.15.md).
 
 ## Reproducible candidate
 

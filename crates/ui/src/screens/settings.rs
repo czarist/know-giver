@@ -266,9 +266,6 @@ fn avatar_style(style: AvatarStyle) -> String {
 }
 
 fn local_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
-    if cfg!(windows) {
-        widgets::hint(ui, &t!("voice_platform.kokoro_windows"));
-    }
     let filter_id = ui.id().with("voice_gender_filter");
     let mut gender = ui
         .ctx()
@@ -373,9 +370,6 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
     section(ui, &t!("settings.models.title"), |ui| {
         widgets::hint(ui, &t!("settings.models.hint"));
         for id in ModelId::all() {
-            if cfg!(windows) && matches!(id, ModelId::KokoroRuntime | ModelId::KokoroModel) {
-                continue;
-            }
             let in_use = match id {
                 ModelId::Whisper(m) => m == draft.whisper_model,
                 _ => {

@@ -2,20 +2,21 @@
 
 ## Current Status
 
-Version 0.15.0. The implementation below is integrated; unresolved compatibility,
+Version 0.15.2. The implementation below is integrated; unresolved compatibility,
 quality and hardware checks remain explicitly open. Work was closed at the user's
 request to limit further cost; this is not a claim that every roadmap item is finished.
 Work uses a separate branch per feature, merged into `main`, with an annotated tag
-per release (`v0.15.0`). The old `feat/roadmap-v0.8` handoff is superseded.
+per release (`v0.15.2`). The old `feat/roadmap-v0.8` handoff is superseded.
 
 ### Handoff for the next agent
 
 **Next up, in order:**
-1. Fix Windows Kokoro UTF-8 arguments before enabling its local voices. Runtime/model
-   management, voice settings and preview are implemented; Windows selection is disabled.
-2. Correct factual/exercise errors found in real handouts; see `docs/validation-v0.15.md`.
-3. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
+1. Correct factual/exercise errors found in real handouts; see `docs/validation-v0.15.md`.
+2. Connect the tested AI sentence-stream API to the lesson speech queue, then validate
    voice quality, microphone loop and native packaging on their actual platforms.
+
+Windows Kokoro voices are selectable. The pinned runtime is launched from a sibling
+copy with a UTF-8 code page. Piper stays the default until the listening comparison.
 
 **How the code is organized:** `app → ui → engine → {study, ai, audio, pdf, handout}`.
 Engine owns state; slow work runs in workers and returns as events applied in
@@ -156,7 +157,7 @@ and sound somewhat robotic. A female voice needs another engine.
 - [ ] Kokoro-82M (Apache-2.0, runs on CPU): Brazilian Portuguese voices `pf_dora`
       (female), `pm_alex` and `pm_santa` (male)
 - [x] Run it like Piper as a cancellable child process, with model installation/removal
-- [ ] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
+- [x] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
 - [ ] Listening test against Piper on real tutor answers before making it the default
 
 ### Optional cloud voices (off by default)
@@ -171,7 +172,8 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
-- Kokoro Portuguese listening comparison: Windows UTF-8 failure blocks acceptance.
+- Kokoro Portuguese listening comparison against Piper on real tutor answers. Accented
+  text now reaches the Windows runtime; subjective quality is still open.
 - Handout factual correctness: live scope checks passed but answer errors were observed.
 - Voice loop with a real microphone and speakers.
 - Installer build/run; Inno Setup 6 compiler was prepared locally but the final release
