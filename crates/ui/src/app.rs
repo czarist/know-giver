@@ -217,7 +217,7 @@ impl KnowGiverApp {
             .frame(frame)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(icons::logo(38.0));
+                    ui.add(icons::logo(38.0, ui.visuals().dark_mode));
                     ui.vertical(|ui| {
                         ui.add_space(1.0);
                         ui.label(

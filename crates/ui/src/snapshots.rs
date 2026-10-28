@@ -193,6 +193,7 @@ fn avatar_states() {
                         rect,
                         crate::avatar::Mood { phase, speech, mic },
                         accent,
+                        crate::avatar::Appearance::default(),
                     );
                 }
             });

@@ -25,7 +25,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.vertical_centered(|ui| {
             ui.set_max_width(600.0);
             ui.add_space(12.0);
-            ui.add(icons::logo(76.0));
+            ui.add(icons::logo(76.0, ui.visuals().dark_mode));
             ui.label(
                 RichText::new(t!("welcome.title"))
                     .family(theme::heading_family())

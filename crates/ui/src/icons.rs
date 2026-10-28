@@ -58,6 +58,11 @@ impl Icon {
 }
 
 /// The logo mark at `size` points.
-pub fn logo(size: f32) -> Image<'static> {
-    Image::new(include_image!("../assets/logo.svg")).fit_to_exact_size(vec2(size, size))
+pub fn logo(size: f32, dark: bool) -> Image<'static> {
+    let source = if dark {
+        include_image!("../assets/logo-dark.svg")
+    } else {
+        include_image!("../assets/logo.svg")
+    };
+    Image::new(source).fit_to_exact_size(vec2(size, size))
 }

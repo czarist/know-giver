@@ -19,6 +19,13 @@ pub struct Mood {
     pub mic: f32,
 }
 
+/// Presentation choices independent from the animation state.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Appearance {
+    pub female: bool,
+    pub minimal: bool,
+}
+
 /// Colors of the character; the sweater follows the app accent.
 struct Look {
     skin: Color32,
@@ -49,7 +56,7 @@ fn look(accent: Color32, dark: bool) -> Look {
 }
 
 /// Paints the teacher centered in `rect`.
-pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32) {
+pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32, appearance: Appearance) {
     let painter = ui.painter_at(rect);
     let t = ui.input(|i| i.time) as f32;
     let s = rect.height() / 320.0;
@@ -132,6 +139,13 @@ pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32) {
     };
 
     // Hair back, ears, face.
+    if appearance.female {
+        painter.rect_filled(
+            egui::Rect::from_min_max(rot(vec2(-69.0, -35.0)), rot(vec2(69.0, 83.0))),
+            36.0 * s,
+            c.hair,
+        );
+    }
     painter.circle_filled(rot(vec2(0.0, -10.0)), 66.0 * s, c.hair);
     for side in [-1.0, 1.0] {
         painter.circle_filled(rot(vec2(side * 60.0, 6.0)), 11.0 * s, c.skin_shade);
@@ -169,7 +183,9 @@ pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32) {
             );
         }
         // Glasses: the teacher's trademark.
-        painter.circle_stroke(eye, 14.0 * s, Stroke::new(2.2 * s, c.ink));
+        if !appearance.minimal {
+            painter.circle_stroke(eye, 14.0 * s, Stroke::new(2.2 * s, c.ink));
+        }
         // Eyebrows rise a little when listening or thinking.
         let raise = match mood.phase {
             LessonPhase::Listening | LessonPhase::Thinking | LessonPhase::Transcribing => 3.0,
@@ -188,10 +204,21 @@ pub fn paint(ui: &egui::Ui, rect: egui::Rect, mood: Mood, accent: Color32) {
         // Cheeks.
         painter.circle_filled(rot(vec2(side * 33.0, 20.0)), 8.0 * s, c.blush);
     }
-    painter.line_segment(
-        [rot(vec2(-7.0, -1.0)), rot(vec2(7.0, -1.0))],
-        Stroke::new(2.0 * s, c.ink),
-    );
+    if !appearance.minimal {
+        painter.line_segment(
+            [rot(vec2(-7.0, -1.0)), rot(vec2(7.0, -1.0))],
+            Stroke::new(2.0 * s, c.ink),
+        );
+    } else {
+        // The minimal style trades accessories for a single quiet shirt detail.
+        painter.line_segment(
+            [
+                pos2(center.x - 42.0 * s, shoulders_top + 56.0 * s),
+                pos2(center.x + 42.0 * s, shoulders_top + 56.0 * s),
+            ],
+            Stroke::new(2.0 * s, c.shirt.gamma_multiply(0.45)),
+        );
+    }
 
     // Nose.
     painter.add(Shape::line(
