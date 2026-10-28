@@ -17,6 +17,7 @@ pub use board::{
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
+pub use prompts::HANDOUT as HANDOUT_PROMPT;
 pub use tasks::{
     HandoutDraft, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft, SubjectDraft,
     TopicContext, TopicDraft, TutorReply, evaluate_review, generate_handout, generate_plan,

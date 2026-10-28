@@ -93,6 +93,42 @@ fn generated_plan_is_stored_and_selected() {
 }
 
 #[test]
+fn handout_edital_follows_the_selected_plan() {
+    let (mut engine, _dir) = engine_with_plan();
+    let first = engine.active_plan().unwrap().id;
+    assert!(
+        engine
+            .handout_edital()
+            .unwrap()
+            .contains("Português: crase.")
+    );
+    let mut second_edital = edital();
+    second_edital.text = EditalText::from_raw("EDITAL B\nMatemática: porcentagem.");
+    engine
+        .on_plan_generated(second_edital, &prefs(), Ok(draft()))
+        .unwrap();
+    assert!(
+        engine
+            .handout_edital()
+            .unwrap()
+            .contains("Matemática: porcentagem.")
+    );
+    assert!(
+        !engine
+            .handout_edital()
+            .unwrap()
+            .contains("Português: crase.")
+    );
+    engine.select_plan(first).unwrap();
+    assert!(
+        engine
+            .handout_edital()
+            .unwrap()
+            .contains("Português: crase.")
+    );
+}
+
+#[test]
 fn generate_requires_imported_edital() {
     let (mut engine, _dir) = engine();
     assert!(matches!(

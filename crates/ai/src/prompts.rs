@@ -6,6 +6,7 @@ pub const LESSON_START: &str = include_str!("../prompts/lesson_start.md");
 pub const QUIZ: &str = include_str!("../prompts/quiz.md");
 pub const REVIEW_QUESTION: &str = include_str!("../prompts/review_question.md");
 pub const REVIEW_EVAL: &str = include_str!("../prompts/review_eval.md");
+/// Handout instructions, also used to invalidate cached text when the prompt changes.
 pub const HANDOUT: &str = include_str!("../prompts/handout.md");
 pub const BOARD_EXAM: &str = include_str!("../prompts/board_exam.md");
 pub const BOARD_KEY: &str = include_str!("../prompts/board_key.md");
