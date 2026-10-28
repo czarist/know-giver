@@ -4,6 +4,24 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-10-27
+
+### Added
+- Logo: an open book inside a speech bubble (study plus conversation), teal with a warm
+  amber accent, as SVG (`crates/ui/assets/logo.svg`). The window icon and the
+  executable icon are rendered from it.
+- Fonts embedded in the app (SIL Open Font License): Literata for headings and the
+  wordmark, Inter for text, with egui's fonts kept as fallbacks.
+- Icons in the navigation (Lucide, ISC license), tinted to match the theme.
+- Amber highlight color for counts and milestones.
+
+### Changed
+- Sidebar with the logo and wordmark; the selected screen shows its icon in the accent
+  color and a semibold label.
+- Progress bars are easier to see.
+- Long topic titles on the Plan screen are cut with an ellipsis (full title on hover)
+  instead of running under the chips.
+
 ## [0.10.0] - 2026-10-27
 
 ### Added

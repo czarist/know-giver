@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use kg_engine::{AiConfig, AppPaths, Command, Engine, PlanId, PlanPrefs, Settings};
 use rust_i18n::t;
 
+use crate::icons::{self, Icon};
 use crate::{i18n, screens, theme, widgets};
 
 /// Top-level screens, in sidebar order.
@@ -31,6 +32,19 @@ impl Screen {
         Self::Progress,
         Self::Settings,
     ];
+
+    fn icon(self) -> Icon {
+        match self {
+            Self::Edital => Icon::Edital,
+            Self::Plan => Icon::Plan,
+            Self::Board => Icon::Board,
+            Self::Lesson => Icon::Lesson,
+            Self::Quiz => Icon::Quiz,
+            Self::Review => Icon::Review,
+            Self::Progress => Icon::Progress,
+            Self::Settings => Icon::Settings,
+        }
+    }
 
     fn label(self) -> String {
         match self {
@@ -102,6 +116,7 @@ impl KnowGiverApp {
 
     /// Like [`Self::new`], with an explicit data folder.
     pub fn with_paths(cc: &eframe::CreationContext<'_>, paths: AppPaths, env_ai: AiConfig) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx);
         let engine = match Engine::new(paths, env_ai) {
             Ok(mut engine) => {
@@ -177,28 +192,41 @@ impl KnowGiverApp {
             .exact_size(230.0)
             .frame(frame)
             .show(ui, |ui| {
-                ui.label(
-                    egui::RichText::new(t!("app.name"))
-                        .size(20.0)
-                        .strong()
-                        .color(p.accent),
-                );
-                ui.label(
-                    egui::RichText::new(t!("app.tagline"))
-                        .small()
-                        .color(p.muted),
-                );
-                ui.add_space(20.0);
+                ui.horizontal(|ui| {
+                    ui.add(icons::logo(38.0));
+                    ui.vertical(|ui| {
+                        ui.add_space(1.0);
+                        ui.label(
+                            egui::RichText::new(t!("app.name"))
+                                .family(theme::heading_family())
+                                .size(21.0)
+                                .color(p.accent),
+                        );
+                        ui.label(
+                            egui::RichText::new(t!("app.tagline"))
+                                .small()
+                                .color(p.muted),
+                        );
+                    });
+                });
+                ui.add_space(18.0);
 
                 for screen in Screen::ALL {
                     let selected = self.ui.screen == screen;
-                    let badge = engine_badges.for_screen(screen);
-                    let text = match badge {
-                        Some(n) => format!("{}  ·  {n}", screen.label()),
-                        None => screen.label(),
-                    };
-                    let button = egui::Button::selectable(selected, text)
-                        .min_size(egui::vec2(ui.available_width(), 34.0));
+                    let color = if selected { p.accent } else { p.muted };
+                    let mut text = egui::RichText::new(screen.label());
+                    if selected {
+                        text = text.family(theme::strong_family()).color(p.text);
+                    }
+                    let mut button =
+                        egui::Button::image_and_text(screen.icon().image(18.0, color), text)
+                            .selected(selected)
+                            .frame(selected)
+                            .min_size(egui::vec2(ui.available_width(), 36.0));
+                    if let Some(badge) = engine_badges.for_screen(screen) {
+                        button = button
+                            .right_text(egui::RichText::new(badge).small().color(p.highlight));
+                    }
                     if ui.add(button).clicked() {
                         self.ui.screen = screen;
                     }

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="crates/ui/assets/logo.svg" width="88" alt="Know Giver logo">
+</p>
+
 # Know Giver
 
 Desktop app for studying for Brazilian public exams (concursos).
@@ -81,6 +85,12 @@ cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pd
 cargo run --release -p kg-audio --example stt_check -- <models-dir> fala.wav
 KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored # renders every screen to PNG
 ```
+
+## Credits
+
+- Fonts: [Inter](https://rsms.me/inter/) and [Literata](https://github.com/googlefonts/literata),
+  SIL Open Font License (`crates/ui/assets/fonts`).
+- Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
 
 ## References
 

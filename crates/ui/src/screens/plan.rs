@@ -8,6 +8,9 @@ use super::{Actions, current_week, handout};
 use crate::app::{KnowGiverApp, PlanView, Screen};
 use crate::{i18n, theme, widgets};
 
+/// Room kept on the right of a topic row for its chips and buttons.
+const TOPIC_ACTIONS_WIDTH: f32 = 500.0;
+
 /// A handout the user asked for while the screen was drawn.
 #[derive(Debug, Default)]
 struct HandoutAsk(Option<(HandoutScope, bool)>);
@@ -231,15 +234,21 @@ fn topic_row(
             actions.send(Command::SetTopicStatus(topic.id, status));
         }
 
+        // Leave room for the chips and buttons on the right; long titles are
+        // cut with an ellipsis and shown whole on hover.
+        let title_width = (ui.available_width() - TOPIC_ACTIONS_WIDTH).max(160.0);
         ui.vertical(|ui| {
+            ui.set_width(title_width);
             let title = RichText::new(&topic.title);
-            ui.label(if topic.status == TopicStatus::Done {
+            let title = if topic.status == TopicStatus::Done {
                 title.color(p.muted)
             } else {
                 title
-            });
+            };
+            ui.add(egui::Label::new(title).truncate())
+                .on_hover_text(&topic.title);
             if let Some(subject) = subject {
-                ui.label(RichText::new(subject).small().color(p.muted));
+                ui.add(egui::Label::new(RichText::new(subject).small().color(p.muted)).truncate());
             }
         });
 

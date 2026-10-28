@@ -1,55 +1,40 @@
-//! The app icon, drawn in code: an open book on a rounded teal square.
+//! The app icon, rasterized from the logo SVG.
 
-/// Icon pixels as RGBA, `size × size`.
+/// The Know Giver mark (open book in a speech bubble).
+pub const LOGO_SVG: &[u8] = include_bytes!("../assets/logo.svg");
+
+/// Icon pixels as straight (not premultiplied) RGBA, `size × size`.
+/// Falls back to a plain teal square if the SVG cannot be rendered.
 pub fn rgba(size: u32) -> Vec<u8> {
-    let s = size as f32;
-    let mut pixels = Vec::with_capacity((size * size * 4) as usize);
-    for y in 0..size {
-        for x in 0..size {
-            // Sample at the pixel center, in 0..1 units.
-            let (u, v) = ((x as f32 + 0.5) / s, (y as f32 + 0.5) / s);
-            pixels.extend_from_slice(&pixel(u, v));
-        }
-    }
-    pixels
+    render(LOGO_SVG, size).unwrap_or_else(|| {
+        [0x2F, 0x6F, 0x68, 0xFF]
+            .into_iter()
+            .cycle()
+            .take((size * size * 4) as usize)
+            .collect()
+    })
 }
 
-fn pixel(u: f32, v: f32) -> [u8; 4] {
-    const TEAL: [u8; 4] = [0x2F, 0x6F, 0x68, 0xFF];
-    const PAGE: [u8; 4] = [0xF6, 0xF4, 0xEF, 0xFF];
-    const LINE: [u8; 4] = [0xB9, 0xC9, 0xC4, 0xFF];
-    const CLEAR: [u8; 4] = [0, 0, 0, 0];
-
-    if !in_rounded_square(u, v, 0.04, 0.2) {
-        return CLEAR;
-    }
-    // Two pages that rise toward the outer edges, meeting at a spine.
-    let spine = 0.5;
-    let dx = (u - spine).abs();
-    let top = 0.30 + 0.06 * (1.0 - dx / 0.30);
-    let bottom = 0.72 + 0.04 * (1.0 - dx / 0.30);
-    let on_page = (0.015..0.30).contains(&dx) && v > top && v < bottom;
-    if !on_page {
-        return TEAL;
-    }
-    // Text lines on each page.
-    let line_phase = ((v - top) / 0.075).fract();
-    let in_text = dx > 0.06 && dx < 0.25 && v > top + 0.06 && v < bottom - 0.06;
-    if in_text && line_phase < 0.28 {
-        LINE
-    } else {
-        PAGE
-    }
-}
-
-fn in_rounded_square(u: f32, v: f32, margin: f32, radius: f32) -> bool {
-    let (lo, hi) = (margin, 1.0 - margin);
-    if u < lo || u > hi || v < lo || v > hi {
-        return false;
-    }
-    let cx = u.clamp(lo + radius, hi - radius);
-    let cy = v.clamp(lo + radius, hi - radius);
-    (u - cx).powi(2) + (v - cy).powi(2) <= radius * radius
+fn render(svg: &[u8], size: u32) -> Option<Vec<u8>> {
+    use resvg::{tiny_skia, usvg};
+    let tree = usvg::Tree::from_data(svg, &usvg::Options::default()).ok()?;
+    let mut pixmap = tiny_skia::Pixmap::new(size, size)?;
+    let scale = size as f32 / tree.size().width().max(tree.size().height());
+    resvg::render(
+        &tree,
+        tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut(),
+    );
+    Some(
+        pixmap
+            .pixels()
+            .iter()
+            .flat_map(|p| {
+                let c = p.demultiply();
+                [c.red(), c.green(), c.blue(), c.alpha()]
+            })
+            .collect(),
+    )
 }
 
 pub fn app_icon() -> egui::IconData {
@@ -66,12 +51,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn corners_are_transparent_and_center_is_opaque() {
+    fn logo_renders_with_transparent_corners() {
         let size = 64;
-        let px = rgba(size);
+        let px = render(LOGO_SVG, size).unwrap();
         assert_eq!(px.len(), (size * size * 4) as usize);
+        // Top-left corner is outside the bubble.
         assert_eq!(px[3], 0);
-        let center = ((size / 2) * size + size / 2) as usize * 4;
-        assert_eq!(px[center + 3], 0xFF);
+        // The middle of the bubble's top edge is teal and opaque.
+        let i = ((8 * size + size / 2) * 4) as usize;
+        assert_eq!(&px[i..i + 4], &[0x2F, 0x6F, 0x68, 0xFF]);
     }
 }

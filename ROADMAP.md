@@ -85,14 +85,13 @@ microphone and speakers: the full voice loop and Piper speech (see "Not yet veri
 - [ ] Optional: a few avatar styles to choose from in Settings
 
 ### Visual identity
-- [ ] Logo: symbol + wordmark, as SVG (concepts to explore: open book that is also a speech
-      bubble; a "K" made of a book and a sound wave), with light and dark versions
-- [ ] App icon, installer and window title bar generated from the logo
-- [ ] Brand palette: keep the calm teal and add a warm accent (amber) for highlights,
+- [x] Logo: symbol + wordmark, as SVG: an open book inside a speech bubble
+- [ ] Logo variant for dark backgrounds (today the same mark works on both)
+- [x] App icon, installer and window title bar generated from the logo
+- [x] Brand palette: keep the calm teal and add a warm accent (amber) for highlights,
       progress and achievements
-- [ ] Typography: embedded open-license fonts (e.g. a humanist serif for headings, a
-      readable sans for text) instead of egui's default font
-- [ ] Icon set (SVG rendered with resvg, pure Rust) for navigation and actions
+- [x] Typography: embedded open-license fonts (Literata for headings, Inter for text)
+- [x] Icon set (Lucide SVG rendered with resvg, pure Rust) for navigation
 
 ### UX
 - [ ] "Today" home screen: what to study today, reviews due, next lesson, time studied

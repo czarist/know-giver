@@ -11,6 +11,7 @@ mod app;
 mod export;
 mod i18n;
 mod icon;
+mod icons;
 mod screens;
 mod theme;
 mod widgets;
