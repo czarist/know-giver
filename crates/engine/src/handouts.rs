@@ -8,11 +8,14 @@ use std::sync::{Arc, Mutex};
 use kg_ai::{HandoutDraft, TopicContext};
 use kg_handout::{Document, Exercise, Labels, Section, TopicHandout};
 use kg_study::{QuizQuestion, SubjectId, TopicId};
+use serde::{Deserialize, Serialize};
 
 use crate::{Engine, EngineError, Event, Notice};
 
 /// Topics written at the same time. More would hit rate limits.
 const PARALLEL_TOPICS: usize = 3;
+/// Same syllabus-aware excerpt budget used for plan generation.
+const EDITAL_CHARS: usize = 150_000;
 
 /// What goes into the handout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,6 +59,42 @@ struct Item {
     topic_id: TopicId,
     context: TopicContext,
     cached: Option<TopicHandout>,
+    source: HandoutSource,
+}
+
+/// Exact inputs keep old or differently grounded text out of subsequent exports.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct HandoutSource {
+    exam: String,
+    subject: String,
+    topic: String,
+    reference: String,
+    edital: String,
+    prompt: String,
+}
+
+impl HandoutSource {
+    fn new(context: &TopicContext, edital: &str) -> Self {
+        Self {
+            exam: context.exam.clone(),
+            subject: context.subject.clone(),
+            topic: context.topic.clone(),
+            reference: context.reference.clone(),
+            edital: edital.to_owned(),
+            prompt: kg_ai::HANDOUT_PROMPT.to_owned(),
+        }
+    }
+
+    fn cached(&self, json: &str) -> Option<TopicHandout> {
+        let cached: CachedHandout = serde_json::from_str(json).ok()?;
+        (cached.source == *self).then_some(cached.content)
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct CachedHandout {
+    source: HandoutSource,
+    content: TopicHandout,
 }
 
 impl Engine {
@@ -73,6 +112,7 @@ impl Engine {
             return Ok(());
         }
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
+        let edital = self.handout_edital()?;
         let topic_ids: Vec<TopicId> = plan
             .topics()
             .filter(|(subject, topic)| match request.scope {
@@ -89,17 +129,19 @@ impl Engine {
         let mut items = Vec::with_capacity(topic_ids.len());
         for id in topic_ids {
             let (context, _) = self.topic_context(id)?;
+            let source = HandoutSource::new(&context, &edital);
             let cached = if request.regenerate {
                 None
             } else {
                 self.store
                     .handout(id)?
-                    .and_then(|json| serde_json::from_str::<TopicHandout>(&json).ok())
+                    .and_then(|json| source.cached(&json))
             };
             items.push(Item {
                 topic_id: id,
                 context,
                 cached,
+                source,
             });
         }
 
@@ -154,11 +196,33 @@ impl Engine {
     }
 
     pub(crate) fn refresh_handout_count(&mut self) {
-        self.handouts_cached = self
-            .active
-            .as_ref()
-            .and_then(|p| self.store.handout_count(p.id).ok())
-            .unwrap_or(0);
+        self.handouts_cached = self.valid_handout_count().unwrap_or(0);
+    }
+
+    fn valid_handout_count(&self) -> Result<usize, EngineError> {
+        let Some(plan) = &self.active else {
+            return Ok(0);
+        };
+        let edital = self.handout_edital()?;
+        let mut count = 0;
+        for (_, topic) in plan.topics() {
+            if let Some(json) = self.store.handout(topic.id)? {
+                let (context, _) = self.topic_context(topic.id)?;
+                if HandoutSource::new(&context, &edital)
+                    .cached(&json)
+                    .is_some()
+                {
+                    count += 1;
+                }
+            }
+        }
+        Ok(count)
+    }
+
+    pub(crate) fn handout_edital(&self) -> Result<String, EngineError> {
+        let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
+        let text = self.store.edital_text(plan.id)?;
+        Ok(kg_pdf::EditalText::from_raw(&text).for_prompt(EDITAL_CHARS))
     }
 }
 
@@ -189,10 +253,14 @@ fn build_handout(
                         break;
                     }
                     if item.cached.is_none() {
-                        match kg_ai::generate_handout(client, &item.context) {
+                        match kg_ai::generate_handout(client, &item.context, &item.source.edital) {
                             Ok(draft) => {
                                 let topic = topic_from_draft(draft, &item.context, seed(i));
-                                if let Ok(json) = serde_json::to_string(&topic) {
+                                let cached = CachedHandout {
+                                    source: item.source.clone(),
+                                    content: topic.clone(),
+                                };
+                                if let Ok(json) = serde_json::to_string(&cached) {
                                     on_written(item.topic_id, json);
                                 }
                                 if let Ok(mut slot) = slots[i].lock() {
@@ -300,6 +368,40 @@ mod tests {
     use kg_ai::{QuestionDraft, SectionDraft};
 
     use super::*;
+
+    #[test]
+    fn cache_requires_identical_sources_and_rejects_legacy_text() {
+        let source = HandoutSource::new(&TopicContext::default(), "Português: crase.");
+        let content = TopicHandout::default();
+        let json = serde_json::to_string(&CachedHandout {
+            source: source.clone(),
+            content: content.clone(),
+        })
+        .unwrap();
+        assert_eq!(source.cached(&json), Some(content.clone()));
+        assert!(
+            source
+                .cached(&serde_json::to_string(&content).unwrap())
+                .is_none()
+        );
+        assert!(source.cached("broken JSON").is_none());
+        for field in ["edital", "reference", "topic", "exam", "subject", "prompt"] {
+            let mut changed = source.clone();
+            let target = match field {
+                "edital" => &mut changed.edital,
+                "reference" => &mut changed.reference,
+                "topic" => &mut changed.topic,
+                "exam" => &mut changed.exam,
+                "subject" => &mut changed.subject,
+                _ => &mut changed.prompt,
+            };
+            target.push_str(" changed");
+            assert!(
+                changed.cached(&json).is_none(),
+                "changed {field} must invalidate cache"
+            );
+        }
+    }
 
     #[test]
     fn draft_maps_to_topic_and_keeps_right_answers() {
