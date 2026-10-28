@@ -175,6 +175,8 @@ fn prepare_panel(
     let working_on = job.working_on();
     let detail = if job.is_cancelling() {
         t!("plan.prepare_cancelling").into_owned()
+    } else if let Some(pause) = job.paused_for() {
+        t!("plan.prepare_paused", seconds = pause.as_secs() + 1).into_owned()
     } else if working_on.is_empty() {
         t!("plan.prepare_saving").into_owned()
     } else {

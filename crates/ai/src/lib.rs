@@ -11,6 +11,7 @@ mod config;
 mod handout_review;
 mod prompts;
 mod tasks;
+mod throttle;
 
 pub use board::{
     AnswerDraft, BoardContext, BoardQuestionDraft, ExcerptDraft, RelevanceDraft, chunk_text,
@@ -27,6 +28,7 @@ pub use tasks::{
     generate_quiz, review_question, start_lesson, start_lesson_stream, tutor_reply,
     tutor_reply_stream,
 };
+pub use throttle::Throttle;
 
 /// Errors from talking to the model.
 ///

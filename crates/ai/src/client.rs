@@ -1,6 +1,7 @@
 //! Minimal blocking client for `/chat/completions`.
 
 use std::io::{BufRead, BufReader, Read};
+use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine as _;
@@ -9,6 +10,7 @@ use serde_json::json;
 
 use crate::AiError;
 use crate::config::{AiConfig, Task};
+use crate::throttle::{self, MAX_ATTEMPTS, Throttle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -62,6 +64,8 @@ pub(crate) struct ChatRequest<'a> {
 pub struct Client {
     config: AiConfig,
     agent: ureq::Agent,
+    /// Shared pacing for batch jobs; `None` for interactive use.
+    throttle: Option<Arc<Throttle>>,
 }
 
 #[derive(Deserialize)]
@@ -101,7 +105,18 @@ impl Client {
             .http_status_as_error(false)
             .build()
             .into();
-        Self { config, agent }
+        Self {
+            config,
+            agent,
+            throttle: None,
+        }
+    }
+
+    /// For long batch jobs: requests wait for a free slot, and "too many
+    /// requests" pauses every clone and retries instead of failing.
+    pub fn paced(mut self, throttle: Arc<Throttle>) -> Self {
+        self.throttle = Some(throttle);
+        self
     }
 
     pub fn config(&self) -> &AiConfig {
@@ -243,25 +258,71 @@ impl Client {
     }
 
     fn send_body(&self, model: &str, body: &serde_json::Value) -> Result<String, AiError> {
+        let Some(throttle) = &self.throttle else {
+            return self.send_once(model, body).map_err(|(err, _)| err);
+        };
+        let mut attempt = 1;
+        loop {
+            // Cancelled while waiting: the job is stopping anyway.
+            let Some(permit) = throttle.acquire() else {
+                return Err(AiError::RateLimited);
+            };
+            match self.send_once(model, body) {
+                Ok(text) => {
+                    throttle.succeeded();
+                    return Ok(text);
+                }
+                Err((AiError::RateLimited, hint)) if attempt < MAX_ATTEMPTS => {
+                    drop(permit);
+                    throttle.rate_limited(hint);
+                    attempt += 1;
+                }
+                Err((err, _)) => return Err(err),
+            }
+        }
+    }
+
+    /// One request. A rate-limit error carries the server's `Retry-After`.
+    fn send_once(
+        &self,
+        model: &str,
+        body: &serde_json::Value,
+    ) -> Result<String, (AiError, Option<Duration>)> {
         let url = self.config.chat_url();
         let mut call = self.agent.post(&url);
         if !self.config.api_key.is_empty() {
             call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
         }
         let started = std::time::Instant::now();
-        let mut response = call.send_json(body).map_err(|e| AiError::Connection {
-            url: url.clone(),
-            reason: e.to_string(),
+        let mut response = call.send_json(body).map_err(|e| {
+            (
+                AiError::Connection {
+                    url: url.clone(),
+                    reason: e.to_string(),
+                },
+                None,
+            )
         })?;
         let status = response.status().as_u16();
+        let hint = throttle::retry_after(
+            response
+                .headers()
+                .get("retry-after")
+                .and_then(|v| v.to_str().ok()),
+        );
         let text = response
             .body_mut()
             .with_config()
             .limit(64 * 1024 * 1024)
             .read_to_string()
-            .map_err(|e| AiError::Connection {
-                url: url.clone(),
-                reason: e.to_string(),
+            .map_err(|e| {
+                (
+                    AiError::Connection {
+                        url: url.clone(),
+                        reason: e.to_string(),
+                    },
+                    None,
+                )
             })?;
         tracing::debug!(
             model,
@@ -272,18 +333,24 @@ impl Client {
 
         match status {
             200..=299 => {}
-            401 | 403 => return Err(AiError::Auth { status }),
-            429 => return Err(AiError::RateLimited),
+            401 | 403 => return Err((AiError::Auth { status }, None)),
+            429 => return Err((AiError::RateLimited, hint)),
             _ => {
-                return Err(AiError::Http {
-                    status,
-                    body: text.chars().take(500).collect(),
-                });
+                return Err((
+                    AiError::Http {
+                        status,
+                        body: text.chars().take(500).collect(),
+                    },
+                    None,
+                ));
             }
         }
+        Self::content(&text).map_err(|err| (err, None))
+    }
 
-        let parsed: ChatResponse = serde_json::from_str(&text)
-            .map_err(|e| AiError::InvalidResponse(format!("{e}: {}", truncate(&text))))?;
+    fn content(text: &str) -> Result<String, AiError> {
+        let parsed: ChatResponse = serde_json::from_str(text)
+            .map_err(|e| AiError::InvalidResponse(format!("{e}: {}", truncate(text))))?;
         let choice = parsed
             .choices
             .into_iter()
@@ -384,6 +451,76 @@ mod tests {
         let mut old = json!({});
         skip_reasoning(&mut old, "GLM-4.7-flash");
         assert_eq!(old, json!({ "thinking": { "type": "disabled" } }));
+    }
+
+    /// Serves the given raw HTTP responses, one per connection.
+    fn fake_server(responses: Vec<String>) -> String {
+        use std::io::Write;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut length = 0;
+                loop {
+                    let mut line = String::new();
+                    reader.read_line(&mut line).unwrap();
+                    if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                        length = v.trim().parse().unwrap();
+                    }
+                    if line.trim().is_empty() {
+                        break;
+                    }
+                }
+                let mut body = vec![0; length];
+                reader.read_exact(&mut body).unwrap();
+                stream.write_all(response.as_bytes()).unwrap();
+            }
+        });
+        format!("http://{addr}/v1")
+    }
+
+    fn http(status: &str, headers: &str, body: &str) -> String {
+        format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n{headers}\r\n{body}",
+            body.len()
+        )
+    }
+
+    #[test]
+    fn paced_client_waits_out_a_rate_limit_and_retries() {
+        let ok = r#"{"choices":[{"message":{"content":"pronto"}}]}"#;
+        let url = fake_server(vec![
+            http("429 Too Many Requests", "Retry-After: 1\r\n", "{}"),
+            http("200 OK", "", ok),
+        ]);
+        let config = AiConfig {
+            base_url: url,
+            fast_responses: false,
+            ..AiConfig::default()
+        };
+        let throttle = Arc::new(Throttle::new(Arc::default()));
+        let client = Client::new(config).paced(Arc::clone(&throttle));
+        let started = std::time::Instant::now();
+        let body = json!({ "model": "m", "messages": [] });
+        assert_eq!(client.send_body("m", &body).unwrap(), "pronto");
+        assert!(started.elapsed() >= Duration::from_millis(900));
+        assert_eq!(throttle.limit(), 2);
+    }
+
+    #[test]
+    fn unpaced_client_reports_the_rate_limit_at_once() {
+        let url = fake_server(vec![http("429 Too Many Requests", "", "{}")]);
+        let config = AiConfig {
+            base_url: url,
+            ..AiConfig::default()
+        };
+        let body = json!({ "model": "m", "messages": [] });
+        assert!(matches!(
+            Client::new(config).send_body("m", &body),
+            Err(AiError::RateLimited)
+        ));
     }
 
     #[test]

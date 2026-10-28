@@ -4,6 +4,16 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.19.1] - 2026-10-28
+
+### Fixed
+- "Prepare everything" no longer loses topics to the AI server's rate limit. Requests
+  share one pacer: when the server answers "too many requests", every worker pauses
+  together (honouring `Retry-After`), fewer requests run at once, and the pace grows
+  back after a run of successes. The rejected request is retried on its own, so a
+  handout is not rewritten from scratch. Topics that still fail get one more pass, one
+  at a time, at the end. The plan screen says when the server asked for a pause.
+
 ## [0.19.0] - 2026-10-28
 
 ### Added
