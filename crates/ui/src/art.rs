@@ -1,18 +1,18 @@
 //! The app icon's engraving as a cover plate, like the animal engraving on a
-//! programming book cover: Thoth, ibis-headed god of writing and knowledge.
+//! programming book cover: Thoth, god of writing and knowledge, as a baboon.
 
 use egui::{Image, ImageSource, include_image, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Art {
-    /// Thoth engraved in profile on a jade ground, square.
+    /// Thoth as a baboon under the crescent moon, on a jade ground, square.
     Mark,
 }
 
 impl Art {
     fn source(self) -> ImageSource<'static> {
         match self {
-            Self::Mark => include_image!("../assets/icon-square.svg"),
+            Self::Mark => include_image!("../assets/icon-square.png"),
         }
     }
 

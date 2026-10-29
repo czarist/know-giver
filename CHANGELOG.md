@@ -25,11 +25,9 @@ All notable changes to Know Giver. Format based on
   no longer ends the listening.
 
 ### Changed
-- New app icon: Thoth the scribe in profile, facing right, writing on his palette with a reed
-  pen, engraved in ink on a jade tile
-  (`tools/icon.py`). It is the window and file icon, the sidebar logo, the cover
-  art and Thoth's portrait; the reference engraving is no longer shown. Below
-  32 px a simpler ibis glyph is used.
+- New app icon: the owner's engraving of Thoth as a baboon under the crescent
+  moon, on a jade tile with rounded corners (`tools/icon.py`). It is the window
+  and file icon, the sidebar logo and the cover art; the old ibis marks are gone.
 - README in the style of the LightCraft one, with screenshots.
 - The app writes its log to `know-giver.log` in the data folder.
 

@@ -57,7 +57,7 @@ impl Icon {
     }
 }
 
-/// The app icon (Thoth engraved on a jade tile) at `size` points.
+/// The app icon (Thoth as a baboon, engraved, on a jade tile) at `size` points.
 pub fn logo(size: f32) -> Image<'static> {
-    Image::new(include_image!("../assets/icon.svg")).fit_to_exact_size(vec2(size, size))
+    Image::new(include_image!("../assets/icon.png")).fit_to_exact_size(vec2(size, size))
 }

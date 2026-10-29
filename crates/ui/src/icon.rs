@@ -1,22 +1,14 @@
-//! The app icon, rasterized from the logo SVG.
+//! The app icon: the owner's engraving of Thoth as a baboon under the
+//! crescent moon, on a jade tile (built by `tools/icon.py`).
 
-/// The small mark (Thoth's ibis head under the lunar disc), for 32 px and less.
-pub const LOGO_SVG: &[u8] = include_bytes!("../assets/logo.svg");
-/// The app icon: Thoth engraved in profile on a jade tile.
-pub const ICON_SVG: &[u8] = include_bytes!("../assets/icon.svg");
-/// Below this size the engraving's lines blur together.
-const SMALL_ICON: u32 = 32;
+/// The icon, 512 × 512 with rounded corners.
+pub const ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
 
 /// Icon pixels as straight (not premultiplied) RGBA, `size × size`.
-/// Falls back to a plain teal square if the SVG cannot be rendered.
+/// Falls back to a plain jade square if the image cannot be decoded.
 pub fn rgba(size: u32) -> Vec<u8> {
-    let svg = if size <= SMALL_ICON {
-        LOGO_SVG
-    } else {
-        ICON_SVG
-    };
-    render(svg, size).unwrap_or_else(|| {
-        [0x2F, 0x6F, 0x68, 0xFF]
+    render(size).unwrap_or_else(|| {
+        [0x3F, 0x8F, 0x7C, 0xFF]
             .into_iter()
             .cycle()
             .take((size * size * 4) as usize)
@@ -24,26 +16,10 @@ pub fn rgba(size: u32) -> Vec<u8> {
     })
 }
 
-fn render(svg: &[u8], size: u32) -> Option<Vec<u8>> {
-    use resvg::{tiny_skia, usvg};
-    let tree = usvg::Tree::from_data(svg, &usvg::Options::default()).ok()?;
-    let mut pixmap = tiny_skia::Pixmap::new(size, size)?;
-    let scale = size as f32 / tree.size().width().max(tree.size().height());
-    resvg::render(
-        &tree,
-        tiny_skia::Transform::from_scale(scale, scale),
-        &mut pixmap.as_mut(),
-    );
-    Some(
-        pixmap
-            .pixels()
-            .iter()
-            .flat_map(|p| {
-                let c = p.demultiply();
-                [c.red(), c.green(), c.blue(), c.alpha()]
-            })
-            .collect(),
-    )
+fn render(size: u32) -> Option<Vec<u8>> {
+    let image = image::load_from_memory_with_format(ICON_PNG, image::ImageFormat::Png).ok()?;
+    let resized = image.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
+    Some(resized.into_rgba8().into_raw())
 }
 
 pub fn app_icon() -> egui::IconData {
@@ -60,14 +36,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn logo_renders_as_a_square_mark() {
+    fn icon_is_a_rounded_jade_tile() {
         let size = 64;
-        let px = render(LOGO_SVG, size).unwrap();
+        let px = render(size).unwrap();
         assert_eq!(px.len(), (size * size * 4) as usize);
-        // A full square: the corner is the dark background, opaque.
-        assert_eq!(&px[..4], &[0x1C, 0x1B, 0x19, 0xFF]);
-        // The ibis neck near the bottom is light.
-        let i = (((size - 2) * size + size * 25 / 64) * 4) as usize;
-        assert_eq!(&px[i..i + 4], &[0xF6, 0xF4, 0xEF, 0xFF]);
+        // The corner is cut away by the rounding.
+        assert_eq!(px[3], 0);
+        // Near the top middle: the jade ground, opaque.
+        let i = ((4 * size + size / 2) * 4) as usize;
+        assert_eq!(px[i + 3], 0xFF);
+        assert!(
+            px[i + 1] > px[i] && px[i + 1] > px[i + 2],
+            "{:?}",
+            &px[i..i + 4]
+        );
     }
 }
