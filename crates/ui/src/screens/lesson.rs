@@ -48,6 +48,10 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
             widgets::hint(ui, &lesson.subject);
         });
     });
+    progress(ui, lesson);
+    if lesson.finished {
+        finished_card(ui, lesson, &mut actions);
+    }
     model_warnings(ui, engine, &mut actions);
 
     if state.lesson_panel {
@@ -71,6 +75,119 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     paint_stage(ui, stage, engine, lesson, state.lesson_captions);
     controls(ui, engine, lesson, state, &mut actions);
     actions.run(app);
+}
+
+/// Name of a step of the lesson plan; the last one is the final review.
+fn step_name(lesson: &LessonSession, step: usize) -> String {
+    lesson
+        .outline
+        .get(step)
+        .cloned()
+        .unwrap_or_else(|| t!("lesson.final_review").into_owned())
+}
+
+/// Where the lesson is: "Step 2 of 4 · name" over a bar with one segment per
+/// step. Hovering shows the whole plan.
+fn progress(ui: &mut egui::Ui, lesson: &LessonSession) {
+    let p = theme::palette(ui.ctx());
+    ui.add_space(6.0);
+    if lesson.outline.is_empty() && !lesson.finished {
+        widgets::hint(ui, &t!("lesson.plan_building"));
+        ui.add_space(4.0);
+        return;
+    }
+    let total = lesson.total_steps();
+    let current = lesson.step.min(total - 1);
+    ui.horizontal(|ui| {
+        ui.label(
+            RichText::new(t!("lesson.step_of", step = current + 1, total = total))
+                .family(theme::strong_family())
+                .color(p.accent),
+        );
+        ui.label(RichText::new(step_name(lesson, current)).color(p.muted));
+    });
+    let (bar, response) =
+        ui.allocate_exact_size(vec2(ui.available_width(), 8.0), egui::Sense::hover());
+    let gap = 4.0;
+    let width = (bar.width() - gap * (total - 1) as f32) / total as f32;
+    for i in 0..total {
+        let rect = egui::Rect::from_min_size(
+            pos2(bar.left() + i as f32 * (width + gap), bar.top()),
+            vec2(width, bar.height()),
+        );
+        let done = i < current || lesson.finished;
+        let fill = if done {
+            p.accent
+        } else if i == current {
+            p.highlight
+        } else {
+            p.border
+        };
+        ui.painter().rect_filled(rect, 0.0, fill);
+    }
+    response.on_hover_ui(|ui| outline_list(ui, lesson));
+    ui.add_space(6.0);
+}
+
+/// The lesson plan as a list, done steps ticked.
+fn outline_list(ui: &mut egui::Ui, lesson: &LessonSession) {
+    let p = theme::palette(ui.ctx());
+    for i in 0..lesson.total_steps() {
+        let done = i < lesson.step || lesson.finished;
+        let mark = if done {
+            "✔"
+        } else if i == lesson.step {
+            "▶"
+        } else {
+            "·"
+        };
+        let color = if done {
+            p.muted
+        } else if i == lesson.step {
+            p.text
+        } else {
+            p.muted
+        };
+        ui.label(RichText::new(format!("{mark}  {}", step_name(lesson, i))).color(color));
+    }
+}
+
+/// Shown when the tutor closed the lesson: take the quiz or end here.
+fn finished_card(ui: &mut egui::Ui, lesson: &LessonSession, actions: &mut Actions) {
+    let p = theme::palette(ui.ctx());
+    egui::Frame::new()
+        .fill(p.surface)
+        .stroke(Stroke::new(2.0, p.accent))
+        .inner_margin(12)
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.label(
+                        RichText::new(t!("lesson.finished_title"))
+                            .family(theme::heading_family())
+                            .size(18.0)
+                            .color(p.accent),
+                    );
+                    ui.label(t!("lesson.finished_body"));
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button(t!("lesson.end")).clicked() {
+                        actions.send(Command::EndLesson);
+                    }
+                    let quiz = egui::Button::new(
+                        RichText::new(t!("lesson.take_quiz")).color(Color32::WHITE),
+                    )
+                    .fill(p.accent);
+                    if ui.add(quiz).clicked() {
+                        actions.send(Command::EndLesson);
+                        actions.send(Command::StartQuiz(lesson.topic_id));
+                        actions.go_to(Screen::Quiz);
+                    }
+                });
+            });
+        });
+    ui.add_space(6.0);
 }
 
 /// Space (held) to talk, Esc to interrupt, unless a text field has focus.
@@ -500,6 +617,12 @@ fn side_panel(
 ) {
     let p = theme::palette(ui.ctx());
     ui.label(RichText::new(t!("lesson.transcript")).family(theme::strong_family()));
+    if !lesson.outline.is_empty() {
+        egui::CollapsingHeader::new(t!("lesson.outline"))
+            .id_salt("lesson_outline")
+            .default_open(true)
+            .show(ui, |ui| outline_list(ui, lesson));
+    }
     if !lesson.board.is_empty() {
         egui::CollapsingHeader::new(t!("lesson.board"))
             .id_salt("board_transcript")

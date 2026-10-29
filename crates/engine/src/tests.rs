@@ -507,6 +507,7 @@ fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
             result: Ok(kg_ai::TutorReply {
                 speech: "Olá! Hoje vamos ver crase. Pronto?".into(),
                 board: vec!["Crase = a + a".into()],
+                ..kg_ai::TutorReply::default()
             }),
         }))
         .unwrap();
@@ -533,6 +534,48 @@ fn board_opens_with_a_topic_picture_and_asks_for_tutor_pictures() {
         engine.illustration(&title),
         Some(&crate::Illustration::Missing)
     );
+}
+
+#[test]
+fn lesson_follows_the_tutor_plan_to_the_end() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    let lesson = engine.lesson().unwrap();
+    assert!(lesson.outline.is_empty());
+    assert_eq!(lesson.total_steps(), 1);
+
+    engine.simulate_tutor_text(
+        "Oi! Vamos lá.
+ROTEIRO: O que é | Quando usar | Exceções",
+    );
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.outline, ["O que é", "Quando usar", "Exceções"]);
+    assert_eq!((lesson.step, lesson.total_steps()), (0, 4));
+
+    engine.simulate_tutor_text(
+        "Isso.
+ETAPA: 3",
+    );
+    assert_eq!(engine.lesson().unwrap().step, 2);
+    // A later plan or an older step number never undoes progress.
+    engine.simulate_tutor_text(
+        "Voltando.
+ETAPA: 1
+ROTEIRO: Outra | Coisa",
+    );
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.step, 2);
+    assert_eq!(lesson.outline.len(), 3);
+    assert!(!lesson.finished);
+
+    engine.simulate_tutor_text(
+        "Parabéns!
+FIM",
+    );
+    let lesson = engine.lesson().unwrap();
+    assert!(lesson.finished);
+    assert_eq!(lesson.step, 3);
 }
 
 fn prepare_request() -> PrepareRequest {

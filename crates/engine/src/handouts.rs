@@ -14,6 +14,9 @@ use crate::{Engine, EngineError, Event, Notice};
 
 /// Topics written at the same time. More would hit rate limits.
 const PARALLEL_TOPICS: usize = 3;
+/// Steps taken from a handout for a lesson plan, and their longest length.
+const LESSON_STEPS: usize = 5;
+const LESSON_STEP_CHARS: usize = 60;
 /// Same syllabus-aware excerpt budget used for plan generation.
 const EDITAL_CHARS: usize = 150_000;
 
@@ -217,6 +220,31 @@ impl Engine {
             }
         }
         Ok(count)
+    }
+
+    /// A lesson plan from the topic's written handout: its section headings.
+    /// Empty when there is no handout yet.
+    pub(crate) fn handout_outline(&self, topic: TopicId) -> Vec<String> {
+        let Ok(Some(json)) = self.store.handout(topic) else {
+            return Vec::new();
+        };
+        let Ok(cached) = serde_json::from_str::<CachedHandout>(&json) else {
+            return Vec::new();
+        };
+        cached
+            .content
+            .sections
+            .iter()
+            .map(|s| {
+                s.heading
+                    .trim()
+                    .chars()
+                    .take(LESSON_STEP_CHARS)
+                    .collect::<String>()
+            })
+            .filter(|h| !h.is_empty())
+            .take(LESSON_STEPS)
+            .collect()
     }
 
     pub(crate) fn handout_edital(&self) -> Result<String, EngineError> {

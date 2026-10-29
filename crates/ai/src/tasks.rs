@@ -124,6 +124,22 @@ const BOARD_POINT_CHARS: usize = 90;
 /// Longest single-entry board line kept, in characters.
 const BOARD_BLOCK_CHARS: usize = 320;
 
+/// Lesson-progress lines: the lesson plan, moving to a step, and the end.
+/// Never spoken nor shown on the board. Matched in capitals only.
+const OUTLINE_MARKER: &str = "ROTEIRO:";
+const STEP_MARKER: &str = "ETAPA:";
+const END_MARKER: &str = "FIM";
+/// Steps kept from the tutor's lesson plan, and their longest length.
+const OUTLINE_STEPS: usize = 5;
+const OUTLINE_STEP_CHARS: usize = 60;
+
+/// True for a line about the lesson's progress rather than speech.
+fn progress_line(line: &str) -> bool {
+    line.starts_with(OUTLINE_MARKER)
+        || line.starts_with(STEP_MARKER)
+        || line.starts_with(END_MARKER)
+}
+
 /// The board marker a line starts with, if any.
 fn board_marker(line: &str) -> Option<&'static str> {
     BOARD_MARKERS
@@ -139,11 +155,18 @@ fn board_marker(line: &str) -> Option<&'static str> {
         })
 }
 
-/// A tutor answer: what is spoken, and the key points for the whiteboard.
+/// A tutor answer: what is spoken, the key points for the whiteboard, and
+/// where the lesson is.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TutorReply {
     pub speech: String,
     pub board: Vec<String>,
+    /// The lesson plan, when the tutor wrote one (its first answer).
+    pub outline: Vec<String>,
+    /// The step the lesson moved to, 1-based, when it moved.
+    pub step: Option<usize>,
+    /// The tutor closed the lesson.
+    pub finished: bool,
 }
 
 impl TutorReply {
@@ -151,8 +174,34 @@ impl TutorReply {
     pub fn parse(text: &str) -> Self {
         let mut speech = Vec::new();
         let mut board = Vec::new();
+        let mut outline = Vec::new();
+        let mut step = None;
+        let mut finished = false;
         for line in text.lines() {
             let clean = line.trim().trim_matches('*').trim();
+            if let Some(rest) = clean.strip_prefix(OUTLINE_MARKER) {
+                outline = rest
+                    .split('|')
+                    .map(|s| s.trim().trim_end_matches('.').trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.chars().take(OUTLINE_STEP_CHARS).collect::<String>())
+                    .take(OUTLINE_STEPS)
+                    .collect();
+                continue;
+            }
+            if let Some(rest) = clean.strip_prefix(STEP_MARKER) {
+                step = rest
+                    .trim()
+                    .trim_matches(|c: char| !c.is_ascii_digit())
+                    .parse::<usize>()
+                    .ok()
+                    .filter(|n| *n >= 1);
+                continue;
+            }
+            if clean.trim_end_matches(['.', '!']) == END_MARKER {
+                finished = true;
+                continue;
+            }
             let marker = board_marker(clean);
             if let Some(marker) = marker
                 && BOARD_BLOCK_MARKERS.contains(&marker)
@@ -190,6 +239,9 @@ impl TutorReply {
         Self {
             speech: speech.join("\n").trim().to_owned(),
             board,
+            outline,
+            step,
+            finished,
         }
     }
 }
@@ -209,6 +261,11 @@ pub struct TopicContext {
     pub teacher_name: String,
     /// The tutor speaks of itself in the feminine.
     pub teacher_female: bool,
+    /// The lesson plan: steps before the final review. Empty until known;
+    /// then the tutor is asked to write one in its first answer.
+    pub outline: Vec<String>,
+    /// The step the lesson is on, 0-based; `outline.len()` is the final review.
+    pub step: usize,
 }
 
 impl TopicContext {
@@ -362,7 +419,7 @@ impl SpokenStream {
             let end_of_sentence = ch.is_whitespace() && self.pending.ends_with(['.', '!', '?']);
             self.pending.push(ch);
             let clean = self.pending.trim_start().trim_start_matches('*');
-            if board_marker(clean).is_some() {
+            if board_marker(clean).is_some() || progress_line(clean) {
                 self.board_line = true;
                 self.pending.clear();
             } else if end_of_sentence {
@@ -424,10 +481,43 @@ fn tutor_system(topic: &TopicContext) -> ChatMessage {
             "- Seu nome é {name} e você é o professor. Fale de si no masculino (por exemplo, \"obrigado\", \"estou pronto\")."
         )
     };
+    let plan = lesson_plan(topic);
     // Last, so a name cannot be mistaken for another placeholder.
     values.push(("teacher", &teacher));
     values.push(("student", &student));
+    values.push(("lesson_plan", &plan));
     ChatMessage::system(fill(prompts::TUTOR, &values))
+}
+
+/// How the lesson moves through its plan and ends. Without a plan yet, the
+/// tutor is asked to write one.
+fn lesson_plan(topic: &TopicContext) -> String {
+    let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
+    if topic.outline.is_empty() {
+        return format!(
+            "- Na sua primeira resposta, monte o roteiro desta aula: de 3 a 5 etapas curtas, de até 6 palavras cada, do básico ao que mais cai na prova. Não inclua a revisão final, ela vem sempre no fim. Escreva em uma linha separada ROTEIRO: etapa | etapa | etapa. Comece pela etapa 1.\n{rules}"
+        );
+    }
+    let steps: Vec<String> = topic
+        .outline
+        .iter()
+        .enumerate()
+        .map(|(i, step)| format!("{}. {step}", i + 1))
+        .collect();
+    let review = topic.outline.len() + 1;
+    let now = if topic.step < topic.outline.len() {
+        format!(
+            "Agora você está na etapa {}: {}.",
+            topic.step + 1,
+            topic.outline[topic.step]
+        )
+    } else {
+        "Agora você está na revisão final.".to_owned()
+    };
+    format!(
+        "- Roteiro desta aula: {}; {review}. Revisão final. {now}\n{rules}",
+        steps.join("; ")
+    )
 }
 
 /// Generates `count` multiple-choice questions about a topic.
@@ -705,6 +795,53 @@ mod tests {
                 "LINHA DO TEMPO: 1988: Constituição | 2000: LRF",
             ]
         );
+    }
+
+    #[test]
+    fn tutor_reply_reads_lesson_progress() {
+        let first = TutorReply::parse(
+            "Oi! Vamos ver crase.\nROTEIRO: O que é crase | Casos obrigatórios | Casos proibidos\nQUADRO: Crase = a + a",
+        );
+        assert_eq!(first.speech, "Oi! Vamos ver crase.");
+        assert_eq!(
+            first.outline,
+            ["O que é crase", "Casos obrigatórios", "Casos proibidos"]
+        );
+        assert_eq!(first.board, ["Crase = a + a"]);
+        let next = TutorReply::parse("Muito bem.\n**ETAPA: 2**");
+        assert_eq!(next.step, Some(2));
+        assert_eq!(next.speech, "Muito bem.");
+        let end = TutorReply::parse("Parabéns, aula concluída.\nFIM.");
+        assert!(end.finished);
+        assert_eq!(end.speech, "Parabéns, aula concluída.");
+        // Speech that only starts like a marker stays speech.
+        assert!(!TutorReply::parse("Fim de papo.").finished);
+
+        let mut stream = SpokenStream::default();
+        let mut spoken = Vec::new();
+        for delta in ["Muito bem! ", "Agora a próxima.\nETA", "PA: 3\nFI", "M\n"] {
+            stream.push(delta, &mut |text| spoken.push(text.to_owned()));
+        }
+        stream.finish(&mut |text| spoken.push(text.to_owned()));
+        assert_eq!(spoken, ["Muito bem!", "Agora a próxima."]);
+    }
+
+    #[test]
+    fn tutor_follows_the_lesson_plan() {
+        let mut topic = TopicContext {
+            topic: "Crase".into(),
+            ..TopicContext::default()
+        };
+        let asks = tutor_system(&topic).content;
+        assert!(asks.contains("ROTEIRO:"));
+        assert!(!asks.contains("{lesson_plan}"));
+        topic.outline = vec!["O que é".into(), "Casos".into()];
+        topic.step = 1;
+        let follows = tutor_system(&topic).content;
+        assert!(follows.contains("1. O que é; 2. Casos; 3. Revisão final"));
+        assert!(follows.contains("etapa 2: Casos"));
+        topic.step = 2;
+        assert!(tutor_system(&topic).content.contains("revisão final."));
     }
 
     #[test]

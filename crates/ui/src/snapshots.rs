@@ -203,6 +203,14 @@ fn snapshots() {
                     tr(english, "Teste: troque por palavra masculina", "Test: drop the “of …” phrase"),
                 ],
             );
+            // The lesson plan, on its second step.
+            engine.simulate_tutor_text(tr(
+                english,
+                "ROTEIRO: O que é crase | Casos obrigatórios | Casos proibidos | Pegadinhas de prova
+ETAPA: 2",
+                "ROTEIRO: Find the head noun | Tricky subjects | Collective nouns | Exam traps
+ETAPA: 2",
+            ));
         }
         harness.state_mut().ui.screen = Screen::Lesson;
         render(
@@ -217,6 +225,20 @@ fn snapshots() {
             &format!("{locale}-lesson-panel"),
         );
         harness.state_mut().ui.lesson_panel = false;
+        if let Ok(engine) = harness.state_mut().engine.as_mut() {
+            engine.simulate_tutor_text(tr(
+                english,
+                "Parabéns, você fechou o tópico!
+FIM",
+                "Well done, you closed the topic!
+FIM",
+            ));
+        }
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-lesson-finished"),
+        );
         harness.state_mut().dispatch(Command::EndLesson);
 
         // An edital with several roles, waiting for the choice.

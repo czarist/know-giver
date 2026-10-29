@@ -91,6 +91,13 @@ pub struct LessonSession {
     pub phase: LessonPhase,
     /// Key points the tutor wrote on the whiteboard, oldest first.
     pub board: Vec<String>,
+    /// The lesson plan: steps before the final review. Comes from the
+    /// topic's handout, or from the tutor's first answer.
+    pub outline: Vec<String>,
+    /// The step being taught, 0-based; `outline.len()` is the final review.
+    pub step: usize,
+    /// The tutor closed the lesson after the final review.
+    pub finished: bool,
     context: TopicContext,
     /// The microphone, open for the whole lesson. Turns are stretches of it:
     /// reopening it for every turn cost a moment and the student's first words.
@@ -189,6 +196,29 @@ impl LessonSession {
             .map(|p| p.text.clone())
     }
 
+    /// Steps in the whole lesson, the final review included.
+    pub fn total_steps(&self) -> usize {
+        self.outline.len() + 1
+    }
+
+    /// Applies where the tutor says the lesson is, and keeps the tutor's
+    /// instructions in step with it.
+    fn follow_plan(&mut self, outline: &[String], step: Option<usize>, finished: bool) {
+        if self.outline.is_empty() && !outline.is_empty() {
+            self.outline = outline.to_vec();
+        }
+        if let Some(step) = step {
+            // Forward only: a repeated or stray number never undoes progress.
+            self.step = self.step.max((step - 1).min(self.outline.len()));
+        }
+        if finished {
+            self.finished = true;
+            self.step = self.outline.len();
+        }
+        self.context.outline.clone_from(&self.outline);
+        self.context.step = self.step;
+    }
+
     fn history(&self) -> Vec<ChatMessage> {
         let skip = self.turns.len().saturating_sub(HISTORY_TURNS);
         self.turns
@@ -265,7 +295,9 @@ impl Engine {
         if self.lesson.is_some() {
             self.end_lesson()?;
         }
-        let (context, topic_title) = self.topic_context(topic_id)?;
+        let (mut context, topic_title) = self.topic_context(topic_id)?;
+        // A written handout gives the lesson its plan up front.
+        context.outline = self.handout_outline(topic_id);
         self.update_topic(topic_id, |t| {
             if t.status == TopicStatus::NotStarted {
                 t.status = TopicStatus::Studying;
@@ -289,6 +321,9 @@ impl Engine {
             turns: Vec::new(),
             phase: LessonPhase::Thinking,
             board: opening_board,
+            outline: context.outline.clone(),
+            step: 0,
+            finished: false,
             context,
             mic: None,
             speech_job: None,
@@ -807,10 +842,23 @@ impl Engine {
         let reply = TutorReply {
             speech: speech.to_owned(),
             board: board.iter().map(|p| (*p).to_owned()).collect(),
+            ..TutorReply::default()
         };
         let _ = self.on_lesson_event(LessonEvent::Reply {
             session,
             result: Ok(reply),
+        });
+    }
+
+    /// Test hook: the tutor answers with `text`, as the model writes it
+    /// (speech, then board and lesson-progress lines).
+    pub fn simulate_tutor_text(&mut self, text: &str) {
+        let Some(session) = self.lesson.as_ref().map(|l| l.reply) else {
+            return;
+        };
+        let _ = self.on_lesson_event(LessonEvent::Reply {
+            session,
+            result: Ok(TutorReply::parse(text)),
         });
     }
 
@@ -894,7 +942,10 @@ impl Engine {
                 if !synthesizing && !playing {
                     lesson.phase = LessonPhase::Idle;
                     lesson.speech_job = None;
+                    // After the closing words, the lesson waits for the student.
+                    let finished = lesson.finished;
                     if self.settings.hands_free
+                        && !finished
                         && let Err(err) = self.listen(Some(HANDS_FREE_IDLE), true)
                     {
                         self.notices.push(Notice::Error(err));
@@ -975,7 +1026,7 @@ impl Engine {
                         && let Some(turn) = lesson.turns.last_mut()
                     {
                         turn.text.clone_from(&text);
-                    } else {
+                    } else if !text.trim().is_empty() {
                         lesson.turns.push(LessonTurn {
                             speaker: Speaker::Tutor,
                             text: text.clone(),
@@ -988,6 +1039,7 @@ impl Engine {
                         .map(|query| query.trim().to_owned())
                         .collect();
                     lesson.board.extend(reply.board);
+                    lesson.follow_plan(&reply.outline, reply.step, reply.finished);
                     let excess = lesson.board.len().saturating_sub(BOARD_POINTS);
                     lesson.board.drain(..excess);
                     spoken_live = lesson.speech_job.is_some();

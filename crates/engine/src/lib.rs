@@ -730,6 +730,8 @@ impl Engine {
                 student: self.settings.student_name.trim().to_owned(),
                 teacher_name: self.settings.teacher().name().to_owned(),
                 teacher_female: self.settings.teacher().gender() == VoiceGender::Female,
+                outline: Vec::new(),
+                step: 0,
             },
             topic.title.clone(),
         ))
