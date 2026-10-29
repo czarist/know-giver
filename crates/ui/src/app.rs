@@ -210,6 +210,12 @@ impl KnowGiverApp {
         self.ui.screen = screen;
     }
 
+    /// Drops the messages on screen, for screenshots.
+    #[cfg(test)]
+    pub(crate) fn clear_toasts(&mut self) {
+        self.toasts.clear();
+    }
+
     fn push_toast(&mut self, text: String, is_error: bool) {
         self.toasts.push(Toast {
             text,

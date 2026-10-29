@@ -288,6 +288,9 @@ FIM",
             &format!("{locale}-lesson-recap"),
         );
         harness.state_mut().dispatch(Command::CloseRecap);
+        // The "lesson recorded" message would sit on every later screenshot.
+        harness.run();
+        harness.state_mut().clear_toasts();
 
         // An edital with several roles, waiting for the choice.
         let roles = tr(
