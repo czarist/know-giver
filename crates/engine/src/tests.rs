@@ -391,6 +391,7 @@ fn board_exam_feeds_quiz_without_model_calls() {
             text: "texto".into(),
             questions,
             excerpts: vec![],
+            answer_key: None,
         })))
         .unwrap();
     engine.poll();
@@ -1039,4 +1040,29 @@ fn a_review_asks_three_questions_and_suggests_the_average_grade() {
         .handle(Command::GradeReview(ReviewGrade::Good))
         .unwrap();
     assert!(engine.review().is_none());
+}
+
+#[test]
+fn an_exam_sent_with_its_answer_key_reads_the_key_next() {
+    let (mut engine, dir) = engine_with_plan();
+    let plan = engine.active_plan().unwrap().id;
+    let key = dir.path().join("gabarito.pdf");
+    engine
+        .events_tx
+        .send(Event::BoardImported(Ok(board::BoardImport {
+            plan,
+            kind: DocumentKind::Exam,
+            file_name: "prova.pdf".into(),
+            text: "texto".into(),
+            questions: vec![],
+            excerpts: vec![],
+            answer_key: Some(key),
+        })))
+        .unwrap();
+    engine.poll();
+    assert_eq!(engine.board_documents().len(), 1);
+    let job = engine.board_job().unwrap();
+    assert_eq!(job.kind, DocumentKind::AnswerKey);
+    assert_eq!(job.file, "gabarito.pdf");
+    engine.handle(Command::CancelBoard).unwrap();
 }

@@ -134,10 +134,12 @@ pub enum Command {
     PrepareContent(PrepareRequest),
     CancelPrepare,
 
-    /// Upload a past exam or board material for the active plan.
+    /// Upload a past exam or board material for the active plan. An exam
+    /// can come with its answer key in a separate file, read right after.
     ImportBoard {
         path: PathBuf,
         kind: DocumentKind,
+        answer_key: Option<PathBuf>,
     },
     /// Upload the answer key of an exam already imported.
     ImportAnswerKey {
@@ -704,7 +706,11 @@ impl Engine {
 
             Command::FinishOnboarding => self.finish_onboarding(),
             Command::ExportHandout(request) => self.export_handout(request),
-            Command::ImportBoard { path, kind } => self.import_board(path, kind),
+            Command::ImportBoard {
+                path,
+                kind,
+                answer_key,
+            } => self.import_board(path, kind, answer_key),
             Command::ReuseBoardDocument(id) => self.reuse_board_document(id),
             Command::ImportAnswerKey { path, exam } => self.import_answer_key(path, exam),
             Command::CancelBoard => {

@@ -62,6 +62,8 @@ pub(crate) struct BoardImport {
     pub(crate) text: String,
     pub(crate) questions: Vec<NewBoardQuestion>,
     pub(crate) excerpts: Vec<NewBoardExcerpt>,
+    /// The exam's answer key, to read once the exam is saved.
+    pub(crate) answer_key: Option<PathBuf>,
 }
 
 /// An item the student moves in or out of use.
@@ -163,6 +165,7 @@ impl Engine {
                     text,
                     questions,
                     excerpts,
+                    answer_key: None,
                 },
             );
             Event::BoardImported(result)
@@ -208,7 +211,9 @@ impl Engine {
         &mut self,
         path: PathBuf,
         kind: DocumentKind,
+        answer_key: Option<PathBuf>,
     ) -> Result<(), EngineError> {
+        let answer_key = answer_key.filter(|_| kind == DocumentKind::Exam);
         if self.board_job.is_some() {
             return Ok(());
         }
@@ -237,6 +242,7 @@ impl Engine {
                     text,
                     questions,
                     excerpts,
+                    answer_key,
                 },
             );
             Event::BoardImported(result)
@@ -320,7 +326,7 @@ impl Engine {
         if self.active.as_ref().map(|p| p.id) != Some(import.plan) {
             return Ok(());
         }
-        self.store.insert_board_document(
+        let document = self.store.insert_board_document(
             import.plan,
             import.kind,
             &import.file_name,
@@ -346,6 +352,9 @@ impl Engine {
             used,
             set_aside: total - used,
         });
+        if let Some(key) = import.answer_key {
+            self.import_answer_key(key, document)?;
+        }
         Ok(())
     }
 

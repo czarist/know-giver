@@ -212,6 +212,16 @@ fn snapshots() {
             harness.state_mut().ui.screen = screen;
             render(&mut harness, out.as_deref(), &format!("{locale}-{name}"));
         }
+        // Adding a past exam asks about its answer key.
+        harness.state_mut().ui.screen = Screen::Board;
+        harness
+            .ctx
+            .data_mut(|d| d.insert_temp(egui::Id::new("board_exam_key_question"), true));
+        render(&mut harness, out.as_deref(), &format!("{locale}-board-key"));
+        harness
+            .ctx
+            .data_mut(|d| d.remove::<bool>(egui::Id::new("board_exam_key_question")));
+
         // A lesson in progress.
         let topic = harness
             .state()

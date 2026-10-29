@@ -151,24 +151,63 @@ fn upload_card(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
                 }
             }
             None => {
-                ui.horizontal(|ui| {
-                    if widgets::primary_button(ui, &t!("board.add_exam")).clicked()
-                        && let Some(path) = pick_pdf(&t!("board.add_exam"))
-                    {
-                        actions.send(Command::ImportBoard {
-                            path,
-                            kind: DocumentKind::Exam,
+                // Adding an exam first asks whether its answer key is a
+                // separate file.
+                let asking = egui::Id::new("board_exam_key_question");
+                let open = ui.ctx().data(|d| d.get_temp::<bool>(asking)) == Some(true);
+                let mut close = false;
+                if open {
+                    let p = theme::palette(ui.ctx());
+                    widgets::callout(ui, p.accent, |ui| {
+                        ui.label(RichText::new(t!("board.key_question")).strong());
+                        widgets::hint(ui, &t!("board.key_question_hint"));
+                        ui.add_space(4.0);
+                        ui.horizontal_wrapped(|ui| {
+                            if widgets::primary_button(ui, &t!("board.key_separate")).clicked() {
+                                close = true;
+                                if let Some(path) = pick_pdf(&t!("board.pick_exam")) {
+                                    let answer_key = pick_pdf(&t!("board.pick_key"));
+                                    actions.send(Command::ImportBoard {
+                                        path,
+                                        kind: DocumentKind::Exam,
+                                        answer_key,
+                                    });
+                                }
+                            }
+                            if ui.button(t!("board.key_included")).clicked() {
+                                close = true;
+                                if let Some(path) = pick_pdf(&t!("board.pick_exam")) {
+                                    actions.send(Command::ImportBoard {
+                                        path,
+                                        kind: DocumentKind::Exam,
+                                        answer_key: None,
+                                    });
+                                }
+                            }
+                            if ui.button(t!("common.cancel")).clicked() {
+                                close = true;
+                            }
                         });
-                    }
-                    if ui.button(t!("board.add_material")).clicked()
-                        && let Some(path) = pick_pdf(&t!("board.add_material"))
-                    {
-                        actions.send(Command::ImportBoard {
-                            path,
-                            kind: DocumentKind::Material,
-                        });
-                    }
-                });
+                    });
+                } else {
+                    ui.horizontal(|ui| {
+                        if widgets::primary_button(ui, &t!("board.add_exam")).clicked() {
+                            ui.ctx().data_mut(|d| d.insert_temp(asking, true));
+                        }
+                        if ui.button(t!("board.add_material")).clicked()
+                            && let Some(path) = pick_pdf(&t!("board.add_material"))
+                        {
+                            actions.send(Command::ImportBoard {
+                                path,
+                                kind: DocumentKind::Material,
+                                answer_key: None,
+                            });
+                        }
+                    });
+                }
+                if close {
+                    ui.ctx().data_mut(|d| d.remove::<bool>(asking));
+                }
             }
         }
     });

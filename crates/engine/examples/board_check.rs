@@ -39,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let t = Instant::now();
     engine.handle(Command::ImportBoard {
+        answer_key: None,
         path: exam.into(),
         kind: DocumentKind::Exam,
     })?;
