@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use kg_ai::{PlanDraft, PlanPrefs};
-use kg_pdf::Edital;
+use kg_pdf::{Edital, Role};
 use kg_study::{
     Difficulty, NewPlan, NewSubject, NewTopic, PlanId, QuizStats, TopicId, TopicStatus,
 };
@@ -14,6 +14,9 @@ use crate::{Engine, EngineError, Event, ImportState, Notice};
 const ACTIVE_PLAN_KEY: &str = "active_plan";
 /// Edital characters sent to the model (≈ 40k tokens).
 const PROMPT_CHARS: usize = 150_000;
+/// Edital characters read when asking the model for its roles; roles are
+/// listed near the start (vacancies, requirements).
+const ROLES_PROMPT_CHARS: usize = 40_000;
 
 impl Engine {
     pub(crate) fn import_edital(&mut self, path: PathBuf) -> Result<(), EngineError> {
@@ -22,6 +25,8 @@ impl Engine {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         self.import = ImportState::Extracting { file };
+        self.roles.clear();
+        self.finding_roles = false;
         let client = self.ai_client();
         self.spawn(move || {
             Event::EditalExtracted(crate::documents::extract_document(
@@ -35,11 +40,60 @@ impl Engine {
 
     pub(crate) fn on_edital_extracted(&mut self, result: Result<Edital, EngineError>) {
         match result {
-            Ok(edital) => self.import = ImportState::Ready(edital),
+            Ok(edital) => {
+                self.roles = edital.text.numbered_roles();
+                tracing::info!(roles = self.roles.len(), "edital read");
+                if self.roles.len() < 2 {
+                    // Not numbered: let the model read the role list.
+                    self.finding_roles = true;
+                    let client = self.ai_client();
+                    let file = edital.file_name.clone();
+                    let excerpt: String = edital
+                        .text
+                        .as_str()
+                        .chars()
+                        .take(ROLES_PROMPT_CHARS)
+                        .collect();
+                    self.spawn(move || Event::RolesFound {
+                        file,
+                        result: kg_ai::find_roles(&client, &excerpt),
+                    });
+                }
+                self.import = ImportState::Ready(edital);
+            }
             Err(err) => {
                 self.import = ImportState::Failed;
                 self.notices.push(Notice::Error(err));
             }
+        }
+    }
+
+    pub(crate) fn on_roles_found(
+        &mut self,
+        file: &str,
+        result: Result<Vec<String>, kg_ai::AiError>,
+    ) {
+        let ImportState::Ready(edital) = &self.import else {
+            return;
+        };
+        if edital.file_name != file || !self.finding_roles {
+            return;
+        }
+        self.finding_roles = false;
+        match result {
+            Ok(names) => {
+                let found: Vec<Role> = names
+                    .into_iter()
+                    .filter(|name| edital.text.mentions(name))
+                    .map(|name| Role { number: None, name })
+                    .collect();
+                tracing::info!(roles = found.len(), "roles read by the model");
+                if found.len() > self.roles.len() {
+                    self.roles = found;
+                }
+            }
+            // The student can still type the role; nothing to report.
+            Err(err) => tracing::warn!(%err, "could not read the edital's roles"),
         }
     }
 
@@ -52,9 +106,15 @@ impl Engine {
         };
         let edital = edital.clone();
         let client = self.ai_client();
+        // Only the chosen role's specific syllabus goes to the model.
+        let number = self
+            .roles
+            .iter()
+            .find(|role| role.name == prefs.role.trim())
+            .and_then(|role| role.number);
         self.generating_since = Some(Instant::now());
         self.spawn(move || {
-            let excerpt = edital.text.for_prompt(PROMPT_CHARS);
+            let excerpt = edital.text.for_prompt_role(PROMPT_CHARS, number);
             let result = kg_ai::generate_plan(&client, &excerpt, &prefs);
             Event::PlanGenerated {
                 edital,
@@ -94,6 +154,16 @@ impl Engine {
             self.prepare_content(request)?;
         }
         Ok(())
+    }
+
+    /// Test hook: shows `edital` as imported and read, waiting for the plan
+    /// preferences (and the role, when it has several).
+    #[cfg(feature = "test-support")]
+    pub fn simulate_import(&mut self, edital: Edital) {
+        self.roles = edital.text.numbered_roles();
+        self.finding_roles = false;
+        self.generating_since = None;
+        self.import = ImportState::Ready(edital);
     }
 
     /// Test hook: shows `edital` as imported, with its plan being generated.

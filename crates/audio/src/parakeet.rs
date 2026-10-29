@@ -11,11 +11,9 @@ use std::time::{Duration, Instant};
 
 use tungstenite::{Message, WebSocket};
 
-use crate::signal::{resample, rms};
+use crate::signal::{prepare_for_stt, resample};
 use crate::{AudioClip, AudioError, STT_SAMPLE_RATE};
 
-/// Below this level the clip is treated as silence.
-const SILENCE_RMS: f32 = 0.004;
 /// Loading the model takes a few seconds; give slow disks some room.
 const START_TIMEOUT: Duration = Duration::from_secs(60);
 const REPLY_TIMEOUT: Duration = Duration::from_secs(30);
@@ -124,8 +122,11 @@ impl ParakeetStt {
 
     /// Transcribes a clip. Returns an empty string for silence.
     pub fn transcribe(&mut self, clip: &AudioClip) -> Result<String, AudioError> {
-        let pcm = resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE);
-        if pcm.len() < STT_SAMPLE_RATE as usize / 4 || rms(&pcm) < SILENCE_RMS {
+        let pcm = prepare_for_stt(
+            &resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE),
+            STT_SAMPLE_RATE,
+        );
+        if pcm.len() < STT_SAMPLE_RATE as usize / 2 {
             return Ok(String::new());
         }
         let started = Instant::now();

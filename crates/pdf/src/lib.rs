@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 
 mod ocr;
+mod roles;
 pub use ocr::read_scanned_pages;
+pub use roles::Role;
 
 /// Plain text extracted from an edital, with whitespace normalized.
 #[derive(Debug, Clone, PartialEq, Eq)]

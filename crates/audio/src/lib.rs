@@ -25,7 +25,7 @@ pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
 pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
 pub use playback::Speaker;
-pub use signal::{resample, soften, split_for_speech};
+pub use signal::{prepare_for_stt, resample, soften, split_for_speech};
 pub use speech_text::normalize_for_speech;
 pub use tts::{
     DEFAULT_EXPRESSIVENESS, DEFAULT_RHYTHM_VARIATION, EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE,

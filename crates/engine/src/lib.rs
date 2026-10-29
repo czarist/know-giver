@@ -8,6 +8,7 @@
 mod board;
 mod documents;
 mod handouts;
+mod illustrations;
 mod lesson;
 mod models;
 mod paths;
@@ -18,6 +19,7 @@ mod progress;
 mod settings;
 mod stt;
 mod study_time;
+mod teacher;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -29,6 +31,7 @@ use chrono::NaiveDate;
 
 pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
+pub use illustrations::{BoardImage, Illustration, illustration_key};
 pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{
     AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, SttEngine, TtsBackend, Voice,
@@ -36,7 +39,7 @@ pub use kg_audio::{
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{HandoutError, Labels as HandoutLabels};
-pub use kg_pdf::{Edital, EditalText, PdfError};
+pub use kg_pdf::{Edital, EditalText, PdfError, Role};
 pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
 };
@@ -50,8 +53,9 @@ pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
-pub use settings::{AvatarStyle, Settings};
+pub use settings::Settings;
 pub use study_time::StudyPresence;
+pub use teacher::Teacher;
 
 use kg_audio::ModelStore;
 use kg_study::Store;
@@ -209,6 +213,16 @@ pub enum ImportState {
 /// Results from worker threads.
 pub(crate) enum Event {
     EditalExtracted(Result<Edital, EngineError>),
+    /// A whiteboard picture search finished.
+    Illustration {
+        query: String,
+        image: Option<illustrations::BoardImage>,
+    },
+    /// Roles the model read in an edital that does not number them.
+    RolesFound {
+        file: String,
+        result: Result<Vec<String>, AiError>,
+    },
     PlanGenerated {
         edital: Edital,
         prefs: PlanPrefs,
@@ -248,6 +262,9 @@ pub struct Engine {
     lesson_count: u32,
 
     import: ImportState,
+    /// Roles (cargos) of the imported edital; empty when none were found.
+    roles: Vec<Role>,
+    finding_roles: bool,
     generating_since: Option<Instant>,
     testing_connection: bool,
 
@@ -256,6 +273,7 @@ pub struct Engine {
     review: Option<ReviewSession>,
     voice: lesson::VoiceRuntime,
     stt: stt::Recognizers,
+    illustrations: illustrations::Illustrations,
     downloads: HashMap<ModelId, models::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
@@ -343,6 +361,8 @@ impl Engine {
             quiz_stats: QuizStats::default(),
             lesson_count: 0,
             import: ImportState::Empty,
+            roles: Vec::new(),
+            finding_roles: false,
             generating_since: None,
             testing_connection: false,
             lesson: None,
@@ -350,6 +370,7 @@ impl Engine {
             review: None,
             voice: lesson::VoiceRuntime::default(),
             stt: stt::Recognizers::default(),
+            illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
             handout_job: None,
             handouts_cached: 0,
@@ -414,6 +435,17 @@ impl Engine {
         &self.import
     }
 
+    /// Roles (cargos) of the imported edital. With two or more, the student
+    /// must pick the one to study for.
+    pub fn edital_roles(&self) -> &[Role] {
+        &self.roles
+    }
+
+    /// True while the model looks for roles in the imported edital.
+    pub fn finding_roles(&self) -> bool {
+        self.finding_roles
+    }
+
     /// When plan generation started, while it runs.
     pub fn generating_since(&self) -> Option<Instant> {
         self.generating_since
@@ -465,6 +497,8 @@ impl Engine {
             Command::ImportEdital(path) => self.import_edital(path),
             Command::ClearEdital => {
                 self.import = ImportState::Empty;
+                self.roles.clear();
+                self.finding_roles = false;
                 Ok(())
             }
             Command::GeneratePlan(prefs) => self.generate_plan(prefs),
@@ -583,6 +617,14 @@ impl Engine {
                     self.on_edital_extracted(result);
                     Ok(())
                 }
+                Event::Illustration { query, image } => {
+                    self.on_illustration(query, image);
+                    Ok(())
+                }
+                Event::RolesFound { file, result } => {
+                    self.on_roles_found(&file, result);
+                    Ok(())
+                }
                 Event::PlanGenerated {
                     edital,
                     prefs,
@@ -686,6 +728,8 @@ impl Engine {
                 topic: topic.title.clone(),
                 reference: self.board_reference(id),
                 student: self.settings.student_name.trim().to_owned(),
+                teacher_name: self.settings.teacher().name().to_owned(),
+                teacher_female: self.settings.teacher().gender() == VoiceGender::Female,
             },
             topic.title.clone(),
         ))

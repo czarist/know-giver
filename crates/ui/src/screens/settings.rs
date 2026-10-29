@@ -2,14 +2,14 @@
 
 use egui::RichText;
 use kg_engine::{
-    AvatarStyle, Command, Engine, ModelId, ModelStatus, Settings, SttEngine, TtsBackend, Voice,
+    Command, Engine, ModelId, ModelStatus, Settings, SttEngine, Teacher, TtsBackend, Voice,
     VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
 use super::Actions;
 use crate::app::KnowGiverApp;
-use crate::{i18n, theme, widgets};
+use crate::{i18n, teacher, theme, widgets};
 
 const FIELD_WIDTH: f32 = 380.0;
 
@@ -27,6 +27,10 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         section(ui, &t!("settings.you.title"), |ui| {
             name_field(ui, &mut draft.student_name);
+        });
+        ui.add_space(12.0);
+        section(ui, &t!("settings.teacher.title"), |ui| {
+            teacher_picker(ui, engine, draft);
         });
         ui.add_space(12.0);
         language(ui, engine, draft, &mut actions);
@@ -187,6 +191,8 @@ pub(crate) fn voice_section(
         ui.checkbox(&mut draft.barge_in, t!("settings.voice.barge_in"))
             .on_hover_text(t!("settings.voice.barge_in_hint"));
         ui.checkbox(&mut draft.fillers, t!("settings.voice.fillers"));
+        ui.checkbox(&mut draft.board_images, t!("settings.voice.board_images"))
+            .on_hover_text(t!("settings.voice.board_images_hint"));
         ui.horizontal(|ui| {
             ui.label(t!("settings.voice.backend"));
             ui.selectable_value(
@@ -242,20 +248,6 @@ pub(crate) fn voice_section(
                     .step_by(0.05)
                     .fixed_decimals(2),
                 );
-                ui.end_row();
-
-                ui.label(t!("settings.voice.avatar"));
-                egui::ComboBox::from_id_salt("avatar_style")
-                    .selected_text(avatar_style(draft.avatar_style))
-                    .show_ui(ui, |ui| {
-                        for style in [AvatarStyle::Classic, AvatarStyle::Minimal] {
-                            ui.selectable_value(
-                                &mut draft.avatar_style,
-                                style,
-                                avatar_style(style),
-                            );
-                        }
-                    });
                 ui.end_row();
 
                 ui.label(t!("settings.voice.stt_model"));
@@ -329,16 +321,74 @@ pub(crate) fn voice_section(
     });
 }
 
-fn avatar_style(style: AvatarStyle) -> String {
-    match style {
-        AvatarStyle::Classic => t!("settings.voice.avatar_classic"),
-        AvatarStyle::Minimal => t!("settings.voice.avatar_minimal"),
+/// One card per teacher. Picking one also picks their voice when it is
+/// installed, or another installed voice of the same gender.
+fn teacher_picker(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
+    let p = theme::palette(ui.ctx());
+    widgets::hint(ui, &t!("settings.teacher.hint"));
+    ui.add_space(6.0);
+    let current = draft.teacher();
+    let mut picked = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(12.0, 12.0);
+        for option in Teacher::ALL {
+            let selected = option == current;
+            let response = egui::Frame::new()
+                .fill(if selected {
+                    p.accent.gamma_multiply(0.12)
+                } else {
+                    p.surface
+                })
+                .stroke(egui::Stroke::new(
+                    if selected { 2.5 } else { 1.0 },
+                    if selected { p.accent } else { p.border },
+                ))
+                .inner_margin(egui::Margin::same(8))
+                .show(ui, |ui| {
+                    ui.set_width(132.0);
+                    ui.vertical_centered(|ui| {
+                        ui.add(teacher::still(ui.ctx(), option, 104.0));
+                        ui.label(RichText::new(i18n::teacher_name(option)).strong());
+                        ui.label(
+                            RichText::new(i18n::teacher_about(option))
+                                .small()
+                                .color(p.muted),
+                        );
+                    });
+                })
+                .response
+                .interact(egui::Sense::click())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            if response.clicked() {
+                picked = Some(option);
+            }
+        }
+    });
+    let Some(option) = picked else {
+        return;
+    };
+    draft.teacher = Some(option);
+    if draft.tts_backend == TtsBackend::Local {
+        let voice = if engine.voice_available(option.voice()) {
+            Some(option.voice())
+        } else {
+            Voice::ALL
+                .into_iter()
+                .find(|v| v.gender() == option.gender() && engine.voice_available(*v))
+        };
+        if let Some(voice) = voice {
+            draft.voice = voice;
+        }
+        // Let the voice list follow the teacher's gender.
+        ui.ctx()
+            .data_mut(|d| d.remove::<VoiceGender>(egui::Id::new("voice_gender_filter")));
+    } else {
+        draft.cloud_speech.gender = option.gender();
     }
-    .into_owned()
 }
 
 fn local_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
-    let filter_id = ui.id().with("voice_gender_filter");
+    let filter_id = egui::Id::new("voice_gender_filter");
     let mut gender = ui
         .ctx()
         .data_mut(|data| data.get_temp::<VoiceGender>(filter_id))

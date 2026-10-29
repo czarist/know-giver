@@ -7,16 +7,15 @@ use candle_core::{Device, IndexOp, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, Config, audio, model::Whisper};
 
-use crate::signal::{resample, rms};
+use crate::signal::{prepare_for_stt, resample};
 use crate::{AudioClip, AudioError, STT_SAMPLE_RATE};
-
-/// Below this level the clip is treated as silence (Whisper hallucinates on
-/// silence, so we skip it).
-const SILENCE_RMS: f32 = 0.004;
 
 /// Most context tokens put before the transcript, as in OpenAI's decoder
 /// (half the decoder window minus one).
 const MAX_CONTEXT_TOKENS: usize = 223;
+/// Token budget per second of speech, plus a few for a short answer.
+const TOKENS_PER_SEC: usize = 7;
+const MIN_TOKENS: usize = 10;
 
 /// A loaded Whisper model. Loading takes a few seconds; keep it around.
 pub struct WhisperStt {
@@ -129,8 +128,11 @@ impl WhisperStt {
         context: &str,
         min_window: usize,
     ) -> Result<String, AudioError> {
-        let pcm = resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE);
-        if pcm.len() < STT_SAMPLE_RATE as usize / 4 || rms(&pcm) < SILENCE_RMS {
+        let pcm = prepare_for_stt(
+            &resample(&clip.samples, clip.sample_rate, STT_SAMPLE_RATE),
+            STT_SAMPLE_RATE,
+        );
+        if pcm.len() < STT_SAMPLE_RATE as usize / 2 {
             return Ok(String::new());
         }
         let started = std::time::Instant::now();
@@ -169,7 +171,11 @@ impl WhisperStt {
             let want = (content_frames - seek + 100).max(min_window).div_ceil(2) * 2;
             let size = m::N_FRAMES.min(want).min(total_frames - seek);
             let segment = mel.narrow(2, seek, size).map_err(model_err)?;
-            let tokens = self.decode(&segment, &prompt).map_err(model_err)?;
+            // About three words a second of speech; more is Whisper repeating
+            // itself, which on a short window costs seconds.
+            let speech_secs = content_frames.saturating_sub(seek).min(m::N_FRAMES) / 100;
+            let budget = TOKENS_PER_SEC * speech_secs + MIN_TOKENS;
+            let tokens = self.decode(&segment, &prompt, budget).map_err(model_err)?;
             text.push_str(&self.tokenizer.decode(&tokens));
             seek += m::N_FRAMES;
         }
@@ -188,11 +194,16 @@ impl WhisperStt {
         Ok(text)
     }
 
-    /// Greedy decoding of one 30-second segment.
-    fn decode(&mut self, mel: &Tensor, prompt: &[u32]) -> candle_core::Result<Vec<u32>> {
+    /// Greedy decoding of one 30-second segment, at most `budget` tokens.
+    fn decode(
+        &mut self,
+        mel: &Tensor,
+        prompt: &[u32],
+        budget: usize,
+    ) -> candle_core::Result<Vec<u32>> {
         let features = self.model.encoder.forward(mel, true)?;
         let mut tokens = prompt.to_vec();
-        let max_len = self.config.max_target_positions / 2;
+        let max_len = (self.config.max_target_positions / 2).min(budget);
         for i in 0..max_len {
             let input = Tensor::new(tokens.as_slice(), &self.device)?.unsqueeze(0)?;
             let ys = self.model.decoder.forward(&input, &features, i == 0)?;
@@ -209,7 +220,9 @@ impl WhisperStt {
                 break;
             }
             tokens.push(next);
-            if is_looping(&tokens[prompt.len()..]) {
+            if let Some(repeat) = looping(&tokens[prompt.len()..]) {
+                // Keep two of the repeats: "Nada. Nada." can be what was said.
+                tokens.truncate(tokens.len() - repeat);
                 break;
             }
         }
@@ -252,10 +265,14 @@ fn is_known_hallucination(text: &str) -> bool {
 
 /// Greedy decoding sometimes repeats a phrase forever; stop when the last
 /// 8 tokens repeat the 8 before them.
-fn is_looping(tokens: &[u32]) -> bool {
-    const N: usize = 8;
-    tokens.len() >= 3 * N
-        && tokens[tokens.len() - N..] == tokens[tokens.len() - 2 * N..tokens.len() - N]
+/// Length of a run of tokens that just came three times in a row.
+fn looping(tokens: &[u32]) -> Option<usize> {
+    let len = tokens.len();
+    (1..=8).find(|&n| {
+        len >= 3 * n
+            && tokens[len - n..] == tokens[len - 2 * n..len - n]
+            && tokens[len - n..] == tokens[len - 3 * n..len - 2 * n]
+    })
 }
 
 /// Mel filterbank as `librosa.filters.mel(htk=False, norm="slaney")`, which
@@ -572,9 +589,13 @@ mod tests {
     #[test]
     fn detects_repetition_loops() {
         let mut tokens: Vec<u32> = (0..8).collect();
-        assert!(!is_looping(&tokens));
+        assert_eq!(looping(&tokens), None);
         tokens.extend(0..8);
+        assert_eq!(looping(&tokens), None);
         tokens.extend(0..8);
-        assert!(is_looping(&tokens));
+        assert_eq!(looping(&tokens), Some(8));
+        // "Nada. Nada. Nada." in two tokens each.
+        assert_eq!(looping(&[5, 9, 5, 9, 5, 9]), Some(2));
+        assert_eq!(looping(&[5, 9, 5, 9]), None);
     }
 }

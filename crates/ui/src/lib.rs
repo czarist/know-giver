@@ -9,13 +9,13 @@ rust_i18n::i18n!("../../locales", fallback = "pt-BR");
 
 mod app;
 mod art;
-mod avatar;
 mod export;
 mod i18n;
 mod icon;
 mod icons;
 mod illustrations;
 mod screens;
+mod teacher;
 mod theme;
 mod whiteboard;
 mod widgets;
@@ -27,7 +27,7 @@ mod snapshots;
 pub use app::KnowGiverApp;
 pub use icon::rgba as icon_rgba;
 
-pub use kg_engine::AiConfig;
+pub use kg_engine::{AiConfig, AppPaths};
 use rust_i18n::t;
 
 /// Stable identifier for eframe's settings storage. Not shown to the user.

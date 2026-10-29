@@ -9,7 +9,7 @@ use rust_i18n::t;
 use super::{Actions, current_week};
 use crate::app::{KnowGiverApp, Screen, UiState};
 use crate::icons::Icon;
-use crate::{avatar, i18n, theme, widgets};
+use crate::{i18n, teacher, theme, widgets};
 
 /// Height of the control bar under the stage.
 const CONTROLS_HEIGHT: f32 = 78.0;
@@ -102,7 +102,6 @@ fn paint_stage(
     lesson: &LessonSession,
     captions: bool,
 ) {
-    let p = theme::palette(ui.ctx());
     let painter = ui.painter_at(stage);
     let stage_fill = if ui.visuals().dark_mode {
         Color32::from_rgb(0x17, 0x19, 0x1B)
@@ -127,16 +126,16 @@ fn paint_stage(
             teacher_area.height() * 0.86,
         ),
     );
-    avatar::paint(
+    let who = teacher::current(engine);
+    teacher::paint(
         ui,
         figure.intersect(teacher_area.shrink(4.0)),
-        avatar::Mood {
+        teacher::Mood {
             phase: lesson.phase,
             speech: engine.speech_level(),
             mic: lesson.input_level(),
         },
-        p.accent,
-        avatar::appearance(engine),
+        who,
     );
 
     // Name tag, bottom left, like a video call.
@@ -148,7 +147,11 @@ fn paint_stage(
     painter.text(
         tag.left_center() + vec2(12.0, 0.0),
         egui::Align2::LEFT_CENTER,
-        format!("{}  ·  {}", t!("lesson.tutor"), i18n::phase(lesson.phase)),
+        format!(
+            "{}  ·  {}",
+            i18n::teacher_name(who),
+            i18n::phase(lesson.phase)
+        ),
         egui::FontId::proportional(13.0),
         Color32::WHITE,
     );
@@ -161,7 +164,7 @@ fn paint_stage(
             pos2(teacher_area.right() + gap, stage.top() + gap),
             pos2(stage.right() - gap, stage.bottom() - 150.0),
         );
-        paint_board(ui, board, lesson);
+        paint_board(ui, board, engine, lesson);
         let tile = egui::Rect::from_min_max(
             pos2(board.left(), board.bottom() + gap),
             pos2(board.right(), stage.bottom() - gap),
@@ -217,8 +220,9 @@ fn last_lines(text: &str, max_chars: usize) -> String {
     format!("…{}", &tail[start..])
 }
 
-/// Key points written on the whiteboard; the newest appears letter by letter.
-fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
+/// What the tutor wrote on the whiteboard, newest on top. Key points appear
+/// letter by letter; tables, maps and pictures fade in.
+fn paint_board(ui: &egui::Ui, board: egui::Rect, engine: &Engine, lesson: &LessonSession) {
     let painter = ui.painter_at(board);
     painter.rect_filled(board, 0.0, BOARD_FILL);
     painter.rect_stroke(
@@ -239,7 +243,8 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
     let width = board.width() - 52.0;
     let mut y = board.top() + 46.0;
     let newest = lesson.board.len().saturating_sub(1);
-    for (i, point) in lesson.board.iter().enumerate().rev().take(3) {
+    let mut drawn = 0;
+    for (i, point) in lesson.board.iter().enumerate().rev().take(5) {
         // Remember when each point first appeared, to animate its writing.
         let id = ui.id().with(("board_point", lesson.id, i, point.as_str()));
         let first_seen = ui
@@ -252,18 +257,35 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
                 pos2(board.left() + 24.0, y),
                 pos2(board.right() - 24.0, board.bottom() - 14.0),
             );
-            if area.height() <= 20.0 {
+            if area.height() <= 40.0 {
                 break;
             }
+            let picture = board_picture(ui.ctx(), engine, &entry);
             let opacity = ((now - first_seen) as f32 / 0.25).clamp(0.0, 1.0);
-            y += crate::whiteboard::paint(
-                &painter.with_clip_rect(area),
-                area,
-                &entry,
-                BOARD_INK.gamma_multiply(opacity),
-            );
+            let draw = |clip: egui::Rect| {
+                crate::whiteboard::paint(
+                    ui,
+                    &painter.with_clip_rect(clip),
+                    area,
+                    &entry,
+                    BOARD_INK.gamma_multiply(opacity),
+                    picture
+                        .as_ref()
+                        .map(|(uri, caption)| crate::whiteboard::Picture { uri, caption }),
+                )
+            };
+            // Measure first: only the newest entry may be cut by the board's
+            // edge; older ones are left out when they do not fit.
+            let height = draw(egui::Rect::NOTHING);
+            if drawn > 0 && y + height > board.bottom() - 4.0 {
+                break;
+            }
+            draw(area);
+            y += height;
+            drawn += usize::from(height > 0.0);
             continue;
         }
+        drawn += 1;
         let text: String = point.chars().take(shown.max(1)).collect();
         let alpha = if i == newest { 1.0 } else { 0.7 };
         let galley = painter.layout(
@@ -280,7 +302,7 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
         painter.galley(pos2(board.left() + 24.0, y), galley, BOARD_INK);
         y += height + 12.0;
     }
-    if lesson.board.is_empty() {
+    if drawn == 0 {
         painter.text(
             board.center(),
             egui::Align2::CENTER_CENTER,
@@ -289,6 +311,33 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, lesson: &LessonSession) {
             BOARD_INK.gamma_multiply(0.45),
         );
     }
+}
+
+/// Loader URI and caption of a board picture that finished loading.
+fn board_picture(
+    ctx: &egui::Context,
+    engine: &Engine,
+    entry: &crate::whiteboard::Entry<'_>,
+) -> Option<(String, String)> {
+    let crate::whiteboard::Entry::Image(query) = entry else {
+        return None;
+    };
+    let Some(kg_engine::Illustration::Ready(image)) = engine.illustration(query) else {
+        return None;
+    };
+    let key = kg_engine::illustration_key(query);
+    let uri = format!(
+        "bytes://board-{:x}.{}",
+        key.bytes()
+            .fold(0u64, |h, b| h.wrapping_mul(31).wrapping_add(u64::from(b))),
+        image.format
+    );
+    let id = egui::Id::new(("board_picture", uri.as_str()));
+    if !ctx.data(|d| d.get_temp::<bool>(id)).unwrap_or(false) {
+        ctx.include_bytes(uri.clone(), image.bytes.clone());
+        ctx.data_mut(|d| d.insert_temp(id, true));
+    }
+    Some((uri, image.title.clone()))
 }
 
 /// The student's tile: name, mic icon and a live level meter.
@@ -456,14 +505,8 @@ fn side_panel(
             .id_salt("board_transcript")
             .show(ui, |ui| {
                 for entry in &lesson.board {
-                    match crate::whiteboard::parse(entry) {
-                        crate::whiteboard::Entry::Formula(text)
-                        | crate::whiteboard::Entry::Text(text) => {
-                            ui.label(text);
-                        }
-                        crate::whiteboard::Entry::Diagram(nodes) => {
-                            ui.label(nodes.join(" → "));
-                        }
+                    if let Some(text) = crate::whiteboard::parse(entry).summary() {
+                        ui.label(text);
                     }
                 }
             });

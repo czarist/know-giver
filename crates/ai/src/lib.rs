@@ -24,8 +24,8 @@ pub use handout_review::{ReviewedHandout, review_handout};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use tasks::{
     HandoutDraft, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft, SubjectDraft,
-    TopicContext, TopicDraft, TutorReply, evaluate_review, generate_handout, generate_plan,
-    generate_quiz, review_question, start_lesson, start_lesson_stream, tutor_reply,
+    TopicContext, TopicDraft, TutorReply, evaluate_review, find_roles, generate_handout,
+    generate_plan, generate_quiz, review_question, start_lesson, start_lesson_stream, tutor_reply,
     tutor_reply_stream,
 };
 pub use throttle::Throttle;

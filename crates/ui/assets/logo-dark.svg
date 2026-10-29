@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Logo for dark backgrounds: the same mark, inverted. -->
-  <rect width="64" height="64" fill="#E4E1DA"/>
-  <circle cx="26" cy="9.5" r="4.6" fill="#B0771F"/>
-  <path d="M18.5 10.5 A7.6 7.6 0 0 0 33.5 10.5 A7.6 5.2 0 0 1 18.5 10.5 Z" fill="#B0771F"/>
-  <path d="M17 64 C17.5 54 18.5 45 20.5 37.5 C21.5 29.5 24.5 24 30 23 C34.5 22.3 37.5 23.6 39.2 26.2 C46.5 30.5 53 39 58 54 C52.5 44.5 46 37.2 38.6 32.6 C35.8 34.4 34 37.5 33.2 41.5 C32.4 48.5 32.4 56 33.2 64 Z" fill="#1C1E20"/>
-  <circle cx="31.6" cy="27.6" r="1.7" fill="#E4E1DA"/>
-</svg>

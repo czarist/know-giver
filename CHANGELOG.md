@@ -4,6 +4,59 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] - 2026-10-28
+
+### Fixed
+- Talking in a lesson flows better. The microphone stays open for the whole
+  lesson instead of being reopened for every turn, which froze the screen for a
+  moment and lost the first words; the student's turn starts the moment the tutor
+  stops.
+- Soft voices are heard: speech counts from a lower level, and recordings are
+  made louder and their long pauses shortened before recognition. A quiet
+  "Nada... nada." used to come out empty.
+- Answers Parakeet heard as English ("Not that") get Whisper's second opinion,
+  which is now about three times faster on short answers (it no longer repeats
+  itself until the window ends).
+- Hands-free waits 30 seconds for an answer instead of 12, and a cough or noise
+  no longer ends the listening.
+
+### Changed
+- New app icon: Thoth in profile, engraved in ink on a jade tile
+  (`tools/icon.py`). It is the window and file icon, the sidebar logo, the cover
+  art and Thoth's portrait; the reference engraving is no longer shown. Below
+  32 px a simpler ibis glyph is used.
+- README in the style of the LightCraft one, with screenshots.
+- The app writes its log to `know-giver.log` in the data folder.
+
+## [0.24.0] - 2026-10-28
+
+### Added
+- Editais with several roles (cargos): the app finds them ("CARGO 2: …", also
+  wrapped onto the next line) and asks which one you are applying for before
+  building the plan. Only the chosen role's specific syllabus is sent to the model,
+  together with the shared subjects; the other roles' specific sections are left
+  out. When an edital does not number its roles, the model lists them and only
+  names found in the text are offered. Plans made before picked a role on their
+  own: import the edital again to choose.
+- Teachers: Helena, Lia, Rafael, Otávio and Thoth (Settings › Who teaches). Ink
+  portraits on a paper card replace the drawn character: they breathe, blink, lean
+  in and nod while listening, show a thought bubble while thinking, and the mouth
+  follows the voice. Picking a teacher picks the matching voice when it is
+  installed. The tutor uses the teacher's name and speaks of itself in the right
+  gender.
+- More female voices: Dii (Piper, Brazilian Portuguese, OpenVoiceOS, CC BY-NC-ND),
+  and Sara, Heart and Emma from the Kokoro bundle already used for Dora, reading
+  Portuguese with a light accent.
+- Richer whiteboard: besides key points, formulas and diagrams the tutor can write
+  tables, timelines, mind maps, "on the exam" tips and worked examples, and show
+  pictures from Portuguese Wikipedia (the lesson opens with one of the topic when
+  it exists). Only the search term is sent; pictures are cached on disk. Turn it
+  off in Settings › Voice.
+
+### Removed
+- The teacher style option (classic / simple); the teacher is now a person you
+  choose.
+
 ## [0.23.0] - 2026-10-28
 
 ### Added

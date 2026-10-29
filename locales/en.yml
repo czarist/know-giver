@@ -64,6 +64,11 @@ edital:
   hours: "Study hours per week"
   role: "Position"
   role_hint: "Optional: the position you are applying for"
+  roles_title: "This notice has %{count} roles. Which one are you applying for?"
+  roles_hint: "The plan covers the shared subjects and only the specific ones of the chosen role."
+  role_number: "Role %{number}"
+  pick_role_first: "Choose the role to generate the plan."
+  finding_roles: "Looking for the notice's roles…"
   generate: "Generate study plan"
   other_file: "Use another file"
   generating: "Reading the syllabus and spreading the topics across the weeks. %{seconds} s."
@@ -129,6 +134,9 @@ lesson:
   type_hint: "Type and press Enter"
   board: "Board"
   board_empty: "The lesson's key points show up here."
+  board_tip: "On the exam"
+  board_example: "Example"
+  board_image_source: "Picture: Wikipedia · %{title}"
   mic_off: "Microphone off"
   hint_talk: "Talk (or hold Space)"
   interrupt: "Interrupt the tutor (Esc)"
@@ -309,6 +317,9 @@ handout:
     answers: "Answer key"
 
 settings:
+  teacher:
+    title: "Who teaches"
+    hint: "Choose the teacher for your lessons. The matching voice is picked too when it is installed; you can change the voice below."
   you:
     title: "You"
     name: "What should we call you?"
@@ -355,9 +366,6 @@ settings:
     rhythm: "Rhythm variation"
     piper_only: "Piper voices only. Adjust, then use Listen to a sample to compare."
     pitch: "Pitch (semitones)"
-    avatar: "Tutor style"
-    avatar_classic: "Classic"
-    avatar_minimal: "Simple"
     preview: "Listen to a sample"
     preview_active: "Preparing or playing sample…"
     stop_preview: "Stop sample"
@@ -372,6 +380,8 @@ settings:
     auto_stop: "Stop listening when I pause"
     barge_in: "I can interrupt the tutor or keep talking while it thinks"
     fillers: "The tutor reacts right away (\"hum\", \"got it\") while it prepares the answer"
+    board_images: "Show Wikipedia pictures on the whiteboard"
+    board_images_hint: "Looks up a picture of the topic and of things the tutor mentions on Portuguese Wikipedia. Only the search term leaves your computer; pictures are kept for later lessons."
     barge_in_hint: "The microphone stays open while the tutor thinks and speaks. If you talk over it, it stops and listens; its own voice coming from the speakers is recognized and ignored. Works best with headphones. Needs Parakeet recognition."
     voice: "Tutor voice"
     rate: "Speech speed"
@@ -410,6 +420,11 @@ models:
     dora: "Dora · Kokoro"
     alex: "Alex · Kokoro"
     santa: "Santa · Kokoro"
+    dii: "Dii · Piper (female)"
+    dii_description: "Female Brazilian Portuguese voice by OpenVoiceOS. CC BY-NC-ND license: personal, non-commercial use only."
+    sara: "Sara · Kokoro (light Italian accent)"
+    heart: "Heart · Kokoro (light English accent)"
+    emma: "Emma · Kokoro (light British accent)"
 
 working:
   tip_label: "Meanwhile"
@@ -480,3 +495,20 @@ error:
     io: "Could not read the file %{path}."
     parse: "Could not open the PDF %{path}. It may be damaged or protected."
     no_text: "The PDF %{path} has no extractable text. It may be scanned."
+
+teachers:
+  helena:
+    name: "Helena"
+    about: "Calm and organized. Voice: Dora."
+  lia:
+    name: "Lia"
+    about: "Young and upbeat. Voice: Dii."
+  rafael:
+    name: "Rafael"
+    about: "Straight to the point. Voice: Faber."
+  otavio:
+    name: "Otávio"
+    about: "Experienced and patient. Voice: Cadu."
+  thoth:
+    name: "Thoth"
+    about: "The god of writing himself. Voice: Santa."

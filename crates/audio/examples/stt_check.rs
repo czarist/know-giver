@@ -56,6 +56,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let context = std::env::var("KG_STT_CONTEXT").unwrap_or_default();
     let text = stt.transcribe_with_context(&clip, "pt", &context)?;
     println!("text: {text:?} ({:?})", t.elapsed());
+    let t = Instant::now();
+    let text = stt.transcribe_short_with_context(&clip, "pt", &context)?;
+    println!("short window: {text:?} ({:?})", t.elapsed());
     Ok(())
 }
 
