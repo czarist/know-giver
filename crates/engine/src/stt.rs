@@ -97,6 +97,12 @@ impl SttJob {
             }),
             SttEngine::Parakeet => {
                 let text = self.parakeet(clip)?;
+                if has_foreign_script(&text)
+                    && let Some(checked) = self.retranscribe(clip, context)
+                {
+                    tracing::info!(parakeet = %text, whisper = %checked, "wrong alphabet retranscribed");
+                    return Ok(checked);
+                }
                 if needs_second_opinion(&text)
                     && let Some(checked) = self.check_short_answer(clip, context)
                 {
@@ -154,6 +160,25 @@ impl SttJob {
             Ok(_) => None,
             Err(err) => {
                 tracing::warn!(%err, "whisper check of a short answer failed");
+                None
+            }
+        }
+    }
+
+    /// Whisper over the whole answer, for when Parakeet heard another
+    /// language entirely ("только стоми"). Slower than the short check, but
+    /// the answer may be a full sentence.
+    fn retranscribe(&self, clip: &AudioClip, context: &str) -> Option<String> {
+        if !self.whisper_installed {
+            return None;
+        }
+        match self.with_whisper(|whisper| {
+            Ok(whisper.transcribe_with_context(clip, STT_LANGUAGE, context)?)
+        }) {
+            Ok(text) if !text.trim().is_empty() => Some(text),
+            Ok(_) => None,
+            Err(err) => {
+                tracing::warn!(%err, "whisper retranscription failed");
                 None
             }
         }
@@ -267,6 +292,19 @@ pub(crate) fn needs_second_opinion(text: &str) -> bool {
     }
     let word: String = content_words_all(text).concat();
     !SHORT_ANSWERS.contains(&word.as_str())
+}
+
+/// True when a letter is outside the Latin alphabet (Cyrillic, Greek, CJK,
+/// …): Parakeet guessed a language the student is not speaking.
+pub(crate) fn has_foreign_script(text: &str) -> bool {
+    text.chars().any(|c| {
+        c.is_alphabetic()
+            && !matches!(c,
+                'a'..='z' | 'A'..='Z'
+                // Latin-1 letters and Latin Extended-A/B (ç, ã, é, ñ, …).
+                | '\u{00C0}'..='\u{024F}'
+                | 'ª' | 'º')
+    })
 }
 
 /// True when a common English word appears and no common Portuguese one
@@ -411,6 +449,15 @@ mod tests {
             "Bom dia! Hoje vamos ver o art. 5º, § 2º, da CF/88 e a Lei nº 8.112/90 (servidores).";
         let echo = "Bom dia! Hoje vamos ver o artigo 5o, parágrafo 2o, da Constituição Federal de 1988 e a Lei número 8112 de 1990, servidores.";
         assert!(!is_student_speech(echo, legal));
+    }
+
+    #[test]
+    fn spots_another_alphabet() {
+        // Heard in a lesson: a Portuguese answer read as Russian.
+        assert!(has_foreign_script("только стоми"));
+        assert!(has_foreign_script("Sim, это"));
+        assert!(!has_foreign_script("Ação, coração, pinguim, 5º lugar."));
+        assert!(!has_foreign_script("Max Weber — dominação tradicional!"));
     }
 
     #[test]

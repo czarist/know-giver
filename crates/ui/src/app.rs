@@ -242,6 +242,15 @@ impl KnowGiverApp {
                                 .size(18.0)
                                 .color(p.text),
                         );
+                        ui.label(
+                            egui::RichText::new(t!(
+                                "app.version",
+                                version = env!("CARGO_PKG_VERSION")
+                            ))
+                            .family(theme::mono_family())
+                            .size(10.5)
+                            .color(p.muted),
+                        );
                         widgets::kicker(ui, &t!("app.tagline"), p.muted);
                     });
                 });

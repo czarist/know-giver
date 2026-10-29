@@ -2,6 +2,7 @@ _version: 1
 
 app:
   name: "Know Giver"
+  version: "v%{version}"
   tagline: "Para qualquer prova"
 
 language:

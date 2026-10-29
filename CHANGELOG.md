@@ -4,6 +4,15 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.28.1] - 2026-10-29
+
+### Added
+- The sidebar shows the app version under its name.
+
+### Fixed
+- An answer that speech recognition heard in another alphabet (Portuguese read as
+  Russian, for example) is transcribed again by Whisper, which is told the language.
+
 ## [0.28.0] - 2026-10-29
 
 ### Added
