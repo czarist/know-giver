@@ -7,6 +7,8 @@ All notable changes to Know Giver. Format based on
 ## [Unreleased]
 
 ### Fixed
+- Linux package: the build failed copying the old `logo.svg`, removed with the new
+  icon; the tarball now ships `know-giver.png` (512×512) for the `.desktop` entry.
 - Long answers are no longer cut off: the turn ended after 0.45 s of quiet
   whenever the live caption had a full stop, and the speech recognizer puts one
   on almost everything. The wait is now 1 s after a sentence and 1.8 s without

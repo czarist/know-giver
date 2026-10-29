@@ -44,12 +44,12 @@ EOF
 else
   mkdir -p "$stage/KnowGiver"
   cp "$target_dir/release/know-giver" .env.example packaging/unix/README.txt "$stage/KnowGiver/"
-  cp crates/ui/assets/logo.svg "$stage/KnowGiver/know-giver.svg"
+  cp crates/ui/assets/icon.png "$stage/KnowGiver/know-giver.png"
   cat > "$stage/KnowGiver/know-giver.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Know Giver
-Comment=Estude para concursos com aulas por voz
+Comment=Planos de estudo e aulas por voz para exames
 Exec=know-giver
 Icon=know-giver
 Categories=Education;

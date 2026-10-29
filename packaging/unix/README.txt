@@ -1,7 +1,8 @@
-Know Giver — estudos para concursos com aulas por voz
+Know Giver — planos de estudo e aulas por voz para exames
 
 Linux: extraia o pacote e execute ./know-giver na pasta KnowGiver.
-O arquivo .desktop é opcional; requer know-giver no PATH e o ícone instalado.
+O arquivo .desktop é opcional; requer know-giver no PATH e o ícone instalado
+(copie know-giver.png para ~/.local/share/icons/hicolor/512x512/apps/).
 macOS: copie Know Giver.app para Aplicativos. O pacote de desenvolvimento não
 é assinado nem notarizado. Autorize o microfone quando o sistema solicitar.
 
