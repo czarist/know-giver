@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="crates/ui/assets/icon.svg" width="128" height="128" alt="Know Giver icon: Thoth, ibis-headed god of writing, engraved on a jade tile">
+  <img src="crates/ui/assets/icon.svg" width="128" height="128" alt="Know Giver icon: Thoth, the ibis-headed scribe of the gods, writing on his palette, engraved on a jade tile">
 </p>
 
 <h1 align="center">Know Giver</h1>
@@ -106,7 +106,7 @@ Ten voices, half of them female, from **Piper** and **Kokoro**, all running loca
 <table>
   <tr>
     <td><img src="docs/images/today.png" alt="Today: streak, reviews due and next step"></td>
-    <td><img src="docs/images/quiz.png" alt="A multiple-choice quiz question"></td>
+    <td><img src="docs/images/board.png" alt="Exam board: past questions matched to the plan, with the ones out of scope set aside"></td>
   </tr>
 </table>
 

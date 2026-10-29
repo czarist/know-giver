@@ -1,0 +1,4 @@
+# Agent tooling (skills for coding assistants), not part of the app: keep it
+# out of GitHub's language statistics.
+.agents/** linguist-vendored
+.aider-desk/** linguist-vendored

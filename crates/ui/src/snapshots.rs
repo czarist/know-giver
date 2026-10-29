@@ -13,7 +13,14 @@ use kg_study::{
 
 use crate::app::{KnowGiverApp, Screen};
 
-fn seed(paths: &AppPaths) {
+/// Demo content in the screenshots' language: Portuguese, or English for
+/// the README's English screenshots.
+fn tr(english: bool, pt: &'static str, en: &'static str) -> &'static str {
+    if english { en } else { pt }
+}
+
+fn seed(paths: &AppPaths, english: bool) {
+    let tr = |pt, en| tr(english, pt, en);
     std::fs::create_dir_all(&paths.data_dir).unwrap();
     let mut store = Store::open(&paths.database()).unwrap();
     let topic = |title: &str, difficulty, week| NewTopic {
@@ -22,29 +29,61 @@ fn seed(paths: &AppPaths) {
         week,
     };
     let plan = NewPlan::new(
-        "Plano TJCE – Técnico Judiciário",
-        "Tribunal de Justiça do Ceará – Técnico Judiciário – Área Judiciária",
+        tr(
+            "Plano TJCE – Técnico Judiciário",
+            "State Court – Court Clerk",
+        ),
+        tr(
+            "Tribunal de Justiça do Ceará – Técnico Judiciário – Área Judiciária",
+            "Ceará State Court – Court Clerk – Judicial Area",
+        ),
         10,
         vec![
             NewSubject {
-                name: "Língua Portuguesa".into(),
+                name: tr("Língua Portuguesa", "Language and Writing").into(),
                 topics: vec![
                     topic(
-                        "Compreensão e interpretação de textos",
+                        tr(
+                            "Compreensão e interpretação de textos",
+                            "Reading comprehension",
+                        ),
                         Difficulty::Medium,
                         1,
                     ),
-                    topic("Emprego do sinal indicativo de crase", Difficulty::Hard, 1),
-                    topic("Regência verbal e nominal", Difficulty::Hard, 2),
-                    topic("Pontuação", Difficulty::Easy, 3),
+                    topic(
+                        tr(
+                            "Emprego do sinal indicativo de crase",
+                            "Subject–verb agreement",
+                        ),
+                        Difficulty::Hard,
+                        1,
+                    ),
+                    topic(
+                        tr("Regência verbal e nominal", "Verbs and prepositions"),
+                        Difficulty::Hard,
+                        2,
+                    ),
+                    topic(tr("Pontuação", "Punctuation"), Difficulty::Easy, 3),
                 ],
             },
             NewSubject {
-                name: "Noções de Direito Constitucional".into(),
+                name: tr("Noções de Direito Constitucional", "Constitutional Law").into(),
                 topics: vec![
-                    topic("Princípios fundamentais", Difficulty::Easy, 1),
-                    topic("Direitos e garantias fundamentais", Difficulty::Hard, 2),
-                    topic("Poder Judiciário", Difficulty::Medium, 3),
+                    topic(
+                        tr("Princípios fundamentais", "Fundamental principles"),
+                        Difficulty::Easy,
+                        1,
+                    ),
+                    topic(
+                        tr("Direitos e garantias fundamentais", "Fundamental rights"),
+                        Difficulty::Hard,
+                        2,
+                    ),
+                    topic(
+                        tr("Poder Judiciário", "The Judiciary"),
+                        Difficulty::Medium,
+                        3,
+                    ),
                 ],
             },
         ],
@@ -53,7 +92,12 @@ fn seed(paths: &AppPaths) {
     let today = Engine::today();
     let start = today.checked_sub_days(Days::new(3)).unwrap();
     let mut plan = store
-        .insert_plan(&plan, "edital-tjce.pdf", "texto", start)
+        .insert_plan(
+            &plan,
+            tr("edital-tjce.pdf", "exam-notice.pdf"),
+            "texto",
+            start,
+        )
         .unwrap();
     let topics = &mut plan.subjects[0].topics;
     topics[0].complete_lesson(start);
@@ -72,7 +116,7 @@ fn seed(paths: &AppPaths) {
     let question = |n: u32, prompt: &str, topic, relevance, reason: &str| NewBoardQuestion {
         number: Some(n),
         prompt: prompt.into(),
-        options: vec!["Certo".into(), "Errado".into()],
+        options: vec![tr("Certo", "True").into(), tr("Errado", "False").into()],
         correct: Some(0),
         topic_id: topic,
         relevance,
@@ -82,12 +126,12 @@ fn seed(paths: &AppPaths) {
         .insert_board_document(
             plan.id,
             DocumentKind::Exam,
-            "prova-trf6-2024.pdf",
+            tr("prova-trf6-2024.pdf", "past-exam-2024.pdf"),
             "texto",
             &[
-                question(12, "A supressão do acento indicativo de crase em “àquilo” manteria a correção gramatical do texto.", Some(crase), Relevance::Relevant, ""),
-                question(13, "No trecho “O direito se constitui em esfera especial”, o pronome poderia ser deslocado para depois do verbo.", Some(crase), Relevance::Partial, ""),
-                question(17, "Considerando a Lei n.º 8.112/1990, é proibido ao servidor atuar como procurador junto a repartições públicas.", None, Relevance::OutOfScope, "Lei 8.112/1990 não consta no edital"),
+                question(12, tr("A supressão do acento indicativo de crase em “àquilo” manteria a correção gramatical do texto.", "In “The list of candidates were published”, the verb agrees correctly with its subject."), Some(crase), Relevance::Relevant, ""),
+                question(13, tr("No trecho “O direito se constitui em esfera especial”, o pronome poderia ser deslocado para depois do verbo.", "In “Neither the judge nor the clerks was present”, the verb should agree with “clerks”."), Some(crase), Relevance::Partial, ""),
+                question(17, tr("Considerando a Lei n.º 8.112/1990, é proibido ao servidor atuar como procurador junto a repartições públicas.", "Under the civil service statute, a public servant may not act as an agent before public offices."), None, Relevance::OutOfScope, tr("Lei 8.112/1990 não consta no edital", "The civil service statute is not in the exam notice")),
             ],
             &[],
             today,
@@ -110,11 +154,12 @@ fn render(harness: &mut Harness<'_, KnowGiverApp>, dir: Option<&std::path::Path>
 #[ignore = "needs a GPU; run with --ignored"]
 fn snapshots() {
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
-    let data = tempfile::tempdir().unwrap();
-    let paths = AppPaths::new(data.path());
-    seed(&paths);
 
     for locale in ["pt-BR", "en"] {
+        let english = locale == "en";
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        seed(&paths, english);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
             .with_size([1180.0, 760.0])
@@ -148,8 +193,15 @@ fn snapshots() {
         harness.state_mut().dispatch(Command::StartLesson(topic));
         if let Ok(engine) = harness.state_mut().engine.as_mut() {
             engine.simulate_tutor_reply(
-                "Olá! Hoje vamos ver quando usar a crase. Repare: ela é a fusão da preposição a com o artigo a. Você já sabe quando ela é obrigatória?",
-                &["Crase = preposição a + artigo a", "Teste: troque por palavra masculina"],
+                tr(
+                    english,
+                    "Olá! Hoje vamos ver quando usar a crase. Repare: ela é a fusão da preposição a com o artigo a. Você já sabe quando ela é obrigatória?",
+                    "Hi! Today we look at subject–verb agreement. The verb follows the head of the subject, not the nearest noun. Which is right: “The list of names is” or “are”?",
+                ),
+                &[
+                    tr(english, "Crase = preposição a + artigo a", "The verb agrees with the head noun"),
+                    tr(english, "Teste: troque por palavra masculina", "Test: drop the “of …” phrase"),
+                ],
             );
         }
         harness.state_mut().ui.screen = Screen::Lesson;
@@ -166,6 +218,40 @@ fn snapshots() {
         );
         harness.state_mut().ui.lesson_panel = false;
         harness.state_mut().dispatch(Command::EndLesson);
+
+        // An edital with several roles, waiting for the choice.
+        let roles = tr(
+            english,
+            "2.1.1 CARGO 1: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: AUDITORIA\n\n\
+             2.1.2 CARGO 2: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
+             INFORMAÇÃO – CIÊNCIA DE DADOS\n\n\
+             2.1.3 CARGO 3: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
+             INFORMAÇÃO – INFRAESTRUTURA DE TI\n",
+            "2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: AUDIT\n\n\
+             2.1.2 CARGO 2: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\n\
+             TECHNOLOGY – DATA SCIENCE\n\n\
+             2.1.3 CARGO 3: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\n\
+             TECHNOLOGY – IT INFRASTRUCTURE\n",
+        );
+        if let Ok(engine) = harness.state_mut().engine.as_mut() {
+            engine.simulate_import(kg_engine::Edital {
+                file_name: tr(english, "edital-cgu.pdf", "exam-notice-cgu.pdf").into(),
+                pages: 69,
+                text: kg_engine::EditalText::from_raw(roles),
+            });
+        }
+        harness.state_mut().ui.prefs.role = tr(
+            english,
+            "Auditor Federal de Finanças e Controle (AFFC) – Especialidade: Tecnologia da Informação – Ciência de Dados",
+            "Federal Finance and Control Auditor – Specialty: Information Technology – Data Science",
+        )
+        .into();
+        harness.state_mut().ui.screen = Screen::Edital;
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-edital-roles"),
+        );
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }
@@ -265,16 +351,16 @@ fn roadmap_components() {
                 });
                 for pair in [
                     [
-                        "FORMULA: juros = capital × taxa × tempo",
-                        "DIAGRAMA: Edital -> Plano de estudo -> Revisão",
+                        "FORMULA: interest = principal × rate × time",
+                        "DIAGRAMA: Exam notice -> Study plan -> Review",
                     ],
                     [
-                        "TABELA: Lei | Vigência | Aprova ; PPA | 4 anos | Congresso ; LDO | 1 ano | Congresso ; LOA | 1 ano | Congresso",
-                        "LINHA DO TEMPO: 1964: Lei 4.320 | 1988: Constituição | 2000: LRF | 2021: Nova lei de licitações",
+                        "TABELA: Law | Term | Passed by ; Multi-year plan | 4 years | Congress ; Budget guidelines | 1 year | Congress ; Annual budget | 1 year | Congress",
+                        "LINHA DO TEMPO: 1964: Budget law | 1988: Constitution | 2000: Fiscal responsibility | 2021: New procurement law",
                     ],
                     [
-                        "MAPA: Orçamento público: PPA | LDO | LOA | Créditos adicionais",
-                        "DESTAQUE: A LOA não pode ter dispositivo estranho à receita e à despesa.",
+                        "MAPA: Public budget: Multi-year plan | Guidelines | Annual budget | Extra credits",
+                        "DESTAQUE: The annual budget may only deal with revenue and spending.",
                     ],
                 ] {
                     ui.horizontal(|ui| {
@@ -354,7 +440,7 @@ fn content_preparation() {
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
     let data = tempfile::tempdir().unwrap();
     let paths = AppPaths::new(data.path());
-    seed(&paths);
+    seed(&paths, false);
     crate::i18n::set("pt-BR");
     let mut harness = Harness::builder()
         .with_size([1180.0, 760.0])
@@ -378,23 +464,6 @@ fn content_preparation() {
     harness.state_mut().ui.screen = Screen::Edital;
     render(&mut harness, out.as_deref(), "pt-BR-edital-generating");
 
-    if let Ok(engine) = harness.state_mut().engine.as_mut() {
-        engine.simulate_import(kg_engine::Edital {
-            file_name: "edital-cgu.pdf".into(),
-            pages: 69,
-            text: kg_engine::EditalText::from_raw(
-                "2.1.1 CARGO 1: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: AUDITORIA\n\n\
-                 2.1.2 CARGO 2: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
-                 INFORMAÇÃO – CIÊNCIA DE DADOS\n\n\
-                 2.1.3 CARGO 3: AUDITOR FEDERAL DE FINANÇAS E CONTROLE (AFFC) – ESPECIALIDADE: TECNOLOGIA DA\n\
-                 INFORMAÇÃO – INFRAESTRUTURA DE TI\n",
-            ),
-        });
-    }
-    harness.state_mut().ui.prefs.role = "Auditor Federal de Finanças e Controle (AFFC) – Especialidade: Tecnologia da Informação – Ciência de Dados".into();
-    render(&mut harness, out.as_deref(), "pt-BR-edital-roles");
-    crate::i18n::set("en");
-    render(&mut harness, out.as_deref(), "en-edital-roles");
     harness.state_mut().dispatch(Command::CancelPrepare);
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }

@@ -21,7 +21,8 @@ All notable changes to Know Giver. Format based on
   no longer ends the listening.
 
 ### Changed
-- New app icon: Thoth in profile, engraved in ink on a jade tile
+- New app icon: Thoth the scribe in profile, writing on his palette with a reed
+  pen, engraved in ink on a jade tile
   (`tools/icon.py`). It is the window and file icon, the sidebar logo, the cover
   art and Thoth's portrait; the reference engraving is no longer shown. Below
   32 px a simpler ibis glyph is used.
