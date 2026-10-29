@@ -4,6 +4,22 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Long answers are no longer cut off: the turn ended after 0.45 s of quiet
+  whenever the live caption had a full stop, and the speech recognizer puts one
+  on almost everything. The wait is now 1 s after a sentence and 1.8 s without
+  one, and adjustable.
+- Quiet microphones: speech counts from level 0.0025 (was 0.005). Soft syllables
+  of a quiet voice were taken for silence, which ended turns early and dropped
+  sounds from words.
+- Portuguese heard as English words ("Ah now legal.") gets a Whisper second
+  opinion instead of being sent to the tutor as is.
+
+### Added
+- Settings → Voice: "Pause before the tutor answers" (0.5–3 s).
+
 ## [0.26.1] - 2026-10-28
 
 ### Fixed

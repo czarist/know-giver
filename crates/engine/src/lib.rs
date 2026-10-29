@@ -59,7 +59,7 @@ pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::ReaderState;
-pub use settings::Settings;
+pub use settings::{DEFAULT_TURN_PAUSE, Settings, TURN_PAUSE_RANGE};
 pub use study_time::StudyPresence;
 pub use teacher::Teacher;
 

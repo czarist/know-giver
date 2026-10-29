@@ -21,7 +21,6 @@ use crate::{Engine, EngineError, Event, Notice, Settings};
 const HISTORY_TURNS: usize = 24;
 /// In hands-free mode, stop waiting if the student says nothing.
 const HANDS_FREE_IDLE: Duration = Duration::from_secs(30);
-const SILENCE_TO_STOP: Duration = Duration::from_millis(1_400);
 /// Longest student turn.
 const MAX_TURN: Duration = Duration::from_secs(90);
 /// The microphone stays open for the whole lesson, up to this long.
@@ -31,13 +30,10 @@ const MIC_KEEP_SECS: f32 = 10.0;
 /// The tutor's last syllables can still come back through the speakers
 /// right after it stops; sound this soon does not start the student's turn.
 const ECHO_TAIL_SECS: f32 = 0.2;
-/// With live captions, a finished sentence followed by this much quiet ends
-/// the turn (1.4 s otherwise, so a pause mid-thought does not cut the student
-/// off). If the student goes on talking while the tutor thinks, the turn
-/// continues and this wait grows for the rest of the lesson.
-const QUIET_AFTER_SENTENCE: Duration = Duration::from_millis(450);
-/// Without a finished sentence, the caption must stay the same this long.
-const STABLE_WITHOUT_SENTENCE: Duration = Duration::from_millis(1_200);
+// How much quiet ends the student's turn is a setting (`turn_pause`): after
+// a finished sentence, and 0.8 s more without one, so a pause mid-thought does
+// not cut the student off. If the student goes on talking while the tutor
+// thinks, the turn continues and the wait grows for the rest of the lesson.
 const QUIET_STEP: Duration = Duration::from_millis(250);
 /// New sound needed before checking again whether the student is talking.
 const MONITOR_STEP_SECS: f32 = 0.6;
@@ -349,7 +345,7 @@ impl Engine {
             monitor_checked: 0,
             listen_from: 0,
             carry: None,
-            quiet_after_sentence: QUIET_AFTER_SENTENCE,
+            quiet_after_sentence: self.settings.sentence_pause(),
             noise_floor: None,
             listen_started: None,
             idle_timeout: None,
@@ -510,7 +506,7 @@ impl Engine {
             _ => None,
         };
         lesson.quiet_after_sentence =
-            (lesson.quiet_after_sentence + QUIET_STEP).min(SILENCE_TO_STOP);
+            (lesson.quiet_after_sentence + QUIET_STEP).min(self.settings.long_pause());
         tracing::info!(
             wait_ms = lesson.quiet_after_sentence.as_millis() as u64,
             "student kept talking; continuing the turn"
@@ -700,6 +696,7 @@ impl Engine {
     fn tick_listening(&mut self) {
         let stt = self.stt_job().filter(SttJob::live);
         let auto_stop = self.settings.auto_stop;
+        let long_pause_after = self.settings.long_pause();
         let Some(lesson) = self.lesson.as_mut() else {
             return;
         };
@@ -732,14 +729,14 @@ impl Engine {
                 (
                     // The caption stopped changing: robust to room noise.
                     (sentence && stable >= lesson.quiet_after_sentence)
-                        || stable >= STABLE_WITHOUT_SENTENCE,
+                        || stable >= long_pause_after,
                     // Or the microphone went quiet after a finished sentence.
                     sentence && p.samples >= voice_end && quiet >= lesson.quiet_after_sentence,
                 )
             }
             _ => (false, false),
         };
-        let long_pause = spoke && quiet >= SILENCE_TO_STOP;
+        let long_pause = spoke && quiet >= long_pause_after;
         if auto_stop && (by_caption || by_level || long_pause) {
             let waited = lesson
                 .partial

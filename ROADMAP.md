@@ -11,7 +11,14 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
+0. Student turns (unreleased): the log of 2026-10-28 showed every turn ending after
+   about 450 ms of quiet (`quiet_ms=453`), because Parakeet ends almost every partial
+   with a full stop. The wait is now a setting (`turn_pause`, 1 s default, +0.8 s
+   without a finished sentence), speech counts from level 0.0025, and any English
+   word without a Portuguese one asks Whisper. The owner's recording was exactly 0.0
+   between words and about 0.005 during speech: a driver noise suppressor and a low
+   microphone gain. Check new logs (`end of turn ... quiet_ms`) before tuning more.
+1. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
    to load the model plus about 2 s to synthesize each sentence (see
    [Kokoro evaluation](docs/kokoro-evaluation.md#latency-in-lessons-2026-10-28)).
    Options waiting for the owner's choice:
@@ -20,15 +27,15 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    (b) English voices: Kokoro's bundle already has them (`--kokoro-lang=en-us`), and
    Piper en_US/en_GB voices are as fast as Faber. Either lessons follow the UI
    language, or the tutor switches voice for English passages.
-1. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
+2. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
    in its first answer, mark `ETAPA: n` at sensible moments and close with `FIM` after
    the final review? Does the handout writer pick useful `image` titles? Read a
    whole-plan handout (100+ pages) in the reader and watch memory and scrolling.
-2. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
+3. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
    recordings made louder and their pauses shortened before STT, English-looking Parakeet output sent to
    Whisper (short window, token budget). Ask the user for `know-giver.log` (data
    folder) and `last-recording.wav` before tuning further.
-2. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
+4. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
    the caption is stable (0.45 s after a sentence, 1.2 s otherwise), a spoken "Hum."
    while the answer is written, continuation while the tutor thinks, barge-in with echo
    recognized by comparing words, Piper kept running. Measured before: silence 1.4 s,
@@ -39,13 +46,13 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    microphone and speakers: false interruptions from echo (raise the word threshold if
    they happen), CPU load of checks while the tutor speaks, and how often one-word
    answers need the Whisper check.
-4. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
+5. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.
-5. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
+6. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
    review of each finished reply shown as a correction, or stronger prompting.
-6. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
+7. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
    and compare the drop rate with `handout_check`.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
@@ -253,6 +260,8 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Long spoken answers with the owner's microphone after the turn changes (unreleased):
+  no cut-offs mid-sentence, and fewer wrong verbs.
 - Captions in step with the voice in a live lesson, for Piper and Kokoro teachers,
   including interruptions and a voice failure mid-reply (v0.26.1).
 - Lesson plan with the real model: `ROTEIRO:` / `ETAPA:` / `FIM` lines (v0.26.0).

@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 
 const SETTINGS_KEY: &str = "app_settings";
 
+/// Seconds of quiet that end the student's turn (see [`Settings::turn_pause`]).
+pub const DEFAULT_TURN_PAUSE: f32 = 1.0;
+pub const TURN_PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
+
 use crate::Teacher;
 
 /// Everything the user can change in Settings.
@@ -22,6 +26,9 @@ pub struct Settings {
     pub hands_free: bool,
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
+    /// Quiet, in seconds, after a finished sentence before the student's
+    /// turn ends. Longer pauses mid-thought always wait a bit more.
+    pub turn_pause: f32,
     /// Keep the microphone open while the tutor thinks or speaks, so the
     /// student can go on talking or interrupt (needs live captions).
     pub barge_in: bool,
@@ -65,6 +72,7 @@ impl Default for Settings {
             voice_enabled: true,
             hands_free: true,
             auto_stop: true,
+            turn_pause: DEFAULT_TURN_PAUSE,
             barge_in: true,
             fillers: true,
             stt_engine: SttEngine::default(),
@@ -124,8 +132,25 @@ impl Settings {
         }
     }
 
+    /// Quiet after a finished sentence that ends the student's turn.
+    pub(crate) fn sentence_pause(&self) -> std::time::Duration {
+        std::time::Duration::from_secs_f32(self.turn_pause)
+    }
+
+    /// Quiet that ends the turn without a finished sentence: a pause to
+    /// think of a word should not cut the student off.
+    pub(crate) fn long_pause(&self) -> std::time::Duration {
+        std::time::Duration::from_secs_f32(self.turn_pause + 0.8)
+    }
+
     pub(crate) fn normalize(&mut self) {
         self.quiz_size = self.quiz_size.clamp(3, 10);
+        self.turn_pause = if self.turn_pause.is_finite() {
+            self.turn_pause
+                .clamp(*TURN_PAUSE_RANGE.start(), *TURN_PAUSE_RANGE.end())
+        } else {
+            DEFAULT_TURN_PAUSE
+        };
         self.speech_rate = if self.speech_rate.is_finite() {
             self.speech_rate.clamp(0.7, 1.5)
         } else {

@@ -38,8 +38,10 @@ impl Default for RecordOptions {
 }
 
 /// Minimum level counted as speech, whatever the noise floor. Quiet
-/// microphones give speech around 0.01, so the bar is set below that.
-const MIN_SPEECH_LEVEL: f32 = 0.005;
+/// microphones give speech around 0.005 to 0.01, and noise suppression in
+/// drivers often makes the room exactly silent, so the bar sits below that;
+/// noisy rooms raise it through the noise floor.
+const MIN_SPEECH_LEVEL: f32 = 0.0025;
 /// Speech must be this many times louder than the room.
 const SPEECH_OVER_NOISE: f32 = 3.0;
 

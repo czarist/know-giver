@@ -188,6 +188,19 @@ pub(crate) fn voice_section(
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
         ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));
+        ui.add_enabled_ui(draft.auto_stop, |ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(24.0);
+                ui.label(t!("settings.voice.turn_pause"));
+                ui.add(
+                    egui::Slider::new(&mut draft.turn_pause, kg_engine::TURN_PAUSE_RANGE)
+                        .step_by(0.1)
+                        .fixed_decimals(1)
+                        .suffix(" s"),
+                )
+                .on_hover_text(t!("settings.voice.turn_pause_hint"));
+            });
+        });
         ui.checkbox(&mut draft.barge_in, t!("settings.voice.barge_in"))
             .on_hover_text(t!("settings.voice.barge_in_hint"));
         ui.checkbox(&mut draft.fillers, t!("settings.voice.fillers"));

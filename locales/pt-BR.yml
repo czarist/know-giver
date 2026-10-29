@@ -420,6 +420,8 @@ settings:
     enabled: "Ler as respostas do tutor em voz alta"
     hands_free: "Mãos livres: voltar a ouvir quando o tutor terminar de falar"
     auto_stop: "Parar de ouvir quando eu fizer uma pausa"
+    turn_pause: "Pausa antes de o tutor responder"
+    turn_pause_hint: "Quanto silêncio, depois de uma frase, encerra a sua vez. Aumente se o tutor responde enquanto você ainda pensa; frases sem final esperam 0,8 s a mais."
     barge_in: "Posso interromper o tutor ou continuar falando enquanto ele pensa"
     fillers: "O tutor reage na hora (\"hum\", \"entendi\") enquanto prepara a resposta"
     board_images: "Mostrar imagens da Wikipédia na lousa"

@@ -241,11 +241,12 @@ const SHORT_ANSWERS: [&str; 16] = [
 
 /// Common English words. Parakeet guesses the language by itself and hears
 /// short or soft Portuguese as English: "Nada, nada." came out "Not that".
-const ENGLISH_WORDS: [&str; 48] = [
-    "the", "that", "this", "not", "is", "it", "its", "you", "what", "yes", "no", "okay", "ok",
-    "and", "of", "to", "so", "yeah", "oh", "my", "me", "we", "do", "dont", "im", "there", "they",
-    "have", "are", "was", "be", "can", "just", "know", "like", "right", "well", "thank", "thanks",
-    "sorry", "hello", "hi", "but", "for", "with", "nah", "sure", "why",
+const ENGLISH_WORDS: [&str; 61] = [
+    "now", "how", "on", "in", "at", "he", "she", "if", "or", "up", "out", "all", "one", "the",
+    "that", "this", "not", "is", "it", "its", "you", "what", "yes", "no", "okay", "ok", "and",
+    "of", "to", "so", "yeah", "oh", "my", "me", "we", "do", "dont", "im", "there", "they", "have",
+    "are", "was", "be", "can", "just", "know", "like", "right", "well", "thank", "thanks", "sorry",
+    "hello", "hi", "but", "for", "with", "nah", "sure", "why",
 ];
 
 /// Common Portuguese words, which settle the language when both appear.
@@ -268,8 +269,8 @@ pub(crate) fn needs_second_opinion(text: &str) -> bool {
     !SHORT_ANSWERS.contains(&word.as_str())
 }
 
-/// True when most words are common English ones and none settles it as
-/// Portuguese. Technical terms ("machine learning") do not count either way.
+/// True when a common English word appears and no common Portuguese one
+/// settles it ("Ah now legal."). A false alarm only costs a Whisper check. Technical terms ("machine learning") do not count either way.
 fn looks_english(text: &str) -> bool {
     let words = content_words_all(text);
     let english = words
@@ -280,7 +281,7 @@ fn looks_english(text: &str) -> bool {
         .iter()
         .filter(|w| PORTUGUESE_WORDS.contains(&w.as_str()))
         .count();
-    english > portuguese && english * 2 >= words.len()
+    english > 0 && portuguese == 0
 }
 
 /// True when `heard` has a meaningful word that is not in `known` (for
@@ -376,6 +377,12 @@ mod tests {
         assert!(needs_second_opinion("Not that, not."));
         assert!(needs_second_opinion("Yeah, I know that."));
         assert!(!needs_second_opinion("Não sei o que é machine learning."));
+        // Heard in a lesson: Portuguese read as English words.
+        assert!(needs_second_opinion("Ah now legal."));
+        assert!(!needs_second_opinion(
+            "O Estado fiscaliza as políticas públicas."
+        ));
+        assert!(!needs_second_opinion("Estado é permanente."));
         assert!(!needs_second_opinion("Python é uma linguagem."));
         assert!(!needs_second_opinion("No caso, a LOA."));
         assert!(same_words("Sim, entendi.", "sim entendi"));
