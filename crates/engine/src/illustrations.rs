@@ -102,6 +102,52 @@ impl Engine {
     }
 }
 
+/// Pictures shown per topic in a handout: the topic's own, then sections.
+const HANDOUT_PICTURES: usize = 3;
+
+/// Looks up the handout's pictures and attaches them: one of each topic, and
+/// those the sections ask for. Topics or sections without a fitting picture
+/// are left as they are. Runs on a worker thread (it may use the network).
+pub(crate) fn illustrate(document: &mut kg_handout::Document, cache: &Path) {
+    let source = document.labels.picture_source.clone();
+    let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut find = |query: &str| -> Option<kg_handout::Picture> {
+        let query = illustration_key(query);
+        if query.is_empty() {
+            return None;
+        }
+        let image = match lookup(cache, &query) {
+            Ok(image) => image?,
+            Err(err) => {
+                tracing::warn!(%err, %query, "handout picture not found");
+                return None;
+            }
+        };
+        let file = format!("/img/{}.{}", files.len() + 1, image.format);
+        files.push((file.clone(), image.bytes.to_vec()));
+        let caption = if source.is_empty() {
+            image.title
+        } else {
+            format!("{source} · {}", image.title)
+        };
+        Some(kg_handout::Picture { file, caption })
+    };
+    for topic in &mut document.topics {
+        topic.picture = find(&topic.topic);
+        let mut left = HANDOUT_PICTURES - usize::from(topic.picture.is_some());
+        for section in &mut topic.sections {
+            if left == 0 {
+                break;
+            }
+            if !section.image.trim().is_empty() {
+                section.picture = find(&section.image);
+                left -= usize::from(section.picture.is_some());
+            }
+        }
+    }
+    document.files = files;
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct CachedMeta {
     title: String,
@@ -289,6 +335,54 @@ fn fnv(text: &str) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn handout_gets_pictures_from_the_cache() {
+        let cache = tempfile::tempdir().unwrap();
+        let put = |query: &str, meta: &str, bytes: Option<&[u8]>| {
+            let stem = cache.path().join(format!("{:016x}", fnv(query)));
+            fs::write(stem.with_extension("json"), meta).unwrap();
+            if let Some(bytes) = bytes {
+                fs::write(stem.with_extension("png"), bytes).unwrap();
+            }
+        };
+        put(
+            "Crase",
+            r#"{"title":"Crase","page_url":"https://pt.wikipedia.org/wiki/Crase","format":"png"}"#,
+            Some(b"png-bytes"),
+        );
+        put("Escola", "null", None);
+        let mut document = kg_handout::Document {
+            title: String::new(),
+            subtitle: String::new(),
+            generated: String::new(),
+            lang: "pt".into(),
+            labels: kg_handout::Labels {
+                picture_source: "Imagem: Wikipédia".into(),
+                ..Default::default()
+            },
+            topics: vec![kg_handout::TopicHandout {
+                topic: "Crase".into(),
+                sections: vec![kg_handout::Section {
+                    heading: "Uso".into(),
+                    image: "Escola".into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            files: Vec::new(),
+        };
+        illustrate(&mut document, cache.path());
+        let topic = &document.topics[0];
+        let picture = topic.picture.as_ref().unwrap();
+        assert_eq!(picture.caption, "Imagem: Wikipédia · Crase");
+        assert_eq!(
+            document.files,
+            [(picture.file.clone(), b"png-bytes".to_vec())]
+        );
+        // Known to have no picture: the section stays as it is.
+        assert_eq!(topic.sections[0].picture, None);
+    }
 
     #[test]
     fn keeps_only_related_articles_and_known_formats() {

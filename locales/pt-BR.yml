@@ -322,6 +322,8 @@ handout:
     summary: "Resumo"
     exercises: "Exercícios"
     answers: "Gabarito comentado"
+    picture_source: "Imagem: Wikipédia"
+    answer_grid: "Respostas rápidas"
 
 settings:
   teacher:

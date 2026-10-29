@@ -14,7 +14,20 @@ use typst::{Library, LibraryExt, World};
 use typst_kit::fonts::FontStore;
 use typst_layout::PagedDocument;
 
+mod pages;
+
+pub use pages::{PageImage, Pages, TextBox, paginate};
+
 const TEMPLATE: &str = include_str!("../templates/handout.typ");
+
+/// A picture placed in the handout: a file of [`Document::files`] and its
+/// caption (where it comes from).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Picture {
+    /// Path the template loads, e.g. "/img/3.jpg".
+    pub file: String,
+    pub caption: String,
+}
 
 /// One section of a topic.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -24,6 +37,12 @@ pub struct Section {
     pub paragraphs: Vec<String>,
     #[serde(default)]
     pub key_points: Vec<String>,
+    /// What to show a picture of (a Wikipedia article title); may be empty.
+    #[serde(default)]
+    pub image: String,
+    /// The picture found for `image`, set just before rendering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<Picture>,
 }
 
 /// A practice question with its answer.
@@ -53,6 +72,9 @@ pub struct TopicHandout {
     pub summary: Vec<String>,
     #[serde(default)]
     pub exercises: Vec<Exercise>,
+    /// A picture of the topic itself, set just before rendering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub picture: Option<Picture>,
 }
 
 impl TopicHandout {
@@ -68,7 +90,8 @@ impl TopicHandout {
 
 /// Fixed words in the PDF, in the reader's language. They come from the
 /// app's translation files.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Labels {
     pub handout: String,
     pub contents: String,
@@ -78,10 +101,14 @@ pub struct Labels {
     pub summary: String,
     pub exercises: String,
     pub answers: String,
+    /// Start of a picture caption, e.g. "Imagem: Wikipédia".
+    pub picture_source: String,
+    /// Heading of the quick answer grid, e.g. "Respostas".
+    pub answer_grid: String,
 }
 
 /// A whole handout: cover data plus one or more topics.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Document {
     pub title: String,
     pub subtitle: String,
@@ -91,6 +118,10 @@ pub struct Document {
     pub lang: String,
     pub labels: Labels,
     pub topics: Vec<TopicHandout>,
+    /// Picture files by the path the template loads them from. Not saved
+    /// with the document: they are looked up again (from the disk cache).
+    #[serde(skip)]
+    pub files: Vec<(String, Vec<u8>)>,
 }
 
 /// Rendering errors.
@@ -111,15 +142,23 @@ pub fn render_pdf(document: &Document) -> Result<Vec<u8>, HandoutError> {
     if document.topics.is_empty() {
         return Err(HandoutError::Empty);
     }
-    let data = serde_json::to_vec(document).map_err(|e| HandoutError::Layout(e.to_string()))?;
-    let world = HandoutWorld::new(data)?;
-    let compiled = typst::compile::<PagedDocument>(&world).output;
-    let paged = compiled.map_err(|errors| HandoutError::Layout(join(&errors)))?;
+    let paged = layout(document)?;
     typst_pdf::pdf(&paged, &typst_pdf::PdfOptions::default())
         .map_err(|errors| HandoutError::Pdf(join(&errors)))
 }
 
-fn join(errors: &[SourceDiagnostic]) -> String {
+/// Lays `document` out in pages, as the PDF has them.
+pub(crate) fn layout(document: &Document) -> Result<PagedDocument, HandoutError> {
+    if document.topics.is_empty() {
+        return Err(HandoutError::Empty);
+    }
+    let data = serde_json::to_vec(document).map_err(|e| HandoutError::Layout(e.to_string()))?;
+    let world = HandoutWorld::new(data, &document.files)?;
+    let compiled = typst::compile::<PagedDocument>(&world).output;
+    compiled.map_err(|errors| HandoutError::Layout(join(&errors)))
+}
+
+pub(crate) fn join(errors: &[SourceDiagnostic]) -> String {
     errors
         .iter()
         .map(|e| e.message.to_string())
@@ -134,10 +173,11 @@ struct HandoutWorld {
     main: Source,
     data_id: FileId,
     data: Bytes,
+    files: Vec<(FileId, Bytes)>,
 }
 
 impl HandoutWorld {
-    fn new(data: Vec<u8>) -> Result<Self, HandoutError> {
+    fn new(data: Vec<u8>, files: &[(String, Vec<u8>)]) -> Result<Self, HandoutError> {
         let file = |name: &str| {
             VirtualPath::new(name)
                 .map(|path| FileId::new(RootedPath::new(VirtualRoot::Project, path)))
@@ -151,6 +191,10 @@ impl HandoutWorld {
             main: Source::new(file("/main.typ")?, TEMPLATE.to_owned()),
             data_id: file("/data.json")?,
             data: Bytes::new(data),
+            files: files
+                .iter()
+                .map(|(path, bytes)| Ok((file(path)?, Bytes::new(bytes.clone()))))
+                .collect::<Result<_, HandoutError>>()?,
         })
     }
 }
@@ -179,6 +223,8 @@ impl World for HandoutWorld {
     fn file(&self, id: FileId) -> FileResult<Bytes> {
         if id == self.data_id {
             Ok(self.data.clone())
+        } else if let Some((_, bytes)) = self.files.iter().find(|(file, _)| *file == id) {
+            Ok(bytes.clone())
         } else {
             Err(FileError::NotFound(id.vpath().get_without_slash().into()))
         }
@@ -207,6 +253,8 @@ mod tests {
             summary: "Resumo".into(),
             exercises: "Exercícios".into(),
             answers: "Gabarito".into(),
+            picture_source: "Imagem: Wikipédia".into(),
+            answer_grid: "Respostas".into(),
         }
     }
 
@@ -220,6 +268,11 @@ mod tests {
                 heading: "Quando usar".into(),
                 paragraphs: vec!["Antes de palavras femininas.".into()],
                 key_points: vec!["Nunca antes de verbo.".into()],
+                image: "Escola".into(),
+                picture: Some(Picture {
+                    file: "/img/1.svg".into(),
+                    caption: "Imagem: Wikipédia · Escola".into(),
+                }),
             }],
             examples: vec!["Vou à escola.".into()],
             pitfalls: vec!["Não há crase antes de \"a partir\".".into()],
@@ -238,8 +291,12 @@ mod tests {
                     explanation: String::new(),
                 },
             ],
+            picture: None,
         }
     }
+
+    /// A tiny picture, so figures can be laid out without the network.
+    const PICTURE: &str = "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='30'><rect width='40' height='30' fill='teal'/></svg>";
 
     #[test]
     fn renders_a_pdf() {
@@ -250,12 +307,48 @@ mod tests {
             lang: "pt".into(),
             labels: labels(),
             topics: vec![topic().sanitized()],
+            files: vec![("/img/1.svg".into(), PICTURE.as_bytes().to_vec())],
         };
         let pdf = render_pdf(&document).unwrap();
         assert!(pdf.starts_with(b"%PDF"));
         assert!(pdf.len() > 10_000);
+
+        // The same pages for the reader: pictures, and text with positions.
+        let pages = paginate(&document).unwrap();
+        assert!(pages.len() >= 3);
+        let found = (0..pages.len()).find_map(|page| {
+            let boxes = pages.text(page);
+            let all = pages.text_of(page, 0..boxes.len());
+            all.contains("Antes de palavras femininas")
+                .then_some((page, boxes.len()))
+        });
+        let (page, count) = found.expect("section text is on some page");
+        let [width, height] = pages.size(page).unwrap();
+        assert!(
+            pages
+                .text(page)
+                .iter()
+                .all(|b| b.rect[0] >= 0.0 && b.rect[2] <= width && b.rect[3] <= height)
+        );
+        assert!(count > 20);
+        let image = pages.render(page, 1.0).unwrap();
+        assert_eq!(image.rgba.len(), (image.width * image.height * 4) as usize);
+
         if let Some(dir) = std::env::var_os("KG_SNAPSHOT_DIR") {
-            std::fs::write(std::path::Path::new(&dir).join("apostila.pdf"), &pdf).unwrap();
+            let dir = std::path::Path::new(&dir);
+            std::fs::write(dir.join("apostila.pdf"), &pdf).unwrap();
+            for page in 0..pages.len() {
+                let image = pages.render(page, 1.5).unwrap();
+                let rgb: Vec<u8> = image
+                    .rgba
+                    .chunks(4)
+                    .flat_map(|p| [p[0], p[1], p[2]])
+                    .collect();
+                let header = format!("P6\n{} {}\n255\n", image.width, image.height);
+                let mut ppm = header.into_bytes();
+                ppm.extend(rgb);
+                std::fs::write(dir.join(format!("apostila-{page}.ppm")), ppm).unwrap();
+            }
         }
     }
 
@@ -273,6 +366,7 @@ mod tests {
             lang: "pt".into(),
             labels: labels(),
             topics: vec![],
+            files: Vec::new(),
         };
         assert!(matches!(render_pdf(&document), Err(HandoutError::Empty)));
     }

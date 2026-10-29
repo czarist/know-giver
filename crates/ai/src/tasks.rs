@@ -86,6 +86,9 @@ pub struct SectionDraft {
     pub paragraphs: Vec<String>,
     #[serde(default)]
     pub key_points: Vec<String>,
+    /// A Wikipedia article whose picture helps; may be empty.
+    #[serde(default)]
+    pub image: String,
 }
 
 /// A written lesson (apostila) for one topic, before validation.

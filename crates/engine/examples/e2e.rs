@@ -119,6 +119,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             summary: "Resumo".into(),
             exercises: "Exercícios".into(),
             answers: "Gabarito comentado".into(),
+            picture_source: "Imagem: Wikipédia".into(),
+            answer_grid: "Respostas rápidas".into(),
         },
         regenerate: false,
     }))?;

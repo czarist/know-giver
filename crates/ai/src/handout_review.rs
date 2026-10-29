@@ -307,6 +307,7 @@ mod tests {
                 heading: "Regra".into(),
                 paragraphs: vec!["Usa-se crase antes de meio-dia? Não.".into()],
                 key_points: vec!["Ponto errado.".into(), "Ponto certo.".into()],
+                image: String::new(),
             }],
             exercises: vec![question(0), question(1), question(2)],
             ..HandoutDraft::default()

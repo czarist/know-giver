@@ -142,7 +142,9 @@ impl Engine {
             lang: request.lang.clone(),
             labels: request.labels.clone(),
             topics: Vec::new(),
+            files: Vec::new(),
         };
+        let pictures = self.picture_cache();
         let topic_ids: Vec<TopicId> = plan.topics().map(|(_, t)| t.id).collect();
         if topic_ids.is_empty() {
             return Err(kg_handout::HandoutError::Empty.into());
@@ -193,7 +195,15 @@ impl Engine {
                 let _ = tx.send(Event::Prepare(event));
                 waker();
             };
-            let result = prepare(&client, items, document, &path, &progress, &send);
+            let result = prepare(
+                &client,
+                items,
+                document,
+                &path,
+                pictures.as_deref(),
+                &progress,
+                &send,
+            );
             Event::Prepare(PrepareEvent::Finished(result))
         });
         Ok(())
@@ -265,6 +275,7 @@ fn prepare(
     items: Vec<Item>,
     mut document: Document,
     path: &std::path::Path,
+    pictures: Option<&std::path::Path>,
     progress: &Progress,
     send: &(dyn Fn(PrepareEvent) + Sync),
 ) -> Result<PrepareSummary, EngineError> {
@@ -331,7 +342,7 @@ fn prepare(
     let pdf = if document.topics.is_empty() {
         None
     } else {
-        Some(write_pdf(&document, path)?)
+        Some(write_pdf(document, path, pictures)?)
     };
     Ok(PrepareSummary {
         topics: items.len(),

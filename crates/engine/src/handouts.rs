@@ -156,12 +156,21 @@ impl Engine {
             cancel: Arc::clone(&cancel),
         });
         let client = self.ai_client();
+        let pictures = self.picture_cache();
         let (tx, waker) = self.sender();
         self.spawn(move || {
-            let result = build_handout(&client, items, &request, &done, &cancel, &|id, json| {
-                let _ = tx.send(Event::HandoutTopic { topic: id, json });
-                waker();
-            });
+            let result = build_handout(
+                &client,
+                items,
+                &request,
+                pictures.as_deref(),
+                &done,
+                &cancel,
+                &|id, json| {
+                    let _ = tx.send(Event::HandoutTopic { topic: id, json });
+                    waker();
+                },
+            );
             Event::HandoutFinished(result)
         });
         Ok(())
@@ -247,6 +256,13 @@ impl Engine {
             .collect()
     }
 
+    /// Where handout pictures come from, or `None` when pictures are off.
+    pub(crate) fn picture_cache(&self) -> Option<PathBuf> {
+        self.settings
+            .board_images
+            .then(|| self.paths.data_dir.join("board-images"))
+    }
+
     pub(crate) fn handout_edital(&self) -> Result<String, EngineError> {
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
         let text = self.store.edital_text(plan.id)?;
@@ -260,6 +276,7 @@ fn build_handout(
     client: &kg_ai::Client,
     items: Vec<Item>,
     request: &HandoutRequest,
+    pictures: Option<&std::path::Path>,
     done: &AtomicUsize,
     cancel: &AtomicBool,
     on_written: &(dyn Fn(TopicId, String) + Sync),
@@ -322,8 +339,9 @@ fn build_handout(
         lang: request.lang.clone(),
         labels: request.labels.clone(),
         topics,
+        files: Vec::new(),
     };
-    write_pdf(&document, &request.path)
+    write_pdf(document, &request.path, pictures)
 }
 
 /// Writes and reviews one topic's handout. Returns the content and the JSON
@@ -345,12 +363,17 @@ pub(crate) fn write_topic(
     Ok((topic, json))
 }
 
-/// Renders the PDF and saves it at `path`.
+/// Adds pictures (from `pictures`, the picture cache, or Wikipedia), then
+/// renders the PDF and saves it at `path`.
 pub(crate) fn write_pdf(
-    document: &Document,
+    mut document: Document,
     path: &std::path::Path,
+    pictures: Option<&std::path::Path>,
 ) -> Result<PathBuf, EngineError> {
-    let pdf = kg_handout::render_pdf(document)?;
+    if let Some(cache) = pictures {
+        crate::illustrations::illustrate(&mut document, cache);
+    }
+    let pdf = kg_handout::render_pdf(&document)?;
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|source| EngineError::Export {
             path: dir.to_path_buf(),
@@ -409,12 +432,15 @@ fn topic_from_draft(draft: HandoutDraft, context: &TopicContext, seed: u64) -> T
                 heading: s.heading,
                 paragraphs: s.paragraphs,
                 key_points: s.key_points,
+                image: s.image,
+                picture: None,
             })
             .collect(),
         examples: draft.examples,
         pitfalls: draft.pitfalls,
         summary: draft.summary,
         exercises,
+        picture: None,
     }
     .sanitized()
 }
@@ -467,6 +493,7 @@ mod tests {
                 heading: "Regra".into(),
                 paragraphs: vec!["Texto".into()],
                 key_points: vec![],
+                image: "Palácio do Planalto".into(),
             }],
             exercises: vec![QuestionDraft {
                 prompt: "Qual?".into(),

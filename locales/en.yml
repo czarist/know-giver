@@ -322,6 +322,8 @@ handout:
     summary: "Summary"
     exercises: "Exercises"
     answers: "Answer key"
+    picture_source: "Picture: Wikipedia"
+    answer_grid: "Quick answers"
 
 settings:
   teacher:

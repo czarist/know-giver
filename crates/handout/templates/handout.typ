@@ -1,11 +1,13 @@
 // Study handout layout. All text comes from /data.json, so nothing in the
-// content is ever interpreted as Typst markup.
+// content is ever interpreted as Typst markup. Pictures are files under /img.
 
 #let data = json("/data.json")
 #let labels = data.labels
 #let accent = rgb("#2F6F68")
 #let warm = rgb("#9A6B1F")
+#let right = rgb("#3B7A4A")
 #let muted = luma(110)
+#let rule = luma(210)
 
 #set document(title: data.title)
 #set text(font: "Libertinus Serif", size: 11pt, lang: data.lang)
@@ -37,7 +39,43 @@
   #list(..items.map(item => [#item]))
 ]
 
+// A picture with a thin frame and its source underneath.
+#let picture(pic, height: 5.5cm) = if pic != none {
+  block(breakable: false, above: 1em, below: 1em, width: 100%)[
+    #align(center)[
+      #box(stroke: 0.6pt + rule, inset: 3pt, image(pic.file, height: height, fit: "contain"))
+      #v(2pt)
+      #text(size: 8.5pt, fill: muted, style: "italic", pic.caption)
+    ]
+  ]
+}
+
 #let letter(i) = "ABCDEFGH".at(i)
+
+// A letter in a circle: outlined for options, filled for the right answer.
+#let badge(content, color, filled: false) = box(
+  baseline: 22%,
+  circle(
+    radius: 7.5pt,
+    fill: if filled { color } else { none },
+    stroke: 0.8pt + color,
+    inset: 0pt,
+  )[
+    #set align(center + horizon)
+    #text(size: 8.5pt, weight: "bold", fill: if filled { white } else { color }, content)
+  ],
+)
+
+// A coloured band that opens a block of the topic.
+#let band(title, color) = block(
+  width: 100%,
+  fill: color,
+  inset: (x: 12pt, y: 7pt),
+  above: 1.6em,
+  below: 0.9em,
+  radius: 2pt,
+  text(fill: white, weight: "bold", size: 12pt, title),
+)
 
 // Cover
 #page(numbering: none)[
@@ -77,6 +115,7 @@
   heading(level: 1, topic.topic)
   text(size: 10pt, fill: muted, topic.subject)
   v(0.6em)
+  picture(topic.at("picture", default: none), height: 6cm)
   par(topic.introduction)
 
   for section in topic.sections {
@@ -84,6 +123,7 @@
     for paragraph in section.paragraphs {
       par(paragraph)
     }
+    picture(section.at("picture", default: none))
     if section.key_points.len() > 0 {
       note(labels.key_points, accent, section.key_points)
     }
@@ -106,20 +146,64 @@
   if topic.exercises.len() > 0 {
     heading(level: 2, labels.exercises)
     for (n, exercise) in topic.exercises.enumerate() {
-      block(breakable: false, above: 1em)[
-        #text(weight: "bold", str(n + 1) + ". ")#exercise.prompt
-        #pad(left: 1.2em)[
-          #for (i, option) in exercise.options.enumerate() [
-            #letter(i)) #option \
-          ]
-        ]
+      block(
+        breakable: false,
+        width: 100%,
+        above: 0.9em,
+        below: 0.9em,
+        inset: (x: 12pt, y: 10pt),
+        radius: 3pt,
+        fill: accent.lighten(95%),
+        stroke: 0.6pt + accent.lighten(55%),
+      )[
+        #grid(
+          columns: (auto, 1fr),
+          column-gutter: 8pt,
+          box(fill: accent, inset: (x: 6pt, y: 3pt), radius: 2pt,
+            text(fill: white, weight: "bold", size: 10pt, str(n + 1))),
+          par(justify: false, exercise.prompt),
+        )
+        #v(4pt)
+        #for (i, option) in exercise.options.enumerate() {
+          grid(
+            columns: (auto, 1fr),
+            column-gutter: 7pt,
+            row-gutter: 0pt,
+            badge(letter(i), accent),
+            par(justify: false, option),
+          )
+          v(2pt)
+        }
       ]
     }
-    heading(level: 2, labels.answers, outlined: false, numbering: none)
+
+    // Answer key: a quick grid, then each answer explained.
+    block(breakable: false, below: 0.8em)[
+      #band(labels.answers, right)
+      #text(size: 9.5pt, fill: muted, labels.answer_grid)
+      #v(2pt)
+      #grid(
+        columns: (1fr,) * calc.min(topic.exercises.len(), 5),
+        column-gutter: 6pt,
+        row-gutter: 6pt,
+        ..topic.exercises.enumerate().map(((n, exercise)) => box(
+          width: 100%,
+          stroke: 0.6pt + right.lighten(40%),
+          radius: 2pt,
+          inset: (y: 5pt),
+          align(center, text(weight: "bold")[#str(n + 1) · #text(fill: right, letter(exercise.correct))]),
+        )),
+      )
+    ]
     for (n, exercise) in topic.exercises.enumerate() {
-      par[
-        #text(weight: "bold", str(n + 1) + ". " + letter(exercise.correct) + " ")
-        #exercise.explanation
+      block(breakable: false, above: 0.7em, below: 0.7em)[
+        #grid(
+          columns: (auto, auto, 1fr),
+          column-gutter: 7pt,
+          text(weight: "bold", str(n + 1) + "."),
+          badge(letter(exercise.correct), right, filled: true),
+          par(justify: false, exercise.explanation),
+        )
       ]
     }
   }
