@@ -2,15 +2,24 @@
 
 ## Current Status
 
-Version 0.23.0. Everything an agent can build and check without a human ear, a
-microphone or other platforms is done. What remains open needs a person or hardware
-(listed under "Not yet verified"). Each release is a short-lived branch merged into
-`main` with an annotated tag.
+Version 0.26.0. Everything an agent can build and check without a human ear, a
+microphone or other platforms is done. What remains open needs a person, hardware or
+the real AI service (listed under "Not yet verified"). Each release ends with a
+CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
+(feature branches are optional; recent releases were committed to `main` directly).
 
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
+0. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
+   in its first answer, mark `ETAPA: n` at sensible moments and close with `FIM` after
+   the final review? Does the handout writer pick useful `image` titles? Read a
+   whole-plan handout (100+ pages) in the reader and watch memory and scrolling.
+1. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
+   recordings made louder and their pauses shortened before STT, English-looking Parakeet output sent to
+   Whisper (short window, token budget). Ask the user for `know-giver.log` (data
+   folder) and `last-recording.wav` before tuning further.
+2. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
    the caption is stable (0.45 s after a sentence, 1.2 s otherwise), a spoken "Hum."
    while the answer is written, continuation while the tutor thinks, barge-in with echo
    recognized by comparing words, Piper kept running. Measured before: silence 1.4 s,
@@ -21,19 +30,22 @@ microphone or other platforms is done. What remains open needs a person or hardw
    microphone and speakers: false interruptions from echo (raise the word threshold if
    they happen), CPU load of checks while the tutor speaks, and how often one-word
    answers need the Whisper check.
-1. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
+3. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.
-2. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
+4. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
    review of each finished reply shown as a correction, or stronger prompting.
-3. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
+5. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
    and compare the drop rate with `handout_check`.
 
-Windows Kokoro voices are selectable. Piper stays the default until the listening
-comparison.
+Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
+Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
+voice; Piper stays the default until the listening comparison.
 
 **How the code is organized:** `app → ui → engine → {study, ai, audio, pdf, handout}`.
+The handout crate lays pages out with Typst and also serves the in-app reader
+(`kg_handout::paginate`: page images through `typst-render`, text boxes for selection).
 Engine owns state; slow work runs in workers and returns as events applied in
 `Engine::poll`. UI text only via `locales/*.yml` (`t!`); tests fail on missing keys.
 Repo text in English; user-facing app text pt-BR first. No `unwrap/expect/panic` outside
@@ -125,6 +137,25 @@ Inno Setup 6).
       in Documents › Know Giver, with a progress panel and time estimate
 - [ ] Run "prepare everything" on a real full plan (40+ topics) and record time, failures
       and rate-limit behaviour with 3 topics in parallel
+- [x] Pictures in handouts (v0.26.0): one per topic and up to two per topic in sections,
+      chosen by the writer and fetched from Wikipedia through the picture cache
+- [x] Exercise cards and an answer key with a quick answer grid (v0.26.0)
+- [x] Several roles in one edital (v0.24.0): roles are detected, the student picks one,
+      and only that role's specific syllabus reaches the plan prompt
+
+### Reading inside the app (v0.26.0)
+- [x] Handouts screen: every generated handout with its reading progress
+- [x] Reader: pages exactly as the PDF, continuous scroll, zoom, rendered in the
+      background and kept near the current page
+- [x] Highlighter in four colors by dragging over text; notes; side list that jumps to
+      the page; highlights stored in SQLite
+- [x] Last page and pages read are remembered; progress bar per handout
+- [x] Save a PDF with the highlights drawn on it
+- [x] A finished handout opens in the reader instead of an external program
+- [ ] Select across pages (today a highlight stays within one page)
+- [ ] Use highlights in lessons, quizzes and reviews (the tutor revisits what you marked)
+- [ ] Open PDFs that were not generated by the app (needs a PDF renderer; `hayro` is the
+      pure-Rust candidate)
 
 ## Phase 6 — Identity, UI/UX and meeting-style lessons
 
@@ -142,12 +173,20 @@ Inno Setup 6).
       written on the board while it speaks
 - [x] Small diagrams or formulas on the whiteboard
 - [x] Keyboard: hold Space to talk, Esc to interrupt
-- [x] Optional: a few avatar styles to choose from in Settings
+- [x] Teachers instead of avatar styles (v0.24.0): Helena, Lia, Rafael, Otávio, ink
+      portraits ("Lorelei", CC0) that breathe, blink, nod and lip-sync; the tutor uses
+      the teacher's name and gender
+- [x] Richer whiteboard (v0.24.0): tables, timelines, mind maps, exam tips, examples and
+      Wikipedia pictures
+- [x] Lesson plan and an end (v0.26.0): three to five steps plus a final review, from the
+      handout headings or the tutor's `ROTEIRO:` line; "Step n of m" and a completion card
+      that offers the quiz
 
 ### Visual identity
-- [x] Logo: symbol + wordmark, as SVG: an open book inside a speech bubble
-- [x] Logo variant for dark backgrounds
-- [x] App icon, installer and window title bar generated from the logo
+- [x] App icon (v0.25.0): the owner's engraving of Thoth as a baboon under the crescent
+      moon, on a jade tile (`tools/icon.py`); used for the window, `.ico`, sidebar,
+      cover plates and README
+- [x] App icon, installer and window title bar generated from it
 - [x] Brand palette: keep the calm teal and add a warm accent (amber) for highlights,
       progress and achievements
 - [x] Typography: embedded open-license fonts (Literata for headings, Inter for text)
@@ -200,6 +239,10 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Lesson plan with the real model: `ROTEIRO:` / `ETAPA:` / `FIM` lines (v0.26.0).
+- Reader with a long whole-plan handout: memory, scrolling and render times.
+- Handout pictures chosen by the live writer, and how often Wikipedia has one.
+- Microphone changes of v0.25.0 with the user's microphone (quiet speech, echo).
 - Kokoro Portuguese listening comparison against Piper on real tutor answers. Accented
   text now reaches the Windows runtime; subjective quality is still open.
 - Handout factual correctness: the review pass reduces errors (see Phase 5) but does not
