@@ -4,6 +4,25 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.26.0] - 2026-10-28
+
+### Added
+- Handouts open inside the app (new Handouts screen): continuous pages with
+  zoom, drawn by Typst exactly as the PDF. Drag over text to highlight it in one
+  of four colors, click a highlight to add a note or remove it, and jump to any
+  highlight from the side list. The app remembers the page you were on and which
+  pages you read, shows the progress of every handout, and saves a PDF with your
+  highlights on it. A finished handout opens there instead of in another program.
+- Lessons have a plan: three to five steps plus a final review, from the topic's
+  handout or written by the teacher at the start. The lesson shows "Step 2 of 5"
+  with the plan, and ends after the review with a card offering the quiz.
+- Handout pictures: each topic opens with a picture, and the writer may ask for
+  up to two more in its sections (Wikipedia, cached, off with pictures off).
+
+### Changed
+- Handout exercises are cards with lettered options, and the answer key has its
+  own band, a quick answer grid and the right letters highlighted.
+
 ## [0.25.0] - 2026-10-28
 
 ### Removed

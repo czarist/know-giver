@@ -107,8 +107,18 @@ pub struct Labels {
     pub answer_grid: String,
 }
 
+/// A highlight drawn over the text when exporting: rectangles in points
+/// (`[x, y, width, height]` from the page's top-left) on a 1-based page.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Mark {
+    pub page: usize,
+    pub rects: Vec<[f32; 4]>,
+    /// Translucent color as "#RRGGBBAA".
+    pub color: String,
+}
+
 /// A whole handout: cover data plus one or more topics.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Document {
     pub title: String,
     pub subtitle: String,
@@ -122,6 +132,9 @@ pub struct Document {
     /// with the document: they are looked up again (from the disk cache).
     #[serde(skip)]
     pub files: Vec<(String, Vec<u8>)>,
+    /// The reader's highlights, drawn over the pages.
+    #[serde(default)]
+    pub marks: Vec<Mark>,
 }
 
 /// Rendering errors.
@@ -308,6 +321,7 @@ mod tests {
             labels: labels(),
             topics: vec![topic().sanitized()],
             files: vec![("/img/1.svg".into(), PICTURE.as_bytes().to_vec())],
+            marks: Vec::new(),
         };
         let pdf = render_pdf(&document).unwrap();
         assert!(pdf.starts_with(b"%PDF"));
@@ -333,6 +347,39 @@ mod tests {
         assert!(count > 20);
         let image = pages.render(page, 1.0).unwrap();
         assert_eq!(image.rgba.len(), (image.width * image.height * 4) as usize);
+
+        // A highlight becomes one rectangle per line, and is drawn in the PDF.
+        let lines = pages.line_rects(page, 0, count - 1);
+        assert!(!lines.is_empty() && lines.len() < count);
+        let mut marked = document.clone();
+        marked.marks.push(Mark {
+            page: page + 1,
+            rects: lines
+                .iter()
+                .map(|[l, t, r, b]| [*l, *t, r - l, b - t])
+                .collect(),
+            color: "#F5C54270".into(),
+        });
+        assert_ne!(render_pdf(&marked).unwrap(), pdf);
+        if let Some(dir) = std::env::var_os("KG_SNAPSHOT_DIR") {
+            let marked_pages = paginate(&marked).unwrap();
+            let image = marked_pages.render(page, 1.5).unwrap();
+            let rgb: Vec<u8> = image
+                .rgba
+                .chunks(4)
+                .flat_map(|p| [p[0], p[1], p[2]])
+                .collect();
+            let mut ppm = format!(
+                "P6
+{} {}
+255
+",
+                image.width, image.height
+            )
+            .into_bytes();
+            ppm.extend(rgb);
+            std::fs::write(std::path::Path::new(&dir).join("apostila-marked.ppm"), ppm).unwrap();
+        }
 
         if let Some(dir) = std::env::var_os("KG_SNAPSHOT_DIR") {
             let dir = std::path::Path::new(&dir);
@@ -367,6 +414,7 @@ mod tests {
             labels: labels(),
             topics: vec![],
             files: Vec::new(),
+            marks: Vec::new(),
         };
         assert!(matches!(render_pdf(&document), Err(HandoutError::Empty)));
     }

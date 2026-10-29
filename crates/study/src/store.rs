@@ -15,6 +15,7 @@ use crate::plan::{
     TopicStatus,
 };
 use crate::quiz::{QuizAttempt, QuizStats};
+use crate::reading::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 use crate::review::ReviewState;
 
 /// Storage errors.
@@ -138,6 +139,30 @@ const MIGRATIONS: &[&str] = &[
     CREATE TABLE quiz_banks (
         topic_id INTEGER PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
         content TEXT NOT NULL,
+        created_on TEXT NOT NULL
+    );
+",
+    r"
+    CREATE TABLE readings (
+        id INTEGER PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        path TEXT NOT NULL,
+        document TEXT NOT NULL,
+        created_on TEXT NOT NULL,
+        page_count INTEGER NOT NULL DEFAULT 0,
+        last_page INTEGER NOT NULL DEFAULT 0,
+        pages_seen TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE highlights (
+        id INTEGER PRIMARY KEY,
+        reading_id INTEGER NOT NULL REFERENCES readings(id) ON DELETE CASCADE,
+        page INTEGER NOT NULL,
+        first_box INTEGER NOT NULL,
+        last_box INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        color TEXT NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
         created_on TEXT NOT NULL
     );
 ",
@@ -458,6 +483,148 @@ impl Store {
     }
 
     /// Questions prepared in advance for a topic's quizzes (JSON).
+    /// Keeps a generated handout for reading. `document` is its content as
+    /// JSON, to lay the pages out again.
+    pub fn insert_reading(
+        &mut self,
+        plan: PlanId,
+        title: &str,
+        path: &str,
+        document: &str,
+        today: NaiveDate,
+    ) -> Result<ReadingId> {
+        self.conn.execute(
+            "INSERT INTO readings (plan_id, title, path, document, created_on)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![plan.0, title, path, document, today.to_string()],
+        )?;
+        Ok(ReadingId(self.conn.last_insert_rowid()))
+    }
+
+    /// Handouts kept for reading in a plan, newest first.
+    pub fn readings(&self, plan: PlanId) -> Result<Vec<Reading>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, title, path, created_on, page_count, last_page, pages_seen
+             FROM readings WHERE plan_id = ?1 ORDER BY id DESC",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, i64>(4)?,
+                r.get::<_, i64>(5)?,
+                r.get::<_, String>(6)?,
+            ))
+        })?;
+        rows.map(|row| {
+            let (id, title, path, created_on, page_count, last_page, seen) = row?;
+            Ok(Reading {
+                id: ReadingId(id),
+                plan_id: plan,
+                title,
+                path,
+                created_on: parse_date("created_on", &created_on)?,
+                page_count: usize::try_from(page_count).unwrap_or(0),
+                last_page: usize::try_from(last_page).unwrap_or(0),
+                pages_seen: crate::reading::pages_from_text(&seen),
+            })
+        })
+        .collect()
+    }
+
+    /// The handout's content (JSON) for laying its pages out.
+    pub fn reading_document(&self, id: ReadingId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row("SELECT document FROM readings WHERE id = ?1", [id.0], |r| {
+                r.get(0)
+            })
+            .optional()?)
+    }
+
+    pub fn save_reading_progress(&mut self, reading: &Reading) -> Result<()> {
+        self.conn.execute(
+            "UPDATE readings SET page_count = ?2, last_page = ?3, pages_seen = ?4 WHERE id = ?1",
+            params![
+                reading.id.0,
+                reading.page_count as i64,
+                reading.last_page as i64,
+                crate::reading::pages_to_text(&reading.pages_seen)
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_reading(&mut self, id: ReadingId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM readings WHERE id = ?1", [id.0])?;
+        Ok(())
+    }
+
+    pub fn insert_highlight(
+        &mut self,
+        reading: ReadingId,
+        highlight: &Highlight,
+        today: NaiveDate,
+    ) -> Result<HighlightId> {
+        self.conn.execute(
+            "INSERT INTO highlights (reading_id, page, first_box, last_box, text, color, note, created_on)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                reading.0,
+                highlight.page as i64,
+                highlight.first as i64,
+                highlight.last as i64,
+                highlight.text,
+                highlight.color.as_str(),
+                highlight.note,
+                today.to_string()
+            ],
+        )?;
+        Ok(HighlightId(self.conn.last_insert_rowid()))
+    }
+
+    /// Highlights of a handout, in page and reading order.
+    pub fn highlights(&self, reading: ReadingId) -> Result<Vec<Highlight>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, page, first_box, last_box, text, color, note FROM highlights
+             WHERE reading_id = ?1 ORDER BY page, first_box",
+        )?;
+        let rows = stmt.query_map([reading.0], |r| {
+            Ok(Highlight {
+                id: HighlightId(r.get(0)?),
+                page: usize::try_from(r.get::<_, i64>(1)?).unwrap_or(0),
+                first: usize::try_from(r.get::<_, i64>(2)?).unwrap_or(0),
+                last: usize::try_from(r.get::<_, i64>(3)?).unwrap_or(0),
+                text: r.get(4)?,
+                color: HighlightColor::parse(&r.get::<_, String>(5)?),
+                note: r.get(6)?,
+            })
+        })?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    pub fn update_highlight(
+        &mut self,
+        id: HighlightId,
+        color: HighlightColor,
+        note: &str,
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE highlights SET color = ?2, note = ?3 WHERE id = ?1",
+            params![id.0, color.as_str(), note],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_highlight(&mut self, id: HighlightId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM highlights WHERE id = ?1", [id.0])?;
+        Ok(())
+    }
+
     pub fn quiz_bank(&self, topic: TopicId) -> Result<Option<String>> {
         Ok(self
             .conn
@@ -849,6 +1016,55 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    #[test]
+    fn readings_keep_progress_and_highlights() {
+        let mut store = Store::open_in_memory().unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "edital.pdf", "texto", today())
+            .unwrap();
+        let id = store
+            .insert_reading(plan.id, "Crase", "C:/apostila.pdf", "{}", today())
+            .unwrap();
+        let mut reading = store.readings(plan.id).unwrap().remove(0);
+        assert_eq!((reading.title.as_str(), reading.page_count), ("Crase", 0));
+        assert_eq!(store.reading_document(id).unwrap().as_deref(), Some("{}"));
+
+        reading.page_count = 10;
+        reading.last_page = 3;
+        reading.pages_seen = [0, 1, 2, 3].into();
+        store.save_reading_progress(&reading).unwrap();
+        assert_eq!(store.readings(plan.id).unwrap()[0], reading);
+
+        let mark = Highlight {
+            id: HighlightId(0),
+            page: 2,
+            first: 10,
+            last: 24,
+            text: "antes de palavras femininas".into(),
+            color: HighlightColor::Green,
+            note: String::new(),
+        };
+        let mark_id = store.insert_highlight(id, &mark, today()).unwrap();
+        store
+            .update_highlight(mark_id, HighlightColor::Pink, "cai muito")
+            .unwrap();
+        let saved = store.highlights(id).unwrap();
+        assert_eq!(saved.len(), 1);
+        assert_eq!(
+            (saved[0].color, saved[0].note.as_str()),
+            (HighlightColor::Pink, "cai muito")
+        );
+        assert_eq!((saved[0].first, saved[0].last), (10, 24));
+
+        store.delete_highlight(mark_id).unwrap();
+        assert!(store.highlights(id).unwrap().is_empty());
+        store.insert_highlight(id, &mark, today()).unwrap();
+        // Deleting the handout takes its highlights with it.
+        store.delete_reading(id).unwrap();
+        assert!(store.readings(plan.id).unwrap().is_empty());
+        assert!(store.highlights(id).unwrap().is_empty());
     }
 
     #[test]

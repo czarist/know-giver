@@ -371,6 +371,7 @@ mod tests {
                 ..Default::default()
             }],
             files: Vec::new(),
+            marks: Vec::new(),
         };
         illustrate(&mut document, cache.path());
         let topic = &document.topics[0];

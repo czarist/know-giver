@@ -250,6 +250,18 @@ pub fn error_message(err: &EngineError) -> String {
     text.into_owned()
 }
 
+/// Name of a highlighter color.
+pub fn highlight_color(color: kg_engine::HighlightColor) -> String {
+    use kg_engine::HighlightColor;
+    match color {
+        HighlightColor::Yellow => t!("reader.color.yellow"),
+        HighlightColor::Green => t!("reader.color.green"),
+        HighlightColor::Blue => t!("reader.color.blue"),
+        HighlightColor::Pink => t!("reader.color.pink"),
+    }
+    .into_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;

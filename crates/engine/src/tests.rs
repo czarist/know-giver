@@ -659,3 +659,97 @@ fn sentences_of_an_older_reply_are_ignored() {
     engine.poll();
     assert!(engine.lesson().unwrap().turns.is_empty());
 }
+
+/// Polls until background work makes `done` true (or ten seconds pass).
+fn poll_until(engine: &mut Engine, done: impl Fn(&Engine) -> bool) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !done(engine) && std::time::Instant::now() < deadline {
+        engine.poll();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(done(engine), "background work did not finish");
+}
+
+#[test]
+fn generated_handout_opens_in_the_reader_with_progress_and_highlights() {
+    let (mut engine, dir) = engine_with_plan();
+    let document = kg_handout::Document {
+        title: "Plano".into(),
+        subtitle: "Crase".into(),
+        generated: "Hoje".into(),
+        lang: "pt".into(),
+        labels: HandoutLabels::default(),
+        topics: vec![kg_handout::TopicHandout {
+            topic: "Crase".into(),
+            subject: "Português".into(),
+            introduction: "A crase marca a fusão da preposição com o artigo.".into(),
+            ..Default::default()
+        }],
+        files: Vec::new(),
+        marks: Vec::new(),
+    };
+    let saved =
+        crate::handouts::saved_handout(document, &dir.path().join("crase.pdf"), None).unwrap();
+    engine.on_handout_finished(Ok(saved)).unwrap();
+    assert_eq!(engine.readings().len(), 1);
+    assert!(
+        engine
+            .take_notices()
+            .iter()
+            .any(|n| matches!(n, Notice::HandoutSaved(_)))
+    );
+
+    poll_until(&mut engine, |e| {
+        e.reader().is_some_and(|r| r.pages.is_some())
+    });
+    let pages = engine.reader().unwrap().pages.clone().unwrap();
+    assert_eq!(engine.reader().unwrap().reading.page_count, pages.len());
+    let page = (0..pages.len())
+        .find(|p| pages.text_of(*p, 0..pages.text(*p).len()).contains("fusão"))
+        .unwrap();
+
+    engine.handle(Command::ReaderGoTo(page)).unwrap();
+    engine
+        .handle(Command::RenderPage { page, scale: 50 })
+        .unwrap();
+    poll_until(&mut engine, |e| {
+        e.reader().unwrap().page_image(page, 50).is_some()
+    });
+
+    let boxes = pages.text(page).len();
+    engine
+        .handle(Command::AddHighlight {
+            page,
+            first: 0,
+            last: boxes - 1,
+            color: HighlightColor::Green,
+        })
+        .unwrap();
+    let highlight = engine.reader().unwrap().highlights[0].clone();
+    assert!(highlight.text.contains("fusão"));
+    engine
+        .handle(Command::UpdateHighlight {
+            id: highlight.id,
+            color: HighlightColor::Pink,
+            note: " revisar ".into(),
+        })
+        .unwrap();
+    assert_eq!(engine.reader().unwrap().highlights[0].note, "revisar");
+
+    let marked = dir.path().join("crase-marcada.pdf");
+    engine
+        .handle(Command::ExportReading(marked.clone()))
+        .unwrap();
+    poll_until(&mut engine, |_| marked.exists());
+
+    // Progress is kept after closing and comes back on reopening.
+    engine.handle(Command::CloseReader).unwrap();
+    let reading = engine.readings()[0].clone();
+    assert!(reading.pages_seen.contains(&page));
+    assert_eq!(reading.last_page, page);
+    engine.handle(Command::OpenReading(reading.id)).unwrap();
+    assert_eq!(engine.reader().unwrap().highlights.len(), 1);
+
+    engine.handle(Command::DeleteReading(reading.id)).unwrap();
+    assert!(engine.reader().is_none() && engine.readings().is_empty());
+}

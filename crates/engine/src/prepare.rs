@@ -11,7 +11,8 @@ use kg_ai::{AiError, QuestionDraft, Throttle, TopicContext};
 use kg_handout::{Document, Labels, TopicHandout};
 use kg_study::TopicId;
 
-use crate::handouts::{HandoutSource, seed, write_pdf, write_topic};
+use crate::handouts::{HandoutSource, saved_handout, seed, write_topic};
+use crate::reader::SavedHandout;
 use crate::{Engine, EngineError, Event, Notice};
 
 /// Topics prepared at the same time. Requests are also paced by a shared
@@ -99,7 +100,7 @@ pub struct PrepareSummary {
 pub(crate) enum PrepareEvent {
     Handout { topic: TopicId, json: String },
     QuizBank { topic: TopicId, json: String },
-    Finished(Result<PrepareSummary, EngineError>),
+    Finished(Result<(PrepareSummary, Option<SavedHandout>), EngineError>),
 }
 
 struct Item {
@@ -143,6 +144,7 @@ impl Engine {
             labels: request.labels.clone(),
             topics: Vec::new(),
             files: Vec::new(),
+            marks: Vec::new(),
         };
         let pictures = self.picture_cache();
         let topic_ids: Vec<TopicId> = plan.topics().map(|(_, t)| t.id).collect();
@@ -227,7 +229,12 @@ impl Engine {
             PrepareEvent::Finished(result) => {
                 self.prepare_job = None;
                 match result {
-                    Ok(summary) => self.notices.push(Notice::ContentPrepared(summary)),
+                    Ok((summary, saved)) => {
+                        if let Some(saved) = &saved {
+                            self.keep_handout(saved, false)?;
+                        }
+                        self.notices.push(Notice::ContentPrepared(summary));
+                    }
                     Err(EngineError::Cancelled) => {}
                     Err(err) => return Err(err),
                 }
@@ -278,7 +285,7 @@ fn prepare(
     pictures: Option<&std::path::Path>,
     progress: &Progress,
     send: &(dyn Fn(PrepareEvent) + Sync),
-) -> Result<PrepareSummary, EngineError> {
+) -> Result<(PrepareSummary, Option<SavedHandout>), EngineError> {
     let ready: Vec<Mutex<Ready>> = items
         .iter()
         .map(|item| {
@@ -339,16 +346,19 @@ fn prepare(
         .into_iter()
         .filter_map(|slot| slot.into_inner().ok().and_then(|r| r.handout))
         .collect();
-    let pdf = if document.topics.is_empty() {
+    let saved = if document.topics.is_empty() {
         None
     } else {
-        Some(write_pdf(document, path, pictures)?)
+        Some(saved_handout(document, path, pictures)?)
     };
-    Ok(PrepareSummary {
-        topics: items.len(),
-        failed: progress.failed.load(Ordering::Relaxed),
-        pdf,
-    })
+    Ok((
+        PrepareSummary {
+            topics: items.len(),
+            failed: progress.failed.load(Ordering::Relaxed),
+            pdf: saved.as_ref().map(|s| s.path.clone()),
+        },
+        saved,
+    ))
 }
 
 /// Writes what is still missing for one topic. False when something failed.

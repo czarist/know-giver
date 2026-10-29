@@ -245,6 +245,7 @@ impl Engine {
     }
 
     pub(crate) fn refresh_stats(&mut self) {
+        self.refresh_readings();
         let Some(id) = self.active.as_ref().map(|p| p.id) else {
             self.quiz_stats = QuizStats::default();
             self.lesson_count = 0;
@@ -264,6 +265,7 @@ impl Engine {
         }
         self.quiz = None;
         self.review = None;
+        self.close_reader();
     }
 }
 

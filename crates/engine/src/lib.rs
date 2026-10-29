@@ -16,6 +16,7 @@ mod plans;
 mod practice;
 mod prepare;
 mod progress;
+mod reader;
 mod settings;
 mod stt;
 mod study_time;
@@ -38,7 +39,10 @@ pub use kg_audio::{
     VoiceGender, WhisperModel,
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
-pub use kg_handout::{HandoutError, Labels as HandoutLabels};
+pub use kg_handout::{
+    Document as HandoutDocument, Exercise as HandoutExercise, HandoutError,
+    Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout,
+};
 pub use kg_pdf::{Edital, EditalText, PdfError, Role};
 pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
@@ -47,12 +51,14 @@ pub use kg_study::{
     Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,
     StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
 };
+pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
+pub use reader::ReaderState;
 pub use settings::Settings;
 pub use study_time::StudyPresence;
 pub use teacher::Teacher;
@@ -129,6 +135,33 @@ pub enum Command {
         relevance: Relevance,
         topic: Option<TopicId>,
     },
+
+    /// Opens a kept handout in the reader.
+    OpenReading(ReadingId),
+    CloseReader,
+    DeleteReading(ReadingId),
+    /// The page the student is looking at in the reader.
+    ReaderGoTo(usize),
+    /// Draws a reader page at `scale` (pixels per point × 100).
+    RenderPage {
+        page: usize,
+        scale: u32,
+    },
+    /// Highlights text boxes `first..=last` of a page.
+    AddHighlight {
+        page: usize,
+        first: usize,
+        last: usize,
+        color: HighlightColor,
+    },
+    UpdateHighlight {
+        id: HighlightId,
+        color: HighlightColor,
+        note: String,
+    },
+    DeleteHighlight(HighlightId),
+    /// Saves the open handout as a PDF with its highlights.
+    ExportReading(PathBuf),
 
     /// Writes an already formatted progress report.
     ExportProgress {
@@ -236,7 +269,8 @@ pub(crate) enum Event {
         topic: TopicId,
         json: String,
     },
-    HandoutFinished(Result<PathBuf, EngineError>),
+    HandoutFinished(Result<reader::SavedHandout, EngineError>),
+    Reader(reader::ReaderEvent),
     Prepare(prepare::PrepareEvent),
     BoardImported(Result<board::BoardImport, EngineError>),
     AnswerKeyRead {
@@ -277,6 +311,8 @@ pub struct Engine {
     downloads: HashMap<ModelId, models::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
+    readings: Vec<Reading>,
+    reader: Option<ReaderState>,
     prepare_job: Option<PrepareJob>,
     /// Preparation asked for while the plan was still being generated.
     pending_prepare: Option<PrepareRequest>,
@@ -373,6 +409,8 @@ impl Engine {
             illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
             handout_job: None,
+            readings: Vec::new(),
+            reader: None,
             handouts_cached: 0,
             prepare_job: None,
             pending_prepare: None,
@@ -505,6 +543,33 @@ impl Engine {
             Command::SelectPlan(id) => self.select_plan(id),
             Command::DeletePlan(id) => self.delete_plan(id),
             Command::SetTopicStatus(id, status) => self.set_topic_status(id, status),
+
+            Command::OpenReading(id) => self.open_reading(id),
+            Command::CloseReader => {
+                self.close_reader();
+                Ok(())
+            }
+            Command::DeleteReading(id) => self.delete_reading(id),
+            Command::ReaderGoTo(page) => {
+                self.reader_go_to(page);
+                Ok(())
+            }
+            Command::RenderPage { page, scale } => {
+                self.render_page(page, scale);
+                Ok(())
+            }
+            Command::AddHighlight {
+                page,
+                first,
+                last,
+                color,
+            } => self.add_highlight(page, first, last, color),
+            Command::UpdateHighlight { id, color, note } => self.update_highlight(id, color, note),
+            Command::DeleteHighlight(id) => self.delete_highlight(id),
+            Command::ExportReading(path) => {
+                self.export_reading(path);
+                Ok(())
+            }
 
             Command::StartLesson(id) => self.start_lesson(id),
             Command::EndLesson => self.end_lesson(),
@@ -641,6 +706,7 @@ impl Engine {
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
+                Event::Reader(event) => self.on_reader_event(event),
                 Event::Prepare(event) => self.on_prepare_event(event),
                 Event::BoardImported(result) => self.on_board_imported(result),
                 Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),
@@ -651,6 +717,7 @@ impl Engine {
             }
         }
         self.tick_lesson();
+        self.tick_reader();
     }
 
     fn save_settings(&mut self, mut settings: Settings) -> Result<(), EngineError> {

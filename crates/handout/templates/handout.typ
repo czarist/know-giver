@@ -94,10 +94,22 @@
   #v(1.2fr)
 ]
 
+// The reader's highlights, over the text of their page.
+#let marks = data.at("marks", default: ())
+
 #set page(
   paper: "a4",
   margin: (x: 2.3cm, top: 2.6cm, bottom: 2.4cm),
   numbering: "1",
+  foreground: context {
+    let here-page = here().page()
+    for mark in marks.filter(m => m.page == here-page) {
+      for r in mark.rects {
+        place(top + left, dx: r.at(0) * 1pt, dy: r.at(1) * 1pt,
+          rect(width: r.at(2) * 1pt, height: r.at(3) * 1pt, fill: rgb(mark.color)))
+      }
+    }
+  },
   header: context {
     set text(size: 8.5pt, fill: muted)
     data.title

@@ -106,6 +106,29 @@ impl Pages {
         out.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
+    /// Boxes `first..=last` of a page joined into one rectangle per line
+    /// (`[left, top, right, bottom]` in points), for drawing a highlight.
+    pub fn line_rects(&self, page: usize, first: usize, last: usize) -> Vec<[f32; 4]> {
+        let boxes = self.text(page);
+        let last = last.min(boxes.len().saturating_sub(1));
+        let mut lines: Vec<[f32; 4]> = Vec::new();
+        for b in boxes.get(first..=last).unwrap_or_default() {
+            match lines.last_mut() {
+                // Same line: about the same top, continuing to the right.
+                Some(line)
+                    if (b.rect[1] - line[1]).abs() < 2.0
+                        && b.rect[0] >= line[0] - 1.0
+                        && b.rect[0] - line[2] < 12.0 =>
+                {
+                    line[2] = line[2].max(b.rect[2]);
+                    line[3] = line[3].max(b.rect[3]);
+                }
+                _ => lines.push(b.rect),
+            }
+        }
+        lines
+    }
+
     /// The PDF of these pages.
     pub fn pdf(&self) -> Result<Vec<u8>, HandoutError> {
         typst_pdf::pdf(&self.doc, &typst_pdf::PdfOptions::default())

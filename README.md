@@ -29,6 +29,7 @@
   <a href="#voice-lessons">Voice lessons</a> ·
   <a href="#a-whiteboard-that-shows-not-just-tells">Whiteboard</a> ·
   <a href="#teachers--voices">Teachers</a> ·
+  <a href="#read-and-highlight-your-handouts">Reader</a> ·
   <a href="#practice-review-handouts">Practice</a> ·
   <a href="#private-by-default">Privacy</a> ·
   <a href="#quick-start">Quick start</a> ·
@@ -66,6 +67,11 @@ your sentence does.
 The tutor starts talking with the first sentence of its answer, says "Hum." while it
 thinks, and stops when you interrupt. Hands-free, push-to-talk (Space) or typing.
 
+### 🧭 A lesson with a beginning and an end
+Every lesson follows a short plan, from the topic's handout or written by the
+teacher: three to five steps and a final review. You always see where you are
+("Step 2 of 5"), and the lesson closes with a summary and an offer to take the quiz.
+
 ### 🧠 Teaching
 Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for
 spoken conversation: short turns, one idea at a time, questions back to you.
@@ -92,6 +98,17 @@ Ten voices, half of them female, from **Piper** and **Kokoro**, all running loca
   <img src="docs/images/teachers.png" alt="The four teachers in their states: resting, listening, thinking and speaking" width="70%">
 </p>
 
+## Read and highlight your handouts
+
+Generated handouts open right inside the app, page by page, exactly as their PDF.
+Drag over a passage to highlight it, click it to write a note, and find every
+highlight in the side list. Know Giver remembers where you stopped and how much of
+each handout you have read, and saves a PDF with your highlights when you want one.
+
+<p align="center">
+  <img src="docs/images/reader.png" alt="A handout open in the reader, with a highlighted passage, its note in the side list and the reading progress bar" width="100%">
+</p>
+
 ## Practice, review, handouts
 
 - **Quizzes** in the style of the exam, with explanations; real past questions
@@ -99,7 +116,8 @@ Ten voices, half of them female, from **Piper** and **Kokoro**, all running loca
 - **Spaced review (SM-2)**: topics come back right before you would forget them.
 - **Past exams and material**: past exams, answer keys and handouts, filtered against your
   syllabus, with the reason for whatever is set aside.
-- **Handouts** per topic, subject or plan, exported to PDF.
+- **Handouts** per topic, subject or plan, with pictures, exercise cards and an
+  answer key, saved as PDF.
 - **Progress** per subject and **daily study time** that only counts active study.
 
 <table>

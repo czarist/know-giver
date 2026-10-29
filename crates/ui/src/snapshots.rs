@@ -274,8 +274,160 @@ FIM",
             out.as_deref(),
             &format!("{locale}-edital-roles"),
         );
+
+        reader_snapshots(&mut harness, out.as_deref(), locale, english, data.path());
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}
+
+/// A generated handout open in the reader, with a highlight and a note, and
+/// the handout library.
+fn reader_snapshots(
+    harness: &mut Harness<'_, KnowGiverApp>,
+    out: Option<&std::path::Path>,
+    locale: &str,
+    english: bool,
+    dir: &std::path::Path,
+) {
+    use kg_engine::{
+        HandoutDocument, HandoutExercise, HandoutLabels, HandoutSection, TopicHandout,
+    };
+    let tr = |pt, en| tr(english, pt, en);
+    let labels = HandoutLabels {
+        handout: tr("Apostila", "Study handout").into(),
+        contents: tr("Sumário", "Contents").into(),
+        key_points: tr("Pontos-chave", "Key points").into(),
+        examples: tr("Exemplos", "Examples").into(),
+        pitfalls: tr("Pegadinhas de prova", "Exam pitfalls").into(),
+        summary: tr("Resumo", "Summary").into(),
+        exercises: tr("Exercícios", "Exercises").into(),
+        answers: tr("Gabarito comentado", "Answer key").into(),
+        picture_source: tr("Imagem: Wikipédia", "Picture: Wikipedia").into(),
+        answer_grid: tr("Respostas rápidas", "Quick answers").into(),
+    };
+    let document = HandoutDocument {
+        title: tr("Plano TJCE – Técnico Judiciário", "State Court – Court Clerk").into(),
+        subtitle: tr("Emprego do sinal indicativo de crase", "Subject–verb agreement").into(),
+        generated: tr("Gerada em 28/10/2026", "Generated on Oct 28, 2026").into(),
+        lang: tr("pt", "en").into(),
+        labels,
+        topics: vec![TopicHandout {
+            topic: tr("Emprego do sinal indicativo de crase", "Subject–verb agreement").into(),
+            subject: tr("Língua Portuguesa", "Language and Writing").into(),
+            introduction: tr(
+                "A crase é a fusão da preposição a com o artigo feminino a. Ela cai em quase toda prova de português, quase sempre em frases curtas que testam se você reconhece os dois elementos.",
+                "A verb agrees with the head of its subject, not with the noun closest to it. Exams test this with long subjects whose last noun has the other number.",
+            )
+            .into(),
+            sections: vec![
+                HandoutSection {
+                    heading: tr("Quando usar", "Find the head noun").into(),
+                    paragraphs: vec![tr(
+                        "Use a crase quando o termo regente exige a preposição a e a palavra seguinte aceita o artigo a. O teste mais rápido é trocar a palavra feminina por uma masculina: se aparecer ao, há crase.",
+                        "Strip the phrases that start with of, with or in. What is left is the head noun, and the verb follows it: the list of names is long, the boxes on the shelf are heavy.",
+                    )
+                    .into()],
+                    key_points: vec![tr("Troque por masculino: ao indica crase.", "Drop the of-phrase to find the head.").into()],
+                    ..Default::default()
+                },
+                HandoutSection {
+                    heading: tr("Casos proibidos", "Tricky subjects").into(),
+                    paragraphs: vec![tr(
+                        "Não há crase antes de palavras masculinas, de verbos, de pronomes pessoais e de expressões com palavras repetidas, como cara a cara.",
+                        "Each and every take a singular verb. Neither ... nor and either ... or agree with the nearer part of the subject.",
+                    )
+                    .into()],
+                    ..Default::default()
+                },
+            ],
+            pitfalls: vec![tr("A partir de nunca tem crase.", "A number of takes a plural verb; the number of takes a singular one.").into()],
+            exercises: vec![HandoutExercise {
+                prompt: tr("Assinale a frase correta.", "Choose the correct sentence.").into(),
+                options: vec![
+                    tr("Fui à pé.", "The list of names are long.").into(),
+                    tr("Fui à praia.", "The list of names is long.").into(),
+                ],
+                correct: 1,
+                explanation: tr("Praia é feminina e aceita o artigo.", "The head noun is list, singular.").into(),
+            }],
+            ..Default::default()
+        }],
+        files: Vec::new(),
+        marks: Vec::new(),
+    };
+    if let Ok(engine) = harness.state_mut().engine.as_mut() {
+        engine.simulate_handout(document, dir).unwrap();
+    }
+    // Pages are laid out on a worker thread.
+    for _ in 0..100 {
+        harness.run_steps(2);
+        let ready = harness
+            .state()
+            .engine
+            .as_ref()
+            .ok()
+            .and_then(|e| e.reader())
+            .is_some_and(|r| r.pages.is_some());
+        if ready {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(30));
+    }
+    // Highlight the section's first sentence, with a note.
+    let target = harness
+        .state()
+        .engine
+        .as_ref()
+        .ok()
+        .and_then(|e| e.reader())
+        .and_then(|r| r.pages.clone())
+        .and_then(|pages| {
+            let needle = tr("Use a crase", "Strip the");
+            (0..pages.len()).find_map(|page| {
+                let boxes = pages.text(page);
+                let text: Vec<&str> = boxes.iter().map(|b| b.text.as_str()).collect();
+                let joined = text.concat();
+                let at = joined.find(needle)?;
+                let mut chars = 0;
+                let first = boxes.iter().position(|b| {
+                    chars += b.text.len();
+                    chars > at
+                })?;
+                Some((page, first, (first + 120).min(boxes.len() - 1)))
+            })
+        });
+    if let Some((page, first, last)) = target {
+        harness.state_mut().dispatch(Command::AddHighlight {
+            page,
+            first,
+            last,
+            color: kg_engine::HighlightColor::Yellow,
+        });
+        let id = harness
+            .state()
+            .engine
+            .as_ref()
+            .ok()
+            .and_then(|e| e.reader())
+            .and_then(|r| r.highlights.first().map(|h| h.id));
+        if let Some(id) = id {
+            harness.state_mut().dispatch(Command::UpdateHighlight {
+                id,
+                color: kg_engine::HighlightColor::Yellow,
+                note: tr("Cai em toda prova.", "Shows up in every exam.").into(),
+            });
+        }
+        harness.state_mut().ui.reader.jump_to(page);
+    }
+    harness.state_mut().ui.screen = Screen::Reader;
+    // Let the pages render and the textures load.
+    for _ in 0..6 {
+        harness.run_steps(4);
+        std::thread::sleep(std::time::Duration::from_millis(120));
+    }
+    render(harness, out, &format!("{locale}-reader"));
+    harness.state_mut().dispatch(Command::CloseReader);
+    render(harness, out, &format!("{locale}-reader-library"));
 }
 
 /// Every teacher in each lesson phase: one row per teacher.

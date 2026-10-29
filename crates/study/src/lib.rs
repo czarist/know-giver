@@ -7,6 +7,7 @@ pub mod activity;
 pub mod board;
 pub mod plan;
 pub mod quiz;
+pub mod reading;
 pub mod review;
 pub mod store;
 
@@ -23,6 +24,7 @@ pub use plan::{
     Topic, TopicId, TopicStatus,
 };
 pub use quiz::{Quiz, QuizAttempt, QuizQuestion, QuizStats};
+pub use reading::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use review::{ReviewGrade, ReviewState};
 pub use store::{Store, StoreError};
 

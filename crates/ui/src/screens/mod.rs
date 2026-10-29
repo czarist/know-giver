@@ -8,6 +8,7 @@ pub mod lesson;
 pub mod plan;
 pub mod progress;
 pub mod quiz;
+pub mod reader;
 pub mod review;
 pub mod settings;
 pub mod today;

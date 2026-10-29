@@ -16,6 +16,8 @@ pub enum Screen {
     #[default]
     Edital,
     Plan,
+    /// Generated handouts, read inside the app.
+    Reader,
     Board,
     Lesson,
     Quiz,
@@ -25,10 +27,11 @@ pub enum Screen {
 }
 
 impl Screen {
-    const ALL: [Self; 9] = [
+    const ALL: [Self; 10] = [
         Self::Today,
         Self::Edital,
         Self::Plan,
+        Self::Reader,
         Self::Board,
         Self::Lesson,
         Self::Quiz,
@@ -43,6 +46,7 @@ impl Screen {
             Self::Welcome => Icon::Sparkles,
             Self::Edital => Icon::Edital,
             Self::Plan => Icon::Plan,
+            Self::Reader => Icon::Handout,
             Self::Board => Icon::Board,
             Self::Lesson => Icon::Lesson,
             Self::Quiz => Icon::Quiz,
@@ -58,6 +62,7 @@ impl Screen {
             Self::Welcome => t!("nav.welcome"),
             Self::Edital => t!("nav.edital"),
             Self::Plan => t!("nav.plan"),
+            Self::Reader => t!("nav.reader"),
             Self::Board => t!("nav.board"),
             Self::Lesson => t!("nav.lesson"),
             Self::Quiz => t!("nav.quiz"),
@@ -112,6 +117,7 @@ pub struct UiState {
     pub prepare_all: bool,
     /// Name typed on the welcome screen, before it is saved.
     pub welcome_name: Option<String>,
+    pub reader: crate::screens::reader::ReaderUi,
 }
 
 /// The eframe application.
@@ -178,6 +184,7 @@ impl KnowGiverApp {
                 plan_view: PlanView::default(),
                 prepare_all: true,
                 welcome_name: None,
+                reader: Default::default(),
             },
             toasts: Vec::new(),
             shown_screen: screen,
@@ -332,7 +339,7 @@ impl KnowGiverApp {
 }
 
 /// Opens a file with the system's default app (e.g. a PDF viewer).
-fn open_file(path: &std::path::Path) {
+pub(crate) fn open_file(path: &std::path::Path) {
     let program = if cfg!(windows) {
         "explorer"
     } else if cfg!(target_os = "macos") {
@@ -389,6 +396,7 @@ impl eframe::App for KnowGiverApp {
             Ok(engine) => {
                 let study_surface = match self.ui.screen {
                     Screen::Plan | Screen::Board => engine.active_plan().is_some(),
+                    Screen::Reader => engine.reader().is_some(),
                     Screen::Lesson => engine.lesson().is_some(),
                     Screen::Quiz => engine.quiz().is_some(),
                     Screen::Review => engine.review().is_some(),
@@ -420,17 +428,22 @@ impl eframe::App for KnowGiverApp {
                 }
                 engine.poll();
                 let notices = engine.take_notices();
+                let mut go_to_reader = false;
                 let busy = engine.is_busy();
                 let badges = Badges::from_engine(engine);
                 for notice in &notices {
-                    if let kg_engine::Notice::HandoutSaved(path) = notice {
-                        open_file(path);
+                    // A finished handout opens in the reader.
+                    if let kg_engine::Notice::HandoutSaved(_) = notice {
+                        go_to_reader = true;
                     }
                     let (text, is_error) = i18n::notice(notice);
                     self.push_toast(text, is_error);
                 }
                 if busy {
                     ui.ctx().request_repaint_after(Duration::from_millis(40));
+                }
+                if go_to_reader {
+                    self.ui.screen = Screen::Reader;
                 }
                 badges
             }
@@ -472,6 +485,7 @@ impl eframe::App for KnowGiverApp {
                     Screen::Welcome => screens::welcome::show(self, ui),
                     Screen::Edital => screens::edital::show(self, ui),
                     Screen::Plan => screens::plan::show(self, ui),
+                    Screen::Reader => screens::reader::show(self, ui),
                     Screen::Board => screens::board::show(self, ui),
                     Screen::Lesson => screens::lesson::show(self, ui),
                     Screen::Quiz => screens::quiz::show(self, ui),

@@ -10,6 +10,7 @@ use kg_handout::{Document, Exercise, Labels, Section, TopicHandout};
 use kg_study::{QuizQuestion, SubjectId, TopicId};
 use serde::{Deserialize, Serialize};
 
+use crate::reader::SavedHandout;
 use crate::{Engine, EngineError, Event, Notice};
 
 /// Topics written at the same time. More would hit rate limits.
@@ -194,12 +195,14 @@ impl Engine {
 
     pub(crate) fn on_handout_finished(
         &mut self,
-        result: Result<PathBuf, EngineError>,
+        result: Result<SavedHandout, EngineError>,
     ) -> Result<(), EngineError> {
         self.handout_job = None;
         match result {
-            Ok(path) => {
-                self.notices.push(Notice::HandoutSaved(path));
+            Ok(saved) => {
+                // Opens in the reader; the PDF is also saved where asked.
+                self.keep_handout(&saved, true)?;
+                self.notices.push(Notice::HandoutSaved(saved.path));
                 Ok(())
             }
             Err(EngineError::Cancelled) => Ok(()),
@@ -280,7 +283,7 @@ fn build_handout(
     done: &AtomicUsize,
     cancel: &AtomicBool,
     on_written: &(dyn Fn(TopicId, String) + Sync),
-) -> Result<PathBuf, EngineError> {
+) -> Result<SavedHandout, EngineError> {
     let slots: Vec<Mutex<Option<TopicHandout>>> = items
         .iter()
         .map(|item| Mutex::new(item.cached.clone()))
@@ -340,8 +343,26 @@ fn build_handout(
         labels: request.labels.clone(),
         topics,
         files: Vec::new(),
+        marks: Vec::new(),
     };
-    write_pdf(document, &request.path, pictures)
+    saved_handout(document, &request.path, pictures)
+}
+
+/// Writes the PDF and returns what to keep for reading it in the app.
+pub(crate) fn saved_handout(
+    document: Document,
+    path: &std::path::Path,
+    pictures: Option<&std::path::Path>,
+) -> Result<SavedHandout, EngineError> {
+    let json = serde_json::to_string(&document)
+        .map_err(|e| kg_handout::HandoutError::Layout(e.to_string()))?;
+    let title = document.subtitle.clone();
+    let path = write_pdf(document, path, pictures)?;
+    Ok(SavedHandout {
+        path,
+        title,
+        document: json,
+    })
 }
 
 /// Writes and reviews one topic's handout. Returns the content and the JSON
