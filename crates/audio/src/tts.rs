@@ -193,7 +193,7 @@ fn kokoro(
         .arg(path_arg("kokoro-tokens", &model.join("tokens.txt")))
         .arg(path_arg("kokoro-data-dir", &model.join("espeak-ng-data")))
         .arg("--kokoro-lang=pt-br")
-        .arg("--num-threads=2")
+        .arg(format!("--num-threads={}", kokoro_threads()))
         .arg("--provider=cpu")
         .arg("--debug=0")
         .arg(format!("--sid={}", voice.speaker_id()))
@@ -204,6 +204,14 @@ fn kokoro(
     run_child(&mut command, None, cancelled)?;
     let bytes = std::fs::read(&output).map_err(|e| AudioError::io(&output, e))?;
     decode_wav(&bytes)
+}
+
+/// Kokoro is about ten times slower than Piper; four threads instead of two
+/// take a fifth off each sentence on a typical laptop.
+fn kokoro_threads() -> usize {
+    std::thread::available_parallelism()
+        .map_or(2, |n| n.get() / 2)
+        .clamp(2, 4)
 }
 
 /// Removes the `\\?\` prefix `canonicalize` adds on Windows when the rest is

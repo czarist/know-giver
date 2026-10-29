@@ -24,7 +24,7 @@ pub use kokoro_runtime::prepare_kokoro_executable;
 pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
 pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
-pub use playback::Speaker;
+pub use playback::{OnStart, Speaker};
 pub use signal::{prepare_for_stt, resample, soften, split_for_speech};
 pub use speech_text::normalize_for_speech;
 pub use tts::{

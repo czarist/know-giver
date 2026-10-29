@@ -10,8 +10,11 @@ use rodio::Source;
 
 use crate::{AudioClip, AudioError};
 
+/// Called once, when a clip's first sample reaches the output device.
+pub type OnStart = Box<dyn FnOnce() + Send>;
+
 enum Command {
-    Play(AudioClip),
+    Play(AudioClip, Option<OnStart>),
     Stop,
 }
 
@@ -46,11 +49,21 @@ impl Speaker {
 
     /// Queues a clip after whatever is already playing.
     pub fn play(&self, clip: AudioClip) {
+        self.queue(clip, None);
+    }
+
+    /// Queues a clip and calls `on_start` when it begins to be heard, so
+    /// captions can follow the voice. A clip dropped by `stop` never calls it.
+    pub fn play_then(&self, clip: AudioClip, on_start: OnStart) {
+        self.queue(clip, Some(on_start));
+    }
+
+    fn queue(&self, clip: AudioClip, on_start: Option<OnStart>) {
         if clip.samples.is_empty() {
             return;
         }
         self.playing.store(true, Ordering::Relaxed);
-        let _ = self.tx.send(Command::Play(clip));
+        let _ = self.tx.send(Command::Play(clip, on_start));
     }
 
     /// Stops playback and drops anything queued.
@@ -91,6 +104,41 @@ impl<S: Source> Metered<S> {
             count: 0,
             window,
         }
+    }
+}
+
+/// Wraps a source and calls a function when its first sample is pulled.
+struct Announced<S> {
+    inner: S,
+    on_start: Option<OnStart>,
+}
+
+impl<S: Source> Iterator for Announced<S> {
+    type Item = rodio::Sample;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(on_start) = self.on_start.take() {
+            on_start();
+        }
+        self.inner.next()
+    }
+}
+
+impl<S: Source> Source for Announced<S> {
+    fn current_span_len(&self) -> Option<usize> {
+        self.inner.current_span_len()
+    }
+
+    fn channels(&self) -> rodio::ChannelCount {
+        self.inner.channels()
+    }
+
+    fn sample_rate(&self) -> rodio::SampleRate {
+        self.inner.sample_rate()
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        self.inner.total_duration()
     }
 }
 
@@ -153,13 +201,17 @@ fn playback_thread(
 
     loop {
         match rx.recv_timeout(Duration::from_millis(40)) {
-            Ok(Command::Play(clip)) => {
+            Ok(Command::Play(clip, on_start)) => {
                 let (Some(channels), Some(rate)) =
                     (NonZero::new(1u16), NonZero::new(clip.sample_rate))
                 else {
                     continue;
                 };
                 let source = rodio::buffer::SamplesBuffer::new(channels, rate, clip.samples);
+                let source = Announced {
+                    inner: source,
+                    on_start,
+                };
                 player.append(Metered::new(source, Arc::clone(&level)));
                 player.play();
             }
@@ -196,5 +248,22 @@ mod tests {
         assert!((measured - 0.5).abs() < 1e-3);
         while metered.next().is_some() {}
         assert_eq!(f32::from_bits(level.load(Ordering::Relaxed)), 0.0);
+    }
+
+    #[test]
+    fn announced_source_calls_back_once_on_the_first_sample() {
+        let rate = NonZero::new(16_000u32).unwrap();
+        let channels = NonZero::new(1u16).unwrap();
+        let calls = Arc::new(AtomicU32::new(0));
+        let counter = Arc::clone(&calls);
+        let mut source = Announced {
+            inner: rodio::buffer::SamplesBuffer::new(channels, rate, vec![0.1f32; 10]),
+            on_start: Some(Box::new(move || {
+                counter.fetch_add(1, Ordering::Relaxed);
+            })),
+        };
+        assert_eq!(calls.load(Ordering::Relaxed), 0);
+        while source.next().is_some() {}
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
     }
 }

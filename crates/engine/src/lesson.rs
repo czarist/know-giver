@@ -105,6 +105,9 @@ pub struct LessonSession {
     speech_job: Option<Arc<AtomicBool>>,
     /// The last tutor turn is still arriving, sentence by sentence.
     streaming: bool,
+    /// The whole reply, kept until its last sentence has been heard: captions
+    /// follow the voice, not the text arriving from the AI.
+    pending_reply: Option<String>,
     /// What the student is saying, while they speak.
     partial: Option<Partial>,
     partial_running: bool,
@@ -164,6 +167,15 @@ impl LessonSession {
     #[cfg(test)]
     pub(crate) fn reply_id(&self) -> u64 {
         self.reply
+    }
+
+    /// Pretends the reply is being spoken; store `false` in the result when
+    /// the voice is done.
+    #[cfg(test)]
+    pub(crate) fn fake_speech(&mut self) -> Arc<AtomicBool> {
+        let job = Arc::new(AtomicBool::new(true));
+        self.speech_job = Some(Arc::clone(&job));
+        job
     }
 
     /// What the student is saying right now, while listening.
@@ -328,6 +340,7 @@ impl Engine {
             mic: None,
             speech_job: None,
             streaming: false,
+            pending_reply: None,
             partial: None,
             partial_running: false,
             reply,
@@ -346,7 +359,7 @@ impl Engine {
             self.request_illustration(&title);
         }
         self.warm_up_voice();
-        let speech = self.open_speech_stream();
+        let speech = self.open_speech_stream(reply);
         let (tx, waker) = self.sender();
         self.spawn(move || {
             let result = kg_ai::start_lesson_stream(&client, &ctx, |sentence| {
@@ -483,6 +496,7 @@ impl Engine {
         };
         lesson.reply = reply;
         lesson.speech_job = None;
+        lesson.pending_reply = None;
         if std::mem::take(&mut lesson.streaming)
             && lesson
                 .turns
@@ -800,7 +814,7 @@ impl Engine {
         let ctx = lesson.context.clone();
         let history = lesson.history();
         let client = self.ai_client();
-        let speech = self.open_speech_stream();
+        let speech = self.open_speech_stream(session);
         let speaking_enabled = speech.is_some();
         let (tx, waker) = self.sender();
         self.spawn(move || {
@@ -885,6 +899,7 @@ impl Engine {
         {
             lesson.phase = LessonPhase::Idle;
             lesson.speech_job = None;
+            lesson.pending_reply = None;
             if std::mem::take(&mut lesson.streaming) {
                 // Interrupted while the reply was still arriving: keep what
                 // was said and ignore the rest, instead of reading it all again.
@@ -942,6 +957,7 @@ impl Engine {
                 if !synthesizing && !playing {
                     lesson.phase = LessonPhase::Idle;
                     lesson.speech_job = None;
+                    settle_reply(lesson);
                     // After the closing words, the lesson waits for the student.
                     let finished = lesson.finished;
                     if self.settings.hands_free
@@ -1021,16 +1037,12 @@ impl Engine {
                 let mut spoken_live = false;
                 let mut pictures: Vec<String> = Vec::new();
                 if let Some(lesson) = self.lesson.as_mut() {
-                    // The full reply replaces the streamed captions.
-                    if std::mem::take(&mut lesson.streaming)
-                        && let Some(turn) = lesson.turns.last_mut()
-                    {
-                        turn.text.clone_from(&text);
-                    } else if !text.trim().is_empty() {
-                        lesson.turns.push(LessonTurn {
-                            speaker: Speaker::Tutor,
-                            text: text.clone(),
-                        });
+                    spoken_live = lesson.speech_job.is_some();
+                    // The full reply replaces the streamed captions; while it
+                    // is still being spoken, once the voice is done.
+                    lesson.pending_reply = Some(text.clone());
+                    if !spoken_live {
+                        settle_reply(lesson);
                     }
                     pictures = reply
                         .board
@@ -1042,7 +1054,6 @@ impl Engine {
                     lesson.follow_plan(&reply.outline, reply.step, reply.finished);
                     let excess = lesson.board.len().saturating_sub(BOARD_POINTS);
                     lesson.board.drain(..excess);
-                    spoken_live = lesson.speech_job.is_some();
                     if spoken_live && lesson.phase == LessonPhase::Thinking {
                         lesson.phase = LessonPhase::Speaking;
                     }
@@ -1159,7 +1170,19 @@ impl Engine {
                 }
             }
             LessonEvent::SpeechFailed { session, error } if Some(session) == current => {
-                self.stop_speaking();
+                // The voice failed; the reply goes on as text (the speech
+                // thread sends the remaining sentences as captions).
+                self.voice.generation.fetch_add(1, Ordering::Relaxed);
+                if let Some(speaker) = &self.voice.speaker {
+                    speaker.stop();
+                }
+                if let Some(lesson) = self.lesson.as_mut() {
+                    lesson.speech_job = None;
+                    if lesson.phase == LessonPhase::Speaking {
+                        lesson.phase = LessonPhase::Idle;
+                    }
+                    settle_reply(lesson);
+                }
                 return Err(error.into());
             }
             // Results for a lesson that already ended.
@@ -1177,7 +1200,7 @@ impl Engine {
     /// Opens a speech queue for a reply that is about to stream. Each sentence
     /// sent into it is synthesized and played in order; the queue ends when
     /// the sender is dropped. `None` when the tutor should not speak.
-    fn open_speech_stream(&mut self) -> Option<mpsc::Sender<String>> {
+    fn open_speech_stream(&mut self, reply: u64) -> Option<mpsc::Sender<String>> {
         if !(self.settings.voice_enabled && self.tts_ready()) {
             return None;
         }
@@ -1210,20 +1233,51 @@ impl Engine {
             .name("kg-speech-stream".into())
             .spawn(move || {
                 let cancelled = || current_generation.load(Ordering::Relaxed) != generation;
+                // Shows a sentence's caption: when its voice starts, or right
+                // away once the voice has failed.
+                let caption = {
+                    let events = events.clone();
+                    let waker = Arc::clone(&waker);
+                    move |text: String| {
+                        let _ = events.send(Event::Lesson(LessonEvent::Sentence {
+                            session: reply,
+                            text,
+                        }));
+                        waker();
+                    }
+                };
+                let mut failed = false;
                 'sentences: for sentence in sentences {
+                    if failed {
+                        caption(sentence);
+                        continue;
+                    }
+                    let mut shown = false;
                     for chunk in split_for_speech(&sentence) {
                         if cancelled() {
                             break 'sentences;
                         }
                         match tts.synthesize(&chunk, &cancelled) {
-                            Ok(clip) if !cancelled() => speaker.play(clip),
+                            Ok(clip) if !cancelled() => {
+                                if std::mem::replace(&mut shown, true) {
+                                    speaker.play(clip);
+                                } else {
+                                    let caption = caption.clone();
+                                    let text = sentence.clone();
+                                    speaker.play_then(clip, Box::new(move || caption(text)));
+                                }
+                            }
                             Ok(_) | Err(AudioError::Cancelled) => break 'sentences,
                             Err(error) => {
                                 let _ = events.send(Event::Lesson(LessonEvent::SpeechFailed {
                                     session,
                                     error,
                                 }));
-                                break 'sentences;
+                                failed = true;
+                                if !shown {
+                                    caption(sentence.clone());
+                                }
+                                break;
                             }
                         }
                     }
@@ -1396,14 +1450,39 @@ fn relay_sentence(
     session: u64,
     sentence: &str,
 ) {
-    if let Some(speech) = speech {
-        let _ = speech.send(sentence.to_owned());
+    // With a voice, the caption is shown when the sentence starts playing.
+    if let Some(speech) = speech
+        && speech.send(sentence.to_owned()).is_ok()
+    {
+        return;
     }
     let _ = events.send(Event::Lesson(LessonEvent::Sentence {
         session,
         text: sentence.to_owned(),
     }));
     waker();
+}
+
+/// Puts the finished reply in place of its streamed captions.
+fn settle_reply(lesson: &mut LessonSession) {
+    let Some(text) = lesson.pending_reply.take() else {
+        return;
+    };
+    let streamed = std::mem::take(&mut lesson.streaming)
+        && lesson
+            .turns
+            .last()
+            .is_some_and(|turn| turn.speaker == Speaker::Tutor);
+    if streamed {
+        if let Some(turn) = lesson.turns.last_mut() {
+            turn.text = text;
+        }
+    } else if !text.trim().is_empty() {
+        lesson.turns.push(LessonTurn {
+            speaker: Speaker::Tutor,
+            text,
+        });
+    }
 }
 
 /// Keeps the last recording, so a bad transcription can be checked against

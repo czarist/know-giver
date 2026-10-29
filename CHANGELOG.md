@@ -4,6 +4,17 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Lesson captions follow the voice: a sentence appears when it starts playing,
+  not when the AI writes it, so slower voices (Kokoro) no longer run behind
+  the text. If the voice fails, the rest of the reply still appears as text.
+
+### Changed
+- Kokoro voices use up to four threads (was two), about a fifth faster per
+  sentence.
+
 ## [0.26.0] - 2026-10-28
 
 ### Added

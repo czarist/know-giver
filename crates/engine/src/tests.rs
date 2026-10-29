@@ -520,6 +520,59 @@ fn streamed_sentences_grow_one_caption_and_the_reply_replaces_it() {
 }
 
 #[test]
+fn a_spoken_reply_shows_its_full_text_only_after_the_voice() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    let session = engine.lesson().unwrap().reply_id();
+    let speech = engine.lesson.as_mut().unwrap().fake_speech();
+    // The speech thread sends a caption when a sentence starts playing.
+    engine
+        .events_tx
+        .send(Event::Lesson(LessonEvent::Sentence {
+            session,
+            text: "Olá!".into(),
+        }))
+        .unwrap();
+    engine
+        .events_tx
+        .send(Event::Lesson(LessonEvent::Reply {
+            session,
+            result: Ok(kg_ai::TutorReply {
+                speech: "Olá! Hoje vamos ver crase.".into(),
+                ..kg_ai::TutorReply::default()
+            }),
+        }))
+        .unwrap();
+    engine.poll();
+    let lesson = engine.lesson().unwrap();
+    // Still speaking: only what was heard is on screen.
+    assert_eq!(lesson.phase, LessonPhase::Speaking);
+    assert_eq!(lesson.turns.len(), 1);
+    assert_eq!(lesson.turns[0].text, "Olá!");
+
+    engine
+        .events_tx
+        .send(Event::Lesson(LessonEvent::Sentence {
+            session,
+            text: "Hoje vamos ver crase.".into(),
+        }))
+        .unwrap();
+    engine.poll();
+    assert_eq!(
+        engine.lesson().unwrap().turns[0].text,
+        "Olá! Hoje vamos ver crase."
+    );
+
+    speech.store(false, std::sync::atomic::Ordering::Relaxed);
+    engine.poll();
+    let lesson = engine.lesson().unwrap();
+    assert_eq!(lesson.phase, LessonPhase::Idle);
+    assert_eq!(lesson.turns.len(), 1);
+    assert_eq!(lesson.turns[0].text, "Olá! Hoje vamos ver crase.");
+}
+
+#[test]
 fn board_opens_with_a_topic_picture_and_asks_for_tutor_pictures() {
     let (mut engine, _dir) = engine_with_plan();
     engine.settings.board_images = true;
