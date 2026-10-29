@@ -41,6 +41,30 @@ exit and nonempty file do not establish audio quality. Inspect and listen to the
 5. Only then add atomic model installation, installed-voice selection, preview and
    matching avatar. Keep Piper available and preserve old saved settings.
 
+## Latency in lessons (2026-10-28)
+
+Measured on the owner's Windows machine, one sentence of 85 characters (about 4.8 s
+of audio), sherpa-onnx v1.12.20 and the installed models:
+
+| Voice | Time per sentence | Notes |
+|---|---|---|
+| Piper Faber, Cadu (new process) | 0.8 s | the app keeps Piper running: about 0.1–0.4 s |
+| Piper Dii (new process) | 1.2 s | kept running: about 0.5 s |
+| Kokoro fp32, 2 threads | 4.8 s wall | 2.8 s synthesis (RTF 0.59) + about 2 s start and load |
+| Kokoro fp32, 4 threads | about 4 s wall | 2.0 s synthesis (RTF 0.42) |
+| Kokoro int8, 2 / 4 threads | 8.9 / 8.2 s wall | RTF 1.43 / 1.27: slower, rejected |
+
+Findings:
+- Only Kokoro is slow. Captions used to appear when the AI wrote a sentence, so
+  with Kokoro they ran seconds ahead of the voice; with Piper the gap was hidden.
+  Captions now appear when a sentence starts playing.
+- The app now gives Kokoro up to four threads (half the logical cores, 2–4).
+- Each sentence still starts the runtime and loads the 325 MB model again. Keeping
+  it loaded needs the sherpa-onnx C API (`sherpa-onnx-c-api.dll`, shipped with the
+  runtime); the pinned v1.12.20 `c-api.h` has the `SherpaOnnxOfflineTts*` functions.
+  Calling it needs `unsafe` FFI, which the workspace forbids, so it waits for a
+  decision.
+
 The upstream overview focuses on English/Chinese examples; the pinned source exposes
 `pt-br`. That supports testing the candidate, not a claim that Portuguese quality is
 already verified. Newer runtime releases need a fresh compatibility check.

@@ -11,11 +11,20 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
+0. Voices (unreleased): captions now follow playback. Kokoro is still slow, about 2 s
+   to load the model plus about 2 s to synthesize each sentence (see
+   [Kokoro evaluation](docs/kokoro-evaluation.md#latency-in-lessons-2026-10-28)).
+   Options waiting for the owner's choice:
+   (a) keep Kokoro loaded through the sherpa-onnx C API in a small worker process
+   (needs `unsafe` FFI, which the workspace forbids today);
+   (b) English voices: Kokoro's bundle already has them (`--kokoro-lang=en-us`), and
+   Piper en_US/en_GB voices are as fast as Faber. Either lessons follow the UI
+   language, or the tutor switches voice for English passages.
+1. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
    in its first answer, mark `ETAPA: n` at sensible moments and close with `FIM` after
    the final review? Does the handout writer pick useful `image` titles? Read a
    whole-plan handout (100+ pages) in the reader and watch memory and scrolling.
-1. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
+2. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
    recordings made louder and their pauses shortened before STT, English-looking Parakeet output sent to
    Whisper (short window, token budget). Ask the user for `know-giver.log` (data
    folder) and `last-recording.wav` before tuning further.
@@ -30,13 +39,13 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    microphone and speakers: false interruptions from echo (raise the word threshold if
    they happen), CPU load of checks while the tutor speaks, and how often one-word
    answers need the Whisper check.
-3. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
+4. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.
-4. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
+5. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
    review of each finished reply shown as a correction, or stronger prompting.
-5. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
+6. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
    and compare the drop rate with `handout_check`.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
@@ -224,6 +233,11 @@ and sound somewhat robotic. A female voice needs another engine.
       (female), `pm_alex` and `pm_santa` (male), selectable on Windows since v0.15.2
 - [x] Run it like Piper as a cancellable child process, with model installation/removal
 - [x] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
+- [x] Captions follow playback: a sentence appears when its audio starts (unreleased)
+- [x] Kokoro with up to four threads (unreleased); the int8 bundle was slower on CPU
+- [ ] Keep Kokoro loaded between sentences (today each sentence starts the runtime
+      and loads the 325 MB model again, about 2 s)
+- [ ] English voices (Kokoro English speakers, Piper en_US/en_GB)
 - [ ] Listening test against Piper on real tutor answers before making it the default
       (needs a person)
 
@@ -239,6 +253,8 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Captions in step with the voice in a live lesson, for Piper and Kokoro teachers,
+  including interruptions and a voice failure mid-reply (unreleased).
 - Lesson plan with the real model: `ROTEIRO:` / `ETAPA:` / `FIM` lines (v0.26.0).
 - Reader with a long whole-plan handout: memory, scrolling and render times.
 - Handout pictures chosen by the live writer, and how often Wikipedia has one.
