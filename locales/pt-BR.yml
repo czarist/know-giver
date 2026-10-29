@@ -415,6 +415,17 @@ settings:
   discard: "Descartar alterações"
   data_dir: "Seus dados ficam em %{path}"
   quiz_size: "Questões por quiz"
+  english_voice:
+    title: "Voz para trechos em inglês"
+    hint: "Na aula, frases e palavras em inglês são lidas com esta voz e pronúncia inglesa; o resto segue na voz do professor. Usa o modelo Kokoro."
+    off: "Desligada (tudo na voz do professor)"
+    heart: "Heart — EUA, feminina"
+    michael: "Michael — EUA, masculina"
+    emma: "Emma — Reino Unido, feminina"
+    george: "George — Reino Unido, masculina"
+    need_kokoro: "Baixe o Kokoro (motor e modelo) em Modelos para usar uma voz em inglês."
+    try: "Ouvir"
+    sample: "Em inglês, a gente diz [en]Nice to meet you![/en] Percebeu a troca de voz?"
   lesson_length:
     title: "Duração da aula"
     hint: "Quanto a aula aprofunda. O professor sempre explica os assuntos que o quiz do tópico vai cobrar."

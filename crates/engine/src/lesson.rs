@@ -7,7 +7,7 @@ use std::time::Duration;
 use kg_ai::{AiError, ChatMessage, TopicContext, TutorReply};
 use kg_audio::{
     AudioClip, AudioError, ModelId, RecordOptions, Recording, SpeechOptions, SttEngine,
-    Synthesizer, TtsBackend, split_for_speech,
+    Synthesizer, TtsBackend,
 };
 use kg_study::{LessonRecap, TopicId, TopicStatus};
 use serde::{Deserialize, Serialize};
@@ -1174,6 +1174,7 @@ impl Engine {
                 }
             }
             LessonEvent::Sentence { session, text } if Some(session) == current_reply => {
+                let text = kg_audio::strip_language_marks(&text);
                 if let Some(lesson) = self.lesson.as_mut() {
                     // Captions grow sentence by sentence while the reply arrives.
                     if lesson.streaming {
@@ -1217,7 +1218,7 @@ impl Engine {
                     spoken_live = lesson.speech_job.is_some();
                     // The full reply replaces the streamed captions; while it
                     // is still being spoken, once the voice is done.
-                    lesson.pending_reply = Some(text.clone());
+                    lesson.pending_reply = Some(kg_audio::strip_language_marks(&text));
                     if !spoken_live {
                         settle_reply(lesson);
                     }
@@ -1434,11 +1435,11 @@ impl Engine {
                         continue;
                     }
                     let mut shown = false;
-                    for chunk in split_for_speech(&sentence) {
+                    for (lang, chunk) in tts.pieces(&sentence) {
                         if cancelled() {
                             break 'sentences;
                         }
-                        match tts.synthesize(&chunk, &cancelled) {
+                        match tts.synthesize_piece(lang, &chunk, &cancelled) {
                             Ok(clip) if !cancelled() => {
                                 if std::mem::replace(&mut shown, true) {
                                     speaker.play(clip);
@@ -1502,11 +1503,11 @@ impl Engine {
         let spawned = std::thread::Builder::new()
             .name("kg-speech".into())
             .spawn(move || {
-                for chunk in split_for_speech(&text) {
+                for (lang, chunk) in tts.pieces(&text) {
                     if current_generation.load(Ordering::Relaxed) != generation {
                         break;
                     }
-                    match tts.synthesize(&chunk, &|| {
+                    match tts.synthesize_piece(lang, &chunk, &|| {
                         current_generation.load(Ordering::Relaxed) != generation
                     }) {
                         Ok(clip) if current_generation.load(Ordering::Relaxed) == generation => {
@@ -1547,17 +1548,21 @@ impl Engine {
             expressiveness: settings.speech_expressiveness,
             rhythm_variation: settings.speech_rhythm_variation,
         };
-        match settings.tts_backend {
+        let tts = match settings.tts_backend {
             TtsBackend::Local => {
                 for id in [settings.voice.runtime_id(), settings.voice.model_id()] {
                     if !self.models.is_installed(id) {
                         return Err(EngineError::SpeechModelMissing(id));
                     }
                 }
-                Ok(Synthesizer::local(&self.models, settings.voice, options)?)
+                Synthesizer::local(&self.models, settings.voice, options)?
             }
-            TtsBackend::Cloud => Ok(Synthesizer::cloud(settings.cloud_speech.clone(), options)?),
-        }
+            TtsBackend::Cloud => Synthesizer::cloud(settings.cloud_speech.clone(), options)?,
+        };
+        Ok(match settings.english_voice {
+            Some(voice) => tts.with_english(&self.models, voice, options),
+            None => tts,
+        })
     }
 
     /// Whether the voice sample is being generated or played.
@@ -1602,10 +1607,9 @@ impl Engine {
         let spawned = std::thread::Builder::new()
             .name("kg-voice-preview".into())
             .spawn(move || {
-                let text =
-                    kg_audio::normalize_for_speech(&text.chars().take(500).collect::<String>());
+                let text: String = text.chars().take(500).collect();
                 let result =
-                    tts.synthesize(&text, &|| current.load(Ordering::Relaxed) != generation);
+                    tts.synthesize_marked(&text, &|| current.load(Ordering::Relaxed) != generation);
                 let _ = tx.send(Event::Lesson(LessonEvent::PreviewReady {
                     generation,
                     result,

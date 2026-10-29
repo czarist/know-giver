@@ -35,8 +35,8 @@ pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{
-    AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, SttEngine, TtsBackend, Voice,
-    VoiceGender, WhisperModel,
+    AudioError, CloudSpeechConfig, EnglishVoice, KokoroVoice, ModelId, PiperVoice, SttEngine,
+    TtsBackend, Voice, VoiceGender, WhisperModel,
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{
@@ -881,6 +881,9 @@ impl Engine {
                 step_notes: Vec::new(),
                 quiz_topics: Vec::new(),
                 length: self.settings.lesson_length,
+                english_voice: self.settings.english_voice.is_some()
+                    && self.models.is_installed(kg_audio::ModelId::KokoroModel)
+                    && self.models.is_installed(kg_audio::ModelId::KokoroRuntime),
                 mistakes: self
                     .store
                     .topic_mistakes(id)

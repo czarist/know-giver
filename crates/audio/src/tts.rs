@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use crate::{AudioClip, AudioError, CloudSpeechConfig, KokoroVoice, ModelStore, PiperTts, Voice};
+use crate::{
+    AudioClip, AudioError, CloudSpeechConfig, EnglishVoice, KokoroVoice, ModelStore, PiperTts,
+    SpeechLang, Voice,
+};
 
 /// Voice controls common to local and remote engines.
 #[derive(Debug, Clone, Copy)]
@@ -66,11 +69,21 @@ enum Backend {
     },
 }
 
+/// A Kokoro voice for English passages.
+#[derive(Debug, Clone)]
+struct EnglishKokoro {
+    exe: PathBuf,
+    model: PathBuf,
+    voice: EnglishVoice,
+    length_scale: f32,
+}
+
 /// Prepared speech backend; synthesis always runs on an engine worker.
 #[derive(Debug, Clone)]
 pub struct Synthesizer {
     backend: Backend,
     pitch: f32,
+    english: Option<EnglishKokoro>,
 }
 
 impl Synthesizer {
@@ -104,7 +117,100 @@ impl Synthesizer {
                 length_scale: 1.0 / rate,
             },
         };
-        Ok(Self { backend, pitch })
+        Ok(Self {
+            backend,
+            pitch,
+            english: None,
+        })
+    }
+
+    /// Reads English passages in `voice`, when Kokoro is installed;
+    /// otherwise the main voice reads them.
+    pub fn with_english(
+        mut self,
+        store: &ModelStore,
+        voice: EnglishVoice,
+        options: SpeechOptions,
+    ) -> Self {
+        let installed = store.is_installed(crate::ModelId::KokoroModel);
+        if let (true, Some(exe), Ok((rate, _))) = (installed, store.kokoro_exe(), options.factors())
+        {
+            self.english = Some(EnglishKokoro {
+                exe,
+                model: store.kokoro_dir(),
+                voice,
+                length_scale: 1.0 / rate,
+            });
+        }
+        self
+    }
+
+    /// English passages have a voice of their own.
+    pub fn speaks_english(&self) -> bool {
+        self.english.is_some()
+    }
+
+    /// Pieces of `text` to synthesize in order, each with its language.
+    pub fn pieces(&self, text: &str) -> Vec<(SpeechLang, String)> {
+        crate::speech_pieces(text, self.speaks_english())
+    }
+
+    /// Speaks all of `text` (English passages in their voice) as one clip.
+    pub fn synthesize_marked(
+        &self,
+        text: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<AudioClip, AudioError> {
+        let mut whole: Option<AudioClip> = None;
+        for (lang, piece) in self.pieces(text) {
+            let clip = self.synthesize_piece(lang, &piece, cancelled)?;
+            match whole.as_mut() {
+                None => whole = Some(clip),
+                Some(whole) => {
+                    let samples = if clip.sample_rate == whole.sample_rate {
+                        clip.samples
+                    } else {
+                        crate::resample(&clip.samples, clip.sample_rate, whole.sample_rate)
+                    };
+                    whole.samples.extend(samples);
+                }
+            }
+        }
+        whole.ok_or_else(|| AudioError::Tts("nothing to say".into()))
+    }
+
+    /// Generates a piece from [`Self::pieces`] in its language's voice.
+    pub fn synthesize_piece(
+        &self,
+        lang: SpeechLang,
+        text: &str,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<AudioClip, AudioError> {
+        match (&self.english, lang) {
+            (Some(english), SpeechLang::English) => {
+                if cancelled() {
+                    return Err(AudioError::Cancelled);
+                }
+                let (lexicon, lang) = if english.voice.is_american() {
+                    ("lexicon-us-en.txt", "en-us")
+                } else {
+                    ("lexicon-gb-en.txt", "en")
+                };
+                kokoro(
+                    &english.exe,
+                    &english.model,
+                    KokoroSpeaker {
+                        sid: english.voice.speaker_id(),
+                        lang,
+                        lexicon: Some(lexicon),
+                    },
+                    english.length_scale,
+                    text,
+                    cancelled,
+                )
+            }
+            _ => self.synthesize(text, cancelled),
+        }
     }
 
     /// Prepares a speech service. Calling `synthesize` sends text to that service.
@@ -121,6 +227,7 @@ impl Synthesizer {
         Ok(Self {
             backend: Backend::Cloud { config, rate },
             pitch,
+            english: None,
         })
     }
 
@@ -147,7 +254,18 @@ impl Synthesizer {
                 model,
                 voice,
                 length_scale,
-            } => kokoro(exe, model, *voice, *length_scale, text, cancelled)?,
+            } => kokoro(
+                exe,
+                model,
+                KokoroSpeaker {
+                    sid: voice.speaker_id(),
+                    lang: "pt-br",
+                    lexicon: None,
+                },
+                *length_scale,
+                text,
+                cancelled,
+            )?,
             Backend::Cloud { config, rate } => cloud(config, *rate, text, cancelled)?,
         };
         if cancelled() {
@@ -170,10 +288,19 @@ fn path_arg(name: &str, path: &Path) -> OsString {
     arg
 }
 
+/// Who speaks in a Kokoro call, and how its text is read.
+struct KokoroSpeaker {
+    sid: u32,
+    /// espeak-ng language for words not in the lexicon.
+    lang: &'static str,
+    /// Pronunciation lexicon file in the model folder, for English.
+    lexicon: Option<&'static str>,
+}
+
 fn kokoro(
     exe: &Path,
     model: &Path,
-    voice: KokoroVoice,
+    speaker: KokoroSpeaker,
     length_scale: f32,
     text: &str,
     cancelled: &dyn Fn() -> bool,
@@ -191,12 +318,18 @@ fn kokoro(
         .arg(path_arg("kokoro-model", &model.join("model.onnx")))
         .arg(path_arg("kokoro-voices", &model.join("voices.bin")))
         .arg(path_arg("kokoro-tokens", &model.join("tokens.txt")))
-        .arg(path_arg("kokoro-data-dir", &model.join("espeak-ng-data")))
-        .arg("--kokoro-lang=pt-br")
+        .arg(path_arg("kokoro-data-dir", &model.join("espeak-ng-data")));
+    if let Some(lexicon) = speaker.lexicon.map(|file| model.join(file))
+        && lexicon.is_file()
+    {
+        command.arg(path_arg("kokoro-lexicon", &lexicon));
+    }
+    command
+        .arg(format!("--kokoro-lang={}", speaker.lang))
         .arg(format!("--num-threads={}", kokoro_threads()))
         .arg("--provider=cpu")
         .arg("--debug=0")
-        .arg(format!("--sid={}", voice.speaker_id()))
+        .arg(format!("--sid={}", speaker.sid))
         .arg(format!("--kokoro-length-scale={length_scale:.6}"))
         .arg(path_arg("output-filename", &output))
         .arg("--")

@@ -67,6 +67,55 @@ impl KokoroVoice {
     }
 }
 
+/// Kokoro voices for English passages in a lesson. They come with the
+/// same Kokoro model as the Portuguese ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EnglishVoice {
+    #[serde(rename = "af_heart")]
+    Heart,
+    #[serde(rename = "am_michael")]
+    Michael,
+    #[serde(rename = "bf_emma")]
+    Emma,
+    #[serde(rename = "bm_george")]
+    George,
+}
+
+impl EnglishVoice {
+    pub const ALL: [Self; 4] = [Self::Heart, Self::Michael, Self::Emma, Self::George];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Heart => "af_heart",
+            Self::Michael => "am_michael",
+            Self::Emma => "bf_emma",
+            Self::George => "bm_george",
+        }
+    }
+
+    /// Speaker index in the pinned Kokoro v1.0 model.
+    pub fn speaker_id(self) -> u32 {
+        match self {
+            Self::Heart => 3,
+            Self::Michael => 16,
+            Self::Emma => 21,
+            Self::George => 26,
+        }
+    }
+
+    /// American voices; the others are British.
+    pub fn is_american(self) -> bool {
+        matches!(self, Self::Heart | Self::Michael)
+    }
+
+    pub fn gender(self) -> VoiceGender {
+        match self {
+            Self::Heart | Self::Emma => VoiceGender::Female,
+            Self::Michael | Self::George => VoiceGender::Male,
+        }
+    }
+}
+
 /// Installed local voice. The wire format retains old Piper settings unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]

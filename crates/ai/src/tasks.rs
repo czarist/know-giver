@@ -327,6 +327,8 @@ pub struct TopicContext {
     /// Quiz questions the student got wrong on this topic, one line each
     /// (question, right answer, the student's answer).
     pub mistakes: Vec<String>,
+    /// English passages are read in an English voice: the tutor marks them.
+    pub english_voice: bool,
 }
 
 impl TopicContext {
@@ -542,7 +544,10 @@ fn tutor_system(topic: &TopicContext) -> ChatMessage {
             "- Seu nome é {name} e você é o professor. Fale de si no masculino (por exemplo, \"obrigado\", \"estou pronto\")."
         )
     };
-    let plan = lesson_plan(topic);
+    let mut plan = lesson_plan(topic);
+    if topic.english_voice {
+        plan.push_str(ENGLISH_MARKS);
+    }
     // Last, so a name cannot be mistaken for another placeholder.
     values.push(("teacher", &teacher));
     values.push(("student", &student));
@@ -607,6 +612,9 @@ fn lesson_plan(topic: &TopicContext) -> String {
         steps.join("; ")
     )
 }
+
+/// How the tutor marks English for the English voice.
+const ENGLISH_MARKS: &str = "\n- Quando disser algo em inglês (palavras, frases, exemplos, pronúncia), escreva o trecho em inglês entre [en] e [/en], uma frase por vez, para ele ser lido com pronúncia inglesa. Exemplo: A frase [en]I have been working here[/en] usa o present perfect continuous. Fora dessas marcas, fale só português.";
 
 /// The student's past mistakes, for the tutor to go over in the lesson.
 fn mistakes_block(topic: &TopicContext) -> String {

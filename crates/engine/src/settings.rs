@@ -1,7 +1,9 @@
 //! User settings, stored as JSON in the database.
 
 use kg_ai::AiConfig;
-use kg_audio::{CloudSpeechConfig, SttEngine, TtsBackend, Voice, VoiceGender, WhisperModel};
+use kg_audio::{
+    CloudSpeechConfig, EnglishVoice, SttEngine, TtsBackend, Voice, VoiceGender, WhisperModel,
+};
 use kg_study::{Store, StoreError};
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +43,9 @@ pub struct Settings {
     /// one-word answers with Parakeet.
     pub whisper_model: WhisperModel,
     pub voice: Voice,
+    /// Kokoro voice for English passages in lessons; `None` reads them in
+    /// the main voice.
+    pub english_voice: Option<EnglishVoice>,
     pub tts_backend: TtsBackend,
     pub cloud_speech: CloudSpeechConfig,
     pub speech_pitch: f32,
@@ -80,6 +85,7 @@ impl Default for Settings {
             stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),
+            english_voice: None,
             tts_backend: TtsBackend::default(),
             cloud_speech: CloudSpeechConfig::default(),
             speech_pitch: 0.0,

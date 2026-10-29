@@ -262,6 +262,18 @@ pub fn lesson_length(length: kg_engine::LessonLength) -> String {
 }
 
 /// What a lesson length means.
+/// Name of a voice for English passages, with its accent.
+pub fn english_voice(voice: kg_engine::EnglishVoice) -> String {
+    use kg_engine::EnglishVoice as V;
+    match voice {
+        V::Heart => t!("settings.english_voice.heart"),
+        V::Michael => t!("settings.english_voice.michael"),
+        V::Emma => t!("settings.english_voice.emma"),
+        V::George => t!("settings.english_voice.george"),
+    }
+    .into_owned()
+}
+
 pub fn lesson_length_hint(length: kg_engine::LessonLength) -> String {
     use kg_engine::LessonLength;
     match length {

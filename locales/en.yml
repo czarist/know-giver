@@ -415,6 +415,17 @@ settings:
   discard: "Discard changes"
   data_dir: "Your data is stored in %{path}"
   quiz_size: "Questions per quiz"
+  english_voice:
+    title: "Voice for English passages"
+    hint: "In lessons, English words and sentences are read in this voice with English pronunciation; the rest stays in the teacher's voice. Uses the Kokoro model."
+    off: "Off (all in the teacher's voice)"
+    heart: "Heart — US, female"
+    michael: "Michael — US, male"
+    emma: "Emma — UK, female"
+    george: "George — UK, male"
+    need_kokoro: "Download Kokoro (runtime and model) in Models to use an English voice."
+    try: "Listen"
+    sample: "In English we say [en]Nice to meet you![/en] Did you hear the voice change?"
   lesson_length:
     title: "Lesson length"
     hint: "How deep lessons go. The teacher always covers what the topic's quiz will ask."

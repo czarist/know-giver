@@ -2,8 +2,8 @@
 
 use egui::RichText;
 use kg_engine::{
-    Command, Engine, ModelId, ModelStatus, Settings, SttEngine, Teacher, TtsBackend, Voice,
-    VoiceGender, WhisperModel,
+    Command, Engine, EnglishVoice, ModelId, ModelStatus, Settings, SttEngine, Teacher, TtsBackend,
+    Voice, VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -316,6 +316,9 @@ pub(crate) fn voice_section(
                     }
                 });
                 ui.end_row();
+
+                english_voice(ui, engine, draft, actions);
+                ui.end_row();
             });
         ui.horizontal(|ui| {
             if engine.voice_preview_active() {
@@ -345,6 +348,45 @@ pub(crate) fn voice_section(
             }
             widgets::hint(ui, &t!("settings.voice.preview_hint"));
         });
+    });
+}
+
+/// The Kokoro voice for English passages in lessons, with a sample.
+fn english_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &mut Actions) {
+    ui.label(t!("settings.english_voice.title"))
+        .on_hover_text(t!("settings.english_voice.hint"));
+    let kokoro = engine.voice_available(Voice::Kokoro(kg_engine::KokoroVoice::default()));
+    ui.horizontal(|ui| {
+        let name = |voice: Option<EnglishVoice>| match voice {
+            Some(voice) => i18n::english_voice(voice),
+            None => t!("settings.english_voice.off").into_owned(),
+        };
+        ui.add_enabled_ui(kokoro, |ui| {
+            egui::ComboBox::from_id_salt("english_voice")
+                .selected_text(name(draft.english_voice))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut draft.english_voice, None, name(None));
+                    for voice in EnglishVoice::ALL {
+                        ui.selectable_value(
+                            &mut draft.english_voice,
+                            Some(voice),
+                            name(Some(voice)),
+                        );
+                    }
+                });
+        })
+        .response
+        .on_disabled_hover_text(t!("settings.english_voice.need_kokoro"));
+        let can_try = kokoro && draft.english_voice.is_some() && !engine.voice_preview_active();
+        if ui
+            .add_enabled(can_try, egui::Button::new(t!("settings.english_voice.try")))
+            .clicked()
+        {
+            actions.send(Command::PreviewVoice {
+                settings: draft.clone(),
+                text: t!("settings.english_voice.sample").into_owned(),
+            });
+        }
     });
 }
 

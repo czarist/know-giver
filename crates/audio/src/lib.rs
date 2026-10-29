@@ -9,6 +9,7 @@
 
 mod capture;
 mod kokoro_runtime;
+mod language;
 mod models;
 mod parakeet;
 mod piper;
@@ -21,6 +22,7 @@ mod whisper;
 
 pub use capture::{RecordOptions, Recording};
 pub use kokoro_runtime::prepare_kokoro_executable;
+pub use language::{SpeechLang, language_runs, speech_pieces, strip_language_marks};
 pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
 pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
@@ -31,7 +33,7 @@ pub use tts::{
     DEFAULT_EXPRESSIVENESS, DEFAULT_RHYTHM_VARIATION, EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE,
     SpeechOptions, Synthesizer,
 };
-pub use voice::{CloudSpeechConfig, KokoroVoice, TtsBackend, Voice, VoiceGender};
+pub use voice::{CloudSpeechConfig, EnglishVoice, KokoroVoice, TtsBackend, Voice, VoiceGender};
 pub use whisper::WhisperStt;
 
 use std::path::PathBuf;
