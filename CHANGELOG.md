@@ -4,6 +4,12 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.28.2] - 2026-10-29
+
+### Changed
+- New app icon: the owner's sharper tile of Thoth under the crescent moon, used by the
+  window, the Windows executable, the sidebar, the cover plates and the README.
+
 ## [0.28.1] - 2026-10-29
 
 ### Added

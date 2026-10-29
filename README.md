@@ -204,8 +204,9 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 
 ## Credits
 
-- App icon and cover art: engraving of Thoth as a baboon (`crates/ui/assets/art`),
-  supplied by the project owner; set on the jade tile by `python tools/icon.py`.
+- App icon and cover art: Thoth as a baboon under the crescent moon, on a jade tile, by
+  [Cezar Trentin](https://cezartrentin.dev) (`crates/ui/assets/art/thoth-tile.png`);
+  `python tools/icon.py` builds the app and Windows icons from it.
 - Fonts: [Inter](https://rsms.me/inter/) and [IBM Plex Mono](https://github.com/IBM/plex),
   SIL Open Font License (`crates/ui/assets/fonts`).
 - Teacher portraits (`crates/ui/assets/teachers`): "Lorelei" by Lisa Wischofsky,
