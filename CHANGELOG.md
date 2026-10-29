@@ -4,7 +4,7 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.26.1] - 2026-10-28
 
 ### Fixed
 - Lesson captions follow the voice: a sentence appears when it starts playing,

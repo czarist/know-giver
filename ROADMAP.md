@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.26.0. Everything an agent can build and check without a human ear, a
+Version 0.26.1. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -11,7 +11,7 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Voices (unreleased): captions now follow playback. Kokoro is still slow, about 2 s
+0. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
    to load the model plus about 2 s to synthesize each sentence (see
    [Kokoro evaluation](docs/kokoro-evaluation.md#latency-in-lessons-2026-10-28)).
    Options waiting for the owner's choice:
@@ -233,8 +233,8 @@ and sound somewhat robotic. A female voice needs another engine.
       (female), `pm_alex` and `pm_santa` (male), selectable on Windows since v0.15.2
 - [x] Run it like Piper as a cancellable child process, with model installation/removal
 - [x] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
-- [x] Captions follow playback: a sentence appears when its audio starts (unreleased)
-- [x] Kokoro with up to four threads (unreleased); the int8 bundle was slower on CPU
+- [x] Captions follow playback: a sentence appears when its audio starts (v0.26.1)
+- [x] Kokoro with up to four threads (v0.26.1); the int8 bundle was slower on CPU
 - [ ] Keep Kokoro loaded between sentences (today each sentence starts the runtime
       and loads the 325 MB model again, about 2 s)
 - [ ] English voices (Kokoro English speakers, Piper en_US/en_GB)
@@ -254,7 +254,7 @@ and sound somewhat robotic. A female voice needs another engine.
 
 ## Not yet verified
 - Captions in step with the voice in a live lesson, for Piper and Kokoro teachers,
-  including interruptions and a voice failure mid-reply (unreleased).
+  including interruptions and a voice failure mid-reply (v0.26.1).
 - Lesson plan with the real model: `ROTEIRO:` / `ETAPA:` / `FIM` lines (v0.26.0).
 - Reader with a long whole-plan handout: memory, scrolling and render times.
 - Handout pictures chosen by the live writer, and how often Wikipedia has one.
