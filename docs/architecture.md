@@ -95,4 +95,23 @@ The main flow is:
 - **Translations**: every UI string comes from `locales/*.yml`, and tests check that both
   languages have the same keys. Errors in lower crates are English and only go to logs.
   The UI translates them for the user.
+- **Written answers** (`kg_study::discursive`, `kg_engine::discursive`, `kg_ai::discursive`):
+  offered only when the plan's notice describes a written test (phrases such as "prova
+  discursiva", "redação de texto dissertativo", "estudo de caso"; "com redação dada pela
+  Lei" does not count). A proposal and its rubric are frozen when created; criteria come
+  from the notice only when the model quotes the passage and that passage is found in the
+  notice, otherwise from the student or Know Giver's generic rubric (never the ENEM grid).
+  Photos are checked by content (JPEG/PNG), the original is kept and a bounded JPEG
+  (2,000 px) is what the vision model reads; image work and model calls run on workers.
+  Transcription goes only to `models.vision`, with no fallback to a text model. The
+  model's reading and the student's checked version are stored apart, with the edits;
+  a check that changes over 25 % of the words is saved as a new attempt instead. Too
+  many uncertain or illegible words leave the grade pending without a model call. Each
+  run bumps a counter saved with the attempt, so late results of an older run, of a
+  deleted attempt or of another attempt are dropped; attempts left processing when the
+  app closes are marked failed and can be run again. Grades are validated in code:
+  every criterion once, within its points; the total is summed in code; quotes are
+  located again in the text (page and line come from that, not from the model) and
+  the ones not found are dropped and counted. Evolution only compares attempts graded
+  on the same rubric fingerprint and flags mixed models or prompt versions.
 

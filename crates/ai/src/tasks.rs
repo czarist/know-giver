@@ -827,7 +827,7 @@ pub(crate) fn chat_json<T: DeserializeOwned>(
 }
 
 /// The JSON object inside a reply, ignoring code fences or stray text.
-fn extract_json(text: &str) -> &str {
+pub(crate) fn extract_json(text: &str) -> &str {
     match (text.find('{'), text.rfind('}')) {
         (Some(start), Some(end)) if end > start => &text[start..=end],
         _ => text,

@@ -26,6 +26,10 @@ pub const BOARD_KEY: &str = include_str!("../prompts/board_key.md");
 pub const BOARD_MATERIAL: &str = include_str!("../prompts/board_material.md");
 pub const BOARD_RELEVANCE: &str = include_str!("../prompts/board_relevance.md");
 pub const REFERENCE: &str = include_str!("../prompts/reference.md");
+pub const DISCURSIVE_PROPOSAL: &str = include_str!("../prompts/discursive_proposal.md");
+pub const DISCURSIVE_TRANSCRIBE: &str = include_str!("../prompts/discursive_transcribe.md");
+pub const DISCURSIVE_EVALUATE: &str = include_str!("../prompts/discursive_evaluate.md");
+pub const DISCURSIVE_DIFFICULTIES: &str = include_str!("../prompts/discursive_difficulties.md");
 
 /// Replaces `{name}` placeholders. Unknown placeholders are left as they are.
 pub fn fill(template: &str, values: &[(&str, &str)]) -> String {

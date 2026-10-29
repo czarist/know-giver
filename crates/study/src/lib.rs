@@ -5,6 +5,7 @@
 
 pub mod activity;
 pub mod board;
+pub mod discursive;
 pub mod notebook;
 pub mod plan;
 pub mod quiz;
@@ -19,6 +20,14 @@ pub use activity::{
 pub use board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,
+};
+pub use discursive::{
+    Attempt, AttemptId, AttemptOrigin, AttemptStatus, ConfirmedTranscript, Criterion,
+    CriterionScore, DifficultyReport, Edit, Evaluation, Evidence, IssueExample, Legibility,
+    MAX_PAGES, NewPage, NewProposal, Page, PageId, PageIssue, Problem, ProblemCategory, Proposal,
+    ProposalId, RecurringIssue, Remark, Rubric, RubricError, RubricSource, Stage, Transcript,
+    TranscriptPage, TranscriptRecord, Uncertain, Unreadable, WritingKind, WritingRules,
+    writing_rules,
 };
 pub use notebook::{LessonRecap, Mistake, MistakeId};
 pub use plan::{

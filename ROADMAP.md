@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.28.2. Everything an agent can build and check without a human ear, a
+Version 0.29.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -11,6 +11,11 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
+00. Written answers (v0.29.0): run [docs/validation-discursive.md](docs/validation-discursive.md)
+   with the owner's vision model and real handwritten pages: legible, crossed-out,
+   several pages and bad photos. Check the transcript keeps the student's errors, that
+   the photo thresholds (`BLUR_EDGE`, dark, contrast in `kg_engine::discursive::images`)
+   suit real phone photos, and how the grade compares with a human correction.
 0. Lessons (v0.27.0): run a Normal and a Full lesson on a prepared topic with the
    real model. The tutor now gets each step's key points and the quiz's questions; check
    it covers them before `ETAPA:`, that replies stay short, and how long lessons take.

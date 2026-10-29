@@ -79,6 +79,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 ui,
                 summary,
                 active == Some(summary.id),
+                engine.revalidating(),
                 &mut state.confirm_delete,
                 &mut actions,
             );
@@ -220,6 +221,7 @@ fn plan_row(
     ui: &mut egui::Ui,
     summary: &PlanSummary,
     is_active: bool,
+    revalidating: Option<kg_engine::PlanId>,
     confirm_delete: &mut Option<kg_engine::PlanId>,
     actions: &mut Actions,
 ) {
@@ -254,6 +256,22 @@ fn plan_row(
                 if ui.button(t!("edital.open")).clicked() {
                     actions.send(Command::SelectPlan(summary.id));
                     actions.go_to(Screen::Plan);
+                }
+                if revalidating == Some(summary.id) {
+                    ui.spinner();
+                } else if ui
+                    .add_enabled(
+                        revalidating.is_none(),
+                        egui::Button::new(t!("edital.revalidate")),
+                    )
+                    .on_hover_text(t!("edital.revalidate_hint"))
+                    .clicked()
+                    && let Some(path) = pick_pdf()
+                {
+                    actions.send(Command::RevalidateEdital {
+                        plan: summary.id,
+                        path,
+                    });
                 }
             });
         });

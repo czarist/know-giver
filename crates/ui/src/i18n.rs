@@ -5,9 +5,10 @@
 
 use chrono::NaiveDate;
 use kg_engine::{
-    AiError, AudioError, Difficulty, EngineError, HandoutError, KokoroVoice, LessonPhase,
-    Milestone, ModelId, Notice, PdfError, PiperVoice, ReviewGrade, StoreError, StudyError,
-    TopicStatus, Voice, VoiceGender, WhisperModel,
+    AiError, AttemptStatus, AudioError, Criterion, Difficulty, EngineError, HandoutError,
+    ImageProblem, KokoroVoice, LessonPhase, MAX_PAGES, Milestone, ModelId, Notice, PageIssue,
+    PdfError, PiperVoice, ProblemCategory, ReviewGrade, RubricError, RubricSource, StoreError,
+    StudyError, TopicStatus, Voice, VoiceGender, WhisperModel, WritingKind,
 };
 use rust_i18n::t;
 
@@ -197,6 +198,18 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         Notice::Milestone(Milestone::Progress(percent)) => {
             t!("notice.milestone_progress", percent = percent)
         }
+        Notice::ProposalCreated => t!("notice.proposal_created"),
+        Notice::EditalRevalidated { written_test: true } => {
+            t!("notice.edital_revalidated_writing")
+        }
+        Notice::EditalRevalidated {
+            written_test: false,
+        } => t!("notice.edital_revalidated"),
+        Notice::WritingEvaluated { total, max } => t!(
+            "notice.writing_evaluated",
+            total = points(*total),
+            max = points(*max)
+        ),
     };
     (text.into_owned(), false)
 }
@@ -219,6 +232,10 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Ai(AiError::RateLimited) => t!("error.ai.rate_limited"),
         EngineError::Ai(AiError::Http { status, .. }) => t!("error.ai.http", status = status),
         EngineError::Ai(AiError::InvalidResponse(_)) => t!("error.ai.invalid_response"),
+        EngineError::Ai(AiError::NoVisionModel) => t!("error.ai.no_vision_model"),
+        EngineError::Ai(AiError::VisionRejected { status }) => {
+            t!("error.ai.vision_rejected", status = status)
+        }
         EngineError::Audio(AudioError::NoInputDevice) => t!("error.audio.no_input_device"),
         EngineError::Audio(AudioError::NoOutputDevice(_)) => t!("error.audio.no_output_device"),
         EngineError::Audio(AudioError::Device(_)) => t!("error.audio.device"),
@@ -246,8 +263,111 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::SpeechModelMissing(id) => {
             t!("error.speech_model_missing", model = model_name(*id))
         }
+        EngineError::Image(ImageProblem::TooLarge) => t!("error.image.too_large"),
+        EngineError::Image(ImageProblem::Unsupported) => t!("error.image.unsupported"),
+        EngineError::Image(ImageProblem::TooManyPixels) => t!("error.image.too_many_pixels"),
+        EngineError::Image(ImageProblem::Unreadable) => t!("error.image.unreadable"),
+        EngineError::NoWrittenTest => t!("error.writing.no_written_test"),
+        EngineError::TooManyPages => t!("error.writing.too_many_pages", max = MAX_PAGES),
+        EngineError::NoPages => t!("error.writing.no_pages"),
+        EngineError::PageNeedsRetake => t!("error.writing.page_needs_retake"),
+        EngineError::AttemptLocked => t!("error.writing.attempt_locked"),
+        EngineError::LooksLikeRewrite => t!("error.writing.looks_like_rewrite"),
+        EngineError::NotEnoughAttempts => t!("error.writing.not_enough_attempts"),
+        EngineError::Rubric(RubricError::BadLine(line)) => {
+            t!("error.writing.rubric_line", line = line)
+        }
+        EngineError::Rubric(_) => t!("error.writing.rubric"),
     };
     text.into_owned()
+}
+
+/// Points without needless decimals ("7", "7.5").
+pub fn points(value: f64) -> String {
+    let rounded = (value * 10.0).round() / 10.0;
+    let text = if (rounded - rounded.trunc()).abs() < f64::EPSILON {
+        format!("{rounded:.0}")
+    } else {
+        format!("{rounded:.1}")
+    };
+    text.replace('.', &t!("format.decimal"))
+}
+
+pub fn writing_kind(kind: WritingKind) -> String {
+    match kind {
+        WritingKind::Essay => t!("discursive.kind.essay"),
+        WritingKind::Technical => t!("discursive.kind.technical"),
+        WritingKind::CaseStudy => t!("discursive.kind.case"),
+    }
+    .into_owned()
+}
+
+pub fn attempt_status(status: AttemptStatus) -> String {
+    match status {
+        AttemptStatus::Draft => t!("discursive.status.draft"),
+        AttemptStatus::Transcribing => t!("discursive.status.transcribing"),
+        AttemptStatus::Retake => t!("discursive.status.retake"),
+        AttemptStatus::Review => t!("discursive.status.review"),
+        AttemptStatus::Evaluating => t!("discursive.status.evaluating"),
+        AttemptStatus::Evaluated => t!("discursive.status.evaluated"),
+        AttemptStatus::Pending => t!("discursive.status.pending"),
+        AttemptStatus::Failed => t!("discursive.status.failed"),
+    }
+    .into_owned()
+}
+
+pub fn page_issue(issue: PageIssue) -> String {
+    match issue {
+        PageIssue::Dark => t!("discursive.issue.dark"),
+        PageIssue::Overexposed => t!("discursive.issue.overexposed"),
+        PageIssue::Blurry => t!("discursive.issue.blurry"),
+        PageIssue::LowContrast => t!("discursive.issue.low_contrast"),
+        PageIssue::LowResolution => t!("discursive.issue.low_resolution"),
+        PageIssue::Cropped => t!("discursive.issue.cropped"),
+        PageIssue::Illegible => t!("discursive.issue.illegible"),
+    }
+    .into_owned()
+}
+
+pub fn problem_category(category: ProblemCategory) -> String {
+    match category {
+        ProblemCategory::Writing => t!("discursive.category.writing"),
+        ProblemCategory::Content => t!("discursive.category.content"),
+        ProblemCategory::Structure => t!("discursive.category.structure"),
+    }
+    .into_owned()
+}
+
+pub fn rubric_source(source: RubricSource) -> String {
+    match source {
+        RubricSource::Edital => t!("discursive.rubric.edital"),
+        RubricSource::Manual => t!("discursive.rubric.manual"),
+        RubricSource::Generic => t!("discursive.rubric.generic"),
+    }
+    .into_owned()
+}
+
+/// Locale key of one of Know Giver's generic criteria.
+fn generic_key(criterion: &Criterion) -> Option<String> {
+    criterion
+        .key
+        .strip_prefix("generic.")
+        .map(|rest| format!("discursive.criteria.{}", rest.replace('.', "_")))
+}
+
+/// A criterion's name: generic ones are translated, others shown as given.
+pub fn criterion_name(criterion: &Criterion) -> String {
+    match generic_key(criterion) {
+        Some(key) => t!(key).into_owned(),
+        None => criterion.name.clone(),
+    }
+}
+
+pub fn criterion_description(criterion: &Criterion) -> String {
+    match generic_key(criterion) {
+        Some(key) => t!(format!("{key}_hint")).into_owned(),
+        None => criterion.description.clone(),
+    }
 }
 
 /// Name of a lesson length.
@@ -338,6 +458,7 @@ mod tests {
             include_str!("export.rs"),
             include_str!("screens/mod.rs"),
             include_str!("screens/board.rs"),
+            include_str!("screens/discursive.rs"),
             include_str!("screens/edital.rs"),
             include_str!("screens/handout.rs"),
             include_str!("screens/plan.rs"),
@@ -369,6 +490,18 @@ mod tests {
             }
         }
         assert!(unknown.is_empty(), "keys missing from locales: {unknown:?}");
+    }
+
+    #[test]
+    fn generic_criteria_are_translated() {
+        let known = keys(DEFAULT_LOCALE);
+        for kind in WritingKind::ALL {
+            for criterion in kg_study::discursive::generic_rubric(kind).criteria {
+                let key = generic_key(&criterion).unwrap();
+                assert!(known.contains(&key), "{key}");
+                assert!(known.contains(&format!("{key}_hint")), "{key}_hint");
+            }
+        }
     }
 
     #[test]

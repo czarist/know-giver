@@ -190,7 +190,81 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE lessons ADD COLUMN board TEXT NOT NULL DEFAULT '[]';
     ALTER TABLE lessons ADD COLUMN summary TEXT NOT NULL DEFAULT '';
 ",
+    r"
+    CREATE TABLE discursive_proposals (
+        id INTEGER PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        difficulty TEXT NOT NULL,
+        theme TEXT NOT NULL,
+        statement TEXT NOT NULL,
+        instructions TEXT NOT NULL,
+        topics TEXT NOT NULL,
+        line_limit INTEGER,
+        minutes INTEGER,
+        rubric TEXT NOT NULL,
+        expected TEXT NOT NULL,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE TABLE discursive_attempts (
+        id INTEGER PRIMARY KEY,
+        proposal_id INTEGER NOT NULL REFERENCES discursive_proposals(id) ON DELETE CASCADE,
+        number INTEGER NOT NULL,
+        parent_id INTEGER REFERENCES discursive_attempts(id) ON DELETE SET NULL,
+        origin TEXT NOT NULL,
+        status TEXT NOT NULL,
+        failed_stage TEXT,
+        note TEXT NOT NULL DEFAULT '',
+        run INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    CREATE TABLE discursive_pages (
+        id INTEGER PRIMARY KEY,
+        attempt_id INTEGER NOT NULL REFERENCES discursive_attempts(id) ON DELETE CASCADE,
+        position INTEGER NOT NULL,
+        original_path TEXT NOT NULL,
+        processed_path TEXT NOT NULL,
+        rotation INTEGER NOT NULL DEFAULT 0,
+        width INTEGER NOT NULL,
+        height INTEGER NOT NULL,
+        issues TEXT NOT NULL
+    );
+    CREATE TABLE discursive_transcripts (
+        attempt_id INTEGER PRIMARY KEY REFERENCES discursive_attempts(id) ON DELETE CASCADE,
+        original TEXT NOT NULL,
+        confirmed TEXT,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        confirmed_at TEXT
+    );
+    CREATE TABLE discursive_evaluations (
+        attempt_id INTEGER PRIMARY KEY REFERENCES discursive_attempts(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        rubric_key TEXT NOT NULL,
+        total REAL NOT NULL,
+        max_total REAL NOT NULL,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        evaluated_at TEXT NOT NULL
+    );
+    CREATE TABLE discursive_difficulties (
+        plan_id INTEGER PRIMARY KEY REFERENCES plans(id) ON DELETE CASCADE,
+        issues TEXT NOT NULL,
+        attempts TEXT NOT NULL,
+        model TEXT NOT NULL,
+        prompt_version TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX discursive_attempts_proposal ON discursive_attempts(proposal_id);
+    CREATE INDEX discursive_pages_attempt ON discursive_pages(attempt_id, position);
+",
 ];
+
+mod discursive;
 
 /// Handle to the app database.
 #[derive(Debug)]
@@ -406,6 +480,19 @@ impl Store {
             })
             .optional()?
             .ok_or(StoreError::PlanNotFound(id))
+    }
+
+    /// Replaces the notice a plan was made from, keeping its topics,
+    /// progress and everything made for it.
+    pub fn update_edital(&mut self, id: PlanId, name: &str, text: &str) -> Result<()> {
+        let changed = self.conn.execute(
+            "UPDATE plans SET edital_name = ?2, edital_text = ?3 WHERE id = ?1",
+            params![id.0, name, text],
+        )?;
+        if changed == 0 {
+            return Err(StoreError::PlanNotFound(id));
+        }
+        Ok(())
     }
 
     pub fn delete_plan(&mut self, id: PlanId) -> Result<()> {

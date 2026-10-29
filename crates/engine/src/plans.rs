@@ -6,7 +6,7 @@ use std::time::Instant;
 use kg_ai::{PlanDraft, PlanPrefs};
 use kg_pdf::{Edital, Role};
 use kg_study::{
-    Difficulty, NewPlan, NewSubject, NewTopic, PlanId, QuizStats, TopicId, TopicStatus,
+    Difficulty, NewPlan, NewSubject, NewTopic, PlanId, QuizStats, StoreError, TopicId, TopicStatus,
 };
 
 use crate::{Engine, EngineError, Event, ImportState, Notice};
@@ -35,6 +35,50 @@ impl Engine {
                 &std::sync::atomic::AtomicBool::new(false),
             ))
         });
+        Ok(())
+    }
+
+    /// Reads a notice again for a saved plan, on a worker.
+    pub(crate) fn revalidate_edital(
+        &mut self,
+        plan: PlanId,
+        path: PathBuf,
+    ) -> Result<(), EngineError> {
+        if self.revalidating.is_some() {
+            return Ok(());
+        }
+        if !self.plans.iter().any(|p| p.id == plan) {
+            return Err(StoreError::PlanNotFound(plan).into());
+        }
+        self.revalidating = Some(plan);
+        let client = self.ai_client();
+        self.spawn(move || Event::EditalRevalidated {
+            plan,
+            result: crate::documents::extract_document(
+                &client,
+                &path,
+                &std::sync::atomic::AtomicBool::new(false),
+            ),
+        });
+        Ok(())
+    }
+
+    /// Saves the notice read again. Only its text and file name change.
+    pub(crate) fn on_edital_revalidated(
+        &mut self,
+        plan: PlanId,
+        result: Result<Edital, EngineError>,
+    ) -> Result<(), EngineError> {
+        self.revalidating = None;
+        let edital = result?;
+        let text = edital.text.as_str();
+        self.store.update_edital(plan, &edital.file_name, text)?;
+        let written_test = kg_study::writing_rules(text).has_written_test();
+        tracing::info!(plan = plan.0, written_test, "edital read again");
+        self.forget_writing_rules();
+        self.refresh_stats();
+        self.notices
+            .push(Notice::EditalRevalidated { written_test });
         Ok(())
     }
 
@@ -191,6 +235,7 @@ impl Engine {
         if self.active.as_ref().is_some_and(|p| p.id == id) {
             self.cancel_prepare();
         }
+        self.remove_plan_writing(id);
         self.store.delete_plan(id)?;
         if self.active.as_ref().is_some_and(|p| p.id == id) {
             self.active = None;
@@ -252,6 +297,7 @@ impl Engine {
             self.mistakes.clear();
             self.lesson_drafts.clear();
             self.refresh_board();
+            self.refresh_discursive();
             return;
         };
         self.quiz_stats = self.store.quiz_stats(id).unwrap_or_default();
@@ -259,6 +305,7 @@ impl Engine {
         self.refresh_mistakes();
         self.refresh_lesson_drafts();
         self.refresh_board();
+        self.refresh_discursive();
         self.reload_list();
     }
 

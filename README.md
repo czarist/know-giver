@@ -31,6 +31,7 @@
   <a href="#teachers--voices">Teachers</a> ·
   <a href="#read-and-highlight-your-handouts">Reader</a> ·
   <a href="#practice-review-handouts">Practice</a> ·
+  <a href="#written-answers">Written answers</a> ·
   <a href="#private-by-default">Privacy</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#development">Development</a>
@@ -132,6 +133,37 @@ highlights when you want one.
   answer key, saved as PDF.
 - **Progress** per subject and **daily study time** that only counts active study.
 
+## Written answers
+
+When the exam notice has an essay or a discursive test, a **Written answers** area
+appears. It never appears for a notice without one. A plan made before can have its
+notice read again (**Re-read notice**) without losing topics, progress or handouts.
+
+- **Prompts from your plan**: an argumentative essay, a technical discursive question or
+  a case study, on topics you pick or on what you studied and missed. The criteria and
+  points are shown before you write: the notice's own (with the passage quoted), yours,
+  or Know Giver's generic ones, clearly labelled. The answer outline stays hidden until
+  you hand in.
+- **Write by hand, send photos**: JPEG or PNG pages, rotated, reordered, replaced or
+  removed before sending. Dark, blurry or cut-off photos are flagged and you are asked
+  for a new one instead of getting a grade.
+- **Check the reading**: photo and transcript side by side. Your spelling and errors are
+  kept; uncertain words are marked and never count against you. Fixing the reading is
+  kept apart from the model's original; rewriting your answer becomes a new version.
+- **Formative grade**: an estimated score per criterion and in total (summed by the app),
+  with quotes that are checked against your text, strengths, problems with suggestions,
+  three priorities and topics to review. Then the answer outline.
+- **Progress**: scores by criterion across attempts graded on the same rubric, photo
+  reading problems apart from writing and content ones, and recurring difficulties with
+  examples from your own attempts.
+
+<table>
+  <tr>
+    <td><img src="docs/images/writing-check.png" alt="Checking the transcript: the photographed page beside the editable text, with uncertain words listed"></td>
+    <td><img src="docs/images/writing.png" alt="A graded essay: criteria from the notice, estimated score per criterion with quotes, problems and suggestions"></td>
+  </tr>
+</table>
+
 <table>
   <tr>
     <td><img src="docs/images/today.png" alt="Today: streak, reviews due and next step"></td>
@@ -144,7 +176,11 @@ highlights when you want one.
 - Speech recognition and the voices run on your machine. Recordings never leave it.
 - Your data (SQLite database, models, log) lives in `%LOCALAPPDATA%\KnowGiver`, or in
   `KG_DATA_DIR` when set.
-- Only text goes to the AI service you configure, and only what the task needs.
+- Only text goes to the AI service you configure, and only what the task needs. The
+  exception is opt-in: with a vision model set, photos of handwritten pages (and pages of
+  scanned PDFs) are sent to it to be read. The app says where before sending; the photos
+  stay in your data folder and are deleted with their attempt. Logs never hold images,
+  answers or keys.
 
 ## Quick start
 
@@ -200,7 +236,8 @@ KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored  # renders ever
 ```
 
 More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-evaluation.md),
-[validation notes](docs/validation-v0.15.md).
+[validation notes](docs/validation-v0.15.md),
+[written answers manual check](docs/validation-discursive.md).
 
 ## Credits
 

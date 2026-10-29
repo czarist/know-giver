@@ -19,6 +19,12 @@ fn tr(english: bool, pt: &'static str, en: &'static str) -> &'static str {
     if english { en } else { pt }
 }
 
+/// The demo plan's notice: it has an essay, so written answers are offered.
+const NOTICE: &str = "EDITAL
+12. DA PROVA DISCURSIVA
+12.1 A prova discursiva consistirá na redação de texto dissertativo, de 20 a 30 linhas, valendo 20 pontos.
+12.2 Serão avaliados a apresentação e a estrutura textual (5 pontos) e o desenvolvimento do tema (15 pontos).";
+
 fn seed(paths: &AppPaths, english: bool) {
     let tr = |pt, en| tr(english, pt, en);
     std::fs::create_dir_all(&paths.data_dir).unwrap();
@@ -95,7 +101,7 @@ fn seed(paths: &AppPaths, english: bool) {
         .insert_plan(
             &plan,
             tr("edital-tjce.pdf", "exam-notice.pdf"),
-            "texto",
+            NOTICE,
             start,
         )
         .unwrap();
@@ -691,4 +697,283 @@ fn content_preparation() {
 
     harness.state_mut().dispatch(Command::CancelPrepare);
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}
+
+/// A photographed page for the screenshots: lines of "handwriting" on paper.
+fn page_jpeg() -> Vec<u8> {
+    let (w, h) = (900_u32, 1240_u32);
+    let mut img = image::RgbImage::from_pixel(w, h, image::Rgb([238, 234, 224]));
+    for line in 0..26 {
+        let y = 70 + line * 42;
+        img.put_pixel(40, y + 12, image::Rgb([180, 190, 210]));
+        for x in 40..w - 40 {
+            img.put_pixel(x, y + 14, image::Rgb([200, 208, 222]));
+            let word = (x / 23 + line * 7) % 9;
+            if word != 0 && line % 9 != 8 {
+                let wave = ((x as f32) / 5.0 + line as f32).sin() * 4.0;
+                let yy = (y as f32 + wave) as u32;
+                for dy in 0..2 {
+                    img.put_pixel(x, yy + dy, image::Rgb([40, 52, 92]));
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, 85)
+        .encode_image(&img)
+        .unwrap();
+    out
+}
+
+/// A proposal with a graded attempt and one waiting for its transcript to
+/// be checked. Returns (graded, in review).
+fn seed_writing(paths: &AppPaths, english: bool) -> (kg_engine::AttemptId, kg_engine::AttemptId) {
+    use kg_engine::{AttemptOrigin, AttemptStatus, ProblemCategory};
+    use kg_study::discursive::{edits, parse_manual_rubric};
+    use kg_study::{
+        ConfirmedTranscript, CriterionScore, Evaluation, Evidence, Legibility, NewPage,
+        NewProposal, Problem, Remark, Transcript, TranscriptPage, Uncertain, WritingKind,
+    };
+    let tr = |pt, en| tr(english, pt, en);
+    let mut store = Store::open(&paths.database()).unwrap();
+    let plan = store.list_plans().unwrap()[0].id;
+    let loaded = store.load_plan(plan).unwrap();
+    let crase = loaded.subjects[0].topics[1].id;
+    let rights = loaded.subjects[1].topics[1].id;
+    let now = chrono::Local::now().naive_local();
+    let mut rubric = parse_manual_rubric(tr(
+        "Apresentação e estrutura textual: 5\nDesenvolvimento do tema: 15",
+        "Presentation and text structure: 5\nDevelopment of the theme: 15",
+    ))
+    .unwrap();
+    rubric.source = kg_study::RubricSource::Edital;
+    rubric.evidence = "12.2 Serão avaliados a apresentação e a estrutura textual (5 pontos) e o desenvolvimento do tema (15 pontos).".into();
+    let proposal = store
+        .insert_proposal(
+            plan,
+            &NewProposal {
+                kind: WritingKind::Essay,
+                difficulty: Difficulty::Medium,
+                theme: tr(
+                    "Participação social e direitos fundamentais",
+                    "Civic participation and fundamental rights",
+                )
+                .into(),
+                statement: tr(
+                    "Redija um texto dissertativo-argumentativo sobre o papel da participação social na garantia dos direitos fundamentais, apresentando tese, dois argumentos e conclusão.",
+                    "Write an argumentative essay on how civic participation helps secure fundamental rights, with a thesis, two arguments and a conclusion.",
+                )
+                .into(),
+                instructions: tr(
+                    "Use a norma-padrão e não copie trechos da proposta.",
+                    "Use standard written language and do not copy the prompt.",
+                )
+                .into(),
+                topics: vec![rights, crase],
+                line_limit: Some(30),
+                minutes: None,
+                rubric: rubric.clone(),
+                expected_points: vec![
+                    tr(
+                        "Definir participação social e seus canais (conselhos, audiências, voto).",
+                        "Define civic participation and its channels (councils, hearings, voting).",
+                    )
+                    .into(),
+                    tr(
+                        "Relacionar a participação à efetividade dos direitos.",
+                        "Link participation to rights being honoured in practice.",
+                    )
+                    .into(),
+                ],
+                model: "glm-5".into(),
+                prompt_version: "proposal-3f2a91c0".into(),
+            },
+            now,
+        )
+        .unwrap();
+
+    let text = tr(
+        "A participação social é condição para que os direitos\nfundamentais saiam do papel. Quando os cidadão\nacompanham políticas públicas, cobram resultados\ne denunciam abusos, o Estado responde melhor.",
+        "Civic participation is what takes fundamental rights\noff the page. When citizens follows public\npolicy, ask for results and report abuse,\nthe State answers better.",
+    );
+    let reading = |page| Transcript {
+        pages: vec![TranscriptPage {
+            page,
+            lines: text.lines().map(str::to_owned).collect(),
+            uncertain: vec![Uncertain {
+                line: Some(3),
+                text: tr("cobram", "ask").into(),
+                note: tr("letra borrada", "smudged").into(),
+            }],
+            legibility: Legibility::Fair,
+            warnings: vec![
+                tr(
+                    "A margem direita está sombreada.",
+                    "The right margin is shaded.",
+                )
+                .into(),
+            ],
+            retake: None,
+        }],
+    };
+    let photo = paths.data_dir.join("page-demo.jpg");
+    std::fs::write(&photo, page_jpeg()).unwrap();
+    let page = NewPage {
+        original_path: photo.to_string_lossy().into_owned(),
+        processed_path: photo.to_string_lossy().into_owned(),
+        rotation: 0,
+        width: 900,
+        height: 1240,
+        issues: vec![kg_engine::PageIssue::Blurry],
+    };
+
+    let graded = store
+        .insert_attempt(
+            proposal,
+            AttemptOrigin::Photos,
+            None,
+            AttemptStatus::Draft,
+            now,
+        )
+        .unwrap();
+    store.add_page(graded, &page).unwrap();
+    store
+        .save_transcript(graded, &reading(1), "glm-4.5v", "transcribe-8c1d22aa", now)
+        .unwrap();
+    let pages = vec![text.to_owned()];
+    store
+        .confirm_transcript(
+            graded,
+            &ConfirmedTranscript {
+                edits: edits(&reading(1), &pages),
+                pages,
+            },
+            now,
+        )
+        .unwrap();
+    let quote = |q: &str, line| {
+        Some(Evidence {
+            quote: q.into(),
+            page: Some(1),
+            line: Some(line),
+        })
+    };
+    let evaluation = Evaluation {
+        scores: vec![
+            CriterionScore {
+                key: "c1".into(),
+                score: 3.5,
+                justification: tr(
+                    "Texto em parágrafo único: falta separar introdução, desenvolvimento e conclusão.",
+                    "One single paragraph: introduction, body and conclusion are not separated.",
+                )
+                .into(),
+                evidence: Vec::new(),
+            },
+            CriterionScore {
+                key: "c2".into(),
+                score: 11.0,
+                justification: tr(
+                    "Tese clara e pertinente; o segundo argumento ficou só anunciado.",
+                    "Clear, relevant thesis; the second argument is only announced.",
+                )
+                .into(),
+                evidence: vec![Evidence {
+                    quote: tr(
+                        "A participação social é condição para que os direitos",
+                        "Civic participation is what takes fundamental rights",
+                    )
+                    .into(),
+                    page: Some(1),
+                    line: Some(1),
+                }],
+            },
+        ],
+        rubric,
+        strengths: vec![Remark {
+            text: tr("Tese explícita logo na primeira frase.", "Thesis stated in the first sentence.").into(),
+            evidence: None,
+        }],
+        problems: vec![Problem {
+            category: ProblemCategory::Writing,
+            text: tr("Concordância nominal.", "Subject–verb agreement.").into(),
+            suggestion: tr("Escreva \"os cidadãos\".", "Write \"citizens follow\".").into(),
+            evidence: quote(tr("os cidadão", "citizens follows"), 2),
+        }],
+        priorities: vec![
+            tr("Dividir o texto em parágrafos.", "Split the text into paragraphs.").into(),
+            tr("Desenvolver o segundo argumento com um exemplo.", "Develop the second argument with an example.").into(),
+            tr("Revisar a concordância.", "Check agreement.").into(),
+        ],
+        review_topics: vec![crase],
+        dropped_quotes: 1,
+        model: "glm-5".into(),
+        prompt_version: "evaluate-51be07d4".into(),
+        evaluated_at: now,
+    };
+    store.save_evaluation(graded, &evaluation).unwrap();
+    store
+        .set_attempt_status(graded, AttemptStatus::Evaluated, None, "", now)
+        .unwrap();
+
+    let review = store
+        .insert_attempt(
+            proposal,
+            AttemptOrigin::Photos,
+            None,
+            AttemptStatus::Draft,
+            now,
+        )
+        .unwrap();
+    store.add_page(review, &page).unwrap();
+    store
+        .save_transcript(review, &reading(1), "glm-4.5v", "transcribe-8c1d22aa", now)
+        .unwrap();
+    store
+        .set_attempt_status(review, AttemptStatus::Review, None, "", now)
+        .unwrap();
+    (graded, review)
+}
+
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn writing_snapshots() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in ["pt-BR", "en"] {
+        let english = locale == "en";
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        seed(&paths, english);
+        let (graded, review) = seed_writing(&paths, english);
+        crate::i18n::set(locale);
+        let mut harness = Harness::builder()
+            .with_size([1180.0, 1500.0])
+            .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+        crate::i18n::set(locale);
+        harness.state_mut().ui.screen = Screen::Discursive;
+        render(&mut harness, out.as_deref(), &format!("{locale}-writing"));
+        for (attempt, name) in [(graded, "writing-graded"), (review, "writing-review")] {
+            harness.state_mut().dispatch(Command::OpenAttempt(attempt));
+            // Page photos load on a worker.
+            for _ in 0..100 {
+                harness.run_steps(1);
+                let loaded = harness.state().engine.as_ref().is_ok_and(|e| {
+                    e.open_attempt()
+                        .is_some_and(|o| o.pages.iter().all(|p| e.page_image(p.id).is_some()))
+                });
+                if loaded {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            render(&mut harness, out.as_deref(), &format!("{locale}-{name}"));
+            harness.state_mut().dispatch(Command::CloseAttempt);
+        }
+        harness.state_mut().ui.discursive.history = true;
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-writing-history"),
+        );
+    }
 }

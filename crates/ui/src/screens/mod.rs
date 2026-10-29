@@ -2,6 +2,7 @@
 //! which run after drawing; none of them contain business rules.
 
 pub mod board;
+pub mod discursive;
 pub mod edital;
 pub mod handout;
 pub mod lesson;

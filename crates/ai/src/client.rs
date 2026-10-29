@@ -145,6 +145,46 @@ impl Client {
         self.send_body(model, &body)
     }
 
+    /// Sends images with instructions to the configured vision model only.
+    /// There is no fallback: a text-only model would answer without seeing
+    /// the images. A rejection of the request becomes
+    /// [`AiError::VisionRejected`].
+    pub(crate) fn vision(
+        &self,
+        system: &str,
+        text: &str,
+        images: &[(&str, &[u8])],
+        max_tokens: u32,
+    ) -> Result<String, AiError> {
+        let model = self.config.models.vision.trim();
+        if model.is_empty() {
+            return Err(AiError::NoVisionModel);
+        }
+        let mut content = vec![json!({"type": "text", "text": text})];
+        for (mime, bytes) in images {
+            let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+            content.push(json!({
+                "type": "image_url",
+                "image_url": {"url": format!("data:{mime};base64,{encoded}"), "detail": "high"}
+            }));
+        }
+        let body = json!({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": content}
+            ],
+            "max_tokens": max_tokens,
+            "temperature": 0.0
+        });
+        match self.send_body(model, &body) {
+            Err(AiError::Http { status, .. }) if matches!(status, 400 | 404 | 413 | 415 | 422) => {
+                Err(AiError::VisionRejected { status })
+            }
+            other => other,
+        }
+    }
+
     /// Checks that the endpoint answers with the tutor model.
     pub fn ping(&self) -> Result<(), AiError> {
         let messages = [ChatMessage::user("ok")];
@@ -372,7 +412,10 @@ fn should_fall_back(err: &AiError) -> bool {
         AiError::RateLimited => true,
         AiError::Http { status, .. } => *status >= 500 || *status == 400 || *status == 404,
         AiError::InvalidResponse(_) => true,
-        AiError::Connection { .. } | AiError::Auth { .. } => false,
+        AiError::Connection { .. }
+        | AiError::Auth { .. }
+        | AiError::NoVisionModel
+        | AiError::VisionRejected { .. } => false,
     }
 }
 

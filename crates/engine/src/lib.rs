@@ -6,6 +6,7 @@
 //! that [`Engine::poll`] applies on the UI thread.
 
 mod board;
+mod discursive;
 mod documents;
 mod handouts;
 mod illustrations;
@@ -31,6 +32,10 @@ use std::time::Instant;
 use chrono::NaiveDate;
 
 pub use board::{BoardItem, BoardJob};
+pub use discursive::{
+    AttemptProblems, EvolutionGroup, EvolutionRow, ImageProblem, NOTE_INTERRUPTED, NOTE_UNREADABLE,
+    OpenAttempt, ProposalRequest, VisionCheck,
+};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
@@ -44,6 +49,13 @@ pub use kg_handout::{
     Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout,
 };
 pub use kg_pdf::{Edital, EditalText, PdfError, Role};
+pub use kg_study::discursive::{REWRITE_RATIO, change_ratio, marks as transcript_marks};
+pub use kg_study::{
+    Attempt, AttemptId, AttemptOrigin, AttemptStatus, Criterion, DifficultyReport, Evaluation,
+    Evidence, Legibility, MAX_PAGES, Page, PageId, PageIssue, Problem, ProblemCategory, Proposal,
+    ProposalId, RecurringIssue, Remark, Rubric, RubricError, RubricSource, Stage, TranscriptPage,
+    TranscriptRecord, Unreadable, WritingKind, WritingRules,
+};
 pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
 };
@@ -72,6 +84,13 @@ use kg_study::Store;
 pub enum Command {
     ImportEdital(PathBuf),
     ClearEdital,
+    /// Reads the notice again (a new or amended PDF) for a saved plan. Only
+    /// the notice text changes: topics, progress, handouts and written
+    /// answers stay.
+    RevalidateEdital {
+        plan: PlanId,
+        path: PathBuf,
+    },
     GeneratePlan(PlanPrefs),
     SelectPlan(PlanId),
     DeletePlan(PlanId),
@@ -184,6 +203,42 @@ pub enum Command {
     /// Saves the open handout as a PDF with its highlights.
     ExportReading(PathBuf),
 
+    /// Asks for a written-answer proposal on the active plan.
+    GenerateProposal(ProposalRequest),
+    DeleteProposal(ProposalId),
+    /// A new attempt on a proposal, opened to add its pages.
+    StartAttempt(ProposalId),
+    OpenAttempt(AttemptId),
+    CloseAttempt,
+    /// Photos (JPEG or PNG) added after the open attempt's pages.
+    AddPages(Vec<PathBuf>),
+    ReplacePage {
+        page: PageId,
+        path: PathBuf,
+    },
+    /// Turns a page a quarter clockwise.
+    RotatePage(PageId),
+    MovePage {
+        page: PageId,
+        up: bool,
+    },
+    RemovePage(PageId),
+    /// Sends the open attempt's pages to the vision model to be read.
+    SubmitPages,
+    /// Confirms the checked transcript (one text per page) and grades it.
+    ConfirmTranscript(Vec<String>),
+    /// Saves a rewritten text as a new attempt and grades that one.
+    SaveRewrite(Vec<String>),
+    /// Runs the failed step of the open attempt again.
+    RetryAttempt,
+    /// Back to checking the transcript of a pending attempt.
+    ReopenTranscript,
+    DeleteAttempt(AttemptId),
+    /// Looks for difficulties repeated across graded attempts.
+    AnalyzeWriting,
+    /// Checks that the vision model really reads images.
+    CheckVision,
+
     /// Writes an already formatted progress report.
     ExportProgress {
         path: PathBuf,
@@ -222,6 +277,24 @@ pub enum EngineError {
     TopicNotFound(TopicId),
     #[error("speech model {0:?} is not installed")]
     SpeechModelMissing(ModelId),
+    #[error("page photo refused: {0:?}")]
+    Image(ImageProblem),
+    #[error("the exam notice describes no written test of this kind")]
+    NoWrittenTest,
+    #[error("too many pages for one attempt")]
+    TooManyPages,
+    #[error("no pages to send")]
+    NoPages,
+    #[error("a page must be photographed again")]
+    PageNeedsRetake,
+    #[error("the attempt cannot be changed in its current state")]
+    AttemptLocked,
+    #[error("the corrections change the answer itself")]
+    LooksLikeRewrite,
+    #[error("fewer than two graded attempts")]
+    NotEnoughAttempts,
+    #[error(transparent)]
+    Rubric(#[from] RubricError),
 }
 
 /// Something the UI should tell the user about.
@@ -253,6 +326,16 @@ pub enum Notice {
         count: usize,
     },
     Milestone(Milestone),
+    ProposalCreated,
+    /// A plan's notice was read again; whether it has a written test.
+    EditalRevalidated {
+        written_test: bool,
+    },
+    /// A written answer was graded (estimated score).
+    WritingEvaluated {
+        total: f64,
+        max: f64,
+    },
 }
 
 /// State of the edital import on the Edital screen.
@@ -297,6 +380,11 @@ pub(crate) enum Event {
     AnswerKeyRead {
         exam: DocumentId,
         result: Result<Vec<(u32, String)>, EngineError>,
+    },
+    Discursive(discursive::DiscursiveEvent),
+    EditalRevalidated {
+        plan: PlanId,
+        result: Result<Edital, EngineError>,
     },
 }
 
@@ -345,6 +433,9 @@ pub struct Engine {
     pending_prepare: Option<PrepareRequest>,
     board: board::BoardState,
     board_job: Option<BoardJob>,
+    discursive: discursive::DiscursiveState,
+    /// Plan whose notice is being read again.
+    revalidating: Option<PlanId>,
     streak: u32,
     studied_today: bool,
     study_clock: study_time::StudyClock,
@@ -446,6 +537,8 @@ impl Engine {
             pending_prepare: None,
             board: board::BoardState::default(),
             board_job: None,
+            discursive: discursive::DiscursiveState::default(),
+            revalidating: None,
             streak: 0,
             studied_today: false,
             study_clock: study_time::StudyClock::new(Self::today(), Instant::now()),
@@ -455,6 +548,7 @@ impl Engine {
             waker: Arc::new(|| {}),
             next_session_id: 1,
         };
+        engine.recover_writing();
         engine.reload_plans();
         engine.refresh_activity();
         engine.load_study_time();
@@ -574,6 +668,13 @@ impl Engine {
                 .as_ref()
                 .is_some_and(|q| q.step == QuizStep::Loading)
             || self.review.as_ref().is_some_and(ReviewSession::is_loading)
+            || self.writing_busy()
+            || self.revalidating.is_some()
+    }
+
+    /// The plan whose notice is being read again, while it is.
+    pub fn revalidating(&self) -> Option<PlanId> {
+        self.revalidating
     }
 
     pub fn handle(&mut self, command: Command) -> Result<(), EngineError> {
@@ -585,6 +686,7 @@ impl Engine {
                 self.finding_roles = false;
                 Ok(())
             }
+            Command::RevalidateEdital { plan, path } => self.revalidate_edital(plan, path),
             Command::GeneratePlan(prefs) => self.generate_plan(prefs),
             Command::SelectPlan(id) => self.select_plan(id),
             Command::DeletePlan(id) => self.delete_plan(id),
@@ -740,6 +842,27 @@ impl Engine {
                 self.cancel_prepare();
                 Ok(())
             }
+            Command::GenerateProposal(request) => self.generate_proposal(request),
+            Command::DeleteProposal(id) => self.delete_proposal(id),
+            Command::StartAttempt(id) => self.start_attempt(id),
+            Command::OpenAttempt(id) => self.open_writing_attempt(id),
+            Command::CloseAttempt => {
+                self.close_attempt();
+                Ok(())
+            }
+            Command::AddPages(paths) => self.add_pages(paths),
+            Command::ReplacePage { page, path } => self.replace_page(page, path),
+            Command::RotatePage(page) => self.rotate_page(page),
+            Command::MovePage { page, up } => self.move_page(page, up),
+            Command::RemovePage(page) => self.remove_page(page),
+            Command::SubmitPages => self.submit_pages(),
+            Command::ConfirmTranscript(pages) => self.confirm_transcript(pages),
+            Command::SaveRewrite(pages) => self.save_rewrite(pages),
+            Command::RetryAttempt => self.retry_attempt(),
+            Command::ReopenTranscript => self.reopen_transcript(),
+            Command::DeleteAttempt(id) => self.delete_attempt(id),
+            Command::AnalyzeWriting => self.analyze_writing(),
+            Command::CheckVision => self.check_vision(),
             Command::ExportProgress { path, content } => {
                 std::fs::write(&path, content).map_err(|source| EngineError::Export {
                     path: path.clone(),
@@ -789,6 +912,10 @@ impl Engine {
                 Event::Prepare(event) => self.on_prepare_event(event),
                 Event::BoardImported(result) => self.on_board_imported(result),
                 Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),
+                Event::Discursive(event) => self.on_discursive_event(event),
+                Event::EditalRevalidated { plan, result } => {
+                    self.on_edital_revalidated(plan, result)
+                }
             };
             if let Err(err) = result {
                 tracing::warn!(%err, "background task failed");

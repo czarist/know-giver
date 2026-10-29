@@ -22,12 +22,14 @@ pub enum Screen {
     Lesson,
     Quiz,
     Review,
+    /// Written answers: essays and discursive questions.
+    Discursive,
     Progress,
     Settings,
 }
 
 impl Screen {
-    const ALL: [Self; 10] = [
+    const ALL: [Self; 11] = [
         Self::Today,
         Self::Edital,
         Self::Plan,
@@ -36,6 +38,7 @@ impl Screen {
         Self::Lesson,
         Self::Quiz,
         Self::Review,
+        Self::Discursive,
         Self::Progress,
         Self::Settings,
     ];
@@ -51,6 +54,7 @@ impl Screen {
             Self::Lesson => Icon::Lesson,
             Self::Quiz => Icon::Quiz,
             Self::Review => Icon::Review,
+            Self::Discursive => Icon::Writing,
             Self::Progress => Icon::Progress,
             Self::Settings => Icon::Settings,
         }
@@ -67,6 +71,7 @@ impl Screen {
             Self::Lesson => t!("nav.lesson"),
             Self::Quiz => t!("nav.quiz"),
             Self::Review => t!("nav.review"),
+            Self::Discursive => t!("nav.discursive"),
             Self::Progress => t!("nav.progress"),
             Self::Settings => t!("nav.settings"),
         }
@@ -118,6 +123,7 @@ pub struct UiState {
     /// Name typed on the welcome screen, before it is saved.
     pub welcome_name: Option<String>,
     pub reader: crate::screens::reader::ReaderUi,
+    pub discursive: crate::screens::discursive::DiscursiveUi,
 }
 
 /// The eframe application.
@@ -185,6 +191,7 @@ impl KnowGiverApp {
                 prepare_all: true,
                 welcome_name: None,
                 reader: Default::default(),
+                discursive: Default::default(),
             },
             toasts: Vec::new(),
             shown_screen: screen,
@@ -265,6 +272,13 @@ impl KnowGiverApp {
                 ui.add_space(12.0);
 
                 for screen in Screen::ALL {
+                    // Written answers only when the notice describes a written test.
+                    if screen == Screen::Discursive
+                        && !engine_badges.writing
+                        && self.ui.screen != screen
+                    {
+                        continue;
+                    }
                     let selected = self.ui.screen == screen;
                     let color = if selected { p.accent } else { p.muted };
                     let mut text = egui::RichText::new(screen.label());
@@ -373,6 +387,8 @@ struct Badges {
     due_reviews: usize,
     quiz_active: bool,
     lesson_active: bool,
+    /// The active plan's notice describes a written test.
+    writing: bool,
     plan_title: Option<String>,
     /// Topics prepared so far and in total, while preparing the plan.
     preparing: Option<(usize, usize)>,
@@ -387,6 +403,7 @@ impl Badges {
                 .map_or(0, |p| p.due_topics(today).len()),
             quiz_active: engine.quiz().is_some(),
             lesson_active: engine.lesson().is_some(),
+            writing: engine.writing_rules().has_written_test(),
             plan_title: engine.active_plan().map(|p| p.title.clone()),
             preparing: engine.prepare_job().map(|job| (job.done(), job.total)),
         }
@@ -505,6 +522,7 @@ impl eframe::App for KnowGiverApp {
                     Screen::Lesson => screens::lesson::show(self, ui),
                     Screen::Quiz => screens::quiz::show(self, ui),
                     Screen::Review => screens::review::show(self, ui),
+                    Screen::Discursive => screens::discursive::show(self, ui),
                     Screen::Progress => screens::progress::show(self, ui),
                     Screen::Settings => screens::settings::show(self, ui),
                 }

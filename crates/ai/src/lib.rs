@@ -8,6 +8,7 @@
 mod board;
 mod client;
 mod config;
+mod discursive;
 mod handout_review;
 mod prompts;
 mod tasks;
@@ -20,6 +21,12 @@ pub use board::{
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, Task};
+pub use discursive::{
+    CriterionDraft, CriterionInput, EvaluationDraft, EvaluationInput, EvidenceDraft, IssueDraft,
+    IssueExampleDraft, IssueInput, PageReading, ProblemDraft, ProposalDraft, ProposalInput,
+    RemarkDraft, RubricDraft, ScoreDraft, UncertainDraft, check_vision, evaluate_writing,
+    find_recurring_issues, generate_proposal, numbered_text, prompt_version, read_manuscript_page,
+};
 pub use handout_review::{ReviewedHandout, review_handout};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use tasks::{
@@ -45,4 +52,8 @@ pub enum AiError {
     Http { status: u16, body: String },
     #[error("invalid model response: {0}")]
     InvalidResponse(String),
+    #[error("no vision model is configured")]
+    NoVisionModel,
+    #[error("the vision request was rejected (HTTP {status}); the model may not accept images")]
+    VisionRejected { status: u16 },
 }

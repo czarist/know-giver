@@ -4,6 +4,49 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.29.0] - 2026-10-29
+
+### Added
+- Written answers ("Discursivas"): offered only when the plan's notice describes an essay
+  or a discursive test, for the kinds it describes (argumentative essay, technical
+  discursive question, case study).
+  - Prompts from the plan's topics (picked, or suggested from lessons, quiz mistakes and
+    earlier grades). Criteria and points are shown before writing: from the notice only
+    when the passage defining them is found in it, typed by the student, or Know Giver's
+    generic ones (never the ENEM grid). Line and time limits come from the student or
+    the notice. The answer outline stays hidden until a grade.
+  - Handwritten pages as JPEG or PNG photos (up to 8), checked by content and size, with
+    the original kept and a bounded copy for the model. Pages can be enlarged, rotated,
+    reordered, replaced and removed. Dark, overexposed, blurry, low-contrast or
+    low-resolution photos are flagged; a page the model says is cut or unreadable asks
+    for a new photo with no grade.
+  - Transcription by the configured vision model only (no fallback to a text model),
+    keeping spelling and errors, page and line, uncertain (`[?…?]`), illegible and
+    crossed-out passages. Photo and transcript side by side to fix misreadings; the
+    model's reading, the confirmed text and the edits are stored apart. Rewriting the
+    answer is saved as a new attempt.
+  - Formative, AI-estimated grade per criterion with the total summed in code; quotes
+    checked against the text (page and line located again, invented ones dropped);
+    strengths, problems with suggestions, three priorities and plan topics to review
+    (suggestions only, the schedule does not change). Too much uncertain text leaves the
+    grade pending.
+  - History: new attempts keep earlier ones; scores by criterion only across attempts
+    graded on the same rubric, with a warning when models or prompt versions differ;
+    photo-reading problems apart from writing, content and structure; recurring
+    difficulties with examples verified in the attempts.
+  - Model, prompt version, rubric and dates are stored with each result. Processing
+    states are saved; work interrupted by closing the app can be run again, repeated
+    clicks start one run, and late results never reach another attempt.
+  - "Test image reading" in the area checks that the vision model really reads images.
+- Re-read notice: a saved plan's notice can be read again from a new or amended PDF
+  (Edital screen, or Written answers when no written test was found). Only the notice
+  text changes; topics, progress, handouts and written answers stay, so a finished plan
+  gets the written-answers area without being made again.
+- Points with decimals use a decimal comma in Portuguese ("14,5").
+
+### Changed
+- README privacy notes: photos of handwritten pages go to the configured vision model.
+
 ## [0.28.2] - 2026-10-29
 
 ### Changed

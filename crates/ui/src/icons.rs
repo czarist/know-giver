@@ -23,6 +23,7 @@ pub enum Icon {
     Close,
     Download,
     Mic,
+    Writing,
 }
 
 impl Icon {
@@ -46,6 +47,7 @@ impl Icon {
             Self::Close => include_image!("../assets/icons/x.svg"),
             Self::Download => include_image!("../assets/icons/file-down.svg"),
             Self::Mic => include_image!("../assets/icons/mic.svg"),
+            Self::Writing => include_image!("../assets/icons/pen-line.svg"),
         }
     }
 
