@@ -4,6 +4,8 @@
 //! exercises kept. Set `MODEL_VERIFIER` to try another model for the blind solve.
 //!
 //! cargo run -p kg-ai --example handout_check
+//!
+//! Prompts are Portuguese by default; `KG_PROMPT_LANG=en` uses the English ones.
 
 use kg_ai::{AiConfig, Client, TopicContext, generate_handout, review_handout};
 
@@ -35,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.models.for_task(kg_ai::Task::Correction),
         config.models.for_task(kg_ai::Task::Verify)
     );
-    let client = Client::new(config);
+    let client = Client::new(config).with_language(kg_ai::PromptLanguage::from_env());
     let (mut corrections, mut dropped, mut kept) = (0, 0, 0);
     for (subject, topic) in TOPICS {
         let context = TopicContext {

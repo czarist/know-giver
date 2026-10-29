@@ -15,6 +15,46 @@ pub enum Task {
     Vision,
 }
 
+/// Language the prompts are written in and the model is asked to answer in.
+/// It follows the app's language.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum PromptLanguage {
+    #[default]
+    Portuguese,
+    English,
+}
+
+impl PromptLanguage {
+    /// From a locale such as "pt-BR" or "en"; anything not English is Portuguese.
+    pub fn from_locale(locale: &str) -> Self {
+        if locale.trim().to_ascii_lowercase().starts_with("en") {
+            Self::English
+        } else {
+            Self::Portuguese
+        }
+    }
+
+    /// From `KG_PROMPT_LANG` ("en" or "pt"), for the examples.
+    pub fn from_env() -> Self {
+        Self::from_locale(&std::env::var("KG_PROMPT_LANG").unwrap_or_default())
+    }
+
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::Portuguese => "pt",
+            Self::English => "en",
+        }
+    }
+
+    /// The text in this language.
+    pub fn pick<'a>(self, portuguese: &'a str, english: &'a str) -> &'a str {
+        match self {
+            Self::Portuguese => portuguese,
+            Self::English => english,
+        }
+    }
+}
+
 /// Model names per task.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]

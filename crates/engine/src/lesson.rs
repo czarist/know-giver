@@ -307,6 +307,7 @@ struct LessonDraft {
 }
 
 /// Asks the tutor to pick up a lesson after a break. Not shown or saved.
+const RESUME_REQUEST_EN: &str = "(The student is back after a break. Greet them in a few words, recall in one or two sentences what we already covered and go on with the lesson from where we stopped.)";
 const RESUME_REQUEST: &str = "(O aluno voltou depois de uma pausa. Cumprimente em poucas palavras, relembre em uma ou duas frases o que já vimos e continue a aula de onde paramos.)";
 
 pub(crate) enum LessonEvent {
@@ -492,7 +493,9 @@ impl Engine {
                 relay_sentence(&tx, &waker, speech.as_ref(), reply, sentence);
             };
             let result = if resuming {
-                history.push(ChatMessage::user(RESUME_REQUEST));
+                history.push(ChatMessage::user(
+                    client.language().pick(RESUME_REQUEST, RESUME_REQUEST_EN),
+                ));
                 kg_ai::tutor_reply_stream(&client, &ctx, &history, relay)
             } else {
                 kg_ai::start_lesson_stream(&client, &ctx, relay)

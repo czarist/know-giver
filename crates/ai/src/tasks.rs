@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::AiError;
 use crate::client::{ChatMessage, ChatRequest, Client, Role};
+use crate::config::PromptLanguage;
 use crate::config::Task;
 use crate::prompts::{self, fill};
 
@@ -274,25 +275,28 @@ impl LessonLength {
     }
 
     /// Steps the tutor writes when there is no handout.
-    fn step_range(self) -> &'static str {
+    fn step_range(self, lang: PromptLanguage) -> &'static str {
         match self {
-            Self::Quick => "2 a 3",
-            Self::Normal => "3 a 5",
-            Self::Full => "5 a 8",
+            Self::Quick => lang.pick("2 a 3", "2 to 3"),
+            Self::Normal => lang.pick("3 a 5", "3 to 5"),
+            Self::Full => lang.pick("5 a 8", "5 to 8"),
         }
     }
 
-    fn teaching(self) -> &'static str {
+    fn teaching(self, lang: PromptLanguage) -> &'static str {
         match self {
-            Self::Quick => {
-                "- Aula rápida: em cada etapa, explique só o essencial em poucas frases e faça uma pergunta curta. Passe para a próxima quando o aluno responder."
-            }
-            Self::Normal => {
-                "- Em cada etapa, explique todos os pontos listados para ela, um de cada vez, com um exemplo, e faça uma pergunta de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem."
-            }
-            Self::Full => {
-                "- Aula completa: em cada etapa, explique todos os pontos listados para ela, um de cada vez, com exemplos e as pegadinhas de prova, e faça pelo menos duas perguntas de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem."
-            }
+            Self::Quick => lang.pick(
+                "- Aula rápida: em cada etapa, explique só o essencial em poucas frases e faça uma pergunta curta. Passe para a próxima quando o aluno responder.",
+                "- Quick lesson: in each step, explain only the essentials in a few sentences and ask one short question. Move on when the student answers.",
+            ),
+            Self::Normal => lang.pick(
+                "- Em cada etapa, explique todos os pontos listados para ela, um de cada vez, com um exemplo, e faça uma pergunta de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem.",
+                "- In each step, explain every point listed for it, one at a time, with an example, and ask a checking question. Move on only after covering the points and the student answering well.",
+            ),
+            Self::Full => lang.pick(
+                "- Aula completa: em cada etapa, explique todos os pontos listados para ela, um de cada vez, com exemplos e as pegadinhas de prova, e faça pelo menos duas perguntas de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem.",
+                "- Full lesson: in each step, explain every point listed for it, one at a time, with examples and the exam traps, and ask at least two checking questions. Move on only after covering the points and the student answering well.",
+            ),
         }
     }
 }
@@ -348,13 +352,17 @@ pub fn generate_plan(
     edital: &str,
     prefs: &PlanPrefs,
 ) -> Result<PlanDraft, AiError> {
+    let lang = client.language();
     let role = if prefs.role.trim().is_empty() {
-        "o cargo principal do edital"
+        lang.pick(
+            "o cargo principal do edital",
+            "the main position of the notice",
+        )
     } else {
         prefs.role.trim()
     };
     let system = fill(
-        prompts::PLAN,
+        prompts::get(lang).plan,
         &[
             ("weeks", &prefs.weeks.to_string()),
             ("hours", &prefs.hours_per_week.to_string()),
@@ -379,7 +387,7 @@ struct RolesDraft {
 /// the text, as the model may paraphrase.
 pub fn find_roles(client: &Client, edital: &str) -> Result<Vec<String>, AiError> {
     let messages = [
-        ChatMessage::system(prompts::ROLES.trim()),
+        ChatMessage::system(prompts::get(client.language()).roles.trim()),
         ChatMessage::user(format!(
             "EDITAL:
 {edital}"
@@ -400,8 +408,8 @@ pub fn find_roles(client: &Client, edital: &str) -> Result<Vec<String>, AiError>
 /// The tutor's opening message for a lesson.
 pub fn start_lesson(client: &Client, topic: &TopicContext) -> Result<TutorReply, AiError> {
     let messages = [
-        tutor_system(topic),
-        ChatMessage::user(prompts::LESSON_START.trim()),
+        tutor_system(topic, client.language()),
+        ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     client
         .chat(&ChatRequest {
@@ -421,8 +429,8 @@ pub fn start_lesson_stream(
     on_sentence: impl FnMut(&str),
 ) -> Result<TutorReply, AiError> {
     let messages = [
-        tutor_system(topic),
-        ChatMessage::user(prompts::LESSON_START.trim()),
+        tutor_system(topic, client.language()),
+        ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     stream_tutor(client, &messages, on_sentence)
 }
@@ -435,8 +443,8 @@ pub fn tutor_reply_stream(
     on_sentence: impl FnMut(&str),
 ) -> Result<TutorReply, AiError> {
     let mut messages = vec![
-        tutor_system(topic),
-        ChatMessage::user(prompts::LESSON_START.trim()),
+        tutor_system(topic, client.language()),
+        ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
     stream_tutor(client, &messages, on_sentence)
@@ -507,8 +515,8 @@ pub fn tutor_reply(
     history: &[ChatMessage],
 ) -> Result<TutorReply, AiError> {
     let mut messages = vec![
-        tutor_system(topic),
-        ChatMessage::user(prompts::LESSON_START.trim()),
+        tutor_system(topic, client.language()),
+        ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
     client
@@ -521,44 +529,50 @@ pub fn tutor_reply(
         .map(|text| TutorReply::parse(&text))
 }
 
-fn tutor_system(topic: &TopicContext) -> ChatMessage {
+fn tutor_system(topic: &TopicContext, lang: PromptLanguage) -> ChatMessage {
     let mut values = topic.values().to_vec();
     values.push(("max_words", TUTOR_MAX_WORDS));
     let name = topic.student.trim();
-    let student = if name.is_empty() {
-        String::new()
-    } else {
-        format!(
+    let student = match (name.is_empty(), lang) {
+        (true, _) => String::new(),
+        (false, PromptLanguage::Portuguese) => format!(
             "- O aluno quer ser chamado de {name}. Use esse nome de vez em quando, com naturalidade: no cumprimento, ao elogiar ou ao chamar a atenção, não em toda frase."
-        )
+        ),
+        (false, PromptLanguage::English) => format!(
+            "- The student wants to be called {name}. Use the name now and then, naturally: when greeting, praising or calling their attention, not in every sentence."
+        ),
     };
     let name = topic.teacher_name.trim();
-    let teacher = if name.is_empty() {
-        String::new()
-    } else if topic.teacher_female {
-        format!(
+    let teacher = match (name.is_empty(), topic.teacher_female, lang) {
+        (true, ..) => String::new(),
+        (false, true, PromptLanguage::Portuguese) => format!(
             "- Seu nome é {name} e você é a professora. Fale de si no feminino (por exemplo, \"obrigada\", \"estou pronta\")."
-        )
-    } else {
-        format!(
+        ),
+        (false, false, PromptLanguage::Portuguese) => format!(
             "- Seu nome é {name} e você é o professor. Fale de si no masculino (por exemplo, \"obrigado\", \"estou pronto\")."
-        )
+        ),
+        (false, true, PromptLanguage::English) => {
+            format!("- Your name is {name} and you are the teacher; speak of yourself as a woman.")
+        }
+        (false, false, PromptLanguage::English) => {
+            format!("- Your name is {name} and you are the teacher; speak of yourself as a man.")
+        }
     };
-    let mut plan = lesson_plan(topic);
+    let mut plan = lesson_plan(topic, lang);
     if topic.english_voice {
-        plan.push_str(ENGLISH_MARKS);
+        plan.push_str(lang.pick(ENGLISH_MARKS, ENGLISH_MARKS_EN));
     }
     // Last, so a name cannot be mistaken for another placeholder.
     values.push(("teacher", &teacher));
     values.push(("student", &student));
     values.push(("lesson_plan", &plan));
-    ChatMessage::system(fill(prompts::TUTOR, &values))
+    ChatMessage::system(fill(prompts::get(lang).tutor, &values))
 }
 
 /// How the lesson moves through its plan and ends. Without a plan yet, the
 /// tutor is asked to write one.
-fn lesson_plan(topic: &TopicContext) -> String {
-    let teaching = topic.length.teaching();
+fn lesson_plan(topic: &TopicContext, lang: PromptLanguage) -> String {
+    let teaching = topic.length.teaching(lang);
     let quiz = if topic.quiz_topics.is_empty() {
         String::new()
     } else {
@@ -567,17 +581,21 @@ fn lesson_plan(topic: &TopicContext) -> String {
             .iter()
             .map(|q| format!("  - {q}"))
             .collect();
-        format!(
-            "\n- Depois da aula o aluno faz um quiz com perguntas como estas. Ao longo das etapas, explique o assunto de cada uma, sem ler a pergunta nem dar a resposta como gabarito:\n{}",
-            list.join("\n")
-        )
+        let intro = lang.pick(
+            "Depois da aula o aluno faz um quiz com perguntas como estas. Ao longo das etapas, explique o assunto de cada uma, sem ler a pergunta nem dar a resposta como gabarito:",
+            "After the lesson the student takes a quiz with questions like these. Across the steps, explain the subject of each, without reading the question or giving the answer as a key:",
+        );
+        format!("\n- {intro}\n{}", list.join("\n"))
     };
-    let quiz = format!("{quiz}{}", mistakes_block(topic));
+    let quiz = format!("{quiz}{}", mistakes_block(topic, lang));
+    if lang == PromptLanguage::English {
+        return lesson_plan_en(topic, teaching, &quiz);
+    }
     let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
     if topic.outline.is_empty() {
         return format!(
             "- Na sua primeira resposta, monte o roteiro desta aula: de {} etapas curtas, de até 6 palavras cada, do básico ao que mais cai na prova. Não inclua a revisão final, ela vem sempre no fim. Escreva em uma linha separada ROTEIRO: etapa | etapa | etapa. Comece pela etapa 1.\n{teaching}\n{rules}{quiz}",
-            topic.length.step_range()
+            topic.length.step_range(lang)
         );
     }
     let steps: Vec<String> = topic
@@ -613,11 +631,52 @@ fn lesson_plan(topic: &TopicContext) -> String {
     )
 }
 
+/// [`lesson_plan`] in English. The markers (`ROTEIRO:`, `ETAPA:`, `FIM`)
+/// stay as they are: the app reads them.
+fn lesson_plan_en(topic: &TopicContext, teaching: &str, quiz: &str) -> String {
+    let rules = "- Follow the plan in order. When the student shows they understood the current step, move to the next one and write, on a separate line, ETAPA: followed by the new step's number. After the last step comes the final review: ask one or two questions that bring together what was covered. When the student answers, correct if needed, close the lesson with a two-sentence summary, congratulate them and write FIM on a separate line. If the student asks to stop earlier, sum up what was covered and write FIM. These lines are not read aloud and must be written exactly like this.";
+    if topic.outline.is_empty() {
+        return format!(
+            "- In your first answer, build this lesson's plan: {} short steps of up to 6 words each, from the basics to what exams ask most. Do not include the final review; it always comes at the end. Write on a separate line ROTEIRO: step | step | step. Start with step 1.\n{teaching}\n{rules}{quiz}",
+            topic.length.step_range(PromptLanguage::English)
+        );
+    }
+    let steps: Vec<String> = topic
+        .outline
+        .iter()
+        .enumerate()
+        .map(|(i, step)| format!("{}. {step}", i + 1))
+        .collect();
+    let review = topic.outline.len() + 1;
+    let now = if topic.step < topic.outline.len() {
+        let notes = topic
+            .step_notes
+            .get(topic.step)
+            .filter(|n| !n.trim().is_empty())
+            .map(|n| format!("\n- Points of step {}, all to explain: {n}", topic.step + 1))
+            .unwrap_or_default();
+        format!(
+            "You are now on step {}: {}.{notes}",
+            topic.step + 1,
+            topic.outline[topic.step]
+        )
+    } else {
+        "You are now on the final review.".to_owned()
+    };
+    format!(
+        "- This lesson's plan: {}; {review}. Final review. {now}\n{teaching}\n{rules}{quiz}",
+        steps.join("; ")
+    )
+}
+
+/// In English lessons, every sentence goes to the English voice.
+const ENGLISH_MARKS_EN: &str = "\n- Write each sentence you say between [en] and [/en], one sentence at a time, so it is read with an English voice. Keep the board lines (QUADRO: and the others) outside these marks.";
+
 /// How the tutor marks English for the English voice.
 const ENGLISH_MARKS: &str = "\n- Quando disser algo em inglês (palavras, frases, exemplos, pronúncia), escreva o trecho em inglês entre [en] e [/en], uma frase por vez, para ele ser lido com pronúncia inglesa. Exemplo: A frase [en]I have been working here[/en] usa o present perfect continuous. Fora dessas marcas, fale só português.";
 
 /// The student's past mistakes, for the tutor to go over in the lesson.
-fn mistakes_block(topic: &TopicContext) -> String {
+fn mistakes_block(topic: &TopicContext, lang: PromptLanguage) -> String {
     if topic.mistakes.is_empty() {
         return String::new();
     }
@@ -627,10 +686,11 @@ fn mistakes_block(topic: &TopicContext) -> String {
         .take(MISTAKES_IN_PROMPT)
         .map(|m| format!("  - {m}"))
         .collect();
-    format!(
-        "\n- O aluno errou estas questões em quizzes anteriores. Retome cada ponto na etapa em que ele aparece: explique por que a resposta certa é a certa e por que a dele não é, sem constrangê-lo, e confira se ele entendeu:\n{}",
-        list.join("\n")
-    )
+    let intro = lang.pick(
+        "O aluno errou estas questões em quizzes anteriores. Retome cada ponto na etapa em que ele aparece: explique por que a resposta certa é a certa e por que a dele não é, sem constrangê-lo, e confira se ele entendeu:",
+        "The student got these questions wrong in earlier quizzes. Go over each point in the step where it comes up: explain why the right answer is right and why theirs is not, without embarrassing them, and check they understood:",
+    );
+    format!("\n- {intro}\n{}", list.join("\n"))
 }
 
 /// Past mistakes given to the tutor or the review, at most.
@@ -677,26 +737,34 @@ pub fn generate_quiz(
 const PARALLEL_QUIZ_MIN: u32 = 4;
 
 /// What each half of a parallel quiz concentrates on.
-const QUIZ_FOCUS: [&str; 2] = [
-    "Concentre-se nas regras gerais, nos conceitos e nas definições do tópico.",
-    "Concentre-se nas exceções, nos casos especiais e na aplicação a situações concretas.",
+const QUIZ_FOCUS: [(&str, &str); 2] = [
+    (
+        "Concentre-se nas regras gerais, nos conceitos e nas definições do tópico.",
+        "Focus on the topic's general rules, concepts and definitions.",
+    ),
+    (
+        "Concentre-se nas exceções, nos casos especiais e na aplicação a situações concretas.",
+        "Focus on exceptions, special cases and application to concrete situations.",
+    ),
 ];
 
 fn quiz_batch(
     client: &Client,
     topic: &TopicContext,
     count: u32,
-    focus: Option<&str>,
+    focus: Option<(&str, &str)>,
 ) -> Result<Vec<QuestionDraft>, AiError> {
+    let lang = client.language();
     let count = count.to_string();
     let mut values = topic.values().to_vec();
     values.push(("count", &count));
+    let ask = lang.pick("Gere as questões.", "Write the questions.");
     let request = match focus {
-        Some(focus) => format!("Gere as questões. {focus}"),
-        None => "Gere as questões.".to_owned(),
+        Some((pt, en)) => format!("{ask} {}", lang.pick(pt, en)),
+        None => ask.to_owned(),
     };
     let messages = [
-        ChatMessage::system(fill(prompts::QUIZ, &values)),
+        ChatMessage::system(fill(prompts::get(lang).quiz, &values)),
         ChatMessage::user(request),
     ];
     let draft: QuizDraft = chat_json(client, Task::Quiz, &messages, 8_000)?;
@@ -721,21 +789,30 @@ pub fn generate_handout(
     topic: &TopicContext,
     edital: &str,
 ) -> Result<HandoutDraft, AiError> {
-    let messages = handout_messages(topic, edital)?;
+    let messages = handout_messages(topic, edital, client.language())?;
     chat_json(client, Task::Handout, &messages, 16_000)
 }
 
-fn handout_messages(topic: &TopicContext, edital: &str) -> Result<[ChatMessage; 2], AiError> {
+fn handout_messages(
+    topic: &TopicContext,
+    edital: &str,
+    lang: PromptLanguage,
+) -> Result<[ChatMessage; 2], AiError> {
     if edital.trim().is_empty() {
         return Err(AiError::InvalidResponse(
             "handout requires edital context".into(),
         ));
     }
     Ok([
-        ChatMessage::system(fill(prompts::HANDOUT, &topic.values())),
-        ChatMessage::user(format!(
-            "EDITAL (dados de referência):\n{edital}\n\nEscreva a apostila apenas para o tópico solicitado e dentro deste programa."
-        )),
+        ChatMessage::system(fill(prompts::get(lang).handout, &topic.values())),
+        ChatMessage::user(match lang {
+            PromptLanguage::Portuguese => format!(
+                "EDITAL (dados de referência):\n{edital}\n\nEscreva a apostila apenas para o tópico solicitado e dentro deste programa."
+            ),
+            PromptLanguage::English => format!(
+                "EXAM NOTICE (reference data):\n{edital}\n\nWrite the handout only for the requested topic and within this syllabus."
+            ),
+        }),
     ])
 }
 
@@ -751,7 +828,10 @@ pub fn review_question_avoiding(
     topic: &TopicContext,
     asked: &[String],
 ) -> Result<String, AiError> {
-    let mut request = "Faça a pergunta.".to_owned();
+    let lang = client.language();
+    let mut request = lang
+        .pick("Faça a pergunta.", "Ask the question.")
+        .to_owned();
     if !topic.mistakes.is_empty() {
         let list: Vec<String> = topic
             .mistakes
@@ -759,20 +839,22 @@ pub fn review_question_avoiding(
             .take(MISTAKES_IN_PROMPT)
             .map(|m| format!("- {m}"))
             .collect();
-        request.push_str(&format!(
-            "\nO aluno errou estas questões em quizzes. De preferência, pergunte sobre o ponto de uma delas, com outras palavras:\n{}",
-            list.join("\n")
-        ));
+        let intro = lang.pick(
+            "O aluno errou estas questões em quizzes. De preferência, pergunte sobre o ponto de uma delas, com outras palavras:",
+            "The student got these quiz questions wrong. Preferably ask about the point of one of them, in other words:",
+        );
+        request.push_str(&format!("\n{intro}\n{}", list.join("\n")));
     }
     if !asked.is_empty() {
         let list: Vec<String> = asked.iter().map(|q| format!("- {q}")).collect();
-        request.push_str(&format!(
-            "\nJá perguntei isto nesta revisão; pergunte sobre outro ponto:\n{}",
-            list.join("\n")
-        ));
+        let intro = lang.pick(
+            "Já perguntei isto nesta revisão; pergunte sobre outro ponto:",
+            "I already asked this in this review; ask about another point:",
+        );
+        request.push_str(&format!("\n{intro}\n{}", list.join("\n")));
     }
     let messages = [
-        ChatMessage::system(fill(prompts::REVIEW_QUESTION, &topic.values())),
+        ChatMessage::system(fill(prompts::get(lang).review_question, &topic.values())),
         ChatMessage::user(request),
     ];
     let draft: ReviewQuestionDraft = chat_json(client, Task::Quiz, &messages, 4_096)?;
@@ -790,8 +872,12 @@ pub fn evaluate_review(
     values.push(("question", question));
     values.push(("answer", answer));
     let messages = [
-        ChatMessage::system(fill(prompts::REVIEW_EVAL, &values)),
-        ChatMessage::user("Corrija a resposta."),
+        ChatMessage::system(fill(prompts::get(client.language()).review_eval, &values)),
+        ChatMessage::user(
+            client
+                .language()
+                .pick("Corrija a resposta.", "Grade the answer."),
+        ),
     ];
     let mut feedback: ReviewFeedback = chat_json(client, Task::Correction, &messages, 4_096)?;
     feedback.score = feedback.score.min(5);
@@ -844,16 +930,16 @@ mod tests {
             topic: "Crase".into(),
             ..TopicContext::default()
         };
-        let without = tutor_system(&topic).content;
+        let without = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(!without.contains("{student}"));
         assert!(!without.contains("chamado de"));
         topic.student = "Lucas".into();
-        let with = tutor_system(&topic).content;
+        let with = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(with.contains("quer ser chamado de Lucas"));
         assert!(!with.contains("{teacher}"));
         topic.teacher_name = "Helena".into();
         topic.teacher_female = true;
-        let persona = tutor_system(&topic).content;
+        let persona = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(persona.contains("Seu nome é Helena e você é a professora"));
     }
 
@@ -887,13 +973,13 @@ mod tests {
             ..TopicContext::default()
         };
         let edital = "CONTEÚDO PROGRAMÁTICO\nPortuguês: crase. {topic}";
-        let messages = handout_messages(&context, edital).unwrap();
+        let messages = handout_messages(&context, edital, PromptLanguage::Portuguese).unwrap();
         assert_eq!(messages[0].role, Role::System);
         assert!(messages[0].content.contains(&context.reference));
         assert_eq!(messages[1].role, Role::User);
         assert!(messages[1].content.contains(edital));
         assert!(!messages[0].content.contains(edital));
-        assert!(handout_messages(&context, " \n ").is_err());
+        assert!(handout_messages(&context, " \n ", PromptLanguage::Portuguese).is_err());
     }
 
     #[test]
@@ -978,16 +1064,20 @@ mod tests {
             topic: "Crase".into(),
             ..TopicContext::default()
         };
-        let asks = tutor_system(&topic).content;
+        let asks = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(asks.contains("ROTEIRO:"));
         assert!(!asks.contains("{lesson_plan}"));
         topic.outline = vec!["O que é".into(), "Casos".into()];
         topic.step = 1;
-        let follows = tutor_system(&topic).content;
+        let follows = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(follows.contains("1. O que é; 2. Casos; 3. Revisão final"));
         assert!(follows.contains("etapa 2: Casos"));
         topic.step = 2;
-        assert!(tutor_system(&topic).content.contains("revisão final."));
+        assert!(
+            tutor_system(&topic, PromptLanguage::Portuguese)
+                .content
+                .contains("revisão final.")
+        );
     }
 
     #[test]
@@ -1002,19 +1092,23 @@ mod tests {
             quiz_topics: vec!["No contrato social de Rousseau, a soberania reside:".into()],
             ..TopicContext::default()
         };
-        let asks = tutor_system(&topic).content;
+        let asks = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(asks.contains("Rousseau: vontade geral"));
         assert!(!asks.contains("Weber"));
         assert!(asks.contains("a soberania reside"));
         assert!(asks.contains("um exemplo"));
         topic.step = 1;
         topic.length = LessonLength::Full;
-        let full = tutor_system(&topic).content;
+        let full = tutor_system(&topic, PromptLanguage::Portuguese).content;
         assert!(full.contains("Weber: tipos de dominação"));
         assert!(full.contains("duas perguntas"));
         topic.outline.clear();
         topic.length = LessonLength::Quick;
-        assert!(tutor_system(&topic).content.contains("de 2 a 3 etapas"));
+        assert!(
+            tutor_system(&topic, PromptLanguage::Portuguese)
+                .content
+                .contains("de 2 a 3 etapas")
+        );
     }
 
     #[test]

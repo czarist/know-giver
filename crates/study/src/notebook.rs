@@ -27,10 +27,20 @@ impl Mistake {
     /// One line for the tutor: the question, the right answer and the
     /// student's wrong one.
     pub fn summary(&self) -> String {
+        self.summary_in(false)
+    }
+
+    /// [`Self::summary`] with English labels when `english`.
+    pub fn summary_in(&self, english: bool) -> String {
         let q = &self.question;
         let option = |i: usize| q.options.get(i).map_or("", String::as_str);
+        let (right, chosen) = if english {
+            ("right", "the student chose")
+        } else {
+            ("certa", "o aluno marcou")
+        };
         format!(
-            "{} — certa: {} — o aluno marcou: {}",
+            "{} — {right}: {} — {chosen}: {}",
             q.prompt.split_whitespace().collect::<Vec<_>>().join(" "),
             option(q.correct),
             option(self.chosen)

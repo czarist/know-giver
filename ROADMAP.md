@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.29.0. Everything an agent can build and check without a human ear, a
+Version 0.30.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -11,6 +11,9 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
+000. English prompts (v0.30.0): run `KG_PROMPT_LANG=en cargo run -p kg-ai --example
+   live_check` and a lesson with the app in English; check the tutor keeps the markers
+   (`QUADRO:`, `ETAPA:`, `FIM`) and that handouts and quizzes come out in English.
 00. Written answers (v0.29.0): run [docs/validation-discursive.md](docs/validation-discursive.md)
    with the owner's vision model and real handwritten pages: legible, crossed-out,
    several pages and bad photos. Check the transcript keeps the student's errors, that

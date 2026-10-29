@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use chrono::NaiveDateTime;
-use kg_ai::{AiError, EvaluationInput, IssueInput, ProposalDraft, ProposalInput};
+use kg_ai::{AiError, EvaluationInput, IssueInput, PromptLanguage, ProposalDraft, ProposalInput};
 use kg_study::discursive::{REWRITE_RATIO, change_ratio, edits, writing_rules};
 use kg_study::{
     Attempt, AttemptId, AttemptOrigin, AttemptStatus, ConfirmedTranscript, DifficultyReport,
@@ -410,24 +410,34 @@ impl Engine {
             .filter_map(|t| plan.find_topic(*t))
             .map(|(s, t)| format!("{} — {}", s.name, t.title))
             .collect();
+        let lang = self.prompt_language();
         let mut history = Vec::new();
         for id in &candidates {
             if let Some((_, topic)) = plan.find_topic(*id) {
                 let mistakes = self.mistakes.iter().filter(|m| m.topic_id == *id).count();
-                let lesson = if topic.lesson_taken() {
-                    "aula feita"
-                } else {
-                    "sem aula"
+                let lesson = match (topic.lesson_taken(), lang) {
+                    (true, PromptLanguage::Portuguese) => "aula feita",
+                    (false, PromptLanguage::Portuguese) => "sem aula",
+                    (true, PromptLanguage::English) => "lesson taken",
+                    (false, PromptLanguage::English) => "no lesson yet",
                 };
-                history.push(format!(
-                    "{}: {lesson}, {mistakes} erro(s) no quiz",
-                    topic.title
-                ));
+                history.push(match lang {
+                    PromptLanguage::Portuguese => {
+                        format!("{}: {lesson}, {mistakes} erro(s) no quiz", topic.title)
+                    }
+                    PromptLanguage::English => {
+                        format!("{}: {lesson}, {mistakes} quiz mistake(s)", topic.title)
+                    }
+                });
             }
         }
         if let Some((_, last)) = self.discursive.evaluations.last() {
+            let label = lang.pick(
+                "prioridade da última avaliação",
+                "priority from the last grade",
+            );
             for priority in &last.priorities {
-                history.push(format!("prioridade da última avaliação: {priority}"));
+                history.push(format!("{label}: {priority}"));
             }
         }
         let mut reference = String::new();
@@ -444,11 +454,11 @@ impl Engine {
         };
         let input = ProposalInput {
             exam,
-            kind: request.kind.prompt_name().to_owned(),
+            kind: kind_name(request.kind, lang).to_owned(),
             difficulty: match request.difficulty {
-                kg_study::Difficulty::Easy => "fácil",
-                kg_study::Difficulty::Medium => "média",
-                kg_study::Difficulty::Hard => "difícil",
+                kg_study::Difficulty::Easy => lang.pick("fácil", "easy"),
+                kg_study::Difficulty::Medium => lang.pick("média", "medium"),
+                kg_study::Difficulty::Hard => lang.pick("difícil", "hard"),
             }
             .to_owned(),
             topics: titles,
@@ -847,7 +857,7 @@ impl Engine {
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
         let topics: Vec<TopicId> = plan.topics().map(|(_, t)| t.id).collect();
         let input = EvaluationInput {
-            kind: proposal.kind.prompt_name().to_owned(),
+            kind: kind_name(proposal.kind, self.prompt_language()).to_owned(),
             theme: proposal.theme.clone(),
             statement: proposal.statement.clone(),
             instructions: proposal.instructions.clone(),
@@ -871,6 +881,7 @@ impl Engine {
             pages: pages.clone(),
         };
         let client = self.ai_client();
+        let language = client.language();
         let model = client.config().models.correction.clone();
         tracing::info!(attempt = attempt.0, run, "evaluating written answer");
         self.after_change();
@@ -881,11 +892,19 @@ impl Engine {
                 result = kg_ai::evaluate_writing(&client, &input)
                     .map_err(EngineError::from)
                     .and_then(|draft| {
-                        validate::evaluation(draft, &rubric, &pages, &topics, &model, now())
-                            .map_err(|invalid| {
-                                tracing::warn!(try_number, reason = %invalid.0, "evaluation refused");
-                                EngineError::Ai(AiError::InvalidResponse(invalid.0))
-                            })
+                        validate::evaluation(
+                            draft,
+                            &rubric,
+                            &pages,
+                            &topics,
+                            &model,
+                            language,
+                            now(),
+                        )
+                        .map_err(|invalid| {
+                            tracing::warn!(try_number, reason = %invalid.0, "evaluation refused");
+                            EngineError::Ai(AiError::InvalidResponse(invalid.0))
+                        })
                     });
                 if !matches!(result, Err(EngineError::Ai(AiError::InvalidResponse(_)))) {
                     break;
@@ -1062,8 +1081,15 @@ impl Engine {
                     return Ok(());
                 }
                 let draft = (*result)?;
-                let proposal = validate::proposal(draft, &request, &candidates, &edital, &model)
-                    .map_err(|invalid| AiError::InvalidResponse(invalid.0))?;
+                let proposal = validate::proposal(
+                    draft,
+                    &request,
+                    &candidates,
+                    &edital,
+                    &model,
+                    self.prompt_language(),
+                )
+                .map_err(|invalid| AiError::InvalidResponse(invalid.0))?;
                 self.store.insert_proposal(plan, &proposal, now())?;
                 self.refresh_discursive();
                 self.notices.push(Notice::ProposalCreated);
@@ -1165,7 +1191,7 @@ impl Engine {
                             attempt,
                             &transcript,
                             &model,
-                            &kg_ai::prompt_version("transcribe"),
+                            &kg_ai::prompt_version("transcribe", self.prompt_language()),
                             now(),
                         )?;
                         let retakes = transcript.retakes();
@@ -1263,7 +1289,7 @@ impl Engine {
                     issues,
                     attempts: attempts.iter().map(|(id, _)| *id).collect(),
                     model,
-                    prompt_version: kg_ai::prompt_version("difficulties"),
+                    prompt_version: kg_ai::prompt_version("difficulties", self.prompt_language()),
                     created_at: now(),
                 };
                 self.store.save_difficulty_report(plan, &report)?;
@@ -1350,6 +1376,18 @@ impl Engine {
             || d.adding > 0
             || d.vision == VisionCheck::Checking
             || d.attempts.iter().any(|a| a.status.is_processing())
+    }
+}
+
+/// A kind of written answer, named for the prompt.
+fn kind_name(kind: kg_study::WritingKind, lang: PromptLanguage) -> &'static str {
+    match lang {
+        PromptLanguage::Portuguese => kind.prompt_name(),
+        PromptLanguage::English => match kind {
+            kg_study::WritingKind::Essay => "argumentative essay",
+            kg_study::WritingKind::Technical => "technical discursive question",
+            kg_study::WritingKind::CaseStudy => "case study",
+        },
     }
 }
 

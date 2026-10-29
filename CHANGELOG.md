@@ -4,6 +4,16 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.30.0] - 2026-10-29
+
+### Added
+- Prompts in English: `crates/ai/prompts/en/` mirrors `crates/ai/prompts/pt/`. With the app
+  in English, every AI task (plans, lessons, quizzes, reviews, handouts, past exams,
+  written answers) uses the English prompts and instructions and answers in English; in
+  Portuguese nothing changes and cached handouts stay valid. In English lessons with an
+  English voice set, the tutor's whole reply is read by that voice.
+- AI examples take `KG_PROMPT_LANG=en` (or `pt`, the default).
+
 ## [0.29.0] - 2026-10-29
 
 ### Added

@@ -95,6 +95,13 @@ The main flow is:
 - **Translations**: every UI string comes from `locales/*.yml`, and tests check that both
   languages have the same keys. Errors in lower crates are English and only go to logs.
   The UI translates them for the user.
+- **Prompt languages**: `crates/ai/prompts/pt/` and `crates/ai/prompts/en/` hold the same
+  files; the client carries a `PromptLanguage` taken from the app's language, and
+  instructions written in code have both versions. Both sets keep the same placeholders,
+  JSON keys and line markers (`QUADRO:`, `ROTEIRO:`, `ETAPA:`, `FIM`, `[ilegível]`), checked
+  by a test, so replies are parsed the same way. The handout cache key includes the
+  prompts, so switching language writes new handouts while Portuguese ones stay valid.
+  Examples take `KG_PROMPT_LANG=en|pt`.
 - **Written answers** (`kg_study::discursive`, `kg_engine::discursive`, `kg_ai::discursive`):
   offered only when the plan's notice describes a written test (phrases such as "prova
   discursiva", "redação de texto dissertativo", "estudo de caso"; "com redação dada pela

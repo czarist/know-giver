@@ -209,7 +209,7 @@ crates/
   ui/       # egui interface (screens, theme, translations)
   engine/   # app state, commands, background work, voice loop
   study/    # plans, reviews (SM-2), quizzes, SQLite storage
-  ai/       # OpenAI-compatible client + tutor prompts (crates/ai/prompts)
+  ai/       # OpenAI-compatible client + prompts (crates/ai/prompts/{pt,en})
   audio/    # mic capture, Parakeet/Whisper STT, Piper/Kokoro TTS, playback, downloads
   pdf/      # edital text extraction, roles
   handout/  # study handouts rendered to PDF with Typst
@@ -229,7 +229,7 @@ cargo test --workspace
 Manual checks against real services (need `.env` and network):
 
 ```bash
-cargo run -p kg-ai --example live_check                          # every AI task
+cargo run -p kg-ai --example live_check                          # every AI task (KG_PROMPT_LANG=en for English prompts)
 cargo run -p kg-engine --example e2e -- edital.pdf                # import → plan → quiz → review → handout
 cargo run --release -p kg-audio --example parakeet_check -- <models-dir> fala.wav
 KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored  # renders every screen to PNG

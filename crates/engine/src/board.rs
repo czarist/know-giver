@@ -438,7 +438,7 @@ impl Engine {
             .take(REFERENCE_QUESTIONS)
             .map(|q| (q.prompt.clone(), q.options[q.correct].clone()))
             .collect();
-        kg_ai::reference_block(&excerpts, &questions)
+        kg_ai::reference_block(self.prompt_language(), &excerpts, &questions)
     }
 
     /// Past exam questions on a topic that can go into a quiz: in use, with a

@@ -20,7 +20,7 @@ pub use board::{
     reference_block,
 };
 pub use client::{ChatMessage, Client, Role};
-pub use config::{AiConfig, ModelSet, Task};
+pub use config::{AiConfig, ModelSet, PromptLanguage, Task};
 pub use discursive::{
     CriterionDraft, CriterionInput, EvaluationDraft, EvaluationInput, EvidenceDraft, IssueDraft,
     IssueExampleDraft, IssueInput, PageReading, ProblemDraft, ProposalDraft, ProposalInput,
@@ -29,6 +29,7 @@ pub use discursive::{
 };
 pub use handout_review::{ReviewedHandout, review_handout};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
+pub use prompts::{Prompts, get as prompts_in};
 pub use tasks::{
     HandoutDraft, LessonLength, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft,
     SubjectDraft, TopicContext, TopicDraft, TutorReply, evaluate_review, find_roles,

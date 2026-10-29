@@ -78,14 +78,18 @@ pub(crate) struct HandoutSource {
 }
 
 impl HandoutSource {
-    pub(crate) fn new(context: &TopicContext, edital: &str) -> Self {
+    pub(crate) fn new(
+        context: &TopicContext,
+        edital: &str,
+        language: kg_ai::PromptLanguage,
+    ) -> Self {
         Self {
             exam: context.exam.clone(),
             subject: context.subject.clone(),
             topic: context.topic.clone(),
             reference: context.reference.clone(),
             edital: edital.to_owned(),
-            prompt: kg_ai::handout_pipeline_prompts(),
+            prompt: kg_ai::handout_pipeline_prompts(language),
         }
     }
 
@@ -133,7 +137,7 @@ impl Engine {
         let mut items = Vec::with_capacity(topic_ids.len());
         for id in topic_ids {
             let (context, _) = self.topic_context(id)?;
-            let source = HandoutSource::new(&context, &edital);
+            let source = HandoutSource::new(&context, &edital, self.prompt_language());
             let cached = if request.regenerate {
                 None
             } else {
@@ -223,7 +227,7 @@ impl Engine {
         for (_, topic) in plan.topics() {
             if let Some(json) = self.store.handout(topic.id)? {
                 let (context, _) = self.topic_context(topic.id)?;
-                if HandoutSource::new(&context, &edital)
+                if HandoutSource::new(&context, &edital, self.prompt_language())
                     .cached(&json)
                     .is_some()
                 {
@@ -463,7 +467,11 @@ mod tests {
 
     #[test]
     fn cache_requires_identical_sources_and_rejects_legacy_text() {
-        let source = HandoutSource::new(&TopicContext::default(), "Português: crase.");
+        let source = HandoutSource::new(
+            &TopicContext::default(),
+            "Português: crase.",
+            kg_ai::PromptLanguage::Portuguese,
+        );
         let content = TopicHandout::default();
         let json = serde_json::to_string(&CachedHandout {
             source: source.clone(),

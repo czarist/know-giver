@@ -39,6 +39,7 @@ pub(crate) fn proposal(
     candidates: &[TopicId],
     edital: &str,
     model: &str,
+    language: kg_ai::PromptLanguage,
 ) -> Result<NewProposal, Invalid> {
     let statement = draft.statement.trim().to_owned();
     if statement.chars().count() < 20 {
@@ -86,7 +87,7 @@ pub(crate) fn proposal(
         rubric,
         expected_points: expected,
         model: model.to_owned(),
-        prompt_version: kg_ai::prompt_version("proposal"),
+        prompt_version: kg_ai::prompt_version("proposal", language),
     })
 }
 
@@ -141,6 +142,7 @@ pub(crate) fn evaluation(
     pages: &[String],
     topics: &[TopicId],
     model: &str,
+    language: kg_ai::PromptLanguage,
     now: NaiveDateTime,
 ) -> Result<Outcome, Invalid> {
     if draft.pending {
@@ -229,7 +231,7 @@ pub(crate) fn evaluation(
         review_topics,
         dropped_quotes: dropped,
         model: model.to_owned(),
-        prompt_version: kg_ai::prompt_version("evaluate"),
+        prompt_version: kg_ai::prompt_version("evaluate", language),
         evaluated_at: now,
     })))
 }
@@ -322,6 +324,8 @@ mod tests {
 
     use super::*;
 
+    const PT: kg_ai::PromptLanguage = kg_ai::PromptLanguage::Portuguese;
+
     fn request() -> ProposalRequest {
         ProposalRequest {
             kind: WritingKind::Essay,
@@ -376,6 +380,7 @@ mod tests {
             &topics,
             EDITAL,
             "m",
+            PT,
         )
         .unwrap();
         assert_eq!(made.rubric.source, RubricSource::Edital);
@@ -390,7 +395,15 @@ mod tests {
             evidence: "Serão avaliadas as cinco competências do ENEM com 200 pontos".into(),
             ..rubric
         };
-        let made = proposal(proposal_draft(invented), &request(), &topics, EDITAL, "m").unwrap();
+        let made = proposal(
+            proposal_draft(invented),
+            &request(),
+            &topics,
+            EDITAL,
+            "m",
+            PT,
+        )
+        .unwrap();
         assert_eq!(made.rubric.source, RubricSource::Generic);
         // Without a notice, limits from the model are not used.
         let made = proposal(
@@ -399,6 +412,7 @@ mod tests {
             &topics,
             "",
             "m",
+            PT,
         )
         .unwrap();
         assert_eq!((made.line_limit, made.minutes), (None, None));
@@ -415,13 +429,14 @@ mod tests {
             &[TopicId(1)],
             EDITAL,
             "m",
+            PT,
         )
         .unwrap();
         assert_eq!(made.rubric.source, RubricSource::Manual);
         assert_eq!(made.line_limit, Some(15));
         let mut empty = proposal_draft(RubricDraft::default());
         empty.statement = "Curto".into();
-        assert!(proposal(empty, &request(), &[TopicId(1)], "", "m").is_err());
+        assert!(proposal(empty, &request(), &[TopicId(1)], "", "m", PT).is_err());
     }
 
     fn rubric() -> Rubric {
@@ -472,6 +487,7 @@ mod tests {
             &pages(),
             &[TopicId(7)],
             "m",
+            PT,
             NaiveDateTime::default(),
         )
         .unwrap() else {
@@ -502,6 +518,7 @@ mod tests {
                 &pages(),
                 &[],
                 "m",
+                PT,
                 NaiveDateTime::default()
             )
             .is_err()
@@ -517,6 +534,7 @@ mod tests {
                 &pages(),
                 &[],
                 "m",
+                PT,
                 NaiveDateTime::default()
             )
             .is_err()
@@ -536,6 +554,7 @@ mod tests {
                 &pages(),
                 &[],
                 "m",
+                PT,
                 NaiveDateTime::default()
             )
             .is_err()
@@ -557,6 +576,7 @@ mod tests {
                 &pages(),
                 &[],
                 "m",
+                PT,
                 NaiveDateTime::default()
             )
             .is_err()
@@ -573,6 +593,7 @@ mod tests {
                 &pages(),
                 &[],
                 "m",
+                PT,
                 NaiveDateTime::default()
             )
             .unwrap(),

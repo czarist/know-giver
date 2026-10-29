@@ -1,5 +1,7 @@
 //! Live handout scope check; saves drafts for human review without logging credentials.
 //! Usage: handout_scope_check <env-file> <new-output-directory>
+//!
+//! Prompts are Portuguese by default; `KG_PROMPT_LANG=en` uses the English ones.
 
 use kg_ai::{AiConfig, Client, TopicContext};
 
@@ -8,7 +10,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let env = args.next().ok_or("missing env file")?;
     let output = std::path::PathBuf::from(args.next().ok_or("missing output directory")?);
     dotenvy::from_path_override(env)?;
-    let client = Client::new(AiConfig::from_env(|key| std::env::var(key).ok()));
+    let client = Client::new(AiConfig::from_env(|key| std::env::var(key).ok()))
+        .with_language(kg_ai::PromptLanguage::from_env());
     std::fs::create_dir(&output)?;
     let context = TopicContext {
         exam: "Concurso de teste — Técnico Administrativo".into(),

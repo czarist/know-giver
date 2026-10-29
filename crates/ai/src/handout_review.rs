@@ -88,9 +88,19 @@ pub fn review_handout(
     let json = serde_json::to_string(&draft)
         .map_err(|e| AiError::InvalidResponse(format!("handout not serializable: {e}")))?;
     let messages = [
-        ChatMessage::system(fill(prompts::HANDOUT_REVIEW, &topic.values())),
+        ChatMessage::system(fill(
+            prompts::get(client.language()).handout_review,
+            &topic.values(),
+        )),
         ChatMessage::user(format!(
-            "EDITAL (dados de referência):\n{edital}\n\nAPOSTILA (dados a revisar):\n{json}"
+            "{}\n{edital}\n\n{}\n{json}",
+            client.language().pick(
+                "EDITAL (dados de referência):",
+                "EXAM NOTICE (reference data):"
+            ),
+            client
+                .language()
+                .pick("APOSTILA (dados a revisar):", "HANDOUT (data to review):")
         )),
     ];
     let reply: ReviewReply = chat_json(client, Task::Correction, &messages, 6_000)?;
@@ -205,7 +215,10 @@ fn solve_blind(
     exercises: &[QuestionDraft],
 ) -> Result<Vec<(usize, Option<usize>)>, AiError> {
     let messages = [
-        ChatMessage::system(fill(prompts::EXERCISE_CHECK, &topic.values())),
+        ChatMessage::system(fill(
+            prompts::get(client.language()).exercise_check,
+            &topic.values(),
+        )),
         ChatMessage::user(blind_questions(exercises)),
     ];
     let reply: BlindReply = chat_json(client, Task::Verify, &messages, 8_000)?;

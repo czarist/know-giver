@@ -978,8 +978,13 @@ impl Engine {
         self.next_session_id
     }
 
+    /// Prompts follow the app's language.
+    pub(crate) fn prompt_language(&self) -> kg_ai::PromptLanguage {
+        kg_ai::PromptLanguage::from_locale(&self.settings.locale)
+    }
+
     pub(crate) fn ai_client(&self) -> kg_ai::Client {
-        kg_ai::Client::new(self.settings.ai.clone())
+        kg_ai::Client::new(self.settings.ai.clone()).with_language(self.prompt_language())
     }
 
     /// Prompt context for a topic of the active plan.
@@ -1016,7 +1021,7 @@ impl Engine {
                     .topic_mistakes(id)
                     .unwrap_or_default()
                     .iter()
-                    .map(kg_study::Mistake::summary)
+                    .map(|m| m.summary_in(self.prompt_language() == kg_ai::PromptLanguage::English))
                     .collect(),
             },
             topic.title.clone(),

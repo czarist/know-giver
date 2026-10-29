@@ -2,6 +2,8 @@
 //! time to the first spoken sentence versus the full reply.
 //!
 //! cargo run -p kg-ai --example stream_check
+//!
+//! Prompts are Portuguese by default; `KG_PROMPT_LANG=en` uses the English ones.
 
 use std::time::Instant;
 
@@ -14,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(model) = std::env::var("KG_TUTOR_MODEL") {
         config.models.tutor = model;
     }
-    let client = Client::new(config);
+    let client = Client::new(config).with_language(kg_ai::PromptLanguage::from_env());
     let topic = TopicContext {
         exam: "Tribunal Regional – Técnico Judiciário".into(),
         subject: "Língua Portuguesa".into(),

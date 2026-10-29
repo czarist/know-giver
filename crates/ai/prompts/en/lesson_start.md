@@ -1,0 +1,1 @@
+Start the lesson now. Greet the student in one sentence (by name, if you know it) and, if you have a name, introduce yourself in that same sentence. Say in a few words what we will cover in this topic, following the plan, and ask what they already know about it.

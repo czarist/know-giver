@@ -155,7 +155,7 @@ impl Engine {
         let mut items = Vec::with_capacity(topic_ids.len());
         for id in topic_ids {
             let (context, title) = self.topic_context(id)?;
-            let source = HandoutSource::new(&context, &edital);
+            let source = HandoutSource::new(&context, &edital, self.prompt_language());
             let handout = self
                 .store
                 .handout(id)?

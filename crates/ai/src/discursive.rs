@@ -9,24 +9,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::AiError;
 use crate::client::{ChatMessage, Client};
-use crate::config::Task;
+use crate::config::{PromptLanguage, Task};
 use crate::prompts::{self, fill};
 use crate::tasks::chat_json;
 
 /// Version of a prompt: its name and a fingerprint of its text, stored with
 /// each result so a changed prompt is visible in the history.
-pub fn prompt_version(name: &str) -> String {
+pub fn prompt_version(name: &str, language: PromptLanguage) -> String {
+    let p = prompts::get(language);
     let template = match name {
-        "proposal" => prompts::DISCURSIVE_PROPOSAL,
-        "transcribe" => prompts::DISCURSIVE_TRANSCRIBE,
-        "evaluate" => prompts::DISCURSIVE_EVALUATE,
-        "difficulties" => prompts::DISCURSIVE_DIFFICULTIES,
+        "proposal" => p.discursive_proposal,
+        "transcribe" => p.discursive_transcribe,
+        "evaluate" => p.discursive_evaluate,
+        "difficulties" => p.discursive_difficulties,
         _ => "",
     };
     let hash = template.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
         (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
     });
-    format!("{name}-{:08x}", hash >> 32)
+    format!("{name}-{}-{:08x}", language.code(), hash >> 32)
 }
 
 /// Keeps data from closing the `<<< … >>>` blocks it is placed in.
@@ -105,8 +106,10 @@ pub fn generate_proposal(client: &Client, input: &ProposalInput) -> Result<Propo
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let lang = client.language();
     let history = if input.history.is_empty() {
-        "(nada registrado)".to_owned()
+        lang.pick("(nada registrado)", "(nothing recorded)")
+            .to_owned()
     } else {
         input
             .history
@@ -116,7 +119,7 @@ pub fn generate_proposal(client: &Client, input: &ProposalInput) -> Result<Propo
             .join("\n")
     };
     let manual = if input.manual_rubric.trim().is_empty() {
-        "(nenhum)".to_owned()
+        lang.pick("(nenhum)", "(none)").to_owned()
     } else {
         data(&input.manual_rubric)
     };
@@ -124,7 +127,7 @@ pub fn generate_proposal(client: &Client, input: &ProposalInput) -> Result<Propo
     let reference = data(&input.reference);
     let edital = data(&input.edital);
     let system = fill(
-        prompts::DISCURSIVE_PROPOSAL,
+        prompts::get(lang).discursive_proposal,
         &[
             ("exam", &input.exam),
             ("kind", &input.kind),
@@ -138,7 +141,7 @@ pub fn generate_proposal(client: &Client, input: &ProposalInput) -> Result<Propo
     );
     let messages = [
         ChatMessage::system(system),
-        ChatMessage::user("Escreva a proposta."),
+        ChatMessage::user(lang.pick("Escreva a proposta.", "Write the prompt.")),
     ];
     chat_json(client, Task::Quiz, &messages, 6_000)
 }
@@ -179,11 +182,14 @@ pub fn read_manuscript_page(
     page: usize,
     pages: usize,
 ) -> Result<PageReading, AiError> {
-    let request = format!("Página {page} de {pages}. Transcreva esta página.");
+    let request = match client.language() {
+        PromptLanguage::Portuguese => format!("Página {page} de {pages}. Transcreva esta página."),
+        PromptLanguage::English => format!("Page {page} of {pages}. Transcribe this page."),
+    };
     let mut last_error = String::new();
     for attempt in 1..=2 {
         let text = client.vision(
-            prompts::DISCURSIVE_TRANSCRIBE,
+            prompts::get(client.language()).discursive_transcribe,
             &request,
             &[("image/jpeg", jpeg)],
             8_000,
@@ -203,8 +209,14 @@ pub fn read_manuscript_page(
 /// number drawn in `png`.
 pub fn check_vision(client: &Client, png: &[u8], expected: &str) -> Result<bool, AiError> {
     let reply = client.vision(
-        "Responda apenas com os algarismos que aparecem na imagem, sem mais nada.",
-        "Quais algarismos estão desenhados nesta imagem?",
+        client.language().pick(
+            "Responda apenas com os algarismos que aparecem na imagem, sem mais nada.",
+            "Answer only with the digits that appear in the image, nothing else.",
+        ),
+        client.language().pick(
+            "Quais algarismos estão desenhados nesta imagem?",
+            "Which digits are drawn in this image?",
+        ),
         &[("image/png", png)],
         200,
     )?;
@@ -316,6 +328,7 @@ pub fn evaluate_writing(
     client: &Client,
     input: &EvaluationInput,
 ) -> Result<EvaluationDraft, AiError> {
+    let lang = client.language();
     let criteria = input
         .criteria
         .iter()
@@ -340,13 +353,14 @@ pub fn evaluate_writing(
         .map(|(i, t)| format!("{}. {}", i + 1, t))
         .collect::<Vec<_>>()
         .join("\n");
-    let line_limit = input
-        .line_limit
-        .map_or_else(|| "não definido".to_owned(), |l| l.to_string());
+    let line_limit = input.line_limit.map_or_else(
+        || lang.pick("não definido", "not set").to_owned(),
+        |l| l.to_string(),
+    );
     let statement = data(&input.statement);
     let text = data(&numbered_text(&input.pages));
     let system = fill(
-        prompts::DISCURSIVE_EVALUATE,
+        prompts::get(lang).discursive_evaluate,
         &[
             ("kind", &input.kind),
             ("theme", &data(&input.theme)),
@@ -361,7 +375,10 @@ pub fn evaluate_writing(
     );
     let messages = [
         ChatMessage::system(system),
-        ChatMessage::user("Avalie o texto conforme a rubrica."),
+        ChatMessage::user(lang.pick(
+            "Avalie o texto conforme a rubrica.",
+            "Grade the text against the rubric.",
+        )),
     ];
     chat_json(client, Task::Correction, &messages, 8_000)
 }
@@ -406,19 +423,27 @@ pub fn find_recurring_issues(
     client: &Client,
     items: &[IssueInput],
 ) -> Result<Vec<IssueDraft>, AiError> {
+    let lang = client.language();
+    let word = lang.pick("Tentativa", "Attempt");
     let text = items
         .iter()
         .flat_map(|item| {
             item.lines
                 .iter()
-                .map(move |l| format!("Tentativa {}: {}", item.attempt, l))
+                .map(move |l| format!("{} {}: {}", word, item.attempt, l))
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let system = fill(prompts::DISCURSIVE_DIFFICULTIES, &[("items", &data(&text))]);
+    let system = fill(
+        prompts::get(lang).discursive_difficulties,
+        &[("items", &data(&text))],
+    );
     let messages = [
         ChatMessage::system(system),
-        ChatMessage::user("Liste as dificuldades recorrentes."),
+        ChatMessage::user(lang.pick(
+            "Liste as dificuldades recorrentes.",
+            "List the recurring difficulties.",
+        )),
     ];
     let draft: IssuesDraft = chat_json(client, Task::Correction, &messages, 4_000)?;
     Ok(draft.issues)
@@ -443,8 +468,16 @@ mod tests {
 
     #[test]
     fn prompt_versions_name_the_prompt() {
-        assert!(prompt_version("evaluate").starts_with("evaluate-"));
-        assert_ne!(prompt_version("evaluate"), prompt_version("transcribe"));
+        let pt = PromptLanguage::Portuguese;
+        assert!(prompt_version("evaluate", pt).starts_with("evaluate-pt-"));
+        assert_ne!(
+            prompt_version("evaluate", pt),
+            prompt_version("transcribe", pt)
+        );
+        assert_ne!(
+            prompt_version("evaluate", pt),
+            prompt_version("evaluate", PromptLanguage::English)
+        );
     }
 
     #[test]

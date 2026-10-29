@@ -1,6 +1,8 @@
 //! Manual check against the real endpoint configured in `.env`.
 //!
 //! cargo run -p kg-ai --example live_check
+//!
+//! Prompts are Portuguese by default; `KG_PROMPT_LANG=en` uses the English ones.
 
 use kg_ai::{
     AiConfig, ChatMessage, Client, PlanPrefs, TopicContext, evaluate_review, generate_plan,
@@ -19,7 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
     // The project .env wins over global variables of the same name.
     dotenvy::dotenv_override().ok();
-    let client = Client::new(AiConfig::from_env(|k| std::env::var(k).ok()));
+    let client = Client::new(AiConfig::from_env(|k| std::env::var(k).ok()))
+        .with_language(kg_ai::PromptLanguage::from_env());
 
     let t = std::time::Instant::now();
     client.ping()?;

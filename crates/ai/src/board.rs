@@ -5,6 +5,7 @@ use serde::{Deserialize, Deserializer};
 
 use crate::AiError;
 use crate::client::{ChatMessage, Client};
+use crate::config::PromptLanguage;
 use crate::config::Task;
 use crate::prompts::{self, fill};
 use crate::tasks::chat_json;
@@ -124,7 +125,7 @@ pub fn classify_board_items(
         .collect::<Vec<_>>();
     let messages = [
         ChatMessage::system(fill(
-            prompts::BOARD_RELEVANCE,
+            prompts::get(client.language()).board_relevance,
             &[("exam", &context.exam), ("topics", &topics)],
         )),
         ChatMessage::user(serde_json::Value::Array(values).to_string()),
@@ -186,10 +187,15 @@ pub fn extract_board_questions(
     let topics = context.topics_list();
     let messages = [
         ChatMessage::system(fill(
-            prompts::BOARD_EXAM,
+            prompts::get(client.language()).board_exam,
             &[("exam", &context.exam), ("topics", &topics)],
         )),
-        ChatMessage::user(format!("TRECHO DA PROVA:\n{chunk}")),
+        ChatMessage::user(format!(
+            "{}\n{chunk}",
+            client
+                .language()
+                .pick("TRECHO DA PROVA:", "PASSAGE OF THE PAPER:")
+        )),
     ];
     let reply: QuestionsReply = chat_json(client, Task::StudyPlan, &messages, 16_000)?;
     Ok(reply.questions)
@@ -204,10 +210,15 @@ pub fn extract_board_excerpts(
     let topics = context.topics_list();
     let messages = [
         ChatMessage::system(fill(
-            prompts::BOARD_MATERIAL,
+            prompts::get(client.language()).board_material,
             &[("exam", &context.exam), ("topics", &topics)],
         )),
-        ChatMessage::user(format!("TRECHO DO MATERIAL:\n{chunk}")),
+        ChatMessage::user(format!(
+            "{}\n{chunk}",
+            client
+                .language()
+                .pick("TRECHO DO MATERIAL:", "PASSAGE OF THE MATERIAL:")
+        )),
     ];
     let reply: ExcerptsReply = chat_json(client, Task::StudyPlan, &messages, 12_000)?;
     Ok(reply.excerpts)
@@ -220,8 +231,14 @@ pub fn extract_answer_key(
     chunk: &str,
 ) -> Result<Vec<AnswerDraft>, AiError> {
     let messages = [
-        ChatMessage::system(fill(prompts::BOARD_KEY, &[("exam", exam)])),
-        ChatMessage::user(format!("GABARITO:\n{chunk}")),
+        ChatMessage::system(fill(
+            prompts::get(client.language()).board_key,
+            &[("exam", exam)],
+        )),
+        ChatMessage::user(format!(
+            "{}\n{chunk}",
+            client.language().pick("GABARITO:", "ANSWER KEY:")
+        )),
     ];
     let reply: AnswersReply = chat_json(client, Task::Quiz, &messages, 8_000)?;
     Ok(reply.answers)
@@ -229,7 +246,11 @@ pub fn extract_answer_key(
 
 /// Prompt block with board material about a topic, or an empty string.
 /// `questions` are `(statement, answer)` pairs.
-pub fn reference_block(excerpts: &[String], questions: &[(String, String)]) -> String {
+pub fn reference_block(
+    language: PromptLanguage,
+    excerpts: &[String],
+    questions: &[(String, String)],
+) -> String {
     if excerpts.is_empty() && questions.is_empty() {
         return String::new();
     }
@@ -248,7 +269,7 @@ pub fn reference_block(excerpts: &[String], questions: &[(String, String)]) -> S
             .collect(),
     );
     fill(
-        prompts::REFERENCE,
+        prompts::get(language).reference,
         &[("excerpts", &excerpts), ("questions", &questions)],
     )
 }
@@ -295,8 +316,8 @@ mod tests {
 
     #[test]
     fn reference_block_is_empty_without_material() {
-        assert!(reference_block(&[], &[]).is_empty());
-        let block = reference_block(&["Crase é fusão.".into()], &[]);
+        assert!(reference_block(PromptLanguage::Portuguese, &[], &[]).is_empty());
+        let block = reference_block(PromptLanguage::Portuguese, &["Crase é fusão.".into()], &[]);
         assert!(block.contains("- Crase é fusão."));
     }
 }

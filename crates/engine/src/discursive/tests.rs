@@ -506,7 +506,16 @@ fn grading_runs_once_fails_safely_and_can_be_retried() {
         ..EvaluationDraft::default()
     };
     let pages = vec![ANSWER.to_owned()];
-    let outcome = validate::evaluation(draft, &rubric, &pages, &[], "m", now()).unwrap();
+    let outcome = validate::evaluation(
+        draft,
+        &rubric,
+        &pages,
+        &[],
+        "m",
+        kg_ai::PromptLanguage::Portuguese,
+        now(),
+    )
+    .unwrap();
     // A late failure from the earlier run is ignored.
     for (run, result) in [
         (run - 1, Err(AiError::InvalidResponse("late".into()).into())),
@@ -652,4 +661,19 @@ fn reading_the_notice_again_keeps_the_plan_and_opens_the_area() {
             .unwrap()
             .contains("PROVA DISCURSIVA")
     );
+}
+
+#[test]
+fn prompts_follow_the_app_language() {
+    let (mut engine, _dir) = engine_with(NOTICE);
+    assert_eq!(
+        engine.ai_client().language(),
+        kg_ai::PromptLanguage::Portuguese
+    );
+    engine.settings.locale = "en".into();
+    assert_eq!(
+        engine.ai_client().language(),
+        kg_ai::PromptLanguage::English
+    );
+    assert_eq!(engine.prompt_language().code(), "en");
 }
