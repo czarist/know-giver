@@ -13,16 +13,6 @@ All notable changes to Know Giver. Format based on
 - An answer cut by the token limit now says so instead of "unexpected format".
 - A photo of two pages side by side (an open notebook) is read left page first.
 
-## [0.30.1] - 2026-10-29
-
-### Fixed
-- Reading handwritten pages could fail with "unexpected format": a reasoning model used
-  its whole budget thinking about a dense page and wrote nothing. Vision requests now
-  ask for little reasoning (with "Fast responses" on) and have twice the room, and an
-  answer cut by the limit says so instead of a generic error.
-- A photo of an open notebook (two pages side by side) is read left page first, then
-  the right one.
-
 ## [0.30.0] - 2026-10-29
 
 ### Added
