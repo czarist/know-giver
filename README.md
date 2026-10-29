@@ -73,7 +73,9 @@ teacher): each step brings the handout's key points, the teacher checks you got 
 before moving on, and everything the quiz will ask is covered along the way. You
 always see where you are ("Step 2 of 5"), and the lesson closes with a summary and an
 offer to take the quiz. Pick **Quick**, **Normal** or **Full** lessons in Settings.
-Taken lessons get a tick in your plan, and you can retake any of them.
+Taken lessons get a tick in your plan and keep their plan, board and closing words to
+look back at. Leave a lesson halfway and **Continue lesson** picks it up later. English
+words and sentences can be read in an English voice of their own.
 
 ### 🧠 Teaching
 Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for
@@ -95,7 +97,8 @@ Choose who teaches: **Helena**, **Lia**, **Rafael** or **Otávio**.
 Ink portraits that breathe, blink, nod while you talk and move their lips with the voice:
 human enough to talk to, drawn enough to stay out of the uncanny valley.
 
-Ten voices, half of them female, from **Piper** and **Kokoro**, all running locally.
+Ten voices, half of them female, from **Piper** and **Kokoro**, all running locally,
+plus four English voices for English passages (US and UK accents).
 
 <p align="center">
   <img src="docs/images/teachers.png" alt="The four teachers in their states: resting, listening, thinking and speaking" width="70%">
@@ -118,8 +121,12 @@ highlights when you want one.
 
 - **Quizzes** in the style of the exam, with explanations; real past questions
   when you upload past exams.
-- **Spaced review (SM-2)**: topics come back right before you would forget them.
-- **Past exams and material**: past exams, answer keys and handouts, filtered against your
+- **Mistakes notebook**: every question you miss is kept until you get it right; it
+  opens the next quiz on the topic and the teacher goes over it in the lesson.
+- **Spaced review (SM-2)**: topics come back right before you would forget them, as
+  three questions read aloud that you can answer by speaking.
+- **Past exams and material**: past exams (with their answer key, in the same file or
+  another one) and handouts, filtered against your
   syllabus, with the reason for whatever is set aside.
 - **Handouts** per topic, subject or plan, with pictures, exercise cards and an
   answer key, saved as PDF.

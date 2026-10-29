@@ -59,11 +59,26 @@ Findings:
   with Kokoro they ran seconds ahead of the voice; with Piper the gap was hidden.
   Captions now appear when a sentence starts playing.
 - The app now gives Kokoro up to four threads (half the logical cores, 2–4).
-- Each sentence still starts the runtime and loads the 325 MB model again. Keeping
-  it loaded needs the sherpa-onnx C API (`sherpa-onnx-c-api.dll`, shipped with the
-  runtime); the pinned v1.12.20 `c-api.h` has the `SherpaOnnxOfflineTts*` functions.
-  Calling it needs `unsafe` FFI, which the workspace forbids, so it waits for a
-  decision.
+- Each sentence started the runtime and loaded the 325 MB model again. Since v0.28.0
+  the app loads `sherpa-onnx-c-api.dll` (shipped with the runtime, v1.12.20
+  `SherpaOnnxOfflineTts*` functions) once and keeps the model in memory.
+
+## Kokoro kept loaded (2026-10-29)
+
+Same machine, Dora, release build (`cargo run --release -p kg-audio --example
+kokoro_speed`):
+
+| Step | Time |
+|---|---|
+| Load the model once (at lesson start) | 2.0 s |
+| "Olá! Hoje vamos estudar a crase." (2.9 s of audio) | 2.3 s |
+| A 58-character sentence (3.7 s of audio) | 1.5 s |
+| A 45-character sentence (3.1 s of audio) | 1.3 s |
+
+Parakeet transcribed the output word for word. English passages (Heart, Michael,
+Emma, George; `--kokoro-lang=en-us` with `lexicon-us-en.txt`, or `en` with
+`lexicon-gb-en.txt`; `en-gb` is refused by this runtime) still run the program,
+because the language is fixed when the model loads.
 
 The upstream overview focuses on English/Chinese examples; the pinned source exposes
 `pt-br`. That supports testing the candidate, not a claim that Portuguese quality is

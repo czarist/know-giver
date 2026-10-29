@@ -4,6 +4,38 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.28.0] - 2026-10-29
+
+### Added
+- Mistakes notebook: quiz questions answered wrong are kept per topic. They open the
+  topic's next quiz, the teacher goes over them in lessons, reviews ask about them,
+  and a right answer takes them out. The Quiz screen lists them by topic, with
+  "Retry mistakes" (a quiz of only those questions, not counted as a review).
+- Continue a lesson: one ended or closed before the teacher finished is kept with its
+  conversation, plan step and board. "Continue lesson" picks it up (the teacher
+  recaps in a sentence and goes on); "Start over" drops it. It counts as study for
+  the day, not as a lesson taken.
+- Lesson recap: a taken lesson keeps its plan, board and the teacher's closing words.
+  "Look back" (Rever aula) shows them, with "Retake lesson" and the quiz.
+- Spoken reviews: three questions per review, each on a different point (past
+  mistakes first), read aloud in the teacher's voice, answered by typing or speaking.
+  The grade suggested is the average; a review can be graded early.
+- English passages in an English voice: pick Heart, Michael (US), Emma or George (UK)
+  in Settings. The teacher marks English and only those passages change voice; they
+  come from the Kokoro model already installed.
+- Past exams with a separate answer key: adding an exam asks whether the key is
+  another file, then reads both.
+
+### Changed
+- Kokoro stays loaded while the app runs (through the sherpa-onnx library it ships
+  with): a sentence takes 1.2–2.3 s instead of 4–5 s. If the library cannot load,
+  the program is used as before.
+- A taken lesson's button is "Look back"; an unfinished one shows "Continue lesson".
+- The tagline is "For any exam": Know Giver is not only for public exams.
+
+### Fixed
+- Long topic titles and many chips no longer overlap in the plan.
+
 ## [0.27.1] - 2026-10-29
 
 ### Fixed

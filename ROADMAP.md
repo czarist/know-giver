@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.27.1. Everything an agent can build and check without a human ear, a
+Version 0.28.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -21,15 +21,15 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    word without a Portuguese one asks Whisper. The owner's recording was exactly 0.0
    between words and about 0.005 during speech: a driver noise suppressor and a low
    microphone gain. Check new logs (`end of turn ... quiet_ms`) before tuning more.
-2. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
-   to load the model plus about 2 s to synthesize each sentence (see
-   [Kokoro evaluation](docs/kokoro-evaluation.md#latency-in-lessons-2026-10-28)).
-   Options waiting for the owner's choice:
-   (a) keep Kokoro loaded through the sherpa-onnx C API in a small worker process
-   (needs `unsafe` FFI, which the workspace forbids today);
-   (b) English voices: Kokoro's bundle already has them (`--kokoro-lang=en-us`), and
-   Piper en_US/en_GB voices are as fast as Faber. Either lessons follow the UI
-   language, or the tutor switches voice for English passages.
+2. Voices (v0.28.0): Kokoro now stays loaded in the app through
+   `sherpa-onnx-c-api.dll` (module `kg_audio::kokoro_ffi`, the only `unsafe` code;
+   the workspace lint is `deny`), 1.2–2.3 s per sentence. English passages marked
+   `[en]…[/en]` by the tutor are read by an English Kokoro voice, still as a separate
+   program (Kokoro's language is set when the model loads; a second loaded copy would
+   double the memory). Check with the owner: memory use with Kokoro loaded, how the
+   English voice sounds, and whether the tutor marks English well.
+   Mistakes notebook, lesson drafts and recaps, spoken reviews (v0.28.0): check with
+   real use that a resumed lesson picks up naturally and that reviews read aloud.
 3. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
    in its first answer, mark `ETAPA: n` at sensible moments and close with `FIM` after
    the final review? Does the handout writer pick useful `image` titles? Read a
