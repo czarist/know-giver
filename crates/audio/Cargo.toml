@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 bzip2.workspace = true
 hound.workspace = true
+libloading.workspace = true
 tar.workspace = true
 tempfile.workspace = true
 candle-core.workspace = true

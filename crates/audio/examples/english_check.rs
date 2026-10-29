@@ -15,10 +15,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = args.next().ok_or("missing output path")?;
     let store = ModelStore::new(root);
     let options = SpeechOptions::default();
-    let tts = Synthesizer::local(&store, Voice::Kokoro(KokoroVoice::Dora), options)?
-        .with_english(&store, EnglishVoice::Michael, options);
+    let tts = Synthesizer::local(&store, Voice::Kokoro(KokoroVoice::Dora), options)?.with_english(
+        &store,
+        EnglishVoice::Michael,
+        options,
+    );
     println!("English voice: {}", tts.speaks_english());
-    let text = "A frase [en]I have been working here since 2020.[/en] usa o present perfect continuous.";
+    let text =
+        "A frase [en]I have been working here since 2020.[/en] usa o present perfect continuous.";
     for (lang, piece) in tts.pieces(text) {
         println!("{lang:?}: {piece}");
     }

@@ -231,10 +231,15 @@ impl Synthesizer {
         })
     }
 
-    /// Loads the voice ahead of the first sentence where that helps (Piper).
+    /// Loads the voice ahead of the first sentence where that helps (Piper,
+    /// and Kokoro kept in memory).
     pub fn warm_up(&self) {
-        if let Backend::Piper(tts) = &self.backend {
-            tts.warm_up();
+        match &self.backend {
+            Backend::Piper(tts) => tts.warm_up(),
+            Backend::Kokoro { exe, model, .. } => {
+                let _ = loaded_kokoro(exe, model);
+            }
+            Backend::Cloud { .. } => {}
         }
     }
 
@@ -254,18 +259,24 @@ impl Synthesizer {
                 model,
                 voice,
                 length_scale,
-            } => kokoro(
-                exe,
-                model,
-                KokoroSpeaker {
-                    sid: voice.speaker_id(),
-                    lang: "pt-br",
-                    lexicon: None,
-                },
-                *length_scale,
-                text,
-                cancelled,
-            )?,
+            } => match loaded_kokoro(exe, model) {
+                Some(loaded) => loaded
+                    .lock()
+                    .map_err(|_| AudioError::Tts("Kokoro lock poisoned".into()))?
+                    .speak(text, voice.speaker_id(), 1.0 / *length_scale, cancelled)?,
+                None => kokoro(
+                    exe,
+                    model,
+                    KokoroSpeaker {
+                        sid: voice.speaker_id(),
+                        lang: "pt-br",
+                        lexicon: None,
+                    },
+                    *length_scale,
+                    text,
+                    cancelled,
+                )?,
+            },
             Backend::Cloud { config, rate } => cloud(config, *rate, text, cancelled)?,
         };
         if cancelled() {
@@ -286,6 +297,36 @@ fn path_arg(name: &str, path: &Path) -> OsString {
     let mut arg = OsString::from(format!("--{name}="));
     arg.push(path);
     arg
+}
+
+/// Set once loading Kokoro in the app failed: use the program from then on.
+static KOKORO_IN_APP_FAILED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Portuguese Kokoro kept in memory, or `None` to run the program instead.
+fn loaded_kokoro(
+    exe: &Path,
+    model: &Path,
+) -> Option<std::sync::Arc<std::sync::Mutex<crate::kokoro_ffi::LoadedKokoro>>> {
+    use std::sync::atomic::Ordering;
+    if KOKORO_IN_APP_FAILED.load(Ordering::Relaxed) {
+        return None;
+    }
+    let attempt = || {
+        let library = crate::kokoro_ffi::library_for(exe)
+            .ok_or_else(|| AudioError::Tts("sherpa-onnx library not found".into()))?;
+        // Same plain absolute path as the program gets (see `kokoro`).
+        let model = plain_path(std::fs::canonicalize(model).map_err(|e| AudioError::io(model, e))?);
+        crate::kokoro_ffi::loaded(&library, &model, kokoro_threads())
+    };
+    match attempt() {
+        Ok(loaded) => Some(loaded),
+        Err(error) => {
+            tracing::warn!(%error, "Kokoro stays a separate program");
+            KOKORO_IN_APP_FAILED.store(true, Ordering::Relaxed);
+            None
+        }
+    }
 }
 
 /// Who speaks in a Kokoro call, and how its text is read.

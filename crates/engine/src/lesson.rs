@@ -361,6 +361,8 @@ pub(crate) struct VoiceRuntime {
 impl VoiceRuntime {
     /// Forgets the TTS so it is rebuilt with new settings or files.
     pub(crate) fn reset_tts(&mut self) {
+        // A Kokoro model left in memory is loaded again on its next use.
+        kg_audio::release_kokoro();
         self.tts = None;
         self.fillers = Arc::default();
     }

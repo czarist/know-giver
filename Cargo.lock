@@ -3694,6 +3694,7 @@ dependencies = [
  "candle-transformers",
  "cpal",
  "hound",
+ "libloading 0.8.9",
  "regex",
  "rodio",
  "serde",
