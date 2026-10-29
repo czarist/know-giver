@@ -80,7 +80,8 @@ words and sentences can be read in an English voice of their own.
 
 ### 🧠 Teaching
 Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for
-spoken conversation: short turns, one idea at a time, questions back to you.
+spoken conversation: short turns, one idea at a time, questions back to you. Prompts
+follow the app's language: Portuguese by default, English when the app is in English.
 
 ## A whiteboard that shows, not just tells
 
@@ -157,6 +158,11 @@ notice read again (**Re-read notice**) without losing topics, progress or handou
   reading problems apart from writing and content ones, and recurring difficulties with
   examples from your own attempts.
 
+Photos are read by the **vision model** set in Settings → AI (a model that takes images;
+**Test image reading** checks it). One photo can hold one page or an open notebook with
+two pages side by side. With a reasoning model, keep **Fast responses** on so a dense page
+is not lost to long reasoning.
+
 <table>
   <tr>
     <td><img src="docs/images/writing-check.png" alt="Checking the transcript: the photographed page beside the editable text, with uncertain words listed"></td>
@@ -225,6 +231,10 @@ cargo fmt
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 ```
+
+Building the whole workspace keeps every CPU core busy for minutes. On a machine that
+overheats or has a weak power supply, limit the jobs: `cargo test -j 2 --workspace --
+--test-threads=2` (or `jobs = 2` under `[build]` in `.cargo/config.toml`).
 
 Manual checks against real services (need `.env` and network):
 

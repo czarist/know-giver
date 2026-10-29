@@ -10,6 +10,12 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 
 ### Handoff for the next agent
 
+**Before building:** the owner's PC powers off under long full-CPU builds (five
+unexpected shutdowns on 2026-10-29, no bug check and no hardware errors logged: a power or
+thermal cut). Build and test with `-j 2` to `-j 4` and matching `--test-threads`; a
+power loss mid-build corrupted `target/debug` and the git index once. The release
+executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is safe.
+
 **Next up, in order:**
 000. English prompts (v0.30.0): run `KG_PROMPT_LANG=en cargo run -p kg-ai --example
    live_check` and a lesson with the app in English; check the tutor keeps the markers
@@ -281,6 +287,12 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Written answers with real handwriting and the owner's vision model (v0.29.0–v0.30.1):
+  transcript faithfulness, photo warning thresholds, grades against a human correction;
+  see [docs/validation-discursive.md](docs/validation-discursive.md).
+- English prompts with the real model (v0.30.0): markers kept, lessons, handouts and
+  quizzes in English.
+- Vision requests with short reasoning (v0.30.1): a dense page read on the first try.
 - Lesson depth with the real model (v0.27.0): does the tutor cover every key point and
   every quiz subject before `ETAPA:`, and how long do Normal and Full lessons take?
 - Reader autoscroll and dragging with a real mouse (v0.27.0).

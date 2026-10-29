@@ -17,6 +17,13 @@ how a real vision model reads real handwriting. Run this list before trusting a 
    endpoint that refuses images shows the HTTP status.
 3. Without a vision model nothing is sent: the send button stays off and no text-only
    model is used instead.
+4. Reasoning models (GLM 5.x and others) can spend the whole answer budget thinking about
+   a dense page. Keep **Fast responses** on (Settings → AI): vision requests then ask for
+   short reasoning. If a page still fails, the message says the model ran out of room;
+   trying again usually works, or pick a vision model without long reasoning.
+
+One photo may hold a single page or an open notebook (two pages side by side); the model
+reads the left page first. A page per photo reads best.
 
 Photos go to that endpoint; they stay in `%LOCALAPPDATA%\KnowGiver\discursive\` and are
 deleted with their attempt.

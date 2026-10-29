@@ -2,14 +2,16 @@
 
 ## Overview
 
-Know Giver is a pure Rust desktop app (egui) focused on studying for public exams.
-The main flow is:
+Know Giver is a pure Rust desktop app (egui) for studying for exams: public exams,
+entrance exams and certifications. The main flow is:
 
 1. User uploads an exam notice (edital PDF)
 2. System extracts the text and sends it to the AI
 3. AI generates a structured study plan
-4. User studies following the plan
+4. User studies following the plan: handouts, quizzes, spaced reviews
 5. In lessons, the user speaks and the app answers with voice
+6. When the notice has a written test, the user writes answers by hand, sends photos and
+   gets a formative grade (see "Written answers" below)
 
 ## Layers
 

@@ -24,9 +24,10 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 
 ## Main modules
 - `pdf/` — edital extraction
-- `study/` — study plans, progress, quizzes
+- `study/` — study plans, progress, quizzes, written answers (`discursive`)
 - `audio/` — capture, STT, TTS
-- `ai/` — LLM client + tutor prompts
+- `ai/` — LLM client + prompts in `crates/ai/prompts/pt/` and `crates/ai/prompts/en/`
+- `engine/` — commands, background work; written answers in `engine/src/discursive/`
 - `ui/` — egui interface
 
 ## Rules
@@ -35,6 +36,9 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Prioritize Brazilian Portuguese (TTS, prompts, STT)
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
+- Prompts exist in Portuguese and English (`crates/ai/prompts/{pt,en}`) and follow the app's language. Change both together: same placeholders, JSON keys and line markers (`QUADRO:`, `ROTEIRO:`, `ETAPA:`, `FIM`, `[ilegível]`, `[?…?]`, `[rasura]`); a test in `crates/ai/src/prompts.rs` checks it. Text the code sends to the model also has both versions (`PromptLanguage::pick`)
+- Images go only to the configured vision model, never to a text model as fallback; the model's answers about written work are checked in code (scores, quotes, pages and lines)
+- The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
 
 ## Do not
 - Unnecessary C/C++ dependencies
