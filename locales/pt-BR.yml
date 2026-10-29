@@ -2,7 +2,7 @@ _version: 1
 
 app:
   name: "Know Giver"
-  tagline: "Estudo para concursos"
+  tagline: "Para qualquer prova"
 
 language:
   pt-BR: "Português (Brasil)"
@@ -55,7 +55,7 @@ grade:
 edital:
   title: "Edital"
   subtitle: "Envie o PDF do edital para gerar seu plano de estudo."
-  empty: "Escolha o PDF do edital do concurso. O texto é lido no seu computador e só o conteúdo programático vai para a IA."
+  empty: "Escolha o PDF do edital ou do conteúdo da prova. O texto é lido no seu computador e só o conteúdo programático vai para a IA."
   select_pdf: "Selecionar PDF do edital"
   pdf_filter: "Documento PDF"
   extracting: "Lendo %{file}…"
@@ -283,7 +283,7 @@ today:
     evening: "Boa noite"
   subtitle: "Hoje é %{date}. Um passo de cada vez."
   no_plan_title: "Vamos começar"
-  no_plan: "Envie o edital do seu concurso e o Know Giver monta seu plano de estudo."
+  no_plan: "Envie o edital da sua prova e o Know Giver monta seu plano de estudo."
   streak: "%{count} dias seguidos"
   streak_kept: "Você já estudou hoje."
   streak_keep: "Estude hoje para manter a sequência."

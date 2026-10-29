@@ -2,7 +2,7 @@ _version: 1
 
 app:
   name: "Know Giver"
-  tagline: "Public exam study"
+  tagline: "For any exam"
 
 language:
   pt-BR: "Português (Brasil)"

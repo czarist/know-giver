@@ -9,9 +9,6 @@ use crate::app::{KnowGiverApp, PlanView, Screen};
 use crate::icons::Icon;
 use crate::{i18n, theme, widgets, working};
 
-/// Room kept on the right of a topic row for its chips and buttons.
-const TOPIC_ACTIONS_WIDTH: f32 = 500.0;
-
 /// A handout the user asked for while the screen was drawn.
 #[derive(Debug, Default)]
 struct HandoutAsk(Option<(HandoutScope, bool)>);
@@ -308,30 +305,8 @@ fn topic_row(
             actions.send(Command::SetTopicStatus(topic.id, status));
         }
 
-        // Leave room for the chips and buttons on the right; long titles are
-        // cut with an ellipsis and shown whole on hover.
-        let title_width = (ui.available_width() - TOPIC_ACTIONS_WIDTH).max(160.0);
-        ui.vertical(|ui| {
-            ui.set_width(title_width);
-            let title = RichText::new(&topic.title);
-            let title = if topic.status == TopicStatus::Done {
-                title.color(p.muted)
-            } else {
-                title
-            };
-            ui.horizontal(|ui| {
-                if topic.lesson_taken() {
-                    ui.add(Icon::Check.image(14.0, p.success))
-                        .on_hover_text(t!("plan.lesson_taken"));
-                }
-                ui.add(egui::Label::new(title).truncate())
-                    .on_hover_text(&topic.title);
-            });
-            if let Some(subject) = subject {
-                ui.add(egui::Label::new(RichText::new(subject).small().color(p.muted)).truncate());
-            }
-        });
-
+        // Buttons and chips first, from the right; the title takes what is
+        // left, cut with an ellipsis and shown whole on hover.
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let lesson = if topic.lesson_taken() {
                 t!("plan.lesson_again")
@@ -358,6 +333,31 @@ fn topic_row(
                 &i18n::difficulty(topic.difficulty),
                 difficulty_color(ui, topic.difficulty),
             );
+            ui.add_space(8.0);
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.vertical(|ui| {
+                    let title = RichText::new(&topic.title);
+                    let title = if topic.status == TopicStatus::Done {
+                        title.color(p.muted)
+                    } else {
+                        title
+                    };
+                    ui.horizontal(|ui| {
+                        if topic.lesson_taken() {
+                            ui.add(Icon::Check.image(14.0, p.success))
+                                .on_hover_text(t!("plan.lesson_taken"));
+                        }
+                        ui.add(egui::Label::new(title).truncate())
+                            .on_hover_text(&topic.title);
+                    });
+                    if let Some(subject) = subject {
+                        ui.add(
+                            egui::Label::new(RichText::new(subject).small().color(p.muted))
+                                .truncate(),
+                        );
+                    }
+                });
+            });
         });
     });
     ui.separator();

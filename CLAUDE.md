@@ -1,6 +1,6 @@
 # Know Giver — Agent Instructions
 
-Know Giver is a desktop application for studying for public exams.
+Know Giver is a desktop application for studying for exams (public exams, entrance exams, certifications).
 The user uploads an exam notice (edital PDF), the AI generates a study plan and delivers interactive voice lessons (STT + LLM + TTS).
 
 ## References
