@@ -39,6 +39,64 @@ pub(crate) fn rms(samples: &[f32]) -> f32 {
     (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt()
 }
 
+/// Window used to find speech in a recording.
+const VOICE_WINDOW_SECS: f32 = 0.03;
+/// Sound kept around each bit of speech; longer silences are cut to twice this.
+const VOICE_MARGIN_SECS: f32 = 0.25;
+/// Silence added at both ends, as the recognizers expect.
+const VOICE_PAD_SECS: f32 = 0.2;
+/// Level that always counts as speech, and the most a noisy room may raise
+/// the bar to. Quiet microphones give speech around 0.01.
+const VOICE_LEVEL_MIN: f32 = 0.0025;
+const VOICE_LEVEL_MAX: f32 = 0.006;
+/// Loudness speech is brought to before recognition.
+const VOICE_PEAK: f32 = 0.5;
+const VOICE_MAX_GAIN: f32 = 20.0;
+
+/// Gets a student recording ready for speech recognition: long silences are
+/// shortened and quiet speech is made louder. Speech recognizers miss soft
+/// voices and get lost in long pauses (a low "Nada... nada." came out empty,
+/// and as "Not that." after only raising the volume). Empty when there is no
+/// speech at all.
+pub fn prepare_for_stt(samples: &[f32], sample_rate: u32) -> Vec<f32> {
+    let window = ((VOICE_WINDOW_SECS * sample_rate as f32) as usize).max(1);
+    let levels: Vec<f32> = samples.chunks(window).map(rms).collect();
+    if levels.is_empty() {
+        return Vec::new();
+    }
+    let mut sorted = levels.clone();
+    sorted.sort_by(f32::total_cmp);
+    let floor = sorted[sorted.len() / 5];
+    let threshold = (floor * 3.0).clamp(VOICE_LEVEL_MIN, VOICE_LEVEL_MAX);
+    let margin = (VOICE_MARGIN_SECS / VOICE_WINDOW_SECS).round() as usize;
+    let voiced: Vec<usize> = (0..levels.len())
+        .filter(|&i| levels[i] > threshold)
+        .collect();
+    if voiced.is_empty() {
+        return Vec::new();
+    }
+    let mut keep = vec![false; levels.len()];
+    for &i in &voiced {
+        let end = (i + margin + 1).min(keep.len());
+        keep[i.saturating_sub(margin)..end].fill(true);
+    }
+    let pad = (VOICE_PAD_SECS * sample_rate as f32) as usize;
+    let mut out = vec![0.0; pad];
+    for (chunk, _) in samples.chunks(window).zip(&keep).filter(|(_, k)| **k) {
+        out.extend_from_slice(chunk);
+    }
+    out.extend(std::iter::repeat_n(0.0, pad));
+
+    // Loudness from the 99.9th percentile, so a single click does not set it.
+    let mut peaks: Vec<f32> = out.iter().map(|s| s.abs()).collect();
+    let at = (peaks.len() * 999 / 1000).min(peaks.len() - 1);
+    let (_, peak, _) = peaks.select_nth_unstable_by(at, f32::total_cmp);
+    let gain = (VOICE_PEAK / peak.max(1e-6)).clamp(1.0, VOICE_MAX_GAIN);
+    out.iter_mut()
+        .for_each(|s| *s = (*s * gain).clamp(-1.0, 1.0));
+    out
+}
+
 /// Longest chunk sent to the TTS at once. Short chunks start playing sooner.
 const MAX_CHUNK_CHARS: usize = 220;
 
@@ -226,5 +284,30 @@ mod tests {
     #[test]
     fn rms_of_constant() {
         assert!((rms(&[0.5, -0.5]) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn stt_input_drops_long_silence_and_raises_quiet_speech() {
+        let rate = 16_000;
+        let tone = |secs: f32, amp: f32| -> Vec<f32> {
+            (0..(secs * rate as f32) as usize)
+                .map(|i| amp * (i as f32 * 0.07).sin())
+                .collect()
+        };
+        // Quiet word, three seconds of silence, quiet word.
+        let mut clip = tone(0.6, 0.015);
+        clip.extend(vec![0.0; 3 * rate as usize]);
+        clip.extend(tone(0.4, 0.015));
+        let out = prepare_for_stt(&clip, rate);
+        let secs = out.len() as f32 / rate as f32;
+        assert!((1.5..2.3).contains(&secs), "kept {secs} s");
+        let peak = out.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+        assert!(peak > 0.25, "peak {peak}");
+
+        assert!(prepare_for_stt(&vec![0.0005; rate as usize], rate).is_empty());
+        assert!(prepare_for_stt(&[], rate).is_empty());
+        // Loud speech is left as loud as it was.
+        let loud = prepare_for_stt(&tone(1.0, 0.9), rate);
+        assert!(loud.iter().fold(0.0f32, |m, s| m.max(s.abs())) <= 0.9 + 1e-3);
     }
 }

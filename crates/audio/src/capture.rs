@@ -37,12 +37,30 @@ impl Default for RecordOptions {
     }
 }
 
-/// Minimum level counted as speech, whatever the noise floor.
-const MIN_SPEECH_LEVEL: f32 = 0.015;
+/// Minimum level counted as speech, whatever the noise floor. Quiet
+/// microphones give speech around 0.01, so the bar is set below that.
+const MIN_SPEECH_LEVEL: f32 = 0.005;
+/// Speech must be this many times louder than the room.
+const SPEECH_OVER_NOISE: f32 = 3.0;
+
+/// The audio kept so far. Positions count from the start of the recording,
+/// also after older audio was let go with [`Recording::forget_before`].
+#[derive(Default)]
+struct Buffer {
+    /// Samples let go from the front.
+    base: usize,
+    data: Vec<f32>,
+}
+
+impl Buffer {
+    fn len(&self) -> usize {
+        self.base + self.data.len()
+    }
+}
 
 #[derive(Default)]
 struct Shared {
-    samples: Mutex<Vec<f32>>,
+    samples: Mutex<Buffer>,
     /// Latest block level (f32 bits), for the UI meter.
     level: AtomicU32,
     stop: AtomicBool,
@@ -141,6 +159,16 @@ impl Recording {
         self.shared.samples.lock().map_or(0, |s| s.len())
     }
 
+    /// Lets go of the audio before `position`, to keep a long-running
+    /// recording small. Positions stay the same.
+    pub fn forget_before(&self, position: usize) {
+        if let Ok(mut buffer) = self.shared.samples.lock() {
+            let drop = position.saturating_sub(buffer.base).min(buffer.data.len());
+            buffer.data.drain(..drop);
+            buffer.base += drop;
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -157,7 +185,10 @@ impl Recording {
                 .shared
                 .samples
                 .lock()
-                .map(|s| s.get(start..).unwrap_or_default().to_vec())
+                .map(|s| {
+                    let from = start.saturating_sub(s.base);
+                    s.data.get(from..).unwrap_or_default().to_vec()
+                })
                 .unwrap_or_default(),
             sample_rate: self.sample_rate,
         }
@@ -173,7 +204,7 @@ impl Recording {
             .shared
             .samples
             .lock()
-            .map(|mut s| std::mem::take(&mut *s))
+            .map(|mut s| std::mem::take(&mut s.data))
             .unwrap_or_default();
         AudioClip {
             samples,
@@ -231,7 +262,7 @@ fn capture_thread(
             shared.noise_floor.store(floor.to_bits(), Ordering::Relaxed);
             floor
         });
-        let threshold = (floor * 2.5).max(MIN_SPEECH_LEVEL);
+        let threshold = (floor * SPEECH_OVER_NOISE).max(MIN_SPEECH_LEVEL);
         if level > threshold {
             heard_speech = true;
             shared.heard_speech.store(true, Ordering::Relaxed);
@@ -315,7 +346,7 @@ where
                     .collect();
                 shared.level.store(rms(&mono).to_bits(), Ordering::Relaxed);
                 if let Ok(mut samples) = shared.samples.lock() {
-                    samples.extend_from_slice(&mono);
+                    samples.data.extend_from_slice(&mono);
                 }
             },
             |err| tracing::warn!(%err, "capture stream error"),

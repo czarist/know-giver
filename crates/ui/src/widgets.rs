@@ -57,7 +57,7 @@ pub fn card<R>(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui) -> R) -> R {
 }
 
 /// A book-cover block: series label, a large title, a line of text, and the
-/// Thoth engraving on the right. `add` goes under the text.
+/// Know Giver mark on the right. `add` goes under the text.
 pub fn cover(
     ui: &mut egui::Ui,
     series: &str,

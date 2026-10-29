@@ -109,7 +109,7 @@ pub fn current(engine: &kg_engine::Engine) -> Teacher {
 /// A still portrait (resting face), for pickers.
 pub fn still(ctx: &egui::Context, teacher: Teacher, size: f32) -> Image<'static> {
     if teacher == Teacher::Thoth {
-        return Art::Head.image(size);
+        return Art::Mark.image(size);
     }
     register(ctx, teacher);
     Image::new(uri(teacher, 0, false))
@@ -198,9 +198,11 @@ pub fn paint(ui: &mut egui::Ui, rect: Rect, mood: Mood, teacher: Teacher) {
             let grow = 1.0 + open.min(1.0) * 0.015;
             let image = Rect::from_center_size(
                 plate.center() + vec2(0.0, breath + nod),
-                Vec2::splat(side * 0.94 * grow),
+                // Larger than the card, so its dark ground fills the card
+                // even while leaning.
+                Vec2::splat(side * 1.1 * grow),
             );
-            Art::Head
+            Art::Mark
                 .image(side)
                 .rotate(lean * 0.6, Vec2::new(0.5, 0.8))
                 .paint_at(&clip, image);

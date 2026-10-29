@@ -239,14 +239,48 @@ const SHORT_ANSWERS: [&str; 16] = [
     "nenhuma",
 ];
 
-/// True when a one-word transcript may be in the wrong language ("Okay",
-/// "No") and is worth a second opinion.
+/// Common English words. Parakeet guesses the language by itself and hears
+/// short or soft Portuguese as English: "Nada, nada." came out "Not that".
+const ENGLISH_WORDS: [&str; 48] = [
+    "the", "that", "this", "not", "is", "it", "its", "you", "what", "yes", "no", "okay", "ok",
+    "and", "of", "to", "so", "yeah", "oh", "my", "me", "we", "do", "dont", "im", "there", "they",
+    "have", "are", "was", "be", "can", "just", "know", "like", "right", "well", "thank", "thanks",
+    "sorry", "hello", "hi", "but", "for", "with", "nah", "sure", "why",
+];
+
+/// Common Portuguese words, which settle the language when both appear.
+const PORTUGUESE_WORDS: [&str; 40] = [
+    "de", "que", "nao", "e", "um", "uma", "do", "da", "em", "para", "pra", "com", "eu", "se", "na",
+    "no", "isso", "mas", "por", "mais", "como", "sim", "ele", "ela", "voce", "ta", "entao", "nada",
+    "tambem", "porque", "quando", "qual", "muito", "ja", "so", "meu", "os", "as", "dos", "aqui",
+];
+
+/// True when the transcript may be wrong and is worth a second opinion: a
+/// lone unusual word ("Okay", "No"), or text that came out in English.
 pub(crate) fn needs_second_opinion(text: &str) -> bool {
+    if looks_english(text) {
+        return true;
+    }
     if word_count(text) > 1 {
         return false;
     }
     let word: String = content_words_all(text).concat();
     !SHORT_ANSWERS.contains(&word.as_str())
+}
+
+/// True when most words are common English ones and none settles it as
+/// Portuguese. Technical terms ("machine learning") do not count either way.
+fn looks_english(text: &str) -> bool {
+    let words = content_words_all(text);
+    let english = words
+        .iter()
+        .filter(|w| ENGLISH_WORDS.contains(&w.as_str()))
+        .count();
+    let portuguese = words
+        .iter()
+        .filter(|w| PORTUGUESE_WORDS.contains(&w.as_str()))
+        .count();
+    english > portuguese && english * 2 >= words.len()
 }
 
 /// True when `heard` has a meaningful word that is not in `known` (for
@@ -339,6 +373,11 @@ mod tests {
         assert!(!needs_second_opinion("Sim."));
         assert!(!needs_second_opinion("Não."));
         assert!(!needs_second_opinion("Pode continuar."));
+        assert!(needs_second_opinion("Not that, not."));
+        assert!(needs_second_opinion("Yeah, I know that."));
+        assert!(!needs_second_opinion("Não sei o que é machine learning."));
+        assert!(!needs_second_opinion("Python é uma linguagem."));
+        assert!(!needs_second_opinion("No caso, a LOA."));
         assert!(same_words("Sim, entendi.", "sim entendi"));
         assert!(!same_words("Sim", "Sim, entendi"));
         assert!(has_new_words("Hum, espera.", "Hum."));

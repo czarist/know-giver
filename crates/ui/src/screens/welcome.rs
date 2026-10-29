@@ -35,7 +35,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 &t!("app.tagline"),
                 &t!("welcome.title"),
                 &t!("welcome.subtitle"),
-                Art::Seated,
+                Art::Mark,
                 230.0,
                 |ui| {
                     ui.add_space(12.0);

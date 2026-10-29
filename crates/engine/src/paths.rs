@@ -44,6 +44,11 @@ impl AppPaths {
         self.data_dir.join("last-recording.wav")
     }
 
+    /// Log of the current run, replaced at each start.
+    pub fn log_file(&self) -> PathBuf {
+        self.data_dir.join("know-giver.log")
+    }
+
     pub fn models_dir(&self) -> PathBuf {
         self.data_dir.join("models")
     }

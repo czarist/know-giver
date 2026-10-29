@@ -4,6 +4,28 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] - 2026-10-28
+
+### Fixed
+- Talking in a lesson flows better. The microphone stays open for the whole
+  lesson instead of being reopened for every turn, which froze the screen for a
+  moment and lost the first words; the student's turn starts the moment the tutor
+  stops.
+- Soft voices are heard: speech counts from a lower level, and recordings are
+  made louder and their long pauses shortened before recognition. A quiet
+  "Nada... nada." used to come out empty.
+- Answers Parakeet heard as English ("Not that") get Whisper's second opinion,
+  which is now about three times faster on short answers (it no longer repeats
+  itself until the window ends).
+- Hands-free waits 30 seconds for an answer instead of 12, and a cough or noise
+  no longer ends the listening.
+
+### Changed
+- New mark: the ibis wears the broad collar of the engraving, as a carved glyph.
+  It replaces the engraving on the covers and is Thoth's portrait; the reference
+  engraving is no longer shown.
+- The app writes its log to `know-giver.log` in the data folder.
+
 ## [0.24.0] - 2026-10-28
 
 ### Added

@@ -46,7 +46,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         &plan.title,
         &title,
         &t!("today.subtitle", date = i18n::date(Engine::today())),
-        Art::Head,
+        Art::Mark,
         150.0,
         |_| {},
     );

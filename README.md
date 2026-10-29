@@ -108,7 +108,6 @@ optional platform tooling.
 
 - Fonts: [Inter](https://rsms.me/inter/) and [IBM Plex Mono](https://github.com/IBM/plex),
   SIL Open Font License (`crates/ui/assets/fonts`).
-- Thoth engraving (`crates/ui/assets/art`): supplied by the project owner.
 - Teacher portraits (`crates/ui/assets/teachers`): "Lorelei" by Lisa Wischofsky,
   CC0 1.0, through [DiceBear](https://www.dicebear.com/styles/lorelei/); rebuilt with
   `python tools/teachers.py`.

@@ -27,7 +27,7 @@ mod snapshots;
 pub use app::KnowGiverApp;
 pub use icon::rgba as icon_rgba;
 
-pub use kg_engine::AiConfig;
+pub use kg_engine::{AiConfig, AppPaths};
 use rust_i18n::t;
 
 /// Stable identifier for eframe's settings storage. Not shown to the user.

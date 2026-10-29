@@ -4,6 +4,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // GPU crates are noisy about third-party overlay layers; keep them quiet
@@ -11,11 +12,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new("info,wgpu_hal=error,wgpu_core=warn,egui_wgpu=warn,pdf_extract=error")
     });
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    // Also to a file: release builds have no console to read it from.
+    let log = log_file();
+    let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
+    match log {
+        Some(file) => subscriber
+            .with_ansi(false)
+            .with_writer(std::io::stderr.and(std::sync::Mutex::new(file)))
+            .init(),
+        None => subscriber.init(),
+    }
 
     load_env();
     kg_ui::run(kg_ui::AiConfig::from_env(|key| std::env::var(key).ok()))?;
     Ok(())
+}
+
+/// The log file for this run, when the data folder can be written.
+fn log_file() -> Option<std::fs::File> {
+    let path = kg_ui::AppPaths::detect().log_file();
+    let dir = path.parent()?;
+    std::fs::create_dir_all(dir).ok()?;
+    std::fs::File::create(path).ok()
 }
 
 /// Loads `.env` from the working directory (development) or from next to

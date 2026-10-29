@@ -269,18 +269,6 @@ impl KnowGiverApp {
                         widgets::kicker(ui, &t!("nav.active_plan"), p.muted);
                         ui.add_space(4.0);
                     }
-                    // The engraving as a small plate, when there is room.
-                    let plate = ui.available_width();
-                    if ui.available_height() > plate + 24.0 {
-                        let image = ui.add(crate::art::Art::Head.image(plate));
-                        ui.painter().rect_stroke(
-                            image.rect,
-                            0.0,
-                            egui::Stroke::new(2.0, p.ink),
-                            egui::StrokeKind::Outside,
-                        );
-                        ui.add_space(8.0);
-                    }
                 });
             });
     }
