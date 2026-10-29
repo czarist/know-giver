@@ -112,7 +112,6 @@ pub fn teacher_name(teacher: kg_engine::Teacher) -> String {
         Teacher::Lia => t!("teachers.lia.name"),
         Teacher::Rafael => t!("teachers.rafael.name"),
         Teacher::Otavio => t!("teachers.otavio.name"),
-        Teacher::Thoth => t!("teachers.thoth.name"),
     }
     .into_owned()
 }
@@ -124,7 +123,6 @@ pub fn teacher_about(teacher: kg_engine::Teacher) -> String {
         Teacher::Lia => t!("teachers.lia.about"),
         Teacher::Rafael => t!("teachers.rafael.about"),
         Teacher::Otavio => t!("teachers.otavio.about"),
-        Teacher::Thoth => t!("teachers.thoth.about"),
     }
     .into_owned()
 }

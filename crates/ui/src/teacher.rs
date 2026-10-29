@@ -4,13 +4,11 @@
 //! `tools/teachers.py` as a base drawing plus swappable eyes and mouths.
 //! Idle: breathes and blinks. Listening: leans in and nods with the
 //! student's voice. Thinking: a thought bubble. Speaking: the mouth follows
-//! the loudness of the voice being played. Thoth is the cover engraving and
-//! only shows who is speaking through the card's border.
+//! the loudness of the voice being played.
 
 use egui::{Color32, Image, Rect, Stroke, Vec2, pos2, vec2};
 use kg_engine::{LessonPhase, Teacher};
 
-use crate::art::Art;
 use crate::theme;
 
 /// What drives the animation this frame.
@@ -52,15 +50,14 @@ macro_rules! parts {
     };
 }
 
-/// Drawn portraits; `None` for Thoth, who uses the engraving.
-fn parts(teacher: Teacher) -> Option<Parts> {
-    Some(match teacher {
+/// The drawn portrait's pieces.
+fn parts(teacher: Teacher) -> Parts {
+    match teacher {
         Teacher::Helena => parts!("helena"),
         Teacher::Lia => parts!("lia"),
         Teacher::Rafael => parts!("rafael"),
         Teacher::Otavio => parts!("otavio"),
-        Teacher::Thoth => return None,
-    })
+    }
 }
 
 fn slug(teacher: Teacher) -> &'static str {
@@ -69,7 +66,6 @@ fn slug(teacher: Teacher) -> &'static str {
         Teacher::Lia => "lia",
         Teacher::Rafael => "rafael",
         Teacher::Otavio => "otavio",
-        Teacher::Thoth => "thoth",
     }
 }
 
@@ -87,15 +83,14 @@ fn register(ctx: &egui::Context, teacher: Teacher) {
     if ctx.data(|d| d.get_temp::<bool>(id)).unwrap_or(false) {
         return;
     }
-    if let Some(parts) = parts(teacher) {
-        for (mouth, mouth_svg) in parts.mouths.iter().enumerate() {
-            for (closed, eyes_svg) in parts.eyes.iter().enumerate() {
-                let svg = parts
-                    .base
-                    .replacen("<!--eyes-->", eyes_svg.trim(), 1)
-                    .replacen("<!--mouth-->", mouth_svg.trim(), 1);
-                ctx.include_bytes(uri(teacher, mouth, closed == 1), svg.into_bytes());
-            }
+    let parts = parts(teacher);
+    for (mouth, mouth_svg) in parts.mouths.iter().enumerate() {
+        for (closed, eyes_svg) in parts.eyes.iter().enumerate() {
+            let svg = parts
+                .base
+                .replacen("<!--eyes-->", eyes_svg.trim(), 1)
+                .replacen("<!--mouth-->", mouth_svg.trim(), 1);
+            ctx.include_bytes(uri(teacher, mouth, closed == 1), svg.into_bytes());
         }
     }
     ctx.data_mut(|d| d.insert_temp(id, true));
@@ -108,9 +103,6 @@ pub fn current(engine: &kg_engine::Engine) -> Teacher {
 
 /// A still portrait (resting face), for pickers.
 pub fn still(ctx: &egui::Context, teacher: Teacher, size: f32) -> Image<'static> {
-    if teacher == Teacher::Thoth {
-        return Art::Mark.image(size);
-    }
     register(ctx, teacher);
     Image::new(uri(teacher, 0, false))
         .fit_to_exact_size(Vec2::splat(size))
@@ -166,48 +158,31 @@ pub fn paint(ui: &mut egui::Ui, rect: Rect, mood: Mood, teacher: Teacher) {
 
     let mut clip = ui.new_child(egui::UiBuilder::new().max_rect(plate));
     clip.set_clip_rect(plate.shrink(1.0));
-    match parts(teacher) {
-        Some(_) => {
-            register(ui.ctx(), teacher);
-            let mouth = match open {
-                o if o < 0.06 => 0,
-                o if o < 0.22 => 1,
-                o if o < 0.45 => 2,
-                _ => 3,
-            };
-            // Blink every few seconds, each teacher at their own pace.
-            let period = 4.1 + teacher as u8 as f32 * 0.37;
-            let blinking = (t % period) < 0.12;
-            // The drawing reaches its bottom edge (shoulders), so it sits on
-            // the card's bottom and moves up and down from there.
-            // Slightly larger than the card, so the face fills it; the
-            // shoulders are cut by the card's bottom edge.
-            let size = side * 1.08;
-            let image = Rect::from_min_size(
-                pos2(
-                    plate.center().x - size / 2.0,
-                    plate.bottom() - size * 0.99 + breath + nod,
-                ),
-                Vec2::splat(size),
-            );
-            Image::new(uri(teacher, mouth, blinking))
-                .rotate(lean, Vec2::new(0.5, 0.9))
-                .paint_at(&clip, image);
-        }
-        None => {
-            let grow = 1.0 + open.min(1.0) * 0.015;
-            let image = Rect::from_center_size(
-                plate.center() + vec2(0.0, breath + nod),
-                // Larger than the card, so its dark ground fills the card
-                // even while leaning.
-                Vec2::splat(side * 1.1 * grow),
-            );
-            Art::Mark
-                .image(side)
-                .rotate(lean * 0.6, Vec2::new(0.5, 0.8))
-                .paint_at(&clip, image);
-        }
-    }
+    register(ui.ctx(), teacher);
+    let mouth = match open {
+        o if o < 0.06 => 0,
+        o if o < 0.22 => 1,
+        o if o < 0.45 => 2,
+        _ => 3,
+    };
+    // Blink every few seconds, each teacher at their own pace.
+    let period = 4.1 + teacher as u8 as f32 * 0.37;
+    let blinking = (t % period) < 0.12;
+    // The drawing reaches its bottom edge (shoulders), so it sits on
+    // the card's bottom and moves up and down from there.
+    // Slightly larger than the card, so the face fills it; the
+    // shoulders are cut by the card's bottom edge.
+    let size = side * 1.08;
+    let image = Rect::from_min_size(
+        pos2(
+            plate.center().x - size / 2.0,
+            plate.bottom() - size * 0.99 + breath + nod,
+        ),
+        Vec2::splat(size),
+    );
+    Image::new(uri(teacher, mouth, blinking))
+        .rotate(lean, Vec2::new(0.5, 0.9))
+        .paint_at(&clip, image);
 
     // Who has the floor: a heavy accent border while speaking.
     let (width, color) = if mood.phase == LessonPhase::Speaking {

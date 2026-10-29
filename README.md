@@ -4,18 +4,17 @@
 
 <h1 align="center">Know Giver</h1>
 
-<h3 align="center">Your edital. Your plan. A teacher who talks back.</h3>
+<h3 align="center">Your exam. Your plan. A teacher who talks back.</h3>
 
 <p align="center">
-  <b>A desktop study companion for Brazilian public exams (concursos), built in pure Rust.</b><br>
-  Drop in the edital PDF, get a week-by-week plan, and study out loud with a tutor that listens, explains and quizzes you.
+  <b>A desktop app that builds study plans for exams, built in pure Rust.</b><br>
+  Drop in the exam notice or syllabus PDF, get a week-by-week plan, and study out loud with a tutor that listens, explains and quizzes you.
 </p>
 
 <p align="center">
   <img alt="Pure Rust" src="https://img.shields.io/badge/pure-Rust-3f8f7c?style=flat-square&logo=rust&logoColor=white">
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
-  <img alt="Português do Brasil" src="https://img.shields.io/badge/pt--BR-first-c98e2e?style=flat-square">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2c6b5c?style=flat-square"></a>
 </p>
 
@@ -26,7 +25,7 @@
 </p>
 
 <p align="center">
-  <a href="#from-edital-to-plan">Edital → plan</a> ·
+  <a href="#from-syllabus-to-plan">Syllabus → plan</a> ·
   <a href="#voice-lessons">Voice lessons</a> ·
   <a href="#a-whiteboard-that-shows-not-just-tells">Whiteboard</a> ·
   <a href="#teachers--voices">Teachers</a> ·
@@ -38,19 +37,19 @@
 
 <br>
 
-## From edital to plan
+## From syllabus to plan
 
-The edital is read on your machine; only its syllabus goes to the AI.
+The exam notice is read on your machine; only its syllabus goes to the AI.
 
-- **Pick your role.** Editais often cover several cargos. Know Giver finds them
-  ("CARGO 2: …") and asks which one you are applying for, so the plan has the shared
-  subjects plus only *your* role's specific ones.
+- **Pick your role.** Some exams cover several positions. Know Giver finds them and
+  asks which one you are applying for, so the plan has the shared subjects plus only
+  *your* position's specific ones.
 - **Your schedule.** Number of weeks and hours per week shape a plan by week, subject
-  and topic. Keep several editais side by side.
+  and topic. Keep several exams side by side.
 - **Scanned PDFs.** Pages without text can be transcribed by a vision model you configure.
 
 <p align="center">
-  <img src="docs/images/edital-roles.png" alt="Choosing the role from an edital with four cargos" width="80%">
+  <img src="docs/images/edital-roles.png" alt="Choosing the position from an exam notice that covers several" width="80%">
 </p>
 
 ## Voice lessons
@@ -68,8 +67,8 @@ The tutor starts talking with the first sentence of its answer, says "Hum." whil
 thinks, and stops when you interrupt. Hands-free, push-to-talk (Space) or typing.
 
 ### 🧠 Teaching
-Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written in
-spoken Brazilian Portuguese: short turns, one idea at a time, questions back to you.
+Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for
+spoken conversation: short turns, one idea at a time, questions back to you.
 
 ## A whiteboard that shows, not just tells
 
@@ -83,23 +82,23 @@ Besides key points, the tutor writes **formulas**, **diagrams**, **comparison ta
 
 ## Teachers & voices
 
-Choose who teaches: **Helena**, **Lia**, **Rafael**, **Otávio** or **Thoth** himself.
+Choose who teaches: **Helena**, **Lia**, **Rafael** or **Otávio**.
 Ink portraits that breathe, blink, nod while you talk and move their lips with the voice:
 human enough to talk to, drawn enough to stay out of the uncanny valley.
 
 Ten voices, half of them female, from **Piper** and **Kokoro**, all running locally.
 
 <p align="center">
-  <img src="docs/images/teachers.png" alt="The five teachers in their states: resting, listening, thinking and speaking" width="70%">
+  <img src="docs/images/teachers.png" alt="The four teachers in their states: resting, listening, thinking and speaking" width="70%">
 </p>
 
 ## Practice, review, handouts
 
-- **Quizzes** in the style of the exam boards, with explanations; real past questions
+- **Quizzes** in the style of the exam, with explanations; real past questions
   when you upload past exams.
 - **Spaced review (SM-2)**: topics come back right before you would forget them.
-- **Exam board material**: past exams, answer keys and handouts, filtered against your
-  edital, with the reason for whatever is set aside.
+- **Past exams and material**: past exams, answer keys and handouts, filtered against your
+  syllabus, with the reason for whatever is set aside.
 - **Handouts** per topic, subject or plan, exported to PDF.
 - **Progress** per subject and **daily study time** that only counts active study.
 

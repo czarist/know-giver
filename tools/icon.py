@@ -20,7 +20,7 @@ ASSETS = Path(__file__).resolve().parent.parent / "crates/ui/assets"
 TILE = "#3F8F7C"
 TILE_DARK = "#2C6B5C"
 INK = "#1C1B19"
-PAPER = "#F4EEDF"
+PAPER = "#FBF8F1"
 OCHRE = "#C98E2E"
 
 
@@ -90,7 +90,7 @@ def add(s):
     out.append(s)
 
 
-def shape(d, fill, width=3.0):
+def shape(d, fill, width=3.6):
     add(f'<path d="{d}" fill="{fill}" stroke="{INK}" stroke-width="{width}" stroke-linejoin="round"/>')
 
 
@@ -208,12 +208,11 @@ def build(rounded):
     add('<g clip-path="url(#tile)">')
     add(f'<rect width="256" height="256" fill="{TILE}"/>')
     # Clear of the rounded corners.
-    add('<g transform="translate(4 14)">')
+    add('<g transform="translate(-6 2) scale(1.08)">')
 
     # Torso with a broad sash across the chest and a belt.
     shape(torso_d, PAPER)
     add('<g clip-path="url(#torso)">')
-    parallel_hatch((20, 100, 120, 262), 80, 3.2, lambda x, y: max(0.0, 1.5 - (x - 34) * 0.05))
     for k, w in enumerate((5, 1.4, 5, 1.4, 5)):
         off = k * 7
         line([(40 + off, 120), (112 + off, 236)], w)
@@ -236,9 +235,6 @@ def build(rounded):
     # Head and beak.
     shape(head_d, PAPER)
     shape(beak_d, PAPER)
-    add('<g clip-path="url(#beak)">')
-    contour_hatch(beak_top, beak_bottom[::-1], 6, lambda t: max(0.0, (t - 0.45) * 2.4), taper=(0.05, 0.95))
-    add("</g>")
     shape(beak_d, "none")
     line(chain((110, 52), ((134, 54), (154, 72), (168, 94))), 1.0)
     # Headband edge over the brow, and the eye with its painted line.
@@ -260,21 +256,12 @@ def build(rounded):
         x = px + pw / 2 + dx
         line([(x, py), (x, py - h)], 2.4)
     shape(f"M{px} {py} h{pw} v{ph} h{-pw} Z", PAPER, 3.0)
-    add('<g clip-path="url(#palette)">')
-    parallel_hatch((px, py, px + pw, py + ph), 90, 2.6,
-                   lambda x, y: max(0.0, (x - (px + pw * 0.6)) * 0.16))
-    add("</g>")
     add(f'<circle cx="{px + pw / 2}" cy="{py + 12}" r="4.6" fill="{INK}"/>')
     add(f'<circle cx="{px + pw / 2}" cy="{py + 25}" r="4.6" fill="{OCHRE}" stroke="{INK}" stroke-width="1.6"/>')
     add(f'<rect x="{px + pw / 2 - 2.5}" y="{py + 38}" width="5" height="{ph - 54}" rx="2.5" fill="none" stroke="{INK}" stroke-width="1.6"/>')
 
     # Far arm holding the palette, with a wrist band.
     shape(far_arm_d, PAPER)
-    add('<g clip-path="url(#far)">')
-    contour_hatch(chain((84, 112), ((120, 106), (170, 104), (206, 106))),
-                  chain((86, 132), ((120, 126), (170, 122), (206, 122))), 5,
-                  lambda t: max(0.0, (t - 0.45) * 2.6))
-    add("</g>")
     shape(far_arm_d, "none")
     add(f'<rect x="186" y="104" width="9" height="19" fill="{OCHRE}" stroke="{INK}" stroke-width="2"/>')
     # Fingers around the palette's edge.
@@ -284,14 +271,8 @@ def build(rounded):
 
     # Near arm writing.
     shape(upper_arm_d, PAPER)
-    add('<g clip-path="url(#upper)">')
-    parallel_hatch((80, 130, 140, 190), 50, 3.0, lambda x, y: max(0.0, (y - 150) * 0.03))
-    add("</g>")
     shape(upper_arm_d, "none")
     shape(forearm_d, PAPER)
-    add('<g clip-path="url(#fore)">')
-    contour_hatch(forearm_top, forearm_bottom[::-1], 5, lambda t: max(0.0, (t - 0.45) * 2.6), taper=(0.05, 0.95))
-    add("</g>")
     shape(forearm_d, "none")
     add(f'<path d="M168 154 L176 150 L180 162 L172 166 Z" fill="{OCHRE}" stroke="{INK}" stroke-width="2"/>')
     # Reed pen to the palette, held in the fist.

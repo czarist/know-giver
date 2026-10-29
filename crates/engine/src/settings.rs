@@ -46,6 +46,7 @@ pub struct Settings {
     pub board_images: bool,
     /// Who teaches; `None` in settings saved before teachers existed (see
     /// [`Settings::teacher`]).
+    #[serde(default, deserialize_with = "crate::teacher::lenient")]
     pub teacher: Option<Teacher>,
     /// Speech speed multiplier: 1.0 is normal, 1.2 is 20% faster.
     pub speech_rate: f32,

@@ -6,6 +6,10 @@ All notable changes to Know Giver. Format based on
 
 ## [0.25.0] - 2026-10-28
 
+### Removed
+- Thoth as a teacher: only the four human teachers remain. Settings that had
+  him pick a teacher matching the voice.
+
 ### Fixed
 - Talking in a lesson flows better. The microphone stays open for the whole
   lesson instead of being reopened for every turn, which froze the screen for a

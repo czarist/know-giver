@@ -11,18 +11,10 @@ pub enum Teacher {
     Lia,
     Rafael,
     Otavio,
-    /// The app's patron, from the engraving on the covers.
-    Thoth,
 }
 
 impl Teacher {
-    pub const ALL: [Self; 5] = [
-        Self::Helena,
-        Self::Lia,
-        Self::Rafael,
-        Self::Otavio,
-        Self::Thoth,
-    ];
+    pub const ALL: [Self; 4] = [Self::Helena, Self::Lia, Self::Rafael, Self::Otavio];
 
     /// The name the tutor gives itself in lessons.
     pub fn name(self) -> &'static str {
@@ -31,14 +23,13 @@ impl Teacher {
             Self::Lia => "Lia",
             Self::Rafael => "Rafael",
             Self::Otavio => "Otávio",
-            Self::Thoth => "Thoth",
         }
     }
 
     pub fn gender(self) -> VoiceGender {
         match self {
             Self::Helena | Self::Lia => VoiceGender::Female,
-            Self::Rafael | Self::Otavio | Self::Thoth => VoiceGender::Male,
+            Self::Rafael | Self::Otavio => VoiceGender::Male,
         }
     }
 
@@ -49,7 +40,6 @@ impl Teacher {
             Self::Lia => Voice::Piper(PiperVoice::Dii),
             Self::Rafael => Voice::Piper(PiperVoice::Faber),
             Self::Otavio => Voice::Piper(PiperVoice::Cadu),
-            Self::Thoth => Voice::Kokoro(KokoroVoice::Santa),
         }
     }
 
@@ -61,6 +51,17 @@ impl Teacher {
             VoiceGender::Male => Self::Rafael,
         }
     }
+}
+
+/// Reads a saved teacher, forgetting one that no longer exists (Thoth was
+/// one until 0.25), so the settings still load and a teacher matching the
+/// voice is used instead.
+pub(crate) fn lenient<'de, D>(deserializer: D) -> Result<Option<Teacher>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|v| serde_json::from_value(v).ok()))
 }
 
 #[cfg(test)]
@@ -76,5 +77,19 @@ mod tests {
             serde_json::to_string(&Teacher::Otavio).unwrap(),
             "\"otavio\""
         );
+    }
+
+    #[test]
+    fn a_removed_teacher_reads_as_none() {
+        #[derive(Deserialize)]
+        struct Saved {
+            #[serde(default, deserialize_with = "lenient")]
+            teacher: Option<Teacher>,
+        }
+        let read = |json: &str| serde_json::from_str::<Saved>(json).unwrap().teacher;
+        assert_eq!(read(r#"{"teacher":"thoth"}"#), None);
+        assert_eq!(read(r#"{"teacher":"lia"}"#), Some(Teacher::Lia));
+        assert_eq!(read(r#"{"teacher":null}"#), None);
+        assert_eq!(read("{}"), None);
     }
 }
