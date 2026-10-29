@@ -393,6 +393,8 @@ fn content_preparation() {
     }
     harness.state_mut().ui.prefs.role = "Auditor Federal de Finanças e Controle (AFFC) – Especialidade: Tecnologia da Informação – Ciência de Dados".into();
     render(&mut harness, out.as_deref(), "pt-BR-edital-roles");
+    crate::i18n::set("en");
+    render(&mut harness, out.as_deref(), "en-edital-roles");
     harness.state_mut().dispatch(Command::CancelPrepare);
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }

@@ -175,6 +175,8 @@ def build(rounded):
     add("</defs>")
     add('<g clip-path="url(#tile)">')
     add(f'<rect width="256" height="256" fill="{TILE}"/>')
+    # Drawn facing right, shown facing left.
+    add('<g transform="translate(256 0) scale(-1 1)">')
     # Rays behind the disc, engraved in the tile's darker green.
     for i in range(-6, 7):
         a = math.radians(-90 + i * 13)
@@ -261,6 +263,7 @@ def build(rounded):
     for k in range(3):
         rr = 66 + k * 3.2
         add(f'<path d="M{ccx-rr} {ccy} A{rr} {rr} 0 0 1 {ccx+rr} {ccy}" fill="none" stroke="{INK}" stroke-width="0.7"/>')
+    add("</g>")
     add("</g>")
     add("</svg>")
 

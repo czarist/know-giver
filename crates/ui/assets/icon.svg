@@ -10,6 +10,7 @@
 </defs>
 <g clip-path="url(#tile)">
 <rect width="256" height="256" fill="#3F8F7C"/>
+<g transform="translate(256 0) scale(-1 1)">
 <path d="M92.7 35.8 L59.4 28.7" fill="none" stroke="#2C6B5C" stroke-width="1.48" stroke-linecap="round"/>
 <path d="M94.8 29.3 L64.0 15.0" fill="none" stroke="#2C6B5C" stroke-width="1.60" stroke-linecap="round"/>
 <path d="M98.4 23.5 L71.6 2.6" fill="none" stroke="#2C6B5C" stroke-width="1.72" stroke-linecap="round"/>
@@ -202,5 +203,6 @@
 <path d="M74.0 286 A66.0 66.0 0 0 1 206.0 286" fill="none" stroke="#1C1B19" stroke-width="0.7"/>
 <path d="M70.8 286 A69.2 69.2 0 0 1 209.2 286" fill="none" stroke="#1C1B19" stroke-width="0.7"/>
 <path d="M67.6 286 A72.4 72.4 0 0 1 212.4 286" fill="none" stroke="#1C1B19" stroke-width="0.7"/>
+</g>
 </g>
 </svg>
