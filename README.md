@@ -73,6 +73,7 @@ teacher): each step brings the handout's key points, the teacher checks you got 
 before moving on, and everything the quiz will ask is covered along the way. You
 always see where you are ("Step 2 of 5"), and the lesson closes with a summary and an
 offer to take the quiz. Pick **Quick**, **Normal** or **Full** lessons in Settings.
+Taken lessons get a tick in your plan, and you can retake any of them.
 
 ### 🧠 Teaching
 Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for

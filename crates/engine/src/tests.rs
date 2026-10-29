@@ -631,6 +631,27 @@ FIM",
     assert_eq!(lesson.step, 3);
 }
 
+#[test]
+fn a_finished_lesson_counts_without_pressing_end_and_only_once() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    engine.simulate_tutor_text(
+        "Parabéns, terminamos!
+FIM",
+    );
+    assert!(topic(&engine, id).lesson_taken());
+    assert_eq!(engine.lesson_count(), 1);
+    // Ending it afterwards does not count it twice.
+    engine.handle(Command::EndLesson).unwrap();
+    assert_eq!(engine.lesson_count(), 1);
+
+    // Taking it again keeps it taken.
+    engine.handle(Command::StartLesson(id)).unwrap();
+    engine.handle(Command::EndLesson).unwrap();
+    assert!(topic(&engine, id).lesson_taken());
+}
+
 fn prepare_request() -> PrepareRequest {
     PrepareRequest {
         file_prefix: "apostila".into(),

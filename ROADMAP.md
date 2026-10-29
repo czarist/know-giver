@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.27.0. Everything an agent can build and check without a human ear, a
+Version 0.27.1. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -208,6 +208,8 @@ Inno Setup 6).
 - [x] Lessons with content (v0.27.0): every handout section, grouped to the lesson
       length (Quick 3 / Normal 5 / Full 8 steps); each step carries its key points; the
       quiz's questions are given to the tutor so the lesson covers them
+- [x] Taken lessons stick (v0.27.1): saved when the tutor closes the lesson, ticked in
+      Today and the plan, "Retake lesson", and no longer suggested again
 
 ### Visual identity
 - [x] App icon (v0.25.0): the owner's engraving of Thoth as a baboon under the crescent

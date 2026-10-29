@@ -319,15 +319,26 @@ fn topic_row(
             } else {
                 title
             };
-            ui.add(egui::Label::new(title).truncate())
-                .on_hover_text(&topic.title);
+            ui.horizontal(|ui| {
+                if topic.lesson_taken() {
+                    ui.add(Icon::Check.image(14.0, p.success))
+                        .on_hover_text(t!("plan.lesson_taken"));
+                }
+                ui.add(egui::Label::new(title).truncate())
+                    .on_hover_text(&topic.title);
+            });
             if let Some(subject) = subject {
                 ui.add(egui::Label::new(RichText::new(subject).small().color(p.muted)).truncate());
             }
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.small_button(t!("plan.lesson")).clicked() {
+            let lesson = if topic.lesson_taken() {
+                t!("plan.lesson_again")
+            } else {
+                t!("plan.lesson")
+            };
+            if ui.small_button(lesson).clicked() {
                 actions.send(Command::StartLesson(topic.id));
                 actions.go_to(Screen::Lesson);
             }

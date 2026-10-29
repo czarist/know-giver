@@ -4,6 +4,16 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.27.1] - 2026-10-29
+
+### Fixed
+- A lesson the teacher closed counts right away, even if the app is closed without
+  pressing End; before, it was lost.
+- A taken lesson shows as taken: a green tick in Today and in the plan, a "Retake
+  lesson" button, and it no longer comes back as the next step or a lesson
+  suggestion. Retaking it keeps it taken.
+- The lesson count in Progress goes up as lessons are taken, not only after a restart.
+
 ## [0.27.0] - 2026-10-29
 
 ### Changed

@@ -94,6 +94,8 @@ pub struct LessonSession {
     pub step: usize,
     /// The tutor closed the lesson after the final review.
     pub finished: bool,
+    /// The lesson already counts as taken (saved when the tutor closed it).
+    saved: bool,
     context: TopicContext,
     /// The microphone, open for the whole lesson. Turns are stretches of it:
     /// reopening it for every turn cost a moment and the student's first words.
@@ -337,6 +339,7 @@ impl Engine {
             outline: context.outline.clone(),
             step: 0,
             finished: false,
+            saved: false,
             context,
             mic: None,
             speech_job: None,
@@ -550,14 +553,39 @@ impl Engine {
             return Ok(());
         };
         let student_spoke = lesson.turns.iter().any(|t| t.speaker == Speaker::Student);
-        if student_spoke {
-            let today = Self::today();
-            self.store.record_lesson(lesson.topic_id, today)?;
-            self.update_topic(lesson.topic_id, |t| t.complete_lesson(today))?;
-            self.record_activity(kg_study::ActivityKind::Lesson)?;
-            self.notices.push(Notice::LessonSaved);
+        if student_spoke && !lesson.saved {
+            self.save_lesson(lesson.topic_id)?;
         }
         Ok(())
+    }
+
+    /// Counts the lesson as taken: the topic leaves the lesson list and goes
+    /// into review. Taking it again later keeps it that way.
+    fn save_lesson(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+        let today = Self::today();
+        self.store.record_lesson(topic_id, today)?;
+        self.lesson_count += 1;
+        self.update_topic(topic_id, |t| t.complete_lesson(today))?;
+        self.record_activity(kg_study::ActivityKind::Lesson)?;
+        self.notices.push(Notice::LessonSaved);
+        Ok(())
+    }
+
+    /// The tutor closed the lesson: save it right away, so it counts even
+    /// if the app is closed without pressing End.
+    fn save_finished_lesson(&mut self) -> Result<(), EngineError> {
+        let Some(topic_id) = self
+            .lesson
+            .as_mut()
+            .filter(|l| l.finished && !l.saved)
+            .map(|l| {
+                l.saved = true;
+                l.topic_id
+            })
+        else {
+            return Ok(());
+        };
+        self.save_lesson(topic_id)
     }
 
     pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
@@ -1063,6 +1091,7 @@ impl Engine {
                 for query in &pictures {
                     self.request_illustration(query);
                 }
+                self.save_finished_lesson()?;
                 if spoken_live {
                     // Sentences were already queued for speech as they arrived;
                     // `tick_lesson` ends the phase when playback finishes.

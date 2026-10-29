@@ -3,7 +3,7 @@
 //! control bar. The transcript and typed chat open in a side panel.
 
 use egui::{Color32, RichText, Stroke, pos2, vec2};
-use kg_engine::{Command, Engine, LessonPhase, LessonSession, Speaker, TopicStatus};
+use kg_engine::{Command, Engine, LessonPhase, LessonSession, Speaker};
 use rust_i18n::t;
 
 use super::{Actions, current_week};
@@ -696,7 +696,7 @@ fn no_lesson(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     let week = current_week(plan);
     let suggestions = plan
         .topics()
-        .filter(|(_, t)| t.status != TopicStatus::Done && t.week <= week)
+        .filter(|(_, t)| !t.lesson_taken() && t.week <= week)
         .take(6);
     let p = theme::palette(ui.ctx());
     for (subject, topic) in suggestions {

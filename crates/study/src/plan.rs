@@ -115,6 +115,11 @@ impl Topic {
         };
     }
 
+    /// The topic's lesson was taken: it is in review or mastered.
+    pub fn lesson_taken(&self) -> bool {
+        matches!(self.status, TopicStatus::Reviewing | TopicStatus::Done)
+    }
+
     pub fn is_due(&self, today: NaiveDate) -> bool {
         self.review.is_due(today)
     }

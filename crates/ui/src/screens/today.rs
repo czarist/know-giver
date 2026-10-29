@@ -168,7 +168,7 @@ fn next_step(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan, actions: &mut
     let week = current_week(plan);
     let next = plan
         .topics()
-        .filter(|(_, t)| t.status != TopicStatus::Done)
+        .filter(|(_, t)| !t.lesson_taken())
         .min_by_key(|(_, t)| (t.week > week, t.status != TopicStatus::Studying, t.week));
 
     widgets::card(ui, |ui| {
@@ -231,15 +231,23 @@ fn this_week(ui: &mut egui::Ui, plan: &StudyPlan, actions: &mut Actions) {
     );
     for (subject, topic) in plan.topics().filter(|(_, t)| t.week == week) {
         ui.horizontal(|ui| {
-            let done = topic.status == TopicStatus::Done;
-            let color = if done { p.success } else { p.border };
-            ui.add(Icon::Check.image(18.0, color));
+            let taken = topic.lesson_taken();
+            let color = if taken { p.success } else { p.border };
+            let check = ui.add(Icon::Check.image(18.0, color));
+            if taken {
+                check.on_hover_text(t!("plan.lesson_taken"));
+            }
             ui.vertical(|ui| {
                 ui.label(&topic.title);
                 ui.label(RichText::new(&subject.name).small().color(p.muted));
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if !done && ui.small_button(t!("plan.lesson")).clicked() {
+                let label = if taken {
+                    t!("plan.lesson_again")
+                } else {
+                    t!("plan.lesson")
+                };
+                if ui.small_button(label).clicked() {
                     actions.send(Command::StartLesson(topic.id));
                     actions.go_to(Screen::Lesson);
                 }

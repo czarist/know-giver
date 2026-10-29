@@ -110,6 +110,8 @@ plan:
   week: "Week %{n}"
   this_week: "this week"
   lesson: "Lesson"
+  lesson_again: "Retake lesson"
+  lesson_taken: "Lesson taken"
   quiz: "Quiz"
   review_due: "Review today"
   handout: "Handout"
