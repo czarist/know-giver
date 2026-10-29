@@ -60,12 +60,12 @@ You speak, the tutor answers out loud, like a call with a patient teacher.
 ### 🎙️ Listening
 Local speech recognition: **Parakeet** for live captions while you talk, **Whisper**
 as a second opinion on short or doubtful answers. The microphone stays open for the
-whole lesson, soft voices are brought up before recognition, and your turn ends when
-your sentence does.
+whole lesson, soft voices are brought up before recognition, and your turn ends after
+a pause you choose in Settings, so you can stop to think of a word.
 
 ### 🗣️ Speaking
 The tutor starts talking with the first sentence of its answer, says "Hum." while it
-thinks, and stops when you interrupt. Hands-free, push-to-talk (Space) or typing.
+thinks, and stops when you interrupt. Captions follow its voice, sentence by sentence. Hands-free, push-to-talk (Space) or typing.
 
 ### 🧭 A lesson with a beginning and an end
 Every lesson follows a short plan, from the topic's handout or written by the
