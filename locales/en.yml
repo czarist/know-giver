@@ -788,6 +788,7 @@ error:
     not_found: "That plan no longer exists."
     generic: "Error accessing your saved data."
   ai:
+    out_of_tokens: "The model used its whole answer budget before writing (likely reasoning). Try again; if it repeats, use a faster model or turn on \"Fast responses\" in Settings."
     no_vision_model: "No vision model is set. Fill in \"Vision model\" in Settings > AI with a model that takes images."
     vision_rejected: "The AI server refused the images (HTTP %{status}). Check that the vision model takes images."
     connection: "Could not connect to the AI server at %{url}."

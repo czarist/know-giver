@@ -192,7 +192,7 @@ pub fn read_manuscript_page(
             prompts::get(client.language()).discursive_transcribe,
             &request,
             &[("image/jpeg", jpeg)],
-            8_000,
+            16_000,
         )?;
         match serde_json::from_str::<PageReading>(crate::tasks::extract_json(&text)) {
             Ok(reading) => return Ok(reading),

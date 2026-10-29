@@ -53,6 +53,8 @@ pub enum AiError {
     Http { status: u16, body: String },
     #[error("invalid model response: {0}")]
     InvalidResponse(String),
+    #[error("the model used its whole answer budget (likely reasoning) and wrote nothing")]
+    OutOfTokens,
     #[error("no vision model is configured")]
     NoVisionModel,
     #[error("the vision request was rejected (HTTP {status}); the model may not accept images")]

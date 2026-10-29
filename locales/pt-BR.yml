@@ -788,6 +788,7 @@ error:
     not_found: "Esse plano não existe mais."
     generic: "Erro ao acessar seus dados salvos."
   ai:
+    out_of_tokens: "O modelo gastou todo o limite de resposta antes de escrever (provavelmente raciocinando). Tente de novo; se repetir, use um modelo mais rápido ou ative \"Respostas rápidas\" em Configurações."
     no_vision_model: "Nenhum modelo de visão configurado. Preencha \"Modelo de visão\" em Configurações > IA com um modelo que aceite imagens."
     vision_rejected: "O servidor de IA recusou as imagens (HTTP %{status}). Confira se o modelo de visão aceita imagens."
     connection: "Não foi possível conectar ao servidor de IA em %{url}."

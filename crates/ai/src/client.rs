@@ -184,7 +184,7 @@ impl Client {
                 "image_url": {"url": format!("data:{mime};base64,{encoded}"), "detail": "high"}
             }));
         }
-        let body = json!({
+        let mut body = json!({
             "model": model,
             "messages": [
                 {"role": "system", "content": system},
@@ -193,6 +193,11 @@ impl Client {
             "max_tokens": max_tokens,
             "temperature": 0.0
         });
+        if self.config.fast_responses {
+            // Reasoning models otherwise spend the whole budget thinking about
+            // a dense page and return nothing.
+            skip_reasoning(&mut body, model);
+        }
         match self.send_body(model, &body) {
             Err(AiError::Http { status, .. }) if matches!(status, 400 | 404 | 413 | 415 | 422) => {
                 Err(AiError::VisionRejected { status })
@@ -413,6 +418,9 @@ impl Client {
             .next()
             .ok_or_else(|| AiError::InvalidResponse("no choices".into()))?;
         let content = choice.message.content.unwrap_or_default().trim().to_owned();
+        if content.is_empty() && choice.finish_reason.as_deref() == Some("length") {
+            return Err(AiError::OutOfTokens);
+        }
         if content.is_empty() {
             return Err(AiError::InvalidResponse(format!(
                 "empty content (finish_reason: {})",
@@ -427,7 +435,7 @@ fn should_fall_back(err: &AiError) -> bool {
     match err {
         AiError::RateLimited => true,
         AiError::Http { status, .. } => *status >= 500 || *status == 400 || *status == 404,
-        AiError::InvalidResponse(_) => true,
+        AiError::InvalidResponse(_) | AiError::OutOfTokens => true,
         AiError::Connection { .. }
         | AiError::Auth { .. }
         | AiError::NoVisionModel
@@ -501,6 +509,17 @@ fn read_sse(mut reader: impl BufRead, mut on_delta: impl FnMut(&str)) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_answer_cut_by_the_token_limit_is_reported_as_such() {
+        let cut = r#"{"choices":[{"message":{"content":""},"finish_reason":"length"}]}"#;
+        assert!(matches!(Client::content(cut), Err(AiError::OutOfTokens)));
+        let empty = r#"{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}"#;
+        assert!(matches!(
+            Client::content(empty),
+            Err(AiError::InvalidResponse(_))
+        ));
+    }
 
     #[test]
     fn reasoning_is_skipped_the_way_each_glm_family_accepts() {

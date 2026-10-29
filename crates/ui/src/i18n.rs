@@ -233,6 +233,7 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Ai(AiError::Http { status, .. }) => t!("error.ai.http", status = status),
         EngineError::Ai(AiError::InvalidResponse(_)) => t!("error.ai.invalid_response"),
         EngineError::Ai(AiError::NoVisionModel) => t!("error.ai.no_vision_model"),
+        EngineError::Ai(AiError::OutOfTokens) => t!("error.ai.out_of_tokens"),
         EngineError::Ai(AiError::VisionRejected { status }) => {
             t!("error.ai.vision_rejected", status = status)
         }
