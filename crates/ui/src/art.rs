@@ -1,18 +1,18 @@
-//! The Know Giver mark as a cover plate, like the animal engraving on a
-//! programming book cover: Thoth's ibis head, god of writing and knowledge.
+//! The app icon's engraving as a cover plate, like the animal engraving on a
+//! programming book cover: Thoth, ibis-headed god of writing and knowledge.
 
 use egui::{Image, ImageSource, include_image, vec2};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Art {
-    /// The ibis under the lunar disc, square, ink on dark.
+    /// Thoth engraved in profile on a jade ground, square.
     Mark,
 }
 
 impl Art {
     fn source(self) -> ImageSource<'static> {
         match self {
-            Self::Mark => include_image!("../assets/logo.svg"),
+            Self::Mark => include_image!("../assets/icon-square.svg"),
         }
     }
 

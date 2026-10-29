@@ -234,7 +234,7 @@ fn roadmap_components() {
                 egui_extras::install_image_loaders(ui.ctx());
                 let palette = crate::theme::palette(ui.ctx());
                 ui.horizontal(|ui| {
-                    ui.add(icons::logo(48.0, theme == egui::Theme::Dark));
+                    ui.add(icons::logo(48.0));
                     ui.heading("Know Giver");
                 });
                 ui.horizontal(|ui| {

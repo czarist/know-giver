@@ -1,12 +1,21 @@
 //! The app icon, rasterized from the logo SVG.
 
-/// The Know Giver mark (Thoth's ibis head under the lunar disc).
+/// The small mark (Thoth's ibis head under the lunar disc), for 32 px and less.
 pub const LOGO_SVG: &[u8] = include_bytes!("../assets/logo.svg");
+/// The app icon: Thoth engraved in profile on a jade tile.
+pub const ICON_SVG: &[u8] = include_bytes!("../assets/icon.svg");
+/// Below this size the engraving's lines blur together.
+const SMALL_ICON: u32 = 32;
 
 /// Icon pixels as straight (not premultiplied) RGBA, `size × size`.
 /// Falls back to a plain teal square if the SVG cannot be rendered.
 pub fn rgba(size: u32) -> Vec<u8> {
-    render(LOGO_SVG, size).unwrap_or_else(|| {
+    let svg = if size <= SMALL_ICON {
+        LOGO_SVG
+    } else {
+        ICON_SVG
+    };
+    render(svg, size).unwrap_or_else(|| {
         [0x2F, 0x6F, 0x68, 0xFF]
             .into_iter()
             .cycle()
