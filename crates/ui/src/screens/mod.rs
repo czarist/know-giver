@@ -49,3 +49,38 @@ pub fn current_week(plan: &StudyPlan) -> u32 {
     let days = (Engine::today() - plan.created_on).num_days().max(0);
     ((days / 7) as u32 + 1).clamp(1, plan.weeks.max(1))
 }
+
+/// What a topic's lesson button does: continue an unfinished lesson, look
+/// back at a taken one, or start one.
+pub fn lesson_action(engine: &Engine, topic: &kg_engine::Topic) -> (String, Command) {
+    if engine.has_lesson_draft(topic.id) {
+        (
+            rust_i18n::t!("plan.lesson_continue").into_owned(),
+            Command::ResumeLesson(topic.id),
+        )
+    } else if topic.lesson_taken() {
+        (
+            rust_i18n::t!("plan.lesson_again").into_owned(),
+            Command::OpenRecap(topic.id),
+        )
+    } else {
+        (
+            rust_i18n::t!("plan.lesson").into_owned(),
+            Command::StartLesson(topic.id),
+        )
+    }
+}
+
+/// A small button running [`lesson_action`]; opens the lesson screen.
+pub fn lesson_button(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    topic: &kg_engine::Topic,
+    actions: &mut Actions,
+) {
+    let (label, command) = lesson_action(engine, topic);
+    if ui.small_button(label).clicked() {
+        actions.send(command);
+        actions.go_to(Screen::Lesson);
+    }
+}

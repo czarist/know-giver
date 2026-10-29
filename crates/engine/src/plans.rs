@@ -249,13 +249,31 @@ impl Engine {
         let Some(id) = self.active.as_ref().map(|p| p.id) else {
             self.quiz_stats = QuizStats::default();
             self.lesson_count = 0;
+            self.mistakes.clear();
+            self.lesson_drafts.clear();
             self.refresh_board();
             return;
         };
         self.quiz_stats = self.store.quiz_stats(id).unwrap_or_default();
         self.lesson_count = self.store.lesson_count(id).unwrap_or_default();
+        self.refresh_mistakes();
+        self.refresh_lesson_drafts();
         self.refresh_board();
         self.reload_list();
+    }
+
+    pub(crate) fn refresh_lesson_drafts(&mut self) {
+        self.lesson_drafts = match self.active.as_ref() {
+            Some(plan) => self.store.lesson_draft_topics(plan.id).unwrap_or_default(),
+            None => Vec::new(),
+        };
+    }
+
+    pub(crate) fn refresh_mistakes(&mut self) {
+        self.mistakes = match self.active.as_ref() {
+            Some(plan) => self.store.mistakes(plan.id).unwrap_or_default(),
+            None => Vec::new(),
+        };
     }
 
     fn end_sessions(&mut self) {

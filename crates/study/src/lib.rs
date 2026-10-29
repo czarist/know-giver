@@ -5,6 +5,7 @@
 
 pub mod activity;
 pub mod board;
+pub mod notebook;
 pub mod plan;
 pub mod quiz;
 pub mod reading;
@@ -19,6 +20,7 @@ pub use board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,
 };
+pub use notebook::{LessonRecap, Mistake, MistakeId};
 pub use plan::{
     Difficulty, NewPlan, NewSubject, NewTopic, PlanId, PlanSummary, StudyPlan, Subject, SubjectId,
     Topic, TopicId, TopicStatus,

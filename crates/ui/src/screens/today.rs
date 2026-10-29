@@ -5,7 +5,7 @@ use egui::{Color32, RichText};
 use kg_engine::{Command, Engine, StudyPlan, TopicStatus};
 use rust_i18n::t;
 
-use super::{Actions, current_week};
+use super::{Actions, current_week, lesson_button};
 use crate::app::{KnowGiverApp, Screen};
 use crate::art::Art;
 use crate::icons::Icon;
@@ -68,7 +68,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.add_space(14.0);
         next_step(ui, engine, plan, &mut actions);
         ui.add_space(14.0);
-        this_week(ui, plan, &mut actions);
+        this_week(ui, engine, plan, &mut actions);
     });
     actions.run(app);
 }
@@ -166,10 +166,15 @@ fn next_step(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan, actions: &mut
     let p = theme::palette(ui.ctx());
     let due = plan.due_topics(Engine::today()).len();
     let week = current_week(plan);
+    // An unfinished lesson first, then the next lesson not taken yet.
     let next = plan
         .topics()
-        .filter(|(_, t)| !t.lesson_taken())
-        .min_by_key(|(_, t)| (t.week > week, t.status != TopicStatus::Studying, t.week));
+        .find(|(_, t)| engine.has_lesson_draft(t.id))
+        .or_else(|| {
+            plan.topics()
+                .filter(|(_, t)| !t.lesson_taken())
+                .min_by_key(|(_, t)| (t.week > week, t.status != TopicStatus::Studying, t.week))
+        });
 
     widgets::card(ui, |ui| {
         ui.label(RichText::new(t!("today.next_step")).small().color(p.muted));
@@ -204,12 +209,22 @@ fn next_step(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan, actions: &mut
             widgets::chip(ui, &t!("plan.board_count", count = emphasis), p.highlight);
         }
         ui.horizontal(|ui| {
+            let resume = engine.has_lesson_draft(topic.id);
+            let (label, command) = if resume {
+                (t!("lesson.continue"), Command::ResumeLesson(topic.id))
+            } else {
+                (t!("lesson.start"), Command::StartLesson(topic.id))
+            };
             let start = egui::Button::image_and_text(
                 Icon::Play.image(16.0, Color32::WHITE),
-                RichText::new(t!("lesson.start")).color(Color32::WHITE),
+                RichText::new(label).color(Color32::WHITE),
             )
             .fill(p.accent);
             if ui.add(start).clicked() {
+                actions.send(command);
+                actions.go_to(Screen::Lesson);
+            }
+            if resume && ui.button(t!("lesson.start_over")).clicked() {
                 actions.send(Command::StartLesson(topic.id));
                 actions.go_to(Screen::Lesson);
             }
@@ -221,7 +236,7 @@ fn next_step(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan, actions: &mut
     });
 }
 
-fn this_week(ui: &mut egui::Ui, plan: &StudyPlan, actions: &mut Actions) {
+fn this_week(ui: &mut egui::Ui, engine: &Engine, plan: &StudyPlan, actions: &mut Actions) {
     let p = theme::palette(ui.ctx());
     let week = current_week(plan);
     ui.label(
@@ -242,15 +257,7 @@ fn this_week(ui: &mut egui::Ui, plan: &StudyPlan, actions: &mut Actions) {
                 ui.label(RichText::new(&subject.name).small().color(p.muted));
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let label = if taken {
-                    t!("plan.lesson_again")
-                } else {
-                    t!("plan.lesson")
-                };
-                if ui.small_button(label).clicked() {
-                    actions.send(Command::StartLesson(topic.id));
-                    actions.go_to(Screen::Lesson);
-                }
+                lesson_button(ui, engine, topic, actions);
                 widgets::chip(ui, &i18n::status(topic.status), p.muted);
             });
         });

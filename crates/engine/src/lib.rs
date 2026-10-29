@@ -52,6 +52,7 @@ pub use kg_study::{
     StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
 };
 pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
+pub use kg_study::{LessonRecap, Mistake, MistakeId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
 pub use paths::AppPaths;
@@ -76,8 +77,14 @@ pub enum Command {
     DeletePlan(PlanId),
     SetTopicStatus(TopicId, TopicStatus),
 
+    /// Starts a lesson from the beginning.
     StartLesson(TopicId),
+    /// Continues the unfinished lesson on a topic (or starts one).
+    ResumeLesson(TopicId),
     EndLesson,
+    /// Looks back at the last lesson taken on a topic.
+    OpenRecap(TopicId),
+    CloseRecap,
     StartListening,
     StopListening,
     SendMessage(String),
@@ -89,6 +96,10 @@ pub enum Command {
     StopVoicePreview,
 
     StartQuiz(TopicId),
+    /// A quiz with only the questions of this topic answered wrong before.
+    RetryMistakes(TopicId),
+    /// Takes a question out of the mistakes notebook.
+    DeleteMistake(MistakeId),
     AnswerQuiz(usize),
     NextQuestion,
     CloseQuiz,
@@ -294,6 +305,12 @@ pub struct Engine {
     active: Option<StudyPlan>,
     quiz_stats: QuizStats,
     lesson_count: u32,
+    /// Open mistakes of the active plan, latest first.
+    mistakes: Vec<Mistake>,
+    /// Topics with an unfinished lesson to continue.
+    lesson_drafts: Vec<TopicId>,
+    /// A taken lesson being looked back at.
+    recap: Option<(TopicId, Option<LessonRecap>)>,
 
     import: ImportState,
     /// Roles (cargos) of the imported edital; empty when none were found.
@@ -395,6 +412,9 @@ impl Engine {
             plans: Vec::new(),
             active: None,
             quiz_stats: QuizStats::default(),
+            mistakes: Vec::new(),
+            lesson_drafts: Vec::new(),
+            recap: None,
             lesson_count: 0,
             import: ImportState::Empty,
             roles: Vec::new(),
@@ -459,6 +479,22 @@ impl Engine {
 
     pub fn active_plan(&self) -> Option<&StudyPlan> {
         self.active.as_ref()
+    }
+
+    /// The topic has an unfinished lesson to continue.
+    pub fn has_lesson_draft(&self, topic: TopicId) -> bool {
+        self.lesson_drafts.contains(&topic)
+    }
+
+    /// The lesson being looked back at: its topic and what it covered
+    /// (`None` when no lesson on it was kept).
+    pub fn recap(&self) -> Option<(TopicId, Option<&LessonRecap>)> {
+        self.recap.as_ref().map(|(id, recap)| (*id, recap.as_ref()))
+    }
+
+    /// Quiz questions answered wrong and not yet right, latest first.
+    pub fn mistakes(&self) -> &[Mistake] {
+        &self.mistakes
     }
 
     pub fn quiz_stats(&self) -> QuizStats {
@@ -571,8 +607,23 @@ impl Engine {
                 Ok(())
             }
 
-            Command::StartLesson(id) => self.start_lesson(id),
+            Command::StartLesson(id) => {
+                self.recap = None;
+                self.start_lesson(id)
+            }
             Command::EndLesson => self.end_lesson(),
+            Command::ResumeLesson(id) => {
+                self.recap = None;
+                self.resume_lesson(id)
+            }
+            Command::OpenRecap(id) => {
+                self.recap = Some((id, self.store.last_lesson(id)?));
+                Ok(())
+            }
+            Command::CloseRecap => {
+                self.recap = None;
+                Ok(())
+            }
             Command::StartListening => self.start_listening(),
             Command::StopListening => {
                 self.stop_listening();
@@ -593,10 +644,13 @@ impl Engine {
             }
 
             Command::StartQuiz(id) => self.start_quiz(id),
-            Command::AnswerQuiz(option) => {
-                self.answer_quiz(option);
+            Command::RetryMistakes(id) => self.retry_mistakes(id),
+            Command::DeleteMistake(id) => {
+                self.store.delete_mistake(id)?;
+                self.refresh_mistakes();
                 Ok(())
             }
+            Command::AnswerQuiz(option) => self.answer_quiz(option),
             Command::NextQuestion => self.next_question(),
             Command::CloseQuiz => {
                 self.quiz = None;
@@ -802,6 +856,13 @@ impl Engine {
                 step_notes: Vec::new(),
                 quiz_topics: Vec::new(),
                 length: self.settings.lesson_length,
+                mistakes: self
+                    .store
+                    .topic_mistakes(id)
+                    .unwrap_or_default()
+                    .iter()
+                    .map(kg_study::Mistake::summary)
+                    .collect(),
             },
             topic.title.clone(),
         ))

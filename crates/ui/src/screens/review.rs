@@ -5,7 +5,7 @@ use egui::RichText;
 use kg_engine::{Command, Engine, ReviewGrade, ReviewSession, ReviewStep};
 use rust_i18n::t;
 
-use super::Actions;
+use super::{Actions, lesson_action};
 use crate::app::{KnowGiverApp, Screen};
 use crate::{i18n, theme, widgets};
 
@@ -56,8 +56,9 @@ fn due_list(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
                     widgets::hint(ui, &subject.name);
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(t!("plan.lesson")).clicked() {
-                        actions.send(Command::StartLesson(topic.id));
+                    let (label, command) = lesson_action(engine, topic);
+                    if ui.button(label).clicked() {
+                        actions.send(command);
                         actions.go_to(Screen::Lesson);
                     }
                     if ui.button(t!("plan.quiz")).clicked() {

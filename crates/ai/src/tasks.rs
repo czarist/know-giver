@@ -324,6 +324,9 @@ pub struct TopicContext {
     /// lesson covers them.
     pub quiz_topics: Vec<String>,
     pub length: LessonLength,
+    /// Quiz questions the student got wrong on this topic, one line each
+    /// (question, right answer, the student's answer).
+    pub mistakes: Vec<String>,
 }
 
 impl TopicContext {
@@ -564,6 +567,7 @@ fn lesson_plan(topic: &TopicContext) -> String {
             list.join("\n")
         )
     };
+    let quiz = format!("{quiz}{}", mistakes_block(topic));
     let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
     if topic.outline.is_empty() {
         return format!(
@@ -603,6 +607,26 @@ fn lesson_plan(topic: &TopicContext) -> String {
         steps.join("; ")
     )
 }
+
+/// The student's past mistakes, for the tutor to go over in the lesson.
+fn mistakes_block(topic: &TopicContext) -> String {
+    if topic.mistakes.is_empty() {
+        return String::new();
+    }
+    let list: Vec<String> = topic
+        .mistakes
+        .iter()
+        .take(MISTAKES_IN_PROMPT)
+        .map(|m| format!("  - {m}"))
+        .collect();
+    format!(
+        "\n- O aluno errou estas questões em quizzes anteriores. Retome cada ponto na etapa em que ele aparece: explique por que a resposta certa é a certa e por que a dele não é, sem constrangê-lo, e confira se ele entendeu:\n{}",
+        list.join("\n")
+    )
+}
+
+/// Past mistakes given to the tutor or the review, at most.
+const MISTAKES_IN_PROMPT: usize = 8;
 
 /// Generates `count` multiple-choice questions about a topic.
 pub fn generate_quiz(
@@ -709,9 +733,39 @@ fn handout_messages(topic: &TopicContext, edital: &str) -> Result<[ChatMessage; 
 
 /// An open recall question for reviewing a topic.
 pub fn review_question(client: &Client, topic: &TopicContext) -> Result<String, AiError> {
+    review_question_avoiding(client, topic, &[])
+}
+
+/// A review question different from those already asked in this review.
+/// Past mistakes, when there are any, are asked about first.
+pub fn review_question_avoiding(
+    client: &Client,
+    topic: &TopicContext,
+    asked: &[String],
+) -> Result<String, AiError> {
+    let mut request = "Faça a pergunta.".to_owned();
+    if !topic.mistakes.is_empty() {
+        let list: Vec<String> = topic
+            .mistakes
+            .iter()
+            .take(MISTAKES_IN_PROMPT)
+            .map(|m| format!("- {m}"))
+            .collect();
+        request.push_str(&format!(
+            "\nO aluno errou estas questões em quizzes. De preferência, pergunte sobre o ponto de uma delas, com outras palavras:\n{}",
+            list.join("\n")
+        ));
+    }
+    if !asked.is_empty() {
+        let list: Vec<String> = asked.iter().map(|q| format!("- {q}")).collect();
+        request.push_str(&format!(
+            "\nJá perguntei isto nesta revisão; pergunte sobre outro ponto:\n{}",
+            list.join("\n")
+        ));
+    }
     let messages = [
         ChatMessage::system(fill(prompts::REVIEW_QUESTION, &topic.values())),
-        ChatMessage::user("Faça a pergunta."),
+        ChatMessage::user(request),
     ];
     let draft: ReviewQuestionDraft = chat_json(client, Task::Quiz, &messages, 4_096)?;
     Ok(draft.question)

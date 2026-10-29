@@ -113,6 +113,37 @@ fn seed(paths: &AppPaths, english: bool) {
     store.update_topic(t).unwrap();
 
     let crase = plan.subjects[0].topics[1].id;
+    // A question missed in a quiz, and a lesson left halfway.
+    store
+        .record_mistake(
+            crase,
+            &kg_engine::QuizQuestion {
+                prompt: tr(
+                    "Há crase em \"Vou a pé\"?",
+                    "Which is right: \"The list of names is\" or \"are\"?",
+                )
+                .into(),
+                options: vec![tr("Sim", "is").into(), tr("Não", "are").into()],
+                correct: if english { 0 } else { 1 },
+                explanation: tr(
+                    "Não há crase antes de palavra masculina.",
+                    "The verb agrees with \"list\", the head noun.",
+                )
+                .into(),
+                from_board: false,
+            },
+            if english { 1 } else { 0 },
+            today,
+        )
+        .unwrap();
+    let halfway = plan.subjects[0].topics[2].id;
+    store
+        .save_lesson_draft(
+            halfway,
+            r#"{"outline":["Um","Dois"],"step":1,"board":[],"turns":[{"speaker":"Tutor","text":"Oi"},{"speaker":"Student","text":"Oi"}]}"#,
+            today,
+        )
+        .unwrap();
     let question = |n: u32, prompt: &str, topic, relevance, reason: &str| NewBoardQuestion {
         number: Some(n),
         prompt: prompt.into(),
@@ -240,6 +271,13 @@ FIM",
             &format!("{locale}-lesson-finished"),
         );
         harness.state_mut().dispatch(Command::EndLesson);
+        harness.state_mut().dispatch(Command::OpenRecap(topic));
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-lesson-recap"),
+        );
+        harness.state_mut().dispatch(Command::CloseRecap);
 
         // An edital with several roles, waiting for the choice.
         let roles = tr(

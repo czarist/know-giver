@@ -150,6 +150,10 @@ impl Drop for Engine {
         self.tick_study_time();
         self.flush_study_time();
         self.stop_audio();
+        // A lesson left open is kept to continue next time.
+        if let Err(err) = self.save_lesson_draft() {
+            tracing::warn!(%err, "could not keep the open lesson");
+        }
     }
 }
 

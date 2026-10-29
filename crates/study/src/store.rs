@@ -10,11 +10,12 @@ use crate::board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance,
 };
+use crate::notebook::{LessonRecap, Mistake, MistakeId};
 use crate::plan::{
     Difficulty, NewPlan, PlanId, PlanSummary, StudyPlan, Subject, SubjectId, Topic, TopicId,
     TopicStatus,
 };
-use crate::quiz::{QuizAttempt, QuizStats};
+use crate::quiz::{QuizAttempt, QuizQuestion, QuizStats};
 use crate::reading::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 use crate::review::ReviewState;
 
@@ -165,6 +166,29 @@ const MIGRATIONS: &[&str] = &[
         note TEXT NOT NULL DEFAULT '',
         created_on TEXT NOT NULL
     );
+",
+    r"
+    CREATE TABLE mistakes (
+        id INTEGER PRIMARY KEY,
+        topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        prompt TEXT NOT NULL,
+        options TEXT NOT NULL,
+        correct INTEGER NOT NULL,
+        explanation TEXT NOT NULL,
+        from_board INTEGER NOT NULL,
+        chosen INTEGER NOT NULL,
+        missed_on TEXT NOT NULL,
+        misses INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(topic_id, prompt)
+    );
+    CREATE TABLE lesson_drafts (
+        topic_id INTEGER PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        saved_on TEXT NOT NULL
+    );
+    ALTER TABLE lessons ADD COLUMN outline TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE lessons ADD COLUMN board TEXT NOT NULL DEFAULT '[]';
+    ALTER TABLE lessons ADD COLUMN summary TEXT NOT NULL DEFAULT '';
 ",
 ];
 
@@ -441,12 +465,200 @@ impl Store {
         )?)
     }
 
-    pub fn record_lesson(&mut self, topic: TopicId, today: NaiveDate) -> Result<()> {
+    /// Records a lesson taken today and what it covered.
+    pub fn record_lesson(
+        &mut self,
+        topic: TopicId,
+        today: NaiveDate,
+        recap: &LessonRecap,
+    ) -> Result<()> {
+        let json = |items: &[String]| serde_json::to_string(items).unwrap_or_else(|_| "[]".into());
         self.conn.execute(
-            "INSERT INTO lessons (topic_id, taken_on) VALUES (?1, ?2)",
-            params![topic.0, today.to_string()],
+            "INSERT INTO lessons (topic_id, taken_on, outline, board, summary)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                topic.0,
+                today.to_string(),
+                json(&recap.outline),
+                json(&recap.board),
+                recap.summary
+            ],
         )?;
         Ok(())
+    }
+
+    /// What the latest lesson on a topic covered, if any was taken.
+    pub fn last_lesson(&self, topic: TopicId) -> Result<Option<LessonRecap>> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT taken_on, outline, board, summary FROM lessons
+                 WHERE topic_id = ?1 ORDER BY id DESC LIMIT 1",
+                [topic.0],
+                |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?,
+                    ))
+                },
+            )
+            .optional()?;
+        let Some((taken_on, outline, board, summary)) = row else {
+            return Ok(None);
+        };
+        Ok(Some(LessonRecap {
+            taken_on: Some(parse_date("taken_on", &taken_on)?),
+            outline: serde_json::from_str(&outline).unwrap_or_default(),
+            board: serde_json::from_str(&board).unwrap_or_default(),
+            summary,
+        }))
+    }
+
+    /// Keeps an unfinished lesson (engine JSON) to pick it up later.
+    pub fn save_lesson_draft(
+        &mut self,
+        topic: TopicId,
+        content: &str,
+        today: NaiveDate,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO lesson_drafts (topic_id, content, saved_on) VALUES (?1, ?2, ?3)
+             ON CONFLICT(topic_id) DO UPDATE SET content = excluded.content,
+                 saved_on = excluded.saved_on",
+            params![topic.0, content, today.to_string()],
+        )?;
+        Ok(())
+    }
+
+    pub fn lesson_draft(&self, topic: TopicId) -> Result<Option<String>> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT content FROM lesson_drafts WHERE topic_id = ?1",
+                [topic.0],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+
+    pub fn delete_lesson_draft(&mut self, topic: TopicId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM lesson_drafts WHERE topic_id = ?1", [topic.0])?;
+        Ok(())
+    }
+
+    /// Topics of a plan with an unfinished lesson.
+    pub fn lesson_draft_topics(&self, plan: PlanId) -> Result<Vec<TopicId>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT d.topic_id FROM lesson_drafts d
+             JOIN topics t ON t.id = d.topic_id
+             JOIN subjects s ON s.id = t.subject_id
+             WHERE s.plan_id = ?1",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| r.get(0).map(TopicId))?;
+        Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Notes a wrong quiz answer. Missing the same question again updates it.
+    pub fn record_mistake(
+        &mut self,
+        topic: TopicId,
+        question: &QuizQuestion,
+        chosen: usize,
+        today: NaiveDate,
+    ) -> Result<()> {
+        let options = serde_json::to_string(&question.options).unwrap_or_else(|_| "[]".into());
+        self.conn.execute(
+            "INSERT INTO mistakes
+               (topic_id, prompt, options, correct, explanation, from_board, chosen, missed_on)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+             ON CONFLICT(topic_id, prompt) DO UPDATE SET options = excluded.options,
+                 correct = excluded.correct, explanation = excluded.explanation,
+                 chosen = excluded.chosen, missed_on = excluded.missed_on,
+                 misses = mistakes.misses + 1",
+            params![
+                topic.0,
+                question.prompt,
+                options,
+                question.correct as i64,
+                question.explanation,
+                question.from_board,
+                chosen as i64,
+                today.to_string()
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// The question was answered right: it leaves the notebook.
+    pub fn clear_mistake(&mut self, topic: TopicId, prompt: &str) -> Result<bool> {
+        let removed = self.conn.execute(
+            "DELETE FROM mistakes WHERE topic_id = ?1 AND prompt = ?2",
+            params![topic.0, prompt],
+        )?;
+        Ok(removed > 0)
+    }
+
+    pub fn delete_mistake(&mut self, id: MistakeId) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM mistakes WHERE id = ?1", [id.0])?;
+        Ok(())
+    }
+
+    /// Every open mistake of a plan, latest first.
+    pub fn mistakes(&self, plan: PlanId) -> Result<Vec<Mistake>> {
+        self.query_mistakes(
+            "JOIN topics t ON t.id = m.topic_id
+             JOIN subjects s ON s.id = t.subject_id
+             WHERE s.plan_id = ?1",
+            plan.0,
+        )
+    }
+
+    /// Open mistakes on one topic, latest first.
+    pub fn topic_mistakes(&self, topic: TopicId) -> Result<Vec<Mistake>> {
+        self.query_mistakes("WHERE m.topic_id = ?1", topic.0)
+    }
+
+    fn query_mistakes(&self, filter: &str, id: i64) -> Result<Vec<Mistake>> {
+        let sql = format!(
+            "SELECT m.id, m.topic_id, m.prompt, m.options, m.correct, m.explanation,
+                    m.from_board, m.chosen, m.missed_on, m.misses
+             FROM mistakes m {filter}
+             ORDER BY m.missed_on DESC, m.id DESC"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map([id], |r| {
+            Ok((
+                Mistake {
+                    id: MistakeId(r.get(0)?),
+                    topic_id: TopicId(r.get(1)?),
+                    question: QuizQuestion {
+                        prompt: r.get(2)?,
+                        options: serde_json::from_str(&r.get::<_, String>(3)?).unwrap_or_default(),
+                        correct: r.get::<_, i64>(4)?.max(0) as usize,
+                        explanation: r.get(5)?,
+                        from_board: r.get(6)?,
+                    },
+                    chosen: r.get::<_, i64>(7)?.max(0) as usize,
+                    missed_on: NaiveDate::MIN,
+                    misses: r.get::<_, i64>(9)?.max(0) as u32,
+                },
+                r.get::<_, String>(8)?,
+            ))
+        })?;
+        let mut mistakes = Vec::new();
+        for row in rows {
+            let (mut mistake, day) = row?;
+            mistake.missed_on = parse_date("missed_on", &day)?;
+            // A question whose options were lost cannot be asked again.
+            if mistake.question.correct < mistake.question.options.len() {
+                mistakes.push(mistake);
+            }
+        }
+        Ok(mistakes)
     }
 
     pub fn lesson_count(&self, plan: PlanId) -> Result<u32> {
@@ -1114,10 +1326,69 @@ mod tests {
                 })
                 .unwrap();
         }
-        store.record_lesson(topic_id, today()).unwrap();
+        store
+            .record_lesson(topic_id, today(), &LessonRecap::default())
+            .unwrap();
         let stats = store.quiz_stats(plan.id).unwrap();
         assert_eq!((stats.attempts, stats.correct, stats.total), (2, 8, 10));
         assert_eq!(store.lesson_count(plan.id).unwrap(), 1);
+    }
+
+    #[test]
+    fn mistakes_update_on_a_second_miss_and_leave_when_answered_right() {
+        let mut store = Store::open_in_memory().unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "e.pdf", "", today())
+            .unwrap();
+        let topic = plan.subjects[0].topics[0].id;
+        let question = QuizQuestion {
+            prompt: "Crase antes de palavra masculina?".into(),
+            options: vec!["Sim".into(), "Não".into()],
+            correct: 1,
+            explanation: "Não há artigo feminino.".into(),
+            from_board: false,
+        };
+        store.record_mistake(topic, &question, 0, today()).unwrap();
+        store.record_mistake(topic, &question, 0, today()).unwrap();
+        let mistakes = store.mistakes(plan.id).unwrap();
+        assert_eq!(mistakes.len(), 1);
+        assert_eq!((mistakes[0].misses, mistakes[0].chosen), (2, 0));
+        assert_eq!(mistakes[0].question, question);
+        assert_eq!(store.topic_mistakes(topic).unwrap().len(), 1);
+
+        assert!(store.clear_mistake(topic, &question.prompt).unwrap());
+        assert!(store.mistakes(plan.id).unwrap().is_empty());
+        assert!(!store.clear_mistake(topic, &question.prompt).unwrap());
+    }
+
+    #[test]
+    fn lessons_keep_their_recap_and_drafts_their_place() {
+        let mut store = Store::open_in_memory().unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "e.pdf", "", today())
+            .unwrap();
+        let topic = plan.subjects[0].topics[0].id;
+        assert_eq!(store.last_lesson(topic).unwrap(), None);
+        let recap = LessonRecap {
+            taken_on: Some(today()),
+            outline: vec!["O que é".into(), "Exceções".into()],
+            board: vec!["à + a".into()],
+            summary: "Crase é fusão.".into(),
+        };
+        store.record_lesson(topic, today(), &recap).unwrap();
+        assert_eq!(store.last_lesson(topic).unwrap(), Some(recap));
+
+        store.save_lesson_draft(topic, "{}", today()).unwrap();
+        store
+            .save_lesson_draft(topic, "{\"step\":2}", today())
+            .unwrap();
+        assert_eq!(
+            store.lesson_draft(topic).unwrap().as_deref(),
+            Some("{\"step\":2}")
+        );
+        assert_eq!(store.lesson_draft_topics(plan.id).unwrap(), vec![topic]);
+        store.delete_lesson_draft(topic).unwrap();
+        assert_eq!(store.lesson_draft(topic).unwrap(), None);
     }
 
     #[test]

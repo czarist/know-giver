@@ -4,6 +4,15 @@ use chrono::NaiveDate;
 use kg_ai::{AiError, QuestionDraft, ReviewFeedback, TopicContext};
 use kg_study::{Quiz, QuizAttempt, QuizQuestion, ReviewGrade, TopicId};
 
+/// Letters and digits only, to spot the same question twice.
+fn prompt_key(prompt: &str) -> String {
+    prompt
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
+}
+
 use crate::{Engine, EngineError, Event, Notice};
 
 /// Where a quiz is.
@@ -24,6 +33,10 @@ pub struct QuizSession {
     correct: u32,
     /// Past exam questions that open the quiz, before generated ones.
     board: Vec<QuizQuestion>,
+    /// The first questions were answered wrong in earlier quizzes.
+    pub retries: usize,
+    /// Only past mistakes: the result does not count as a review.
+    pub mistakes_only: bool,
 }
 
 impl QuizSession {
@@ -36,6 +49,11 @@ impl QuizSession {
             QuizStep::Question { index, .. } => self.questions().get(index),
             _ => None,
         }
+    }
+
+    /// The question at `index` was answered wrong before.
+    pub fn is_retry(&self, index: usize) -> bool {
+        index < self.retries
     }
 
     pub fn correct_so_far(&self) -> u32 {
@@ -145,15 +163,32 @@ impl Engine {
         let (ctx, topic_title) = self.topic_context(topic_id)?;
         let id = self.next_id();
         let size = self.settings.quiz_size as usize;
+        // Questions missed before come first, up to half the quiz.
+        let mut retry: Vec<QuizQuestion> = self
+            .store
+            .topic_mistakes(topic_id)?
+            .into_iter()
+            .map(|m| m.question)
+            .take(size.div_ceil(2))
+            .collect();
+        for (i, q) in retry.iter_mut().enumerate() {
+            q.shuffle_options(seed().wrapping_add(0x51 + i as u64));
+        }
+        let retries = retry.len();
+        let asked: Vec<String> = retry.iter().map(|q| prompt_key(&q.prompt)).collect();
+        let fresh = |q: &QuizQuestion| !asked.contains(&prompt_key(&q.prompt));
         let mut board = self.usable_board_questions(topic_id);
+        board.retain(|q| fresh(q));
         shuffle(&mut board, seed());
-        board.truncate(size);
+        board.truncate(size - retries);
         for (i, q) in board.iter_mut().enumerate() {
             q.shuffle_options(seed().wrapping_add(i as u64));
         }
+        board.splice(0..0, retry);
         let missing = size - board.len();
         // Questions prepared in advance come next; the model writes the rest.
         let mut prepared = self.quiz_bank(topic_id);
+        prepared.retain(|q| !asked.contains(&prompt_key(&q.prompt)));
         shuffle(&mut prepared, seed());
         prepared.truncate(missing);
         let missing = missing - prepared.len();
@@ -165,6 +200,8 @@ impl Engine {
             quiz: None,
             correct: 0,
             board,
+            retries,
+            mistakes_only: false,
         });
         if missing == 0 {
             // Enough real or prepared questions: no model call needed.
@@ -187,21 +224,55 @@ impl Engine {
         Ok(())
     }
 
-    pub(crate) fn answer_quiz(&mut self, option: usize) {
+    /// A quiz made only of this topic's past mistakes.
+    pub(crate) fn retry_mistakes(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+        let (_, topic_title) = self.topic_context(topic_id)?;
+        let mut questions: Vec<QuizQuestion> = self
+            .store
+            .topic_mistakes(topic_id)?
+            .into_iter()
+            .map(|m| m.question)
+            .collect();
+        shuffle(&mut questions, seed());
+        for (i, q) in questions.iter_mut().enumerate() {
+            q.shuffle_options(seed().wrapping_add(i as u64));
+        }
+        let quiz = Quiz::new(topic_id, questions)?;
+        let retries = quiz.questions().len();
+        self.quiz = Some(QuizSession {
+            id: self.next_id(),
+            topic_id,
+            topic_title,
+            step: QuizStep::Question {
+                index: 0,
+                chosen: None,
+            },
+            quiz: Some(quiz),
+            correct: 0,
+            board: Vec::new(),
+            retries,
+            mistakes_only: true,
+        });
+        Ok(())
+    }
+
+    /// Picks an option. A wrong answer goes into the mistakes notebook; a
+    /// right one takes the question out of it.
+    pub(crate) fn answer_quiz(&mut self, option: usize) -> Result<(), EngineError> {
         let Some(session) = self.quiz.as_mut() else {
-            return;
+            return Ok(());
         };
         let QuizStep::Question {
             index,
             chosen: None,
         } = session.step
         else {
-            return;
+            return Ok(());
         };
-        let is_correct = session
-            .questions()
-            .get(index)
-            .is_some_and(|q| q.correct == option);
+        let Some(question) = session.questions().get(index).cloned() else {
+            return Ok(());
+        };
+        let is_correct = question.correct == option;
         if is_correct {
             session.correct += 1;
         }
@@ -209,6 +280,15 @@ impl Engine {
             index,
             chosen: Some(option),
         };
+        let topic_id = session.topic_id;
+        if is_correct {
+            self.store.clear_mistake(topic_id, &question.prompt)?;
+        } else {
+            self.store
+                .record_mistake(topic_id, &question, option, Self::today())?;
+        }
+        self.refresh_mistakes();
+        Ok(())
     }
 
     pub(crate) fn next_question(&mut self) -> Result<(), EngineError> {
@@ -235,6 +315,12 @@ impl Engine {
         session.step = QuizStep::Finished { correct, total };
         let topic_id = session.topic_id;
         let today = Self::today();
+        if session.mistakes_only {
+            // Going over mistakes is practice, not a review of the topic.
+            self.record_activity(kg_study::ActivityKind::Quiz)?;
+            self.notices.push(Notice::QuizSaved { correct, total });
+            return Ok(());
+        }
         self.store.record_quiz(&QuizAttempt {
             topic_id,
             taken_on: today,

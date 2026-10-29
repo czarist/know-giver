@@ -840,3 +840,138 @@ fn generated_handout_opens_in_the_reader_with_progress_and_highlights() {
     engine.handle(Command::DeleteReading(reading.id)).unwrap();
     assert!(engine.reader().is_none() && engine.readings().is_empty());
 }
+
+#[test]
+fn wrong_answers_go_to_the_notebook_and_open_the_next_quiz() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    let draft = |prompt: &str| QuestionDraft {
+        prompt: prompt.into(),
+        options: vec!["a".into(), "b".into(), "c".into()],
+        correct: 0,
+        explanation: String::new(),
+    };
+    let ready = |engine: &mut Engine, prompts: &[&str]| {
+        let session = engine.quiz().unwrap().id;
+        engine
+            .events_tx
+            .send(Event::Practice(PracticeEvent::QuizReady {
+                session,
+                result: Ok(prompts.iter().map(|p| draft(p)).collect()),
+            }))
+            .unwrap();
+        engine.poll();
+    };
+    let right = |engine: &Engine| engine.quiz().unwrap().current().unwrap().correct;
+
+    engine.handle(Command::StartQuiz(id)).unwrap();
+    ready(&mut engine, &["Primeira?", "Segunda?"]);
+    let missed = engine.quiz().unwrap().current().unwrap().prompt.clone();
+    let wrong = (right(&engine) + 1) % 3;
+    engine.handle(Command::AnswerQuiz(wrong)).unwrap();
+    assert_eq!(engine.mistakes().len(), 1);
+    assert_eq!(engine.mistakes()[0].question.prompt, missed);
+    // The tutor and the reviews hear about it.
+    assert_eq!(engine.topic_context(id).unwrap().0.mistakes.len(), 1);
+
+    // The next quiz opens with it, and a right answer clears it.
+    engine.handle(Command::StartQuiz(id)).unwrap();
+    ready(&mut engine, &["Outra?"]);
+    let quiz = engine.quiz().unwrap();
+    assert_eq!(quiz.current().unwrap().prompt, missed);
+    assert!(quiz.is_retry(0) && !quiz.is_retry(1));
+    engine.handle(Command::AnswerQuiz(right(&engine))).unwrap();
+    assert!(engine.mistakes().is_empty());
+}
+
+#[test]
+fn going_over_mistakes_is_not_a_review() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartQuiz(id)).unwrap();
+    let session = engine.quiz().unwrap().id;
+    engine
+        .events_tx
+        .send(Event::Practice(PracticeEvent::QuizReady {
+            session,
+            result: Ok(vec![QuestionDraft {
+                prompt: "Qual?".into(),
+                options: vec!["a".into(), "b".into()],
+                correct: 0,
+                explanation: String::new(),
+            }]),
+        }))
+        .unwrap();
+    engine.poll();
+    let wrong = (engine.quiz().unwrap().current().unwrap().correct + 1) % 2;
+    engine.handle(Command::AnswerQuiz(wrong)).unwrap();
+    engine.handle(Command::NextQuestion).unwrap();
+    let attempts = engine.quiz_stats().attempts;
+    let due = topic(&engine, id).review.due;
+
+    engine.handle(Command::RetryMistakes(id)).unwrap();
+    let quiz = engine.quiz().unwrap();
+    assert!(quiz.mistakes_only);
+    assert_eq!(quiz.questions().len(), 1);
+    let right = quiz.current().unwrap().correct;
+    engine.handle(Command::AnswerQuiz(right)).unwrap();
+    engine.handle(Command::NextQuestion).unwrap();
+    assert!(engine.mistakes().is_empty());
+    assert_eq!(engine.quiz_stats().attempts, attempts);
+    assert_eq!(topic(&engine, id).review.due, due);
+}
+
+#[test]
+fn an_unfinished_lesson_is_kept_and_picked_up_where_it_stopped() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    engine.simulate_tutor_text("Oi! Vamos lá.\nROTEIRO: O que é | Quando usar | Exceções");
+    engine
+        .handle(Command::SendMessage("Crase é a fusão de dois as.".into()))
+        .unwrap();
+    engine.simulate_tutor_text("Isso!\nETAPA: 2");
+    engine.handle(Command::EndLesson).unwrap();
+    // Not taken, but kept, and it counts as study today.
+    assert!(engine.has_lesson_draft(id));
+    assert!(!topic(&engine, id).lesson_taken());
+    assert!(engine.studied_today());
+
+    engine.handle(Command::ResumeLesson(id)).unwrap();
+    let lesson = engine.lesson().unwrap();
+    assert_eq!((lesson.step, lesson.outline.len()), (1, 3));
+    let texts: Vec<&str> = lesson.turns.iter().map(|t| t.text.as_str()).collect();
+    assert_eq!(
+        texts,
+        ["Oi! Vamos lá.", "Crase é a fusão de dois as.", "Isso!"]
+    );
+
+    engine.simulate_tutor_text("Resumo: crase é fusão. Parabéns!\nFIM");
+    assert!(!engine.has_lesson_draft(id));
+    assert!(topic(&engine, id).lesson_taken());
+    engine.handle(Command::EndLesson).unwrap();
+
+    engine.handle(Command::OpenRecap(id)).unwrap();
+    let (topic_id, recap) = engine.recap().unwrap();
+    let recap = recap.unwrap();
+    assert_eq!(topic_id, id);
+    assert_eq!(recap.outline, ["O que é", "Quando usar", "Exceções"]);
+    assert_eq!(recap.summary, "Resumo: crase é fusão. Parabéns!");
+    // Starting the lesson again closes the recap.
+    engine.handle(Command::StartLesson(id)).unwrap();
+    assert!(engine.recap().is_none());
+}
+
+#[test]
+fn starting_over_drops_the_unfinished_lesson() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartLesson(id)).unwrap();
+    engine.simulate_tutor_text("Oi!");
+    engine.handle(Command::SendMessage("Oi.".into())).unwrap();
+    engine.handle(Command::EndLesson).unwrap();
+    assert!(engine.has_lesson_draft(id));
+    engine.handle(Command::StartLesson(id)).unwrap();
+    assert!(!engine.has_lesson_draft(id));
+    assert!(engine.lesson().unwrap().turns.is_empty());
+}

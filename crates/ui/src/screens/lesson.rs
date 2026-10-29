@@ -3,7 +3,7 @@
 //! control bar. The transcript and typed chat open in a side panel.
 
 use egui::{Color32, RichText, Stroke, pos2, vec2};
-use kg_engine::{Command, Engine, LessonPhase, LessonSession, Speaker};
+use kg_engine::{Command, Engine, LessonPhase, LessonRecap, LessonSession, Speaker, TopicId};
 use rust_i18n::t;
 
 use super::{Actions, current_week};
@@ -29,7 +29,10 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let state = &mut app.ui;
 
     let Some(lesson) = engine.lesson() else {
-        no_lesson(ui, engine, &mut actions);
+        match engine.recap() {
+            Some((topic_id, recap)) => recap_view(ui, engine, topic_id, recap, &mut actions),
+            None => no_lesson(ui, engine, &mut actions),
+        }
         actions.run(app);
         return;
     };
@@ -681,6 +684,126 @@ fn side_panel(
     });
 }
 
+/// A taken lesson, looked back at: its plan, the board and the closing
+/// words, with the way to take it again.
+fn recap_view(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    topic_id: TopicId,
+    recap: Option<&LessonRecap>,
+    actions: &mut Actions,
+) {
+    let p = theme::palette(ui.ctx());
+    let found = engine
+        .active_plan()
+        .and_then(|plan| plan.find_topic(topic_id));
+    let (subject, title) = found.map_or((String::new(), String::new()), |(s, t)| {
+        (s.name.clone(), t.title.clone())
+    });
+    widgets::header(ui, &title, &subject);
+    ui.horizontal(|ui| {
+        if widgets::primary_button(ui, &t!("lesson.retake")).clicked() {
+            actions.send(Command::StartLesson(topic_id));
+        }
+        if ui.button(t!("plan.quiz")).clicked() {
+            actions.send(Command::CloseRecap);
+            actions.send(Command::StartQuiz(topic_id));
+            actions.go_to(Screen::Quiz);
+        }
+        let mistakes = engine
+            .mistakes()
+            .iter()
+            .filter(|m| m.topic_id == topic_id)
+            .count();
+        if mistakes > 0
+            && ui
+                .button(t!("quiz.retry_mistakes", count = mistakes))
+                .clicked()
+        {
+            actions.send(Command::CloseRecap);
+            actions.send(Command::RetryMistakes(topic_id));
+            actions.go_to(Screen::Quiz);
+        }
+        if ui.button(t!("common.back")).clicked() {
+            actions.send(Command::CloseRecap);
+        }
+    });
+    ui.add_space(10.0);
+    let Some(recap) = recap
+        .filter(|r| !(r.outline.is_empty() && r.board.is_empty() && r.summary.trim().is_empty()))
+    else {
+        widgets::hint(ui, &t!("lesson.recap_missing"));
+        return;
+    };
+    egui::ScrollArea::vertical().show(ui, |ui| {
+        if let Some(day) = recap.taken_on {
+            widgets::hint(ui, &t!("lesson.recap_taken_on", date = i18n::date(day)));
+            ui.add_space(6.0);
+        }
+        if !recap.summary.trim().is_empty() {
+            widgets::card(ui, |ui| {
+                ui.label(
+                    RichText::new(t!("lesson.recap_summary"))
+                        .small()
+                        .color(p.muted),
+                );
+                ui.label(RichText::new(recap.summary.trim()).size(16.0));
+            });
+        }
+        if !recap.outline.is_empty() {
+            widgets::card(ui, |ui| {
+                ui.label(RichText::new(t!("lesson.outline")).small().color(p.muted));
+                for (i, step) in recap.outline.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        ui.add(Icon::Check.image(14.0, p.success));
+                        ui.label(format!("{}. {step}", i + 1));
+                    });
+                }
+            });
+        }
+        if !recap.board.is_empty() {
+            ui.add_space(4.0);
+            recap_board(ui, &recap.board);
+        }
+    });
+}
+
+/// The lesson's board, all of it, in chalk.
+fn recap_board(ui: &mut egui::Ui, entries: &[String]) {
+    egui::Frame::new()
+        .fill(BOARD_FILL)
+        .stroke(Stroke::new(6.0, Color32::from_rgb(0x8A, 0x6A, 0x4A)))
+        .inner_margin(22)
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(
+                RichText::new(t!("lesson.board").to_uppercase())
+                    .size(11.5)
+                    .color(BOARD_INK.gamma_multiply(0.6)),
+            );
+            ui.add_space(8.0);
+            for point in entries {
+                let entry = crate::whiteboard::parse(point);
+                if matches!(entry, crate::whiteboard::Entry::Image(_)) {
+                    continue;
+                }
+                let width = ui.available_width();
+                let probe = egui::Rect::from_min_size(ui.cursor().min, vec2(width, 2000.0));
+                let painter = ui.painter().clone();
+                let height = crate::whiteboard::paint(
+                    ui,
+                    &painter.with_clip_rect(egui::Rect::NOTHING),
+                    probe,
+                    &entry,
+                    BOARD_INK,
+                    None,
+                );
+                let (rect, _) = ui.allocate_exact_size(vec2(width, height), egui::Sense::hover());
+                crate::whiteboard::paint(ui, &painter, rect, &entry, BOARD_INK, None);
+            }
+        });
+}
+
 fn no_lesson(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     widgets::header(ui, &t!("lesson.title"), &t!("lesson.subtitle"));
     let Some(plan) = engine.active_plan() else {
@@ -694,10 +817,14 @@ fn no_lesson(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     ui.add_space(8.0);
     ui.label(RichText::new(t!("lesson.suggestions")).family(theme::strong_family()));
     let week = current_week(plan);
-    let suggestions = plan
-        .topics()
-        .filter(|(_, t)| !t.lesson_taken() && t.week <= week)
-        .take(6);
+    // Unfinished lessons first, then lessons not taken yet.
+    let unfinished = plan.topics().filter(|(_, t)| engine.has_lesson_draft(t.id));
+    let suggestions =
+        unfinished
+            .chain(plan.topics().filter(|(_, t)| {
+                !t.lesson_taken() && t.week <= week && !engine.has_lesson_draft(t.id)
+            }))
+            .take(6);
     let p = theme::palette(ui.ctx());
     for (subject, topic) in suggestions {
         widgets::card(ui, |ui| {
@@ -707,12 +834,21 @@ fn no_lesson(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
                     widgets::hint(ui, &subject.name);
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let resume = engine.has_lesson_draft(topic.id);
+                    let (label, command) = if resume {
+                        (t!("lesson.continue"), Command::ResumeLesson(topic.id))
+                    } else {
+                        (t!("lesson.start"), Command::StartLesson(topic.id))
+                    };
                     let start = egui::Button::image_and_text(
                         Icon::Play.image(16.0, Color32::WHITE),
-                        RichText::new(t!("lesson.start")).color(Color32::WHITE),
+                        RichText::new(label).color(Color32::WHITE),
                     )
                     .fill(p.accent);
                     if ui.add(start).clicked() {
+                        actions.send(command);
+                    }
+                    if resume && ui.button(t!("lesson.start_over")).clicked() {
                         actions.send(Command::StartLesson(topic.id));
                     }
                 });

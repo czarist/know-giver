@@ -4,7 +4,7 @@ use egui::RichText;
 use kg_engine::{Command, Difficulty, Engine, HandoutScope, StudyPlan, Topic, TopicStatus};
 use rust_i18n::t;
 
-use super::{Actions, current_week, handout};
+use super::{Actions, current_week, handout, lesson_button};
 use crate::app::{KnowGiverApp, PlanView, Screen};
 use crate::icons::Icon;
 use crate::{i18n, theme, widgets, working};
@@ -236,8 +236,7 @@ fn by_week(
             .default_open(week == current)
             .show(ui, |ui| {
                 for (subject, topic) in plan.topics().filter(|(_, t)| t.week == week) {
-                    let emphasis = engine.board_emphasis(topic.id);
-                    topic_row(ui, Some(&subject.name), topic, emphasis, idle, ask, actions);
+                    topic_row(ui, engine, Some(&subject.name), topic, idle, ask, actions);
                 }
             });
     }
@@ -264,8 +263,7 @@ fn by_subject(
                     idle,
                 );
                 for topic in &subject.topics {
-                    let emphasis = engine.board_emphasis(topic.id);
-                    topic_row(ui, None, topic, emphasis, idle, ask, actions);
+                    topic_row(ui, engine, None, topic, idle, ask, actions);
                 }
             });
     }
@@ -282,15 +280,21 @@ pub fn difficulty_color(ui: &egui::Ui, difficulty: Difficulty) -> egui::Color32 
 
 fn topic_row(
     ui: &mut egui::Ui,
+    engine: &Engine,
     subject: Option<&str>,
     topic: &Topic,
-    emphasis: usize,
     idle: bool,
     ask: &mut HandoutAsk,
     actions: &mut Actions,
 ) {
     let p = theme::palette(ui.ctx());
     let today = Engine::today();
+    let emphasis = engine.board_emphasis(topic.id);
+    let mistakes = engine
+        .mistakes()
+        .iter()
+        .filter(|m| m.topic_id == topic.id)
+        .count();
     ui.horizontal(|ui| {
         let mut status = topic.status;
         egui::ComboBox::from_id_salt(("status", topic.id.0))
@@ -308,15 +312,7 @@ fn topic_row(
         // Buttons and chips first, from the right; the title takes what is
         // left, cut with an ellipsis and shown whole on hover.
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let lesson = if topic.lesson_taken() {
-                t!("plan.lesson_again")
-            } else {
-                t!("plan.lesson")
-            };
-            if ui.small_button(lesson).clicked() {
-                actions.send(Command::StartLesson(topic.id));
-                actions.go_to(Screen::Lesson);
-            }
+            lesson_button(ui, engine, topic, actions);
             if ui.small_button(t!("plan.quiz")).clicked() {
                 actions.send(Command::StartQuiz(topic.id));
                 actions.go_to(Screen::Quiz);
@@ -324,6 +320,9 @@ fn topic_row(
             ask.button(ui, &t!("plan.handout"), HandoutScope::Topic(topic.id), idle);
             if topic.is_due(today) {
                 widgets::chip(ui, &t!("plan.review_due"), p.accent);
+            }
+            if mistakes > 0 {
+                widgets::chip(ui, &t!("plan.mistakes", count = mistakes), p.danger);
             }
             if emphasis > 0 {
                 widgets::chip(ui, &t!("plan.board_count", count = emphasis), p.muted);

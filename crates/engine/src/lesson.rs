@@ -9,7 +9,8 @@ use kg_audio::{
     AudioClip, AudioError, ModelId, RecordOptions, Recording, SpeechOptions, SttEngine,
     Synthesizer, TtsBackend, split_for_speech,
 };
-use kg_study::{TopicId, TopicStatus};
+use kg_study::{LessonRecap, TopicId, TopicStatus};
+use serde::{Deserialize, Serialize};
 
 use crate::stt::{
     SttJob, ends_sentence, has_new_words, is_student_speech, needs_second_opinion, same_words,
@@ -64,13 +65,13 @@ pub enum LessonPhase {
 }
 
 /// Who said a line in the lesson.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Speaker {
     Tutor,
     Student,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LessonTurn {
     pub speaker: Speaker,
     pub text: String,
@@ -229,6 +230,60 @@ impl LessonSession {
         self.context.step = self.step;
     }
 
+    /// The turns with the reply being spoken already in full.
+    fn settled_turns(&self) -> Vec<LessonTurn> {
+        let mut turns = self.turns.clone();
+        if let Some(text) = &self.pending_reply {
+            match turns.last_mut() {
+                Some(turn) if self.streaming && turn.speaker == Speaker::Tutor => {
+                    turn.text.clone_from(text);
+                }
+                _ if !text.trim().is_empty() => turns.push(LessonTurn {
+                    speaker: Speaker::Tutor,
+                    text: text.clone(),
+                }),
+                _ => {}
+            }
+        }
+        turns
+    }
+
+    /// What the lesson covered, to keep once it is over.
+    fn recap(&self) -> LessonRecap {
+        let summary = self
+            .settled_turns()
+            .iter()
+            .rev()
+            .find(|t| t.speaker == Speaker::Tutor)
+            .map(|t| t.text.clone())
+            .unwrap_or_default();
+        LessonRecap {
+            taken_on: None,
+            outline: self.outline.clone(),
+            board: self
+                .board
+                .iter()
+                .filter(|entry| !entry.starts_with("IMAGEM:"))
+                .cloned()
+                .collect(),
+            summary,
+        }
+    }
+
+    /// Where the lesson is, to pick it up later.
+    fn draft(&self) -> LessonDraft {
+        LessonDraft {
+            outline: self.outline.clone(),
+            step: self.step,
+            board: self.board.clone(),
+            turns: self.settled_turns(),
+        }
+    }
+
+    fn student_spoke(&self) -> bool {
+        self.turns.iter().any(|t| t.speaker == Speaker::Student)
+    }
+
     fn history(&self) -> Vec<ChatMessage> {
         let skip = self.turns.len().saturating_sub(HISTORY_TURNS);
         self.turns
@@ -241,6 +296,18 @@ impl LessonSession {
             .collect()
     }
 }
+
+/// An unfinished lesson, saved to pick it up where it stopped.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct LessonDraft {
+    outline: Vec<String>,
+    step: usize,
+    board: Vec<String>,
+    turns: Vec<LessonTurn>,
+}
+
+/// Asks the tutor to pick up a lesson after a break. Not shown or saved.
+const RESUME_REQUEST: &str = "(O aluno voltou depois de uma pausa. Cumprimente em poucas palavras, relembre em uma ou duas frases o que já vimos e continue a aula de onde paramos.)";
 
 pub(crate) enum LessonEvent {
     PreviewReady {
@@ -300,11 +367,37 @@ impl VoiceRuntime {
 }
 
 impl Engine {
+    /// Starts a lesson from the beginning, dropping any unfinished one.
     pub(crate) fn start_lesson(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+        self.end_lesson()?;
+        self.store.delete_lesson_draft(topic_id)?;
+        self.refresh_lesson_drafts();
+        self.open_lesson(topic_id, None)
+    }
+
+    /// Picks up the unfinished lesson on a topic, or starts one.
+    pub(crate) fn resume_lesson(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+        self.end_lesson()?;
+        let draft = self
+            .store
+            .lesson_draft(topic_id)?
+            .and_then(|json| match serde_json::from_str::<LessonDraft>(&json) {
+                Ok(draft) => Some(draft),
+                Err(error) => {
+                    tracing::warn!(%error, "unreadable lesson draft; starting over");
+                    None
+                }
+            })
+            .filter(|draft| !draft.turns.is_empty());
+        self.open_lesson(topic_id, draft)
+    }
+
+    fn open_lesson(
+        &mut self,
+        topic_id: TopicId,
+        draft: Option<LessonDraft>,
+    ) -> Result<(), EngineError> {
         self.stop_voice_preview();
-        if self.lesson.is_some() {
-            self.end_lesson()?;
-        }
         let (mut context, topic_title) = self.topic_context(topic_id)?;
         // A written handout gives the lesson its plan up front, with what to
         // teach in each step; the quiz's questions say what must be covered.
@@ -313,6 +406,16 @@ impl Engine {
         context.outline = plan.outline;
         context.step_notes = plan.notes;
         context.quiz_topics = self.quiz_subjects(topic_id);
+        let draft = draft.unwrap_or_default();
+        let resuming = !draft.turns.is_empty();
+        if !draft.outline.is_empty() {
+            if draft.outline != context.outline {
+                // The handout changed since: its notes no longer line up.
+                context.step_notes.clear();
+            }
+            context.outline = draft.outline;
+        }
+        context.step = draft.step.min(context.outline.len());
         self.update_topic(topic_id, |t| {
             if t.status == TopicStatus::NotStarted {
                 t.status = TopicStatus::Studying;
@@ -323,7 +426,9 @@ impl Engine {
         let client = self.ai_client();
         let ctx = context.clone();
         // The board opens with a picture of the topic, when one exists.
-        let opening_board = if self.settings.board_images {
+        let opening_board = if resuming {
+            draft.board
+        } else if self.settings.board_images {
             vec![format!("IMAGEM: {topic_title}")]
         } else {
             Vec::new()
@@ -333,11 +438,11 @@ impl Engine {
             topic_id,
             topic_title,
             subject: context.subject.clone(),
-            turns: Vec::new(),
+            turns: draft.turns,
             phase: LessonPhase::Thinking,
             board: opening_board,
             outline: context.outline.clone(),
-            step: 0,
+            step: context.step,
             finished: false,
             saved: false,
             context,
@@ -359,16 +464,37 @@ impl Engine {
             idle_timeout: None,
             turn_ended: None,
         });
-        if let Some(title) = self.lesson.as_ref().map(|l| l.topic_title.clone()) {
-            self.request_illustration(&title);
+        // A resumed lesson brings back its board pictures.
+        let pictures: Vec<String> = match self.lesson.as_ref() {
+            Some(l) if resuming => l
+                .board
+                .iter()
+                .filter_map(|entry| entry.strip_prefix("IMAGEM:"))
+                .map(|query| query.trim().to_owned())
+                .collect(),
+            Some(l) => vec![l.topic_title.clone()],
+            None => Vec::new(),
+        };
+        for query in &pictures {
+            self.request_illustration(query);
         }
         self.warm_up_voice();
         let speech = self.open_speech_stream(reply);
         let (tx, waker) = self.sender();
+        let mut history = self
+            .lesson
+            .as_ref()
+            .map_or_else(Vec::new, LessonSession::history);
         self.spawn(move || {
-            let result = kg_ai::start_lesson_stream(&client, &ctx, |sentence| {
+            let relay = |sentence: &str| {
                 relay_sentence(&tx, &waker, speech.as_ref(), reply, sentence);
-            });
+            };
+            let result = if resuming {
+                history.push(ChatMessage::user(RESUME_REQUEST));
+                kg_ai::tutor_reply_stream(&client, &ctx, &history, relay)
+            } else {
+                kg_ai::start_lesson_stream(&client, &ctx, relay)
+            };
             Event::Lesson(LessonEvent::Reply {
                 session: reply,
                 result,
@@ -547,45 +673,66 @@ impl Engine {
         lesson.phase = LessonPhase::Listening;
     }
 
+    /// Ends the lesson. One the tutor did not close is kept to continue
+    /// later; it counts as study for the day, not as a lesson taken.
     pub(crate) fn end_lesson(&mut self) -> Result<(), EngineError> {
         self.stop_audio();
+        self.save_lesson_draft()?;
         let Some(lesson) = self.lesson.take() else {
             return Ok(());
         };
-        let student_spoke = lesson.turns.iter().any(|t| t.speaker == Speaker::Student);
-        if student_spoke && !lesson.saved {
-            self.save_lesson(lesson.topic_id)?;
+        if lesson.student_spoke() && !lesson.saved {
+            self.record_activity(kg_study::ActivityKind::Lesson)?;
         }
         Ok(())
     }
 
-    /// Counts the lesson as taken: the topic leaves the lesson list and goes
-    /// into review. Taking it again later keeps it that way.
-    fn save_lesson(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
+    /// Keeps an unfinished lesson the student took part in.
+    pub(crate) fn save_lesson_draft(&mut self) -> Result<(), EngineError> {
+        let Some(lesson) = self
+            .lesson
+            .as_ref()
+            .filter(|l| !l.finished && l.student_spoke())
+        else {
+            return Ok(());
+        };
+        let json = match serde_json::to_string(&lesson.draft()) {
+            Ok(json) => json,
+            Err(error) => {
+                tracing::warn!(%error, "could not write the lesson draft");
+                return Ok(());
+            }
+        };
+        self.store
+            .save_lesson_draft(lesson.topic_id, &json, Self::today())?;
+        self.refresh_lesson_drafts();
+        Ok(())
+    }
+
+    /// The tutor closed the lesson: it counts as taken right away, even if
+    /// the app is closed without pressing End. The topic goes into review;
+    /// taking it again later keeps it that way.
+    fn save_finished_lesson(&mut self) -> Result<(), EngineError> {
+        let Some((topic_id, recap)) =
+            self.lesson
+                .as_mut()
+                .filter(|l| l.finished && !l.saved)
+                .map(|l| {
+                    l.saved = true;
+                    (l.topic_id, l.recap())
+                })
+        else {
+            return Ok(());
+        };
         let today = Self::today();
-        self.store.record_lesson(topic_id, today)?;
+        self.store.record_lesson(topic_id, today, &recap)?;
+        self.store.delete_lesson_draft(topic_id)?;
+        self.refresh_lesson_drafts();
         self.lesson_count += 1;
         self.update_topic(topic_id, |t| t.complete_lesson(today))?;
         self.record_activity(kg_study::ActivityKind::Lesson)?;
         self.notices.push(Notice::LessonSaved);
         Ok(())
-    }
-
-    /// The tutor closed the lesson: save it right away, so it counts even
-    /// if the app is closed without pressing End.
-    fn save_finished_lesson(&mut self) -> Result<(), EngineError> {
-        let Some(topic_id) = self
-            .lesson
-            .as_mut()
-            .filter(|l| l.finished && !l.saved)
-            .map(|l| {
-                l.saved = true;
-                l.topic_id
-            })
-        else {
-            return Ok(());
-        };
-        self.save_lesson(topic_id)
     }
 
     pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
@@ -1092,6 +1239,9 @@ impl Engine {
                     self.request_illustration(query);
                 }
                 self.save_finished_lesson()?;
+                if let Err(err) = self.save_lesson_draft() {
+                    tracing::warn!(%err, "could not keep the lesson to continue later");
+                }
                 if spoken_live {
                     // Sentences were already queued for speech as they arrived;
                     // `tick_lesson` ends the phase when playback finishes.
