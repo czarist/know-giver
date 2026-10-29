@@ -241,6 +241,14 @@ quiz:
     keep_going: "A lesson on this topic is worth it before the next quiz."
 
 review:
+  round: "Question %{n} of %{total}"
+  next_question: "Next question"
+  finish_early: "Or stop here and grade the review:"
+  listen_again: "Hear it again"
+  speak: "Answer out loud"
+  stop_speaking: "Stop and send"
+  transcribing: "Writing down your answer…"
+  need_stt: "To answer out loud, download speech recognition in Settings."
   title: "Review"
   subtitle: "Spaced reviews: each topic comes back at the right time so you do not forget it."
   all_done: "No reviews for today."

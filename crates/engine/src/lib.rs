@@ -56,7 +56,7 @@ pub use kg_study::{LessonRecap, Mistake, MistakeId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
 pub use paths::AppPaths;
-pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
+pub use practice::{QuizSession, QuizStep, REVIEW_ROUNDS, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
@@ -106,6 +106,14 @@ pub enum Command {
 
     StartReview(TopicId),
     SubmitReviewAnswer(String),
+    /// After a graded answer, the next question of the review.
+    NextReviewQuestion,
+    /// Answer the review question out loud.
+    StartReviewDictation,
+    /// Stop answering out loud; the text typed so far goes first.
+    StopReviewDictation(String),
+    /// Read a text aloud in the tutor's voice.
+    ReadAloud(String),
     GradeReview(ReviewGrade),
     CloseReview,
 
@@ -663,7 +671,18 @@ impl Engine {
                 Ok(())
             }
             Command::GradeReview(grade) => self.grade_review(grade),
+            Command::NextReviewQuestion => {
+                self.next_review_question();
+                Ok(())
+            }
+            Command::StartReviewDictation => self.start_review_dictation(),
+            Command::StopReviewDictation(typed) => {
+                self.stop_review_dictation(typed);
+                Ok(())
+            }
+            Command::ReadAloud(text) => self.say(&text),
             Command::CloseReview => {
+                self.stop_speaking();
                 self.review = None;
                 Ok(())
             }

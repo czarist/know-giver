@@ -1,12 +1,13 @@
 //! Spaced-repetition reviews: due topics and the review flow.
 
 use chrono::Days;
-use egui::RichText;
+use egui::{Color32, RichText};
 use kg_engine::{Command, Engine, ReviewGrade, ReviewSession, ReviewStep};
 use rust_i18n::t;
 
 use super::{Actions, lesson_action};
 use crate::app::{KnowGiverApp, Screen};
+use crate::icons::Icon;
 use crate::{i18n, theme, widgets};
 
 /// Days ahead listed under "coming up".
@@ -22,7 +23,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         if let Some(session) = engine.review() {
-            session_view(ui, session, &mut state.review_answer, &mut actions);
+            session_view(ui, engine, session, &mut state.review_answer, &mut actions);
         } else {
             due_list(ui, engine, &mut actions);
         }
@@ -101,6 +102,7 @@ fn due_list(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
 
 fn session_view(
     ui: &mut egui::Ui,
+    engine: &Engine,
     session: &ReviewSession,
     answer: &mut String,
     actions: &mut Actions,
@@ -114,6 +116,15 @@ fn session_view(
             }
         });
     });
+    widgets::hint(
+        ui,
+        &t!(
+            "review.round",
+            n = session.round + 1,
+            total = session.rounds()
+        ),
+    );
+    ui.add_space(4.0);
 
     match &session.step {
         ReviewStep::LoadingQuestion => {
@@ -123,7 +134,7 @@ fn session_view(
             });
         }
         ReviewStep::Answering { question } => {
-            widgets::card(ui, |ui| ui.label(RichText::new(question).size(17.0)));
+            question_card(ui, engine, question, actions);
             ui.add(
                 egui::TextEdit::multiline(answer)
                     .hint_text(t!("review.answer_hint"))
@@ -131,15 +142,17 @@ fn session_view(
                     .desired_width(f32::INFINITY),
             );
             ui.horizontal(|ui| {
+                let busy = session.listening() || session.transcribing;
                 if ui
                     .add_enabled(
-                        !answer.trim().is_empty(),
+                        !busy && !answer.trim().is_empty(),
                         egui::Button::new(t!("review.check")),
                     )
                     .clicked()
                 {
                     actions.send(Command::SubmitReviewAnswer(std::mem::take(answer)));
                 }
+                spoken_answer(ui, engine, session, answer, actions);
             });
             ui.add_space(8.0);
             widgets::hint(ui, &t!("review.self_grade"));
@@ -161,7 +174,7 @@ fn session_view(
         } => {
             widgets::card(ui, |ui| ui.label(RichText::new(question).size(17.0)));
             widgets::hint(ui, given);
-            let color = match suggested {
+            let color = match ReviewGrade::from_level(feedback.score) {
                 ReviewGrade::Again => p.danger,
                 ReviewGrade::Hard => p.warning,
                 ReviewGrade::Good | ReviewGrade::Easy => p.success,
@@ -175,8 +188,72 @@ fn session_view(
                 ui.label(&feedback.feedback);
             });
             ui.add_space(8.0);
-            widgets::hint(ui, &t!("review.confirm_grade"));
+            if session.is_last_round() {
+                widgets::hint(ui, &t!("review.confirm_grade"));
+            } else {
+                if widgets::primary_button(ui, &t!("review.next_question")).clicked() {
+                    actions.send(Command::NextReviewQuestion);
+                }
+                ui.add_space(6.0);
+                widgets::hint(ui, &t!("review.finish_early"));
+            }
             grade_buttons(ui, Some(*suggested), actions);
+        }
+    }
+}
+
+/// The question, with a button to hear it again.
+fn question_card(ui: &mut egui::Ui, engine: &Engine, question: &str, actions: &mut Actions) {
+    widgets::card(ui, |ui| {
+        ui.label(RichText::new(question).size(17.0));
+        if engine.settings().voice_enabled
+            && engine.tts_ready()
+            && ui.small_button(t!("review.listen_again")).clicked()
+        {
+            actions.send(Command::ReadAloud(question.to_owned()));
+        }
+    });
+}
+
+/// Answer out loud: a button that opens the microphone, then sends what
+/// was said (after anything typed).
+fn spoken_answer(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    session: &ReviewSession,
+    answer: &mut String,
+    actions: &mut Actions,
+) {
+    let p = theme::palette(ui.ctx());
+    if session.transcribing {
+        ui.spinner();
+        ui.label(t!("review.transcribing"));
+    } else if session.listening() {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(50));
+        let stop = egui::Button::image_and_text(
+            Icon::Mic.image(16.0, Color32::WHITE),
+            RichText::new(t!("review.stop_speaking")).color(Color32::WHITE),
+        )
+        .fill(p.danger);
+        if ui.add(stop).clicked() {
+            actions.send(Command::StopReviewDictation(std::mem::take(answer)));
+        }
+        let (bar, _) = ui.allocate_exact_size(egui::vec2(80.0, 6.0), egui::Sense::hover());
+        ui.painter().rect_filled(bar, 3.0, p.border);
+        let mut level = bar;
+        level.set_width(bar.width() * session.input_level());
+        ui.painter().rect_filled(level, 3.0, p.accent);
+    } else {
+        let ready = engine.stt_ready();
+        let speak = ui
+            .add_enabled(
+                ready,
+                egui::Button::image_and_text(Icon::Mic.image(16.0, p.text), t!("review.speak")),
+            )
+            .on_disabled_hover_text(t!("review.need_stt"));
+        if speak.clicked() {
+            actions.send(Command::StartReviewDictation);
         }
     }
 }

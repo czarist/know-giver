@@ -975,3 +975,68 @@ fn starting_over_drops_the_unfinished_lesson() {
     assert!(!engine.has_lesson_draft(id));
     assert!(engine.lesson().unwrap().turns.is_empty());
 }
+
+#[test]
+fn a_review_asks_three_questions_and_suggests_the_average_grade() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    engine.handle(Command::StartReview(id)).unwrap();
+    let session = engine.review().unwrap().id;
+    let send = |engine: &mut Engine, event: PracticeEvent| {
+        engine.events_tx.send(Event::Practice(event)).unwrap();
+        engine.poll();
+    };
+    for (round, score) in [(0, 5u8), (1, 2), (2, 4)] {
+        assert_eq!(engine.review().unwrap().round, round);
+        send(
+            &mut engine,
+            PracticeEvent::ReviewQuestion {
+                session,
+                result: Ok(format!("Pergunta {round}?")),
+            },
+        );
+        if round == 1 {
+            // A spoken answer goes after what was typed.
+            send(
+                &mut engine,
+                PracticeEvent::ReviewHeard {
+                    session,
+                    typed: "Escrevi isto.".into(),
+                    result: Ok("e falei isto".into()),
+                },
+            );
+            match &engine.review().unwrap().step {
+                ReviewStep::Grading { answer, .. } => {
+                    assert_eq!(answer, "Escrevi isto. e falei isto");
+                }
+                step => panic!("unexpected {step:?}"),
+            }
+        } else {
+            engine
+                .handle(Command::SubmitReviewAnswer("Resposta.".into()))
+                .unwrap();
+        }
+        send(
+            &mut engine,
+            PracticeEvent::ReviewGraded {
+                session,
+                result: Ok(ReviewFeedback {
+                    score,
+                    feedback: "Ok.".into(),
+                }),
+            },
+        );
+        engine.handle(Command::NextReviewQuestion).unwrap();
+    }
+    let review = engine.review().unwrap();
+    assert!(review.is_last_round());
+    match &review.step {
+        // (5 + 2 + 4) / 3 rounds to 4.
+        ReviewStep::Graded { suggested, .. } => assert_eq!(*suggested, ReviewGrade::Good),
+        step => panic!("unexpected {step:?}"),
+    }
+    engine
+        .handle(Command::GradeReview(ReviewGrade::Good))
+        .unwrap();
+    assert!(engine.review().is_none());
+}

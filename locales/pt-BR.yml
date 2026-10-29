@@ -241,6 +241,14 @@ quiz:
     keep_going: "Vale uma aula sobre esse tópico antes do próximo quiz."
 
 review:
+  round: "Pergunta %{n} de %{total}"
+  next_question: "Próxima pergunta"
+  finish_early: "Ou encerre aqui e dê a nota da revisão:"
+  listen_again: "Ouvir de novo"
+  speak: "Responder falando"
+  stop_speaking: "Parar e enviar"
+  transcribing: "Transcrevendo sua resposta…"
+  need_stt: "Para responder falando, baixe o reconhecimento de voz em Configurações."
   title: "Revisão"
   subtitle: "Revisões espaçadas: cada tópico volta no momento certo para você não esquecer."
   all_done: "Nenhuma revisão para hoje."

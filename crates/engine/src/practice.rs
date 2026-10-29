@@ -1,7 +1,10 @@
 //! Quizzes and spaced-repetition reviews.
 
+use std::time::Duration;
+
 use chrono::NaiveDate;
 use kg_ai::{AiError, QuestionDraft, ReviewFeedback, TopicContext};
+use kg_audio::{ModelId, RecordOptions, Recording};
 use kg_study::{Quiz, QuizAttempt, QuizQuestion, ReviewGrade, TopicId};
 
 /// Letters and digits only, to spot the same question twice.
@@ -80,6 +83,11 @@ pub enum ReviewStep {
     },
 }
 
+/// Questions in one review.
+pub const REVIEW_ROUNDS: usize = 3;
+/// Longest spoken answer.
+const MAX_SPOKEN_ANSWER: Duration = Duration::from_secs(120);
+
 #[derive(Debug)]
 pub struct ReviewSession {
     pub id: u64,
@@ -87,14 +95,57 @@ pub struct ReviewSession {
     pub topic_title: String,
     pub step: ReviewStep,
     context: TopicContext,
+    /// The question being asked, 0-based, of [`REVIEW_ROUNDS`].
+    pub round: usize,
+    /// Scores (0–5) of the answers graded so far.
+    scores: Vec<u8>,
+    /// Questions asked so far, so the next one is about something else.
+    asked: Vec<String>,
+    /// The student is answering out loud.
+    mic: Option<Recording>,
+    /// A spoken answer is being turned into text.
+    pub transcribing: bool,
 }
 
 impl ReviewSession {
     pub fn is_loading(&self) -> bool {
-        matches!(
-            self.step,
-            ReviewStep::LoadingQuestion | ReviewStep::Grading { .. }
-        )
+        self.transcribing
+            || matches!(
+                self.step,
+                ReviewStep::LoadingQuestion | ReviewStep::Grading { .. }
+            )
+    }
+
+    pub fn rounds(&self) -> usize {
+        REVIEW_ROUNDS
+    }
+
+    pub fn is_last_round(&self) -> bool {
+        self.round + 1 >= REVIEW_ROUNDS
+    }
+
+    /// The microphone is open for a spoken answer.
+    pub fn listening(&self) -> bool {
+        self.mic.is_some()
+    }
+
+    /// Microphone level while answering out loud, `0.0..=1.0`.
+    pub fn input_level(&self) -> f32 {
+        self.mic
+            .as_ref()
+            .map_or(0.0, |r| (r.level() * 25.0).sqrt().min(1.0))
+    }
+
+    /// Average score of the answers so far, rounded, 0–5.
+    fn average_score(&self) -> u8 {
+        let total: u32 = self.scores.iter().map(|&s| u32::from(s)).sum();
+        let count = self.scores.len().max(1) as u32;
+        ((total * 2 + count) / (count * 2)).min(5) as u8
+    }
+
+    /// The grade the answers so far point to.
+    fn suggested(&self) -> ReviewGrade {
+        ReviewGrade::from_level(self.average_score())
     }
 }
 
@@ -127,6 +178,12 @@ pub(crate) enum PracticeEvent {
     ReviewGraded {
         session: u64,
         result: Result<ReviewFeedback, AiError>,
+    },
+    /// A spoken answer, as text; `typed` is what was written before it.
+    ReviewHeard {
+        session: u64,
+        typed: String,
+        result: Result<String, EngineError>,
     },
 }
 
@@ -345,6 +402,11 @@ impl Engine {
             topic_title,
             step: ReviewStep::LoadingQuestion,
             context,
+            round: 0,
+            scores: Vec::new(),
+            asked: Vec::new(),
+            mic: None,
+            transcribing: false,
         });
         self.spawn(move || {
             Event::Practice(PracticeEvent::ReviewQuestion {
@@ -353,6 +415,88 @@ impl Engine {
             })
         });
         Ok(())
+    }
+
+    /// After a graded answer: the next question of the review.
+    pub(crate) fn next_review_question(&mut self) {
+        let Some(review) = self.review.as_mut() else {
+            return;
+        };
+        if !matches!(review.step, ReviewStep::Graded { .. }) || review.is_last_round() {
+            return;
+        }
+        review.round += 1;
+        review.step = ReviewStep::LoadingQuestion;
+        let (id, ctx, asked) = (review.id, review.context.clone(), review.asked.clone());
+        let client = self.ai_client();
+        self.stop_speaking();
+        self.spawn(move || {
+            Event::Practice(PracticeEvent::ReviewQuestion {
+                session: id,
+                result: kg_ai::review_question_avoiding(&client, &ctx, &asked),
+            })
+        });
+    }
+
+    /// Opens the microphone for a spoken answer.
+    pub(crate) fn start_review_dictation(&mut self) -> Result<(), EngineError> {
+        if self.stt_job().is_none() {
+            return Err(EngineError::SpeechModelMissing(ModelId::Parakeet));
+        }
+        let Some(review) = self.review.as_ref() else {
+            return Ok(());
+        };
+        if !matches!(review.step, ReviewStep::Answering { .. }) || review.mic.is_some() {
+            return Ok(());
+        }
+        self.stop_speaking();
+        let mic = Recording::start(RecordOptions {
+            auto_stop_after: None,
+            idle_timeout: None,
+            max_duration: MAX_SPOKEN_ANSWER,
+            noise_floor: None,
+        })?;
+        if let Some(review) = self.review.as_mut() {
+            review.mic = Some(mic);
+        }
+        Ok(())
+    }
+
+    /// Closes the microphone and sends what was said, after `typed`.
+    pub(crate) fn stop_review_dictation(&mut self, typed: String) {
+        let Some(stt) = self.stt_job() else {
+            return;
+        };
+        let Some(review) = self.review.as_mut() else {
+            return;
+        };
+        let Some(mic) = review.mic.take() else {
+            return;
+        };
+        let ReviewStep::Answering { question } = &review.step else {
+            return;
+        };
+        let question = question.clone();
+        review.transcribing = true;
+        let session = review.id;
+        let clip = mic.finish();
+        self.spawn(move || {
+            Event::Practice(PracticeEvent::ReviewHeard {
+                session,
+                typed,
+                result: stt.transcribe(&clip, &question),
+            })
+        });
+    }
+
+    /// Reads review text aloud in the tutor's voice, when the voice is on.
+    fn read_aloud(&mut self, text: &str) {
+        if !(self.settings.voice_enabled && self.tts_ready()) {
+            return;
+        }
+        if let Err(err) = self.say(text) {
+            tracing::warn!(%err, "could not read the review aloud");
+        }
     }
 
     pub(crate) fn submit_review_answer(&mut self, answer: String) {
@@ -384,6 +528,7 @@ impl Engine {
 
     /// Records the review with `grade` and closes it.
     pub(crate) fn grade_review(&mut self, grade: ReviewGrade) -> Result<(), EngineError> {
+        self.stop_speaking();
         let Some(session) = self.review.take() else {
             return Ok(());
         };
@@ -444,7 +589,28 @@ impl Engine {
                     return Ok(());
                 };
                 match result {
-                    Ok(question) => review.step = ReviewStep::Answering { question },
+                    Ok(question) => {
+                        review.asked.push(question.clone());
+                        review.step = ReviewStep::Answering {
+                            question: question.clone(),
+                        };
+                        self.read_aloud(&question);
+                    }
+                    Err(err) if review.round > 0 => {
+                        // Keep the answers given so far: grade them now.
+                        let suggested = review.suggested();
+                        review.round = REVIEW_ROUNDS - 1;
+                        review.step = ReviewStep::Graded {
+                            question: String::new(),
+                            answer: String::new(),
+                            feedback: ReviewFeedback {
+                                score: review.average_score(),
+                                feedback: String::new(),
+                            },
+                            suggested,
+                        };
+                        return Err(err.into());
+                    }
                     Err(err) => {
                         self.review = None;
                         return Err(err.into());
@@ -460,13 +626,16 @@ impl Engine {
                 };
                 match result {
                     Ok(feedback) => {
-                        let suggested = ReviewGrade::from_level(feedback.score);
+                        review.scores.push(feedback.score);
+                        let suggested = review.suggested();
+                        let spoken = feedback.feedback.clone();
                         review.step = ReviewStep::Graded {
                             question,
                             answer,
                             feedback,
                             suggested,
                         };
+                        self.read_aloud(&spoken);
                     }
                     Err(err) => {
                         // Let the student try again or grade themselves.
@@ -474,6 +643,19 @@ impl Engine {
                         return Err(err.into());
                     }
                 }
+            }
+            PracticeEvent::ReviewHeard {
+                session,
+                typed,
+                result,
+            } => {
+                let Some(review) = self.review.as_mut().filter(|r| r.id == session) else {
+                    return Ok(());
+                };
+                review.transcribing = false;
+                let heard = result?;
+                let answer = format!("{} {}", typed.trim(), heard.trim());
+                self.submit_review_answer(answer);
             }
         }
         Ok(())

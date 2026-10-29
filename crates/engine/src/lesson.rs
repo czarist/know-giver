@@ -1578,6 +1578,11 @@ impl Engine {
         }
     }
 
+    /// Says `text` in the tutor's voice, outside a lesson.
+    pub(crate) fn say(&mut self, text: &str) -> Result<(), EngineError> {
+        self.preview_voice(self.settings.clone(), text.to_owned())
+    }
+
     /// Samples draft settings without changing the user's saved voice.
     pub(crate) fn preview_voice(
         &mut self,
