@@ -16,7 +16,7 @@
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
   <img alt="Português do Brasil" src="https://img.shields.io/badge/pt--BR-first-c98e2e?style=flat-square">
-  <img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2c6b5c?style=flat-square"></a>
 </p>
 
 <br>
@@ -189,4 +189,4 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 
 ## License
 
-MIT OR Apache-2.0.
+[MIT](LICENSE). Third-party fonts, portraits and voices keep their own licenses, listed under [Credits](#credits).
