@@ -4,7 +4,7 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.26.2] - 2026-10-29
 
 ### Fixed
 - Linux package: the build failed copying the old `logo.svg`, removed with the new

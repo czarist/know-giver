@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.26.1. Everything an agent can build and check without a human ear, a
+Version 0.26.2. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -11,7 +11,7 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Student turns (unreleased): the log of 2026-10-28 showed every turn ending after
+0. Student turns (v0.26.2): the log of 2026-10-28 showed every turn ending after
    about 450 ms of quiet (`quiet_ms=453`), because Parakeet ends almost every partial
    with a full stop. The wait is now a setting (`turn_pause`, 1 s default, +0.8 s
    without a finished sentence), speech counts from level 0.0025, and any English
@@ -260,7 +260,7 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
-- Long spoken answers with the owner's microphone after the turn changes (unreleased):
+- Long spoken answers with the owner's microphone after the turn changes (v0.26.2):
   no cut-offs mid-sentence, and fewer wrong verbs.
 - Captions in step with the voice in a live lesson, for Piper and Kokoro teachers,
   including interruptions and a voice failure mid-reply (v0.26.1).
