@@ -250,6 +250,28 @@ pub fn error_message(err: &EngineError) -> String {
     text.into_owned()
 }
 
+/// Name of a lesson length.
+pub fn lesson_length(length: kg_engine::LessonLength) -> String {
+    use kg_engine::LessonLength;
+    match length {
+        LessonLength::Quick => t!("settings.lesson_length.quick"),
+        LessonLength::Normal => t!("settings.lesson_length.normal"),
+        LessonLength::Full => t!("settings.lesson_length.full"),
+    }
+    .into_owned()
+}
+
+/// What a lesson length means.
+pub fn lesson_length_hint(length: kg_engine::LessonLength) -> String {
+    use kg_engine::LessonLength;
+    match length {
+        LessonLength::Quick => t!("settings.lesson_length.quick_hint"),
+        LessonLength::Normal => t!("settings.lesson_length.normal_hint"),
+        LessonLength::Full => t!("settings.lesson_length.full_hint"),
+    }
+    .into_owned()
+}
+
 /// Name of a highlighter color.
 pub fn highlight_color(color: kg_engine::HighlightColor) -> String {
     use kg_engine::HighlightColor;

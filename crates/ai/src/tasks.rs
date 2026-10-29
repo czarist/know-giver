@@ -249,6 +249,54 @@ impl TutorReply {
     }
 }
 
+/// How long and deep a lesson goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LessonLength {
+    /// The essentials, one short check per step.
+    Quick,
+    #[default]
+    Normal,
+    /// Every handout section, with examples and more checks.
+    Full,
+}
+
+impl LessonLength {
+    pub const ALL: [Self; 3] = [Self::Quick, Self::Normal, Self::Full];
+
+    /// Most steps in a plan built from a handout; sections are grouped to fit.
+    pub fn max_steps(self) -> usize {
+        match self {
+            Self::Quick => 3,
+            Self::Normal => 5,
+            Self::Full => 8,
+        }
+    }
+
+    /// Steps the tutor writes when there is no handout.
+    fn step_range(self) -> &'static str {
+        match self {
+            Self::Quick => "2 a 3",
+            Self::Normal => "3 a 5",
+            Self::Full => "5 a 8",
+        }
+    }
+
+    fn teaching(self) -> &'static str {
+        match self {
+            Self::Quick => {
+                "- Aula rápida: em cada etapa, explique só o essencial em poucas frases e faça uma pergunta curta. Passe para a próxima quando o aluno responder."
+            }
+            Self::Normal => {
+                "- Em cada etapa, explique todos os pontos listados para ela, um de cada vez, com um exemplo, e faça uma pergunta de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem."
+            }
+            Self::Full => {
+                "- Aula completa: em cada etapa, explique todos os pontos listados para ela, um de cada vez, com exemplos e as pegadinhas de prova, e faça pelo menos duas perguntas de checagem. Só passe para a próxima depois de cobrir os pontos e de o aluno responder bem."
+            }
+        }
+    }
+}
+
 /// Which topic a lesson, quiz or review is about.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TopicContext {
@@ -269,6 +317,13 @@ pub struct TopicContext {
     pub outline: Vec<String>,
     /// The step the lesson is on, 0-based; `outline.len()` is the final review.
     pub step: usize,
+    /// What to teach in each step (from the handout), parallel to `outline`;
+    /// empty when the tutor wrote the plan.
+    pub step_notes: Vec<String>,
+    /// Questions the quiz after the lesson may ask (prompts only), so the
+    /// lesson covers them.
+    pub quiz_topics: Vec<String>,
+    pub length: LessonLength,
 }
 
 impl TopicContext {
@@ -495,10 +550,25 @@ fn tutor_system(topic: &TopicContext) -> ChatMessage {
 /// How the lesson moves through its plan and ends. Without a plan yet, the
 /// tutor is asked to write one.
 fn lesson_plan(topic: &TopicContext) -> String {
+    let teaching = topic.length.teaching();
+    let quiz = if topic.quiz_topics.is_empty() {
+        String::new()
+    } else {
+        let list: Vec<String> = topic
+            .quiz_topics
+            .iter()
+            .map(|q| format!("  - {q}"))
+            .collect();
+        format!(
+            "\n- Depois da aula o aluno faz um quiz com perguntas como estas. Ao longo das etapas, explique o assunto de cada uma, sem ler a pergunta nem dar a resposta como gabarito:\n{}",
+            list.join("\n")
+        )
+    };
     let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
     if topic.outline.is_empty() {
         return format!(
-            "- Na sua primeira resposta, monte o roteiro desta aula: de 3 a 5 etapas curtas, de até 6 palavras cada, do básico ao que mais cai na prova. Não inclua a revisão final, ela vem sempre no fim. Escreva em uma linha separada ROTEIRO: etapa | etapa | etapa. Comece pela etapa 1.\n{rules}"
+            "- Na sua primeira resposta, monte o roteiro desta aula: de {} etapas curtas, de até 6 palavras cada, do básico ao que mais cai na prova. Não inclua a revisão final, ela vem sempre no fim. Escreva em uma linha separada ROTEIRO: etapa | etapa | etapa. Comece pela etapa 1.\n{teaching}\n{rules}{quiz}",
+            topic.length.step_range()
         );
     }
     let steps: Vec<String> = topic
@@ -509,8 +579,19 @@ fn lesson_plan(topic: &TopicContext) -> String {
         .collect();
     let review = topic.outline.len() + 1;
     let now = if topic.step < topic.outline.len() {
+        let notes = topic
+            .step_notes
+            .get(topic.step)
+            .filter(|n| !n.trim().is_empty())
+            .map(|n| {
+                format!(
+                    "\n- Pontos da etapa {}, todos para explicar: {n}",
+                    topic.step + 1
+                )
+            })
+            .unwrap_or_default();
         format!(
-            "Agora você está na etapa {}: {}.",
+            "Agora você está na etapa {}: {}.{notes}",
             topic.step + 1,
             topic.outline[topic.step]
         )
@@ -518,7 +599,7 @@ fn lesson_plan(topic: &TopicContext) -> String {
         "Agora você está na revisão final.".to_owned()
     };
     format!(
-        "- Roteiro desta aula: {}; {review}. Revisão final. {now}\n{rules}",
+        "- Roteiro desta aula: {}; {review}. Revisão final. {now}\n{teaching}\n{rules}{quiz}",
         steps.join("; ")
     )
 }
@@ -845,6 +926,33 @@ mod tests {
         assert!(follows.contains("etapa 2: Casos"));
         topic.step = 2;
         assert!(tutor_system(&topic).content.contains("revisão final."));
+    }
+
+    #[test]
+    fn tutor_gets_each_step_content_and_the_quiz_subjects() {
+        let mut topic = TopicContext {
+            topic: "Estado".into(),
+            outline: vec!["Contratualistas".into(), "Legitimidade".into()],
+            step_notes: vec![
+                "Hobbes: soberano absoluto; Rousseau: vontade geral".into(),
+                "Weber: tipos de dominação".into(),
+            ],
+            quiz_topics: vec!["No contrato social de Rousseau, a soberania reside:".into()],
+            ..TopicContext::default()
+        };
+        let asks = tutor_system(&topic).content;
+        assert!(asks.contains("Rousseau: vontade geral"));
+        assert!(!asks.contains("Weber"));
+        assert!(asks.contains("a soberania reside"));
+        assert!(asks.contains("um exemplo"));
+        topic.step = 1;
+        topic.length = LessonLength::Full;
+        let full = tutor_system(&topic).content;
+        assert!(full.contains("Weber: tipos de dominação"));
+        assert!(full.contains("duas perguntas"));
+        topic.outline.clear();
+        topic.length = LessonLength::Quick;
+        assert!(tutor_system(&topic).content.contains("de 2 a 3 etapas"));
     }
 
     #[test]

@@ -112,7 +112,35 @@ pub(crate) enum PracticeEvent {
     },
 }
 
+/// Quiz questions given to the tutor, and their longest length.
+const QUIZ_SUBJECTS: usize = 12;
+const QUIZ_SUBJECT_CHARS: usize = 200;
+
 impl Engine {
+    /// Prompts of the questions a quiz on this topic draws from (exam
+    /// questions first, then the prepared ones), for the lesson to cover.
+    pub(crate) fn quiz_subjects(&self, topic_id: TopicId) -> Vec<String> {
+        let board = self
+            .usable_board_questions(topic_id)
+            .into_iter()
+            .map(|q| q.prompt);
+        let prepared = self.quiz_bank(topic_id).into_iter().map(|q| q.prompt);
+        board
+            .chain(prepared)
+            .map(|p| p.split_whitespace().collect::<Vec<_>>().join(" "))
+            .filter(|p| !p.is_empty())
+            .map(|p| {
+                if p.chars().count() > QUIZ_SUBJECT_CHARS {
+                    let cut: String = p.chars().take(QUIZ_SUBJECT_CHARS - 1).collect();
+                    format!("{}…", cut.trim_end())
+                } else {
+                    p
+                }
+            })
+            .take(QUIZ_SUBJECTS)
+            .collect()
+    }
+
     pub(crate) fn start_quiz(&mut self, topic_id: TopicId) -> Result<(), EngineError> {
         let (ctx, topic_title) = self.topic_context(topic_id)?;
         let id = self.next_id();

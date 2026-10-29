@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.26.2. Everything an agent can build and check without a human ear, a
+Version 0.27.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -11,14 +11,17 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
 ### Handoff for the next agent
 
 **Next up, in order:**
-0. Student turns (v0.26.2): the log of 2026-10-28 showed every turn ending after
+0. Lessons (v0.27.0): run a Normal and a Full lesson on a prepared topic with the
+   real model. The tutor now gets each step's key points and the quiz's questions; check
+   it covers them before `ETAPA:`, that replies stay short, and how long lessons take.
+1. Student turns (v0.26.2): the log of 2026-10-28 showed every turn ending after
    about 450 ms of quiet (`quiet_ms=453`), because Parakeet ends almost every partial
    with a full stop. The wait is now a setting (`turn_pause`, 1 s default, +0.8 s
    without a finished sentence), speech counts from level 0.0025, and any English
    word without a Portuguese one asks Whisper. The owner's recording was exactly 0.0
    between words and about 0.005 during speech: a driver noise suppressor and a low
    microphone gain. Check new logs (`end of turn ... quiet_ms`) before tuning more.
-1. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
+2. Voices (v0.26.1): captions now follow playback. Kokoro is still slow, about 2 s
    to load the model plus about 2 s to synthesize each sentence (see
    [Kokoro evaluation](docs/kokoro-evaluation.md#latency-in-lessons-2026-10-28)).
    Options waiting for the owner's choice:
@@ -27,15 +30,15 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    (b) English voices: Kokoro's bundle already has them (`--kokoro-lang=en-us`), and
    Piper en_US/en_GB voices are as fast as Faber. Either lessons follow the UI
    language, or the tutor switches voice for English passages.
-2. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
+3. Check v0.26.0 with the real model and a person: does the tutor write `ROTEIRO:`
    in its first answer, mark `ETAPA: n` at sensible moments and close with `FIM` after
    the final review? Does the handout writer pick useful `image` titles? Read a
    whole-plan handout (100+ pages) in the reader and watch memory and scrolling.
-3. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
+4. Microphone (v0.25.0): one stream open for the whole lesson, speech threshold 0.005,
    recordings made louder and their pauses shortened before STT, English-looking Parakeet output sent to
    Whisper (short window, token budget). Ask the user for `know-giver.log` (data
    folder) and `last-recording.wav` before tuning further.
-4. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
+5. Conversation flow (v0.20.0–v0.22.0): Parakeet with live captions, end of turn when
    the caption is stable (0.45 s after a sentence, 1.2 s otherwise), a spoken "Hum."
    while the answer is written, continuation while the tutor thinks, barge-in with echo
    recognized by comparing words, Piper kept running. Measured before: silence 1.4 s,
@@ -46,13 +49,13 @@ CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `ma
    microphone and speakers: false interruptions from echo (raise the word threshold if
    they happen), CPU load of checks while the tutor speaks, and how often one-word
    answers need the Whisper check.
-5. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
+6. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
    speech; installer build and install test.
-6. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
+7. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
    review of each finished reply shown as a correction, or stronger prompting.
-7. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
+8. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
    and compare the drop rate with `handout_check`.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
@@ -168,6 +171,11 @@ Inno Setup 6).
 - [x] Last page and pages read are remembered; progress bar per handout
 - [x] Save a PDF with the highlights drawn on it
 - [x] A finished handout opens in the reader instead of an external program
+- [x] Navigation (v0.27.0): previous/next page, typed page number, Page Up/Down,
+      Home/End, and a Contents tab built from where each heading lands
+- [x] Move the page by dragging (Move tool, or a drag away from text) and middle-click
+      autoscroll (v0.27.0)
+- [x] Remove a highlight from the side list (v0.27.0)
 - [ ] Select across pages (today a highlight stays within one page)
 - [ ] Use highlights in lessons, quizzes and reviews (the tutor revisits what you marked)
 - [ ] Open PDFs that were not generated by the app (needs a PDF renderer; `hayro` is the
@@ -197,6 +205,9 @@ Inno Setup 6).
 - [x] Lesson plan and an end (v0.26.0): three to five steps plus a final review, from the
       handout headings or the tutor's `ROTEIRO:` line; "Step n of m" and a completion card
       that offers the quiz
+- [x] Lessons with content (v0.27.0): every handout section, grouped to the lesson
+      length (Quick 3 / Normal 5 / Full 8 steps); each step carries its key points; the
+      quiz's questions are given to the tutor so the lesson covers them
 
 ### Visual identity
 - [x] App icon (v0.25.0): the owner's engraving of Thoth as a baboon under the crescent
@@ -260,6 +271,9 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
 ## Not yet verified
+- Lesson depth with the real model (v0.27.0): does the tutor cover every key point and
+  every quiz subject before `ETAPA:`, and how long do Normal and Full lessons take?
+- Reader autoscroll and dragging with a real mouse (v0.27.0).
 - Long spoken answers with the owner's microphone after the turn changes (v0.26.2):
   no cut-offs mid-sentence, and fewer wrong verbs.
 - Captions in step with the voice in a live lesson, for Piper and Kokoro teachers,

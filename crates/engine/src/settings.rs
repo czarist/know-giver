@@ -58,6 +58,8 @@ pub struct Settings {
     /// Speech speed multiplier: 1.0 is normal, 1.2 is 20% faster.
     pub speech_rate: f32,
     pub quiz_size: u32,
+    /// How long and deep lessons go.
+    pub lesson_length: kg_ai::LessonLength,
     /// UI locale, e.g. "pt-BR".
     pub locale: String,
     /// The first-run welcome steps were closed.
@@ -87,6 +89,7 @@ impl Default for Settings {
             teacher: None,
             speech_rate: 0.95,
             quiz_size: 5,
+            lesson_length: kg_ai::LessonLength::default(),
             locale: "pt-BR".into(),
             onboarding_done: false,
         }

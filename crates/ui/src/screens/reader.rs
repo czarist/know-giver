@@ -3,9 +3,13 @@
 
 use std::collections::HashMap;
 
-use egui::{Color32, CursorIcon, Pos2, Rect, RichText, Sense, Stroke, TextureHandle, pos2, vec2};
+use egui::{
+    Color32, CursorIcon, Key, PointerButton, Pos2, Rect, RichText, Sense, Stroke, TextureHandle,
+    pos2, vec2,
+};
 use kg_engine::{
-    Command, Engine, Highlight, HighlightColor, HighlightId, ReaderState, Reading, ReadingId,
+    Command, ContentsEntry, Engine, Highlight, HighlightColor, HighlightId, ReaderState, Reading,
+    ReadingId,
 };
 use rust_i18n::t;
 
@@ -21,6 +25,31 @@ const A4_WIDTH_PT: f32 = 595.0;
 const KEPT_TEXTURES: usize = 10;
 const ZOOMS: [f32; 6] = [0.6, 0.75, 0.9, 1.0, 1.2, 1.5];
 const SELECTION: Color32 = Color32::from_rgba_premultiplied(0x2F, 0x6F, 0x68, 0x40);
+/// Text within this many points of the pointer can be selected; a drag that
+/// starts farther from any text moves the page instead.
+const TEXT_REACH_PT: f32 = 6.0;
+/// Middle-click scrolling: no movement this close to where it started, then
+/// this many pixels per second for each pixel of distance.
+const AUTOSCROLL_DEAD_ZONE: f32 = 12.0;
+const AUTOSCROLL_SPEED: f32 = 6.0;
+
+/// What a drag with the left button does on the page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum Tool {
+    /// Selects text to highlight (drags away from text still move the page).
+    #[default]
+    Highlight,
+    /// Moves the page.
+    Hand,
+}
+
+/// The side panel's tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum Side {
+    #[default]
+    Highlights,
+    Contents,
+}
 
 /// Reader state that only the UI needs.
 #[derive(Default)]
@@ -34,6 +63,15 @@ pub struct ReaderUi {
     scroll_to: Option<usize>,
     /// The reading last shown, to jump to its saved page once.
     shown: Option<ReadingId>,
+    tool: Tool,
+    side: Side,
+    /// The page is being moved with the mouse.
+    panning: bool,
+    /// Middle-click scrolling: where it started, and whether the button was
+    /// held and moved (then releasing it stops).
+    autoscroll: Option<(Pos2, bool)>,
+    /// The page number being typed.
+    page_input: Option<String>,
 }
 
 impl ReaderUi {
@@ -181,19 +219,8 @@ fn reader_view(
         state.textures.clear();
     }
 
-    // Title, then a bar with the page, zoom and export.
-    ui.add(
-        egui::Label::new(
-            RichText::new(&reading.title)
-                .family(theme::heading_family())
-                .size(20.0),
-        )
-        .truncate(),
-    );
+    // Title with the file actions, then a bar to move around the handout.
     ui.horizontal(|ui| {
-        if ui.button(t!("reader.back")).clicked() {
-            actions.send(Command::CloseReader);
-        }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let ready = reader.pages.is_some();
             if ui
@@ -214,33 +241,51 @@ fn reader_view(
             if ui.button(t!("reader.open_pdf")).clicked() {
                 crate::app::open_file(std::path::Path::new(&reading.path));
             }
-            let zoom = state.zoom.unwrap_or(3);
-            if ui
-                .add_enabled(zoom + 1 < ZOOMS.len(), egui::Button::new("+"))
-                .on_hover_text(t!("reader.zoom_in"))
-                .clicked()
-            {
-                state.zoom = Some(zoom + 1);
-            }
-            ui.label(format!("{:.0}%", ZOOMS[zoom] * 100.0));
-            if ui
-                .add_enabled(zoom > 0, egui::Button::new("−"))
-                .on_hover_text(t!("reader.zoom_out"))
-                .clicked()
-            {
-                state.zoom = Some(zoom - 1);
-            }
-            if reading.page_count > 0 {
-                ui.label(
-                    RichText::new(t!(
-                        "reader.page_of",
-                        page = reading.last_page + 1,
-                        total = reading.page_count
-                    ))
-                    .color(p.muted),
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(&reading.title)
+                            .family(theme::heading_family())
+                            .size(20.0),
+                    )
+                    .truncate(),
                 );
-            }
+            });
         });
+    });
+    ui.horizontal(|ui| {
+        if ui.button(t!("reader.back")).clicked() {
+            actions.send(Command::CloseReader);
+        }
+        ui.separator();
+        page_navigation(ui, reading, state);
+        ui.separator();
+        let zoom = state.zoom.unwrap_or(3);
+        if ui
+            .add_enabled(zoom > 0, egui::Button::new("−"))
+            .on_hover_text(t!("reader.zoom_out"))
+            .clicked()
+        {
+            state.zoom = Some(zoom - 1);
+        }
+        ui.label(format!("{:.0}%", ZOOMS[zoom] * 100.0));
+        if ui
+            .add_enabled(zoom + 1 < ZOOMS.len(), egui::Button::new("+"))
+            .on_hover_text(t!("reader.zoom_in"))
+            .clicked()
+        {
+            state.zoom = Some(zoom + 1);
+        }
+        ui.separator();
+        let hint = t!("reader.tool_hint").into_owned();
+        ui.selectable_value(
+            &mut state.tool,
+            Tool::Highlight,
+            t!("reader.tool_highlight"),
+        )
+        .on_hover_text(hint.as_str());
+        ui.selectable_value(&mut state.tool, Tool::Hand, t!("reader.tool_hand"))
+            .on_hover_text(hint.as_str());
     });
     ui.add(
         egui::ProgressBar::new(reading.progress())
@@ -268,7 +313,8 @@ fn reader_view(
             left: 14,
             ..Default::default()
         }))
-        .show(ui, |ui| highlight_list(ui, reader, state));
+        .show(ui, |ui| side_panel(ui, reader, state, actions));
+    keyboard_navigation(ui, reading, state);
 
     let zoom = ZOOMS[state.zoom.unwrap_or(3)];
     let ppp = ui.ctx().pixels_per_point();
@@ -278,11 +324,12 @@ fn reader_view(
     forget_textures(state, reading.id, reading.last_page, render_scale);
 
     let mut current = None;
-    egui::ScrollArea::vertical()
+    egui::ScrollArea::both()
         .id_salt(("reader_pages", reading.id))
         .auto_shrink([false, false])
         .show(ui, |ui| {
             let view = ui.clip_rect();
+            autoscroll(ui, state, view);
             for page in 0..pages.len() {
                 let Some([w, h]) = pages.size(page) else {
                     continue;
@@ -433,15 +480,46 @@ fn handle_pointer(
         let pt = (pos - rect.min) / scale;
         nearest_box(boxes, pt.x, pt.y)
     };
-    if response.hovered() {
-        ui.ctx().set_cursor_icon(CursorIcon::Text);
+    let over_text = |pos: Pos2| {
+        let pt = (pos - rect.min) / scale;
+        boxes.iter().any(|b| {
+            pt.x >= b.rect[0] - TEXT_REACH_PT
+                && pt.x <= b.rect[2] + TEXT_REACH_PT
+                && pt.y >= b.rect[1] - TEXT_REACH_PT
+                && pt.y <= b.rect[3] + TEXT_REACH_PT
+        })
+    };
+    if state.autoscroll.is_some() {
+        return;
     }
-    if response.drag_started()
+    if response.drag_started_by(PointerButton::Primary)
         && let Some(pos) = response.interact_pointer_pos()
-        && let Some(i) = at_point(pos)
     {
-        state.drag = Some((page, i, i));
         state.popup = None;
+        if state.tool == Tool::Hand || !over_text(pos) {
+            state.panning = true;
+        } else if let Some(i) = at_point(pos) {
+            state.drag = Some((page, i, i));
+        }
+    }
+    if state.panning {
+        if response.dragged_by(PointerButton::Primary) {
+            ui.scroll_with_delta(response.drag_delta());
+        }
+        if !ui.input(|i| i.pointer.primary_down()) {
+            state.panning = false;
+        }
+        ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
+        return;
+    }
+    if response.hovered() {
+        let grab =
+            state.tool == Tool::Hand || response.hover_pos().is_some_and(|pos| !over_text(pos));
+        ui.ctx().set_cursor_icon(if grab {
+            CursorIcon::Grab
+        } else {
+            CursorIcon::Text
+        });
     }
     if response.dragged()
         && let Some(pos) = response.interact_pointer_pos()
@@ -565,7 +643,7 @@ fn popup(ui: &egui::Ui, _engine: &Engine, state: &mut ReaderUi, actions: &mut Ac
                                     close = true;
                                 }
                             }
-                            if ui.small_button("✕").clicked() {
+                            if ui.small_button("×").clicked() {
                                 close = true;
                             }
                         });
@@ -603,7 +681,7 @@ fn popup(ui: &egui::Ui, _engine: &Engine, state: &mut ReaderUi, actions: &mut Ac
                                 actions.send(Command::DeleteHighlight(*id));
                                 close = true;
                             }
-                            if ui.small_button("✕").clicked() {
+                            if ui.small_button("×").clicked() {
                                 close = true;
                             }
                         });
@@ -613,12 +691,234 @@ fn popup(ui: &egui::Ui, _engine: &Engine, state: &mut ReaderUi, actions: &mut Ac
     state.popup = if close { None } else { Some(next) };
 }
 
-fn highlight_list(ui: &mut egui::Ui, reader: &ReaderState, state: &mut ReaderUi) {
+fn side_panel(
+    ui: &mut egui::Ui,
+    reader: &ReaderState,
+    state: &mut ReaderUi,
+    actions: &mut Actions,
+) {
+    ui.horizontal(|ui| {
+        ui.selectable_value(
+            &mut state.side,
+            Side::Highlights,
+            RichText::new(t!("reader.highlights", count = reader.highlights.len()))
+                .family(theme::strong_family()),
+        );
+        ui.selectable_value(
+            &mut state.side,
+            Side::Contents,
+            RichText::new(t!("reader.contents")).family(theme::strong_family()),
+        );
+    });
+    ui.add_space(4.0);
+    match state.side {
+        Side::Highlights => highlight_list(ui, reader, state, actions),
+        Side::Contents => contents_list(ui, reader, state),
+    }
+}
+
+fn contents_list(ui: &mut egui::Ui, reader: &ReaderState, state: &mut ReaderUi) {
+    if reader.contents.is_empty() {
+        widgets::hint(ui, &t!("reader.no_contents"));
+        return;
+    }
     let p = theme::palette(ui.ctx());
-    ui.label(
-        RichText::new(t!("reader.highlights", count = reader.highlights.len()))
-            .family(theme::strong_family()),
+    let current = reader.reading.last_page;
+    // The entry the reader is in: the last one starting at or before the page.
+    let here = reader.contents.iter().rposition(|c| c.page <= current);
+    egui::ScrollArea::vertical()
+        .id_salt("reader_contents")
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for (i, entry) in reader.contents.iter().enumerate() {
+                if contents_row(ui, entry, here == Some(i), p).clicked() {
+                    state.scroll_to = Some(entry.page);
+                }
+            }
+        });
+}
+
+fn contents_row(
+    ui: &mut egui::Ui,
+    entry: &ContentsEntry,
+    here: bool,
+    p: theme::Palette,
+) -> egui::Response {
+    let response = ui
+        .horizontal(|ui| {
+            ui.add_space(f32::from(entry.level) * 14.0);
+            let mut title = RichText::new(&entry.title);
+            if entry.level == 0 {
+                title = title.family(theme::strong_family());
+            }
+            if here {
+                title = title.color(p.accent);
+            }
+            ui.add(egui::Label::new(title).truncate().selectable(false));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                widgets::hint(ui, &(entry.page + 1).to_string());
+            });
+        })
+        .response
+        .interact(Sense::click());
+    if response.hovered() {
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    response
+}
+
+/// Previous and next page buttons and the page number, which can be typed.
+fn page_navigation(ui: &mut egui::Ui, reading: &Reading, state: &mut ReaderUi) {
+    let total = reading.page_count;
+    let page = reading.last_page;
+    if ui
+        .add_enabled(total > 0 && page > 0, egui::Button::new("◀"))
+        .on_hover_text(t!("reader.prev_page"))
+        .clicked()
+    {
+        state.scroll_to = Some(page - 1);
+    }
+    let mut text = state
+        .page_input
+        .clone()
+        .unwrap_or_else(|| (page + 1).to_string());
+    let edit = ui.add_enabled(
+        total > 0,
+        egui::TextEdit::singleline(&mut text)
+            .desired_width(34.0)
+            .horizontal_align(egui::Align::Center),
     );
+    let edit = edit.on_hover_text(t!("reader.go_to_page"));
+    if edit.has_focus() {
+        state.page_input = Some(text.clone());
+    }
+    if edit.lost_focus() {
+        if ui.input(|i| i.key_pressed(Key::Enter))
+            && let Ok(typed) = text.trim().parse::<usize>()
+            && total > 0
+        {
+            state.scroll_to = Some(typed.clamp(1, total) - 1);
+        }
+        state.page_input = None;
+    }
+    ui.label(
+        RichText::new(t!("reader.of_total", total = total)).color(theme::palette(ui.ctx()).muted),
+    );
+    if ui
+        .add_enabled(page + 1 < total, egui::Button::new("▶"))
+        .on_hover_text(t!("reader.next_page"))
+        .clicked()
+    {
+        state.scroll_to = Some(page + 1);
+    }
+}
+
+/// Page Up / Page Down, Home and End, unless a text field is being typed in.
+fn keyboard_navigation(ui: &egui::Ui, reading: &Reading, state: &mut ReaderUi) {
+    let total = reading.page_count;
+    if total == 0 || ui.ctx().memory(|m| m.focused().is_some()) {
+        return;
+    }
+    let page = reading.last_page;
+    let target = ui.input(|i| {
+        if i.key_pressed(Key::PageDown) {
+            Some((page + 1).min(total - 1))
+        } else if i.key_pressed(Key::PageUp) {
+            Some(page.saturating_sub(1))
+        } else if i.key_pressed(Key::Home) {
+            Some(0)
+        } else if i.key_pressed(Key::End) {
+            Some(total - 1)
+        } else {
+            None
+        }
+    });
+    if target.is_some() {
+        state.scroll_to = target;
+    }
+}
+
+/// Middle-click scrolling: click the wheel and move the mouse away from the
+/// mark to scroll that way, faster the farther it is. Clicking again, any
+/// other button or Esc stops it; holding the wheel while moving stops it on
+/// release.
+fn autoscroll(ui: &egui::Ui, state: &mut ReaderUi, view: Rect) {
+    let (pressed, released, other, escape, pointer, dt) = ui.input(|i| {
+        (
+            i.pointer.button_pressed(PointerButton::Middle),
+            i.pointer.button_released(PointerButton::Middle),
+            i.pointer.button_pressed(PointerButton::Primary)
+                || i.pointer.button_pressed(PointerButton::Secondary),
+            i.key_pressed(Key::Escape),
+            i.pointer.hover_pos(),
+            i.stable_dt.min(0.1),
+        )
+    });
+    match state.autoscroll {
+        None => {
+            if pressed
+                && let Some(pos) = pointer
+                && view.contains(pos)
+            {
+                state.autoscroll = Some((pos, false));
+                state.drag = None;
+                state.popup = None;
+            }
+            return;
+        }
+        Some((origin, held)) => {
+            let moved = pointer.is_some_and(|pos| pos.distance(origin) > AUTOSCROLL_DEAD_ZONE);
+            if (pressed && !held) || other || escape || (released && held) {
+                state.autoscroll = None;
+                return;
+            }
+            let still_down = ui.input(|i| i.pointer.button_down(PointerButton::Middle));
+            if still_down && moved {
+                state.autoscroll = Some((origin, true));
+            }
+        }
+    }
+    let Some((origin, _)) = state.autoscroll else {
+        return;
+    };
+    if let Some(pos) = pointer {
+        let speed =
+            |d: f32| d.signum() * (d.abs() - AUTOSCROLL_DEAD_ZONE).max(0.0) * AUTOSCROLL_SPEED;
+        let offset = pos - origin;
+        ui.scroll_with_delta(-vec2(speed(offset.x), speed(offset.y)) * dt);
+    }
+    ui.ctx().set_cursor_icon(CursorIcon::AllScroll);
+    // The mark where scrolling started.
+    let painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        egui::Id::new("reader_autoscroll"),
+    ));
+    let p = theme::palette(ui.ctx());
+    painter.circle_filled(origin, 13.0, p.surface.gamma_multiply(0.9));
+    painter.circle_stroke(origin, 13.0, Stroke::new(1.5, p.ink));
+    let arrow = Stroke::new(1.5, p.ink);
+    for dir in [
+        vec2(0.0, -1.0),
+        vec2(0.0, 1.0),
+        vec2(-1.0, 0.0),
+        vec2(1.0, 0.0),
+    ] {
+        let tip = origin + dir * 9.0;
+        let side = vec2(dir.y, -dir.x) * 3.0;
+        painter.line_segment([tip, tip - dir * 3.5 + side], arrow);
+        painter.line_segment([tip, tip - dir * 3.5 - side], arrow);
+    }
+    painter.circle_filled(origin, 1.8, p.ink);
+    ui.ctx().request_repaint();
+}
+
+fn highlight_list(
+    ui: &mut egui::Ui,
+    reader: &ReaderState,
+    state: &mut ReaderUi,
+    actions: &mut Actions,
+) {
+    let p = theme::palette(ui.ctx());
     if reader.highlights.is_empty() {
         widgets::hint(ui, &t!("reader.no_highlights"));
         return;
@@ -628,7 +928,7 @@ fn highlight_list(ui: &mut egui::Ui, reader: &ReaderState, state: &mut ReaderUi)
         .auto_shrink([false, false])
         .show(ui, |ui| {
             for highlight in &reader.highlights {
-                highlight_row(ui, highlight, state, p);
+                highlight_row(ui, highlight, state, actions, p);
                 ui.add_space(6.0);
             }
         });
@@ -638,8 +938,10 @@ fn highlight_row(
     ui: &mut egui::Ui,
     highlight: &Highlight,
     state: &mut ReaderUi,
+    actions: &mut Actions,
     p: theme::Palette,
 ) {
+    let mut removed = false;
     let [r, g, b, _] = highlight.color.rgba();
     let response = egui::Frame::new()
         .stroke(Stroke::new(1.0, p.border))
@@ -651,6 +953,16 @@ fn highlight_row(
                 ui.painter()
                     .circle_filled(dot.center(), 5.0, Color32::from_rgb(r, g, b));
                 widgets::hint(ui, &t!("reader.page_short", page = highlight.page + 1));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .small_button(RichText::new("×").color(p.danger))
+                        .on_hover_text(t!("reader.remove"))
+                        .clicked()
+                    {
+                        actions.send(Command::DeleteHighlight(highlight.id));
+                        removed = true;
+                    }
+                });
             });
             let mut text: String = highlight.text.chars().take(160).collect();
             if text.len() < highlight.text.len() {
@@ -666,8 +978,11 @@ fn highlight_row(
     if response.hovered() {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
-    if response.clicked() {
+    if response.clicked() && !removed {
         state.scroll_to = Some(highlight.page);
+    }
+    if removed && matches!(&state.popup, Some(Popup::Edit { id, .. }) if *id == highlight.id) {
+        state.popup = None;
     }
 }
 

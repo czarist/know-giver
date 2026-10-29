@@ -304,8 +304,13 @@ impl Engine {
             self.end_lesson()?;
         }
         let (mut context, topic_title) = self.topic_context(topic_id)?;
-        // A written handout gives the lesson its plan up front.
-        context.outline = self.handout_outline(topic_id);
+        // A written handout gives the lesson its plan up front, with what to
+        // teach in each step; the quiz's questions say what must be covered.
+        context.length = self.settings.lesson_length;
+        let plan = self.handout_plan(topic_id, context.length);
+        context.outline = plan.outline;
+        context.step_notes = plan.notes;
+        context.quiz_topics = self.quiz_subjects(topic_id);
         self.update_topic(topic_id, |t| {
             if t.status == TopicStatus::NotStarted {
                 t.status = TopicStatus::Studying;

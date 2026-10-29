@@ -15,9 +15,9 @@ use crate::{Engine, EngineError, Event, Notice};
 
 /// Topics written at the same time. More would hit rate limits.
 const PARALLEL_TOPICS: usize = 3;
-/// Steps taken from a handout for a lesson plan, and their longest length.
-const LESSON_STEPS: usize = 5;
+/// Longest step title in a lesson plan, and longest content of one step.
 const LESSON_STEP_CHARS: usize = 60;
+const STEP_NOTES_CHARS: usize = 900;
 /// Same syllabus-aware excerpt budget used for plan generation.
 const EDITAL_CHARS: usize = 150_000;
 
@@ -236,27 +236,16 @@ impl Engine {
 
     /// A lesson plan from the topic's written handout: its section headings.
     /// Empty when there is no handout yet.
-    pub(crate) fn handout_outline(&self, topic: TopicId) -> Vec<String> {
+    /// A lesson plan from the topic's handout: every section, grouped into
+    /// at most `length.max_steps()` steps, each with what to teach in it.
+    pub(crate) fn handout_plan(&self, topic: TopicId, length: kg_ai::LessonLength) -> LessonPlan {
         let Ok(Some(json)) = self.store.handout(topic) else {
-            return Vec::new();
+            return LessonPlan::default();
         };
         let Ok(cached) = serde_json::from_str::<CachedHandout>(&json) else {
-            return Vec::new();
+            return LessonPlan::default();
         };
-        cached
-            .content
-            .sections
-            .iter()
-            .map(|s| {
-                s.heading
-                    .trim()
-                    .chars()
-                    .take(LESSON_STEP_CHARS)
-                    .collect::<String>()
-            })
-            .filter(|h| !h.is_empty())
-            .take(LESSON_STEPS)
-            .collect()
+        lesson_plan(&cached.content, length.max_steps())
     }
 
     /// Where handout pictures come from, or `None` when pictures are off.
@@ -535,5 +524,108 @@ mod tests {
         assert_eq!(topic.sections.len(), 1);
         let exercise = &topic.exercises[0];
         assert_eq!(exercise.options[exercise.correct], "certa");
+    }
+}
+
+/// Steps of a lesson and what to teach in each one.
+#[derive(Debug, Default, PartialEq)]
+pub(crate) struct LessonPlan {
+    pub outline: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+/// Groups the handout's sections, in order, into at most `max_steps` steps.
+/// No section is left out; the topic's exam pitfalls go with the last step.
+fn lesson_plan(handout: &kg_handout::TopicHandout, max_steps: usize) -> LessonPlan {
+    let sections: Vec<&kg_handout::Section> = handout
+        .sections
+        .iter()
+        .filter(|s| !s.heading.trim().is_empty())
+        .collect();
+    if sections.is_empty() || max_steps == 0 {
+        return LessonPlan::default();
+    }
+    let steps = sections.len().min(max_steps);
+    let mut plan = LessonPlan::default();
+    let mut start = 0;
+    for step in 0..steps {
+        // Spread the sections evenly; earlier steps take the extra ones.
+        let size = sections.len() / steps + usize::from(step < sections.len() % steps);
+        let group = &sections[start..start + size];
+        start += size;
+        let title = group
+            .iter()
+            .map(|s| s.heading.trim())
+            .collect::<Vec<_>>()
+            .join(" · ");
+        plan.outline.push(shorten(&title, LESSON_STEP_CHARS));
+        let mut points: Vec<String> = Vec::new();
+        for section in group {
+            if section.key_points.is_empty() {
+                if let Some(first) = section.paragraphs.first() {
+                    points.push(shorten(first.trim(), 300));
+                }
+            } else {
+                points.extend(section.key_points.iter().map(|p| p.trim().to_owned()));
+            }
+        }
+        if step + 1 == steps && !handout.pitfalls.is_empty() {
+            points.push(format!(
+                "Pegadinhas de prova: {}",
+                handout.pitfalls.join("; ")
+            ));
+        }
+        plan.notes
+            .push(shorten(&points.join("; "), STEP_NOTES_CHARS));
+    }
+    plan
+}
+
+/// `text` cut at `max` characters, with an ellipsis when cut.
+fn shorten(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text.to_owned();
+    }
+    let cut: String = text.chars().take(max.saturating_sub(1)).collect();
+    format!("{}…", cut.trim_end())
+}
+
+#[cfg(test)]
+mod plan_tests {
+    use super::*;
+
+    fn section(heading: &str, points: &[&str]) -> kg_handout::Section {
+        kg_handout::Section {
+            heading: heading.into(),
+            key_points: points.iter().map(|p| (*p).to_owned()).collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn every_section_is_taught_and_grouped_to_fit() {
+        let handout = kg_handout::TopicHandout {
+            sections: (1..=7)
+                .map(|i| section(&format!("S{i}"), &[&format!("ponto {i}")]))
+                .collect(),
+            pitfalls: vec!["Rousseau não é Hobbes".into()],
+            ..Default::default()
+        };
+        let plan = lesson_plan(&handout, 5);
+        assert_eq!(plan.outline, ["S1 · S2", "S3 · S4", "S5", "S6", "S7"]);
+        assert_eq!(plan.notes[0], "ponto 1; ponto 2");
+        assert!(plan.notes[4].contains("Pegadinhas de prova: Rousseau não é Hobbes"));
+        let full = lesson_plan(&handout, 8);
+        assert_eq!(full.outline.len(), 7);
+        let all: String = plan.notes.concat();
+        for i in 1..=7 {
+            assert!(all.contains(&format!("ponto {i}")));
+        }
+    }
+
+    #[test]
+    fn no_sections_no_plan() {
+        let plan = lesson_plan(&kg_handout::TopicHandout::default(), 5);
+        assert_eq!(plan, LessonPlan::default());
     }
 }

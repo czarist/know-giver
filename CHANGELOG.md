@@ -4,6 +4,25 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.27.0] - 2026-10-29
+
+### Changed
+- Lessons teach the handout, not just its headings: each step gets the key points
+  of its sections (and the exam pitfalls at the end), and the teacher moves on only
+  after covering them and a check question. Every section is taught; short ones are
+  grouped instead of the plan stopping at five.
+- Lessons cover what the quiz will ask: the teacher gets the topic's quiz questions
+  (exam and prepared ones, without answers) and explains each subject along the way.
+
+### Added
+- Settings → Lesson length: Quick (up to 3 steps), Normal (up to 5, default) or
+  Full (one step per handout section, up to 8, with examples and more questions).
+- Reader navigation: previous and next page, type a page number, Page Up / Page Down,
+  Home and End, and a Contents tab with every topic and section.
+- Reader: drag the page to move it (Move tool, or drag away from text), and click the
+  mouse wheel to scroll on its own, faster the farther the mouse goes from the mark.
+- Reader: remove a highlight right from the side list.
+
 ## [0.26.2] - 2026-10-29
 
 ### Fixed

@@ -736,6 +736,11 @@ fn generated_handout_opens_in_the_reader_with_progress_and_highlights() {
             topic: "Crase".into(),
             subject: "Português".into(),
             introduction: "A crase marca a fusão da preposição com o artigo.".into(),
+            sections: vec![kg_handout::Section {
+                heading: "Quando usar".into(),
+                paragraphs: vec!["Antes de palavra feminina que aceita artigo.".into()],
+                ..Default::default()
+            }],
             ..Default::default()
         }],
         files: Vec::new(),
@@ -760,6 +765,14 @@ fn generated_handout_opens_in_the_reader_with_progress_and_highlights() {
     let page = (0..pages.len())
         .find(|p| pages.text_of(*p, 0..pages.text(*p).len()).contains("fusão"))
         .unwrap();
+    // The contents point at the body, not at the contents page.
+    let contents = &engine.reader().unwrap().contents;
+    let titles: Vec<(&str, u8)> = contents
+        .iter()
+        .map(|c| (c.title.as_str(), c.level))
+        .collect();
+    assert_eq!(titles, [("Crase", 0), ("Quando usar", 1)]);
+    assert_eq!(contents[0].page, page);
 
     engine.handle(Command::ReaderGoTo(page)).unwrap();
     engine

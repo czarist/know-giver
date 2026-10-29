@@ -302,6 +302,20 @@ pub(crate) fn voice_section(
                 ui.label(t!("settings.quiz_size"));
                 ui.add(egui::Slider::new(&mut draft.quiz_size, 3..=10));
                 ui.end_row();
+
+                ui.label(t!("settings.lesson_length.title"))
+                    .on_hover_text(t!("settings.lesson_length.hint"));
+                ui.horizontal(|ui| {
+                    for length in kg_engine::LessonLength::ALL {
+                        ui.selectable_value(
+                            &mut draft.lesson_length,
+                            length,
+                            crate::i18n::lesson_length(length),
+                        )
+                        .on_hover_text(crate::i18n::lesson_length_hint(length));
+                    }
+                });
+                ui.end_row();
             });
         ui.horizontal(|ui| {
             if engine.voice_preview_active() {

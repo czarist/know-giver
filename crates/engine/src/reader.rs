@@ -24,6 +24,8 @@ pub struct ReaderState {
     /// Laying the pages out failed.
     pub failed: bool,
     pub highlights: Vec<Highlight>,
+    /// Topics and their sections with the page each starts on.
+    pub contents: Vec<ContentsEntry>,
     /// The handout's content with its pictures, for exporting.
     document: Option<Arc<Document>>,
     images: HashMap<(usize, u32), Arc<PageImage>>,
@@ -54,11 +56,77 @@ impl ReaderState {
     }
 }
 
+/// A line of a handout's table of contents.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContentsEntry {
+    pub title: String,
+    /// 0 for a topic, 1 for one of its sections.
+    pub level: u8,
+    pub page: usize,
+}
+
+/// Where each topic and section heading first appears, in order. Headings
+/// not found (cut by layout) are left out.
+fn contents(document: &Document, pages: &Pages) -> Vec<ContentsEntry> {
+    let squash = |text: &str| -> String {
+        text.chars()
+            .filter(|c| c.is_alphanumeric())
+            .flat_map(char::to_lowercase)
+            .collect()
+    };
+    let page_text: Vec<String> = (0..pages.len())
+        .map(|page| {
+            squash(
+                &pages
+                    .text(page)
+                    .iter()
+                    .map(|b| b.text.as_str())
+                    .collect::<String>(),
+            )
+        })
+        .collect();
+    let headings: Vec<(&str, u8)> = document
+        .topics
+        .iter()
+        .flat_map(|topic| {
+            std::iter::once((topic.topic.as_str(), 0u8))
+                .chain(topic.sections.iter().map(|s| (s.heading.as_str(), 1u8)))
+        })
+        .collect();
+    // The contents page lists every heading before the body does, so walk
+    // from the last heading backwards: each one is the last occurrence at or
+    // before the page of the heading after it.
+    let mut entries = Vec::new();
+    let mut until = page_text.len();
+    for (title, level) in headings.into_iter().rev() {
+        let needle = squash(title);
+        if needle.is_empty() {
+            continue;
+        }
+        let found = (0..until)
+            .rev()
+            .find(|&page| page_text[page].contains(&needle));
+        if let Some(page) = found {
+            until = page + 1;
+            entries.push(ContentsEntry {
+                title: title.trim().to_owned(),
+                level,
+                page,
+            });
+        }
+    }
+    entries.reverse();
+    entries
+}
+
+/// A handout laid out for reading: pages, content with pictures, contents.
+type Laidout = (Arc<Pages>, Arc<Document>, Vec<ContentsEntry>);
+
 /// What a background reader job sends back.
 pub(crate) enum ReaderEvent {
     Ready {
         reading: ReadingId,
-        result: Result<(Arc<Pages>, Arc<Document>), EngineError>,
+        result: Result<Laidout, EngineError>,
     },
     Rendered {
         reading: ReadingId,
@@ -144,6 +212,7 @@ impl Engine {
             pages: None,
             failed: false,
             highlights,
+            contents: Vec::new(),
             document: None,
             images: HashMap::new(),
             pending: HashSet::new(),
@@ -158,7 +227,8 @@ impl Engine {
                     crate::illustrations::illustrate(&mut document, &cache);
                 }
                 let pages = kg_handout::paginate(&document)?;
-                Ok((Arc::new(pages), Arc::new(document)))
+                let contents = contents(&document, &pages);
+                Ok((Arc::new(pages), Arc::new(document), contents))
             })();
             Event::Reader(ReaderEvent::Ready {
                 reading: id,
@@ -327,7 +397,8 @@ impl Engine {
                     return Ok(());
                 };
                 match result {
-                    Ok((pages, document)) => {
+                    Ok((pages, document, contents)) => {
+                        reader.contents = contents;
                         let count = pages.len();
                         reader.reading.page_count = count;
                         reader.reading.last_page =

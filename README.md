@@ -68,9 +68,11 @@ The tutor starts talking with the first sentence of its answer, says "Hum." whil
 thinks, and stops when you interrupt. Captions follow its voice, sentence by sentence. Hands-free, push-to-talk (Space) or typing.
 
 ### 🧭 A lesson with a beginning and an end
-Every lesson follows a short plan, from the topic's handout or written by the
-teacher: three to five steps and a final review. You always see where you are
-("Step 2 of 5"), and the lesson closes with a summary and an offer to take the quiz.
+Every lesson follows a plan built from the topic's handout (or written by the
+teacher): each step brings the handout's key points, the teacher checks you got them
+before moving on, and everything the quiz will ask is covered along the way. You
+always see where you are ("Step 2 of 5"), and the lesson closes with a summary and an
+offer to take the quiz. Pick **Quick**, **Normal** or **Full** lessons in Settings.
 
 ### 🧠 Teaching
 Any OpenAI-compatible model (Ollama, LiteLLM, GLM, …) behind tutor prompts written for
@@ -102,8 +104,10 @@ Ten voices, half of them female, from **Piper** and **Kokoro**, all running loca
 
 Generated handouts open right inside the app, page by page, exactly as their PDF.
 Drag over a passage to highlight it, click it to write a note, and find every
-highlight in the side list. Know Giver remembers where you stopped and how much of
-each handout you have read, and saves a PDF with your highlights when you want one.
+highlight in the side list. Jump through the contents, type a page, grab the page to
+move it, or click the mouse wheel to scroll on its own. Know Giver remembers where you
+stopped and how much of each handout you have read, and saves a PDF with your
+highlights when you want one.
 
 <p align="center">
   <img src="docs/images/reader.png" alt="A handout open in the reader, with a highlighted passage, its note in the side list and the reading progress bar" width="100%">

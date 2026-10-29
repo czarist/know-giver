@@ -33,7 +33,7 @@ use chrono::NaiveDate;
 pub use board::{BoardItem, BoardJob};
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
-pub use kg_ai::{AiConfig, AiError, ModelSet, PlanPrefs, ReviewFeedback};
+pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_audio::{
     AudioError, CloudSpeechConfig, KokoroVoice, ModelId, PiperVoice, SttEngine, TtsBackend, Voice,
     VoiceGender, WhisperModel,
@@ -58,7 +58,7 @@ pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
-pub use reader::ReaderState;
+pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{DEFAULT_TURN_PAUSE, Settings, TURN_PAUSE_RANGE};
 pub use study_time::StudyPresence;
 pub use teacher::Teacher;
@@ -799,6 +799,9 @@ impl Engine {
                 teacher_female: self.settings.teacher().gender() == VoiceGender::Female,
                 outline: Vec::new(),
                 step: 0,
+                step_notes: Vec::new(),
+                quiz_topics: Vec::new(),
+                length: self.settings.lesson_length,
             },
             topic.title.clone(),
         ))
