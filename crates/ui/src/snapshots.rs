@@ -270,7 +270,7 @@ fn avatar_states() {
         (LessonPhase::Speaking, 0.9, 0.0),
     ];
     let mut harness = Harness::builder()
-        .with_size([1120.0, 1080.0])
+        .with_size([1120.0, 866.0])
         .build_ui(move |ui| {
             crate::theme::apply(ui.ctx());
             egui_extras::install_image_loaders(ui.ctx());
