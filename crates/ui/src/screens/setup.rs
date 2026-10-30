@@ -56,12 +56,20 @@ impl SetupUi {
             return false;
         };
         match step {
-            0 => self.language_chosen,
+            0 => self.language_chosen && draft.region.is_some(),
             1 => !draft.student_name.trim().is_empty(),
             2 => draft.teacher.is_some(),
             3 => self.ai_ready(),
-            _ => self.agreed && draft.region.is_some(),
+            _ => self.agreed,
         }
+    }
+
+    /// Mainland China: only AI services that serve it are offered.
+    fn mainland(&self) -> bool {
+        self.draft
+            .as_ref()
+            .and_then(|d| d.region)
+            .is_some_and(kg_engine::Region::is_mainland_china)
     }
 
     fn pick_provider(&mut self, provider: &'static kg_engine::Provider) {
@@ -192,6 +200,8 @@ fn language_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
             }
         }
     });
+    ui.add_space(12.0);
+    region_select(ui, setup);
 }
 
 fn name_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
@@ -229,9 +239,10 @@ fn ai_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mu
     step_title(ui, &t!("setup.ai.title"), &t!("setup.ai.hint"));
 
     // The two recommendations, side by side in equal columns.
+    let mainland = setup.mainland();
     let recommended: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
         .iter()
-        .filter(|p| p.recommended.is_some())
+        .filter(|p| p.offered(mainland) && p.recommendation(mainland).is_some())
         .collect();
     ui.scope(|ui| {
         ui.spacing_mut().item_spacing.x = 14.0;
@@ -373,7 +384,8 @@ pub(crate) fn provider_select(ui: &mut egui::Ui, setup: &mut SetupUi) {
             .width(FIELD_WIDTH - 30.0)
             .height(460.0)
             .show_ui(ui, |ui| {
-                if let Some(provider) = provider_list(ui, setup.provider.map(|p| p.id)) {
+                let mainland = setup.mainland();
+                if let Some(provider) = provider_list(ui, setup.provider.map(|p| p.id), mainland) {
                     setup.pick_provider(provider);
                 }
             });
@@ -381,9 +393,12 @@ pub(crate) fn provider_select(ui: &mut egui::Ui, setup: &mut SetupUi) {
 }
 
 /// Draws the grouped provider rows; returns the one clicked.
+/// Draws the grouped provider rows for where the app is used; returns the
+/// one clicked.
 pub(crate) fn provider_list(
     ui: &mut egui::Ui,
     current: Option<&str>,
+    mainland: bool,
 ) -> Option<&'static kg_engine::Provider> {
     let p = theme::palette(ui.ctx());
     ui.set_min_width(FIELD_WIDTH);
@@ -410,9 +425,10 @@ pub(crate) fn provider_list(
     for (title, kind) in groups {
         let members: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
             .iter()
+            .filter(|provider| provider.offered(mainland))
             .filter(|provider| match kind {
-                None => provider.recommended.is_some(),
-                Some(kind) => provider.recommended.is_none() && provider.kind == kind,
+                None => provider.recommendation(mainland).is_some(),
+                Some(kind) => provider.recommendation(mainland).is_none() && provider.kind == kind,
             })
             .collect();
         if members.is_empty() {
@@ -421,7 +437,7 @@ pub(crate) fn provider_list(
         ui.add_space(4.0);
         ui.label(RichText::new(title.to_uppercase()).small().color(p.muted));
         for provider in members {
-            let note = provider.recommended.map(recommendation);
+            let note = provider.recommendation(mainland).map(recommendation);
             let selected = current == Some(provider.id);
             if crate::provider_logo::row(
                 ui,
@@ -446,7 +462,7 @@ fn recommendation_card(
 ) {
     let p = theme::palette(ui.ctx());
     let selected = setup.provider.map(|x| x.id) == Some(provider.id);
-    let Some(why) = provider.recommended else {
+    let Some(why) = provider.recommendation(setup.mainland()) else {
         return;
     };
     let text = match why {
@@ -596,7 +612,11 @@ fn start(setup: &mut SetupUi, settings: &Settings) {
         setup.api_key = settings.ai.api_key.clone();
         setup.base_url = settings.ai.base_url.clone();
         setup.original_ai = Some(settings.ai.clone());
-        setup.step = STEPS - 1;
+        setup.step = if settings.region.is_some() {
+            STEPS - 1
+        } else {
+            0
+        };
     } else {
         draft.student_name.clear();
         draft.teacher = None;
@@ -609,10 +629,16 @@ fn start(setup: &mut SetupUi, settings: &Settings) {
 fn terms_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
     let p = theme::palette(ui.ctx());
     step_title(ui, &t!("setup.terms.title"), &t!("setup.terms.hint"));
-    region_select(ui, setup);
     let Some(region) = setup.draft.as_ref().and_then(|d| d.region) else {
         return;
     };
+    ui.label(
+        RichText::new(t!(
+            "settings.legal.region",
+            region = i18n::region_name(region)
+        ))
+        .strong(),
+    );
     ui.add_space(8.0);
     if !region.is_public() {
         widgets::callout(ui, p.highlight, |ui| {
@@ -691,8 +717,16 @@ fn region_select(ui: &mut egui::Ui, setup: &mut SetupUi) {
         });
     widgets::hint(ui, &t!("setup.terms.region_hint"));
     if draft.region != before {
-        // Agreement is to the texts of one region.
+        // Agreement is to the texts of one region, and the AI services
+        // offered depend on it.
         setup.agreed = false;
+        let mainland = setup.mainland();
+        if setup.provider.is_some_and(|p| !p.offered(mainland)) {
+            setup.provider = None;
+            setup.model.clear();
+            setup.base_url.clear();
+            setup.typing_model = false;
+        }
     }
 }
 
@@ -863,8 +897,24 @@ mod tests {
         if let Some(d) = &mut setup.draft {
             d.region = None;
         }
-        assert!(!setup.step_done(4));
+        assert!(!setup.step_done(0));
         assert!(finished(&setup).is_none());
+    }
+
+    #[test]
+    fn mainland_china_offers_only_services_that_serve_it() {
+        let mut setup = ready();
+        if let Some(d) = &mut setup.draft {
+            d.region = Some(kg_engine::Region::Cn);
+        }
+        assert!(setup.mainland());
+        let offered: Vec<&str> = kg_engine::PROVIDERS
+            .iter()
+            .filter(|p| p.offered(setup.mainland()))
+            .map(|p| p.id)
+            .collect();
+        assert!(!offered.contains(&"anthropic") && offered.contains(&"bailian"));
+        assert!(!kg_engine::Region::Cn.is_public());
     }
 
     #[test]
@@ -876,6 +926,7 @@ mod tests {
             teacher: Some(kg_engine::Teacher::ALL[2]),
             ai: zai.config(zai.base_url, "key", "glm-5.3"),
             ai_provider: "zai".into(),
+            region: Some(kg_engine::Region::Br),
             ..Settings::default()
         };
         saved.ai.models.quiz = "glm-5.3-flash".into();
@@ -892,6 +943,19 @@ mod tests {
         // The per-task model set before is kept.
         assert_eq!(settings.ai.models.quiz, "glm-5.3-flash");
         assert_eq!(settings.student_name, "Ana");
+
+        // Without a region (it was cleared to change it), the setup starts
+        // at the first step, where the region is chosen, keeping the rest.
+        let mut moving = SetupUi::default();
+        start(
+            &mut moving,
+            &Settings {
+                region: None,
+                ..saved.clone()
+            },
+        );
+        assert_eq!(moving.step, 0);
+        assert!(moving.step_done(1) && moving.step_done(2));
 
         let mut new = SetupUi::default();
         start(&mut new, &Settings::default());

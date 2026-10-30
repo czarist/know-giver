@@ -21,6 +21,7 @@ region:
   tw: "Taiwan"
   hk: "Hong Kong"
   sg: "Singapura"
+  cn: "China continental (só parceiros autorizados)"
   other: "Outros países e regiões (só parceiros autorizados)"
 
 format:
@@ -348,7 +349,7 @@ setup:
   title: "Vamos preparar o Know Giver"
   subtitle: "Cinco passos rápidos. Seus planos e seu progresso continuam como estão."
   steps:
-    language: "Idioma"
+    language: "Idioma e região"
     name: "Nome"
     teacher: "Professor"
     ai: "IA"
@@ -357,7 +358,7 @@ setup:
   next: "Continuar"
   finish: "Concordar e começar"
   missing:
-    language: "Escolha um idioma"
+    language: "Escolha o idioma e o país ou região"
     name: "Digite seu nome"
     teacher: "Escolha um professor"
     ai: "Escolha o fornecedor, o modelo e informe a chave"

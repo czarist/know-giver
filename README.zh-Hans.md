@@ -117,7 +117,7 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 - 只有任务所需的文字会发送给你配置的 AI 服务。只有在设置了图片模型时，答卷照片才会发送给该模型。
 - 没有账户、遥测或广告。
 
-Know Giver 在新加坡、巴西、美国、欧盟、英国、日本、台湾和香港向公众提供；新加坡的条款见[使用条款](docs/legal/terms-of-use.zh-Hans.md)和[隐私政策](docs/legal/privacy-policy.zh-Hans.md)（以英文版为准），也会在应用中显示。在其他国家和地区，仅限经书面授权的合作伙伴按[合作伙伴访问条款](docs/legal/partner-access.zh-Hans.md)使用。
+Know Giver 在新加坡、巴西、美国、欧盟、英国、日本、台湾和香港向公众提供；新加坡的条款见[使用条款](docs/legal/terms-of-use.zh-Hans.md)和[隐私政策](docs/legal/privacy-policy.zh-Hans.md)（以英文版为准），也会在应用中显示。在其他国家和地区（包括中国大陆），仅限经书面授权的合作伙伴按[合作伙伴访问条款](docs/legal/partner-access.zh-Hans.md)使用；选择中国大陆时，只列出在中国大陆提供服务的 AI 服务商（如智谱、阿里云百炼、DeepSeek、Kimi）。
 
 ## 开始使用
 

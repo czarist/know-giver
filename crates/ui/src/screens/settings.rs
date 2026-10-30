@@ -653,6 +653,9 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
 /// Picks an AI service: fills the address and one model for every task.
 /// The key typed so far is kept.
 fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
+    let mainland = draft
+        .region
+        .is_some_and(kg_engine::Region::is_mainland_china);
     let current = kg_engine::ai_provider(&draft.ai_provider)
         .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url));
     ui.horizontal_wrapped(|ui| {
@@ -669,7 +672,7 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
             .width(260.0)
             .height(460.0)
             .show_ui(ui, |ui| {
-                let clicked = super::setup::provider_list(ui, current.map(|p| p.id));
+                let clicked = super::setup::provider_list(ui, current.map(|p| p.id), mainland);
                 if let Some(provider) = clicked {
                     let picked = current.map(|p| p.id) == Some(provider.id);
                     if !picked {

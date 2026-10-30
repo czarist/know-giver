@@ -32,7 +32,8 @@ pub use handout_review::{ReviewedHandout, review_handout};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use prompts::{Prompts, get as prompts_in};
 pub use providers::{
-    ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation, provider, provider_for_url,
+    Market, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation, provider,
+    provider_for_url,
 };
 pub use tasks::{
     HandoutDraft, LessonLength, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft,

@@ -32,11 +32,13 @@ pub enum Region {
     Tw,
     Hk,
     Sg,
+    /// Mainland China: authorized partners only, never offered to the public.
+    Cn,
     Other,
 }
 
 impl Region {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Br,
         Self::Us,
         Self::Eu,
@@ -45,12 +47,18 @@ impl Region {
         Self::Tw,
         Self::Hk,
         Self::Sg,
+        Self::Cn,
         Self::Other,
     ];
 
     /// The app is offered to the public here.
     pub fn is_public(self) -> bool {
-        self != Self::Other
+        !matches!(self, Self::Cn | Self::Other)
+    }
+
+    /// AI services must be ones that serve mainland China.
+    pub fn is_mainland_china(self) -> bool {
+        self == Self::Cn
     }
 
     /// A likely region for a UI language, to preselect; the student confirms.

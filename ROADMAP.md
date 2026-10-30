@@ -554,6 +554,9 @@ Tasks:
     differs in places.
   - Lessons, quizzes, handouts and grades with a real model in each language.
   - Fonts on macOS and Linux (the font paths there are not tested).
+- Mainland China AI services (v0.32.0): endpoints, key pages and model names of Zhipu
+  BigModel, Alibaba Bailian, Moonshot (mainland), Baidu Qianfan, Tencent Hunyuan and
+  Volcano Engine Ark were written from memory; confirm each with a real key.
 - Legal texts for Japan, Taiwan, Hong Kong, Singapore and the Partner Access Terms
   (v0.32.0): drafts that need review by a local lawyer in each place before a public
   launch there.

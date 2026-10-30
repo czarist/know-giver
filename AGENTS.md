@@ -36,6 +36,14 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
 - Terms of use and privacy policy live in `docs/legal/` and are compiled into the app. Change both languages together; a content change bumps the date in the texts and `TERMS_VERSION`, which asks users to agree again
+- Every feature covers all five languages (pt-BR, en, ja, zh-Hans, zh-Hant) in the same change, never Portuguese/English first and the rest later:
+  - UI text: the key in every `locales/*.yml`;
+  - AI prompts: the same file in every `crates/ai/prompts/<lang>/`, same placeholders, JSON keys and markers;
+  - text the code sends to the model: Portuguese and English through `PromptLanguage::pick` (the others fall back to English);
+  - legal texts: every language and region version in `docs/legal/`, with `TERMS_VERSION` bumped;
+  - user-facing docs: every `README*.md` when the feature is visible there;
+  - screenshots of new screens in each language when a README shows them.
+  Run `cargo test -p kg-ui` and `-p kg-ai` (key and prompt parity). A real gap (for example, no voice yet for a language) is stated in the UI and in ROADMAP, never left silent
 - Five UI and prompt languages: pt-BR, en, ja, zh-Hans, zh-Hant (`locales/*.yml`, `crates/ai/prompts/<lang>/`). New keys go into every locale file. Traditional Chinese can be converted from Simplified with OpenCC (`s2twp`) and then checked by hand
 - Legal texts follow the region (`Region` in engine `settings.rs`), not the language: `docs/legal/{terms-of-use,privacy-policy}.<lang>.md` per region version, `partner-access.<lang>.md` for regions where the app is not public. The partner text names no country; a test checks it
 - First run is required (language, name, teacher, AI provider and key, terms) and never touches plans or progress
