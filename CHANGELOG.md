@@ -4,6 +4,27 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.33.1] - 2026-10-30
+
+### Added
+- **Desktop shortcut:** the one-line installs ask on the first install whether to add one
+  (Windows, macOS and Linux); updates keep the choice. `KG_DESKTOP_SHORTCUT=1` or `0`
+  answers in advance.
+- **Uninstaller in the program folder**, following each system's conventions:
+  - Windows: the installer now carries publisher, support and update links, closes a
+    running Know Giver before replacing files, and its uninstaller (Settings → Apps, the
+    Start menu or `unins000.exe`) removes the whole program folder, including a `.env`
+    with an API key. It then asks whether to delete the study data too; No is the default.
+  - macOS and Linux: `uninstall.sh` ships in the package (in the app bundle's Resources on
+    macOS, in `~/.local/opt/KnowGiver` on Linux). It removes the app, command, menu entry,
+    icon and desktop shortcut, and asks before deleting study data.
+
+### Changed
+- The packages' read-me in the five app languages (`README.<lang>.txt`, on Windows and on
+  macOS/Linux), rewritten for the first run, updates, data folders and uninstalling. The
+  single Portuguese `LEIA-ME.txt` is removed on update.
+- CI actions on Node.js 24: `checkout@v6`, `upload-artifact@v6`, `download-artifact@v7`.
+
 ## [0.33.0] - 2026-10-30
 
 ### Added

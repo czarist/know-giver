@@ -178,6 +178,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 
 インストール先は、Windows では `%LOCALAPPDATA%\Programs\KnowGiver`（スタートメニューに登録）、macOS では `~/Applications/Know Giver.app`、Linux では `~/.local/opt/KnowGiver`（`know-giver` コマンドとアプリメニューに登録）です。
 
+初めてのインストールでは、**デスクトップのショートカット**を作るか確認します（アップデートでは前の選択を保ちます）。**アンインストール**は、Windows では 設定 → アプリ → Know Giver（スタートメニューの「Uninstall Know Giver」、プログラムフォルダーの `unins000.exe` でも可）、macOS では `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`、Linux では `~/.local/opt/KnowGiver/uninstall.sh` です。学習データも削除するか確認し、「はい」と答えない限り残します。
+
 **アップデート：** 新しいバージョンが出ると、アプリの上部に細いバーが表示され、緑のダウンロードボタンで案内します。アプリがダウンロード・確認・インストールを行い、もう一度開きます。確認は 設定 → アプリについて・アップデート でオフにできます。
 
 ## はじめかた

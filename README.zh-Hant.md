@@ -178,6 +178,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 
 Windows 安裝到 `%LOCALAPPDATA%\Programs\KnowGiver`，並加入開始功能表；macOS 安裝到 `~/Applications/Know Giver.app`；Linux 安裝到 `~/.local/opt/KnowGiver`，並提供 `know-giver` 指令與應用程式選單項目。
 
+首次安裝時會詢問是否建立**桌面捷徑**，更新時保留先前的選擇。**解除安裝**：Windows 在 設定 → 應用程式 → Know Giver（也可用開始功能表中的「Uninstall Know Giver」，或程式資料夾中的 `unins000.exe`）；macOS 執行 `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`；Linux 執行 `~/.local/opt/KnowGiver/uninstall.sh`。解除安裝程式會詢問是否一併刪除學習資料，除非你選擇「是」，否則會保留。
+
 **更新：** 有新版本時，程式頂端會出現一條細列，以綠色的下載按鈕提示更新。程式會下載、核對、安裝，然後重新開啟。可在 設定 → 關於與更新 中關閉檢查。
 
 ## 開始使用

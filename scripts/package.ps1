@@ -28,7 +28,7 @@ try {
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item 'target\release\know-giver.exe' $stage
     Copy-Item '.env.example' (Join-Path $stage '.env.example')
-    Copy-Item 'packaging\windows\LEIA-ME.txt' $stage
+    Copy-Item 'packaging\windows\README.*.txt' $stage
 
     $zip = Join-Path $dist "KnowGiver-$version-windows-x64.zip"
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
