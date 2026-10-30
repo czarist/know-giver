@@ -8,8 +8,22 @@
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$base = 'https://github.com/czarist/know-giver/releases/latest/download'
+# Windows PowerShell 5.1 may still offer TLS 1.0 first; GitHub needs 1.2.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$repo = 'czarist/know-giver'
+$base = "https://github.com/$repo/releases/latest/download"
 $asset = 'KnowGiver-setup.exe'
+
+# A clear message when no release is published yet (or it lacks the installer).
+try {
+    $latest = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -UseBasicParsing -Headers @{ 'User-Agent' = 'KnowGiver-installer' }
+}
+catch {
+    throw "No Know Giver release is published yet. See https://github.com/$repo/releases"
+}
+if (-not ($latest.assets | Where-Object { $_.name -eq $asset })) {
+    throw "Release $($latest.tag_name) has no $asset yet. See $($latest.html_url)"
+}
 
 $dir = Join-Path ([System.IO.Path]::GetTempPath()) ('KnowGiver-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Force $dir | Out-Null
