@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.33.1. Everything an agent can build and check without a human ear, a
+Version 0.34.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -548,6 +548,14 @@ Tasks:
   model.
 
 ## Not yet verified
+- Exam culture by region (v0.34.0): someone who studied for exams in each region should
+  review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
+  conventions and grading scales. Notes are in Portuguese and English only; Japanese and
+  Chinese prompts get the English note.
+- Free plans (v0.34.0): checked on 2026-10-30 from public pages and third-party summaries.
+  Confirm each with a real free key: Gemini, Mistral Experiment, Groq, NVIDIA, GitHub
+  Models (`models.github.ai/inference`), OpenRouter `:free` models, Zhipu GLM-4.7-Flash and
+  SiliconFlow. Cerebras ended its free plan in July 2026 and is not listed as free.
 - Updates and one-line installs (v0.33.0): need the first published release.
   - The release job, its asset names and `SHA256SUMS.txt` on a real tag.
   - `scripts/install.sh` on macOS (Apple silicon) and Linux, and `scripts/install.ps1` on

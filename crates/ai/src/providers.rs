@@ -61,7 +61,8 @@ impl Provider {
     pub fn market(&self) -> Market {
         match self.id {
             "deepseek" | "ollama" | "lmstudio" | "custom" => Market::Both,
-            "zhipu" | "bailian" | "moonshot-cn" | "qianfan" | "hunyuan" | "doubao" => {
+            "zhipu" | "bailian" | "moonshot-cn" | "qianfan" | "hunyuan" | "doubao"
+            | "siliconflow" => {
                 Market::Mainland
             }
             _ => Market::Global,
@@ -90,6 +91,56 @@ impl Provider {
             "bailian" => Some(Recommendation::Accuracy),
             _ => None,
         }
+    }
+
+    /// The free plan, when the service has one (checked October 2026; free
+    /// plans change often, so the UI links to their rules).
+    pub fn free_tier(&self) -> Option<FreeTier> {
+        let (model, data, url) = match self.id {
+            "gemini" => (
+                "gemini-2.5-flash",
+                FreeData::MayTrain,
+                "https://ai.google.dev/gemini-api/docs/pricing",
+            ),
+            "mistral" => (
+                "mistral-small-latest",
+                FreeData::MayTrain,
+                "https://help.mistral.ai/en/articles/450104-how-can-i-try-the-api-for-free-with-the-experiment-plan",
+            ),
+            "groq" => (
+                "llama-3.3-70b-versatile",
+                FreeData::NotForTraining,
+                "https://console.groq.com/docs/rate-limits",
+            ),
+            "nvidia" => (
+                "meta/llama-3.3-70b-instruct",
+                FreeData::Unclear,
+                "https://build.nvidia.com/",
+            ),
+            "github" => (
+                "openai/gpt-4.1-mini",
+                FreeData::NotForTraining,
+                "https://docs.github.com/en/github-models/use-github-models/prototyping-with-ai-models",
+            ),
+            "openrouter" => (
+                "meta-llama/llama-3.3-70b-instruct:free",
+                FreeData::MayTrain,
+                "https://openrouter.ai/models?max_price=0",
+            ),
+            "zhipu" => (
+                "glm-4.7-flash",
+                FreeData::Unclear,
+                "https://open.bigmodel.cn/pricing",
+            ),
+            "siliconflow" => (
+                "Qwen/Qwen3-8B",
+                FreeData::Unclear,
+                "https://siliconflow.cn/pricing",
+            ),
+            "ollama" | "lmstudio" => ("", FreeData::Private, self.site),
+            _ => return None,
+        };
+        Some(FreeTier { model, data, url })
     }
 
     pub fn default_model(&self) -> &'static str {
@@ -143,6 +194,29 @@ pub enum Market {
     Mainland,
     /// Both: a service that serves mainland China, or a local server.
     Both,
+}
+
+/// What a free plan does with what the student sends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FreeData {
+    /// Runs on the student's computer: nothing leaves it.
+    Private,
+    /// The service says it does not train on API data.
+    NotForTraining,
+    /// The free plan may use prompts and answers to train or improve models.
+    MayTrain,
+    /// Not clearly stated: the student should read the service's terms.
+    Unclear,
+}
+
+/// A plan the student can use without paying, within its limits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FreeTier {
+    /// A model the free plan covers; empty means the provider's default.
+    pub model: &'static str,
+    pub data: FreeData,
+    /// The service's page on the free plan's limits and rules.
+    pub url: &'static str,
 }
 
 /// How a provider is grouped in the list.
@@ -241,6 +315,11 @@ pub const PROVIDERS: &[Provider] = &[
     provider!("groq", "Groq", Platform, "https://api.groq.com/openai/v1",
         "https://console.groq.com/keys", "https://groq.com/",
         key: true, None, [], fallback: "", vision: ""),
+    provider!("github", "GitHub Models", Platform, "https://models.github.ai/inference",
+        "https://github.com/settings/personal-access-tokens/new", "https://github.com/marketplace/models",
+        key: true, None,
+        [text("openai/gpt-4.1-mini"), sees("openai/gpt-4.1")],
+        fallback: "openai/gpt-4.1-mini", vision: "openai/gpt-4.1"),
     provider!("together", "Together AI", Platform, "https://api.together.xyz/v1",
         "https://api.together.ai/settings/api-keys", "https://www.together.ai/",
         key: true, None, [], fallback: "", vision: ""),
@@ -282,6 +361,9 @@ pub const PROVIDERS: &[Provider] = &[
     provider!("doubao", "Volcano Engine Ark (Doubao)", Platform, "https://ark.cn-beijing.volces.com/api/v3",
         "https://console.volcengine.com/ark/", "https://www.volcengine.com/product/ark",
         key: true, None, [], fallback: "", vision: ""),
+    provider!("siliconflow", "SiliconFlow", Platform, "https://api.siliconflow.cn/v1",
+        "https://cloud.siliconflow.cn/account/ak", "https://siliconflow.cn/pricing",
+        key: true, None, [text("Qwen/Qwen3-8B")], fallback: "", vision: ""),
     provider!("custom", "OpenAI-compatible", Custom, "",
         "", "", key: false, None, [], fallback: "", vision: ""),
 ];
@@ -388,6 +470,30 @@ mod tests {
         }
         assert_eq!(PROVIDERS[0].recommended, Some(Recommendation::Value));
         assert_eq!(PROVIDERS[1].recommended, Some(Recommendation::Accuracy));
+    }
+
+    #[test]
+    fn free_plans_name_a_model_and_their_rules() {
+        let free: Vec<&Provider> = PROVIDERS.iter().filter(|p| p.free_tier().is_some()).collect();
+        for p in &free {
+            let tier = p.free_tier().unwrap();
+            assert!(tier.url.starts_with("http"), "{}", p.id);
+            if tier.data != FreeData::Private {
+                assert!(!tier.model.is_empty(), "{}", p.id);
+            }
+        }
+        // Both places have free options, and local servers are among them.
+        for mainland in [false, true] {
+            let ids: Vec<&str> = free
+                .iter()
+                .filter(|p| p.offered(mainland))
+                .map(|p| p.id)
+                .collect();
+            assert!(ids.len() >= 3, "{ids:?}");
+            assert!(ids.contains(&"ollama"));
+        }
+        assert_eq!(provider("gemini").unwrap().free_tier().unwrap().data, FreeData::MayTrain);
+        assert!(provider("anthropic").unwrap().free_tier().is_none());
     }
 
     #[test]

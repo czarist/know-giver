@@ -46,6 +46,8 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
   Run `cargo test -p kg-ui` and `-p kg-ai` (key and prompt parity). A real gap (for example, no voice yet for a language) is stated in the UI and in ROADMAP, never left silent
 - Five UI and prompt languages: pt-BR, en, ja, zh-Hans, zh-Hant (`locales/*.yml`, `crates/ai/prompts/<lang>/`). New keys go into every locale file. Traditional Chinese can be converted from Simplified with OpenCC (`s2twp`) and then checked by hand
 - Legal texts follow the region (`Region` in engine `settings.rs`), not the language: `docs/legal/{terms-of-use,privacy-policy}.<lang>.md` per region version, `partner-access.<lang>.md` for regions where the app is not public. The partner text names no country; a test checks it
+- Teaching prompts follow the student's exam culture (`crates/ai/src/culture.rs`, from `Region::exam_culture`): exams, question formats, written-test conventions and the teacher's manner. A new region gets its note in Portuguese and English; extraction tasks never get it
+- Free plans (`Provider::free_tier`) state what they do with the data; recheck them when providers change their terms
 - First run is required (language, name, teacher, AI provider and key, terms) and never touches plans or progress
 
 ## Git workflow

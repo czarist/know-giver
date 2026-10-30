@@ -1143,6 +1143,25 @@ fn new_terms_ask_for_agreement_again() {
 }
 
 #[test]
+fn another_region_asks_for_its_terms_before_the_app_opens() {
+    let (mut engine, _dir) = engine();
+    engine
+        .handle(Command::CompleteSetup(Box::new(setup_choices(&engine))))
+        .unwrap();
+    assert!(!engine.needs_setup());
+    // Agreed in Japan, now in Brazil: Brazil's terms must be accepted first.
+    let mut moved = engine.settings().clone();
+    moved.region = Some(Region::Br);
+    engine.handle(Command::SaveSettings(moved)).unwrap();
+    assert!(engine.needs_setup());
+    // Choosing the region again from Settings clears it: the same applies.
+    let mut cleared = engine.settings().clone();
+    cleared.region = None;
+    engine.handle(Command::SaveSettings(cleared)).unwrap();
+    assert!(engine.needs_setup());
+}
+
+#[test]
 fn connection_test_and_model_list_are_kept_per_config() {
     let (mut engine, _dir) = engine();
     let zai = kg_ai::provider("zai").unwrap();

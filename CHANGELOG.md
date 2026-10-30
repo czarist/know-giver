@@ -4,6 +4,27 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.34.0] - 2026-10-30
+
+### Added
+- **Exam culture by region:** lessons, quizzes, handouts, reviews and written answers follow
+  how people study for exams where the student lives (`kg_ai::ExamCulture`, from the region):
+  the usual exams and boards, question formats, written-test conventions, grading scales
+  and the teacher's manner. Brazil and Japan get five-option quiz questions; the others
+  four. Extraction tasks (past exams, answer keys, transcripts) stay neutral, and the
+  exam notice and past exams always win. "Other" regions follow the notice alone.
+- **Free and paid tabs** in the first run's AI step. *Free* lists services with a free plan
+  where the app is used (Gemini, Mistral, OpenRouter, Groq, NVIDIA, GitHub Models, Ollama,
+  LM Studio; in mainland China Zhipu and SiliconFlow), each with the model the plan covers,
+  what it does with the data (private, not used for training, may train, or unclear) and a
+  link to its limits and rules. The full provider list marks services with a free plan.
+- New providers: **GitHub Models** and **SiliconFlow** (mainland China).
+- A test that a student whose region changed must agree to that region's terms again.
+
+### Changed
+- The update bar is taller, with the version on the left and roomier actions on the right.
+- The region hint says the region also sets the way of studying.
+
 ## [0.33.1] - 2026-10-30
 
 ### Added
