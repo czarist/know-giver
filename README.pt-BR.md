@@ -209,6 +209,24 @@ de custo-benefício e **Claude** a de maior acerto, cada um com o link para cria
 Carregue os modelos que a sua chave pode usar ou digite qualquer nome de modelo. Depois vem
 um tour rápido pelas telas. Planos já criados são mantidos.
 
+**Grátis ou pago.** O passo da IA tem duas abas. *Pagos* mostra os serviços recomendados
+(Z.ai pelo custo-benefício, Claude pela precisão). *Gratuitos* lista serviços com plano
+grátis (Gemini, Mistral, OpenRouter, Groq, NVIDIA, GitHub Models, e Ollama ou LM Studio no
+seu computador), cada um com o modelo coberto, o que faz com o que você envia (alguns planos
+grátis treinam modelos com isso) e um link para os limites e as regras.
+
+**O jeito de estudar da sua região.** Aulas, quizzes, apostilas e discursivas seguem como se
+estuda para provas onde você mora: no Brasil, itens certo/errado do Cebraspe e questões de
+cinco alternativas da FCC e da FGV, e redação contada em linhas; no Japão, cinco
+alternativas e o 小論文 contado em caracteres; na China continental, o 行测 e o 申论; em
+Taiwan e Hong Kong, os formatos dos concursos de lá; nos EUA e no Reino Unido, testes
+padronizados, o bar exam e os mark schemes. O edital e as provas anteriores sempre vêm
+primeiro.
+
+<p align="center">
+  <img src="docs/images/pt-BR/setup-ai-free.png" alt="Aba Gratuitos do passo da IA: serviços com plano grátis, o modelo coberto e o que fazem com os seus dados" width="60%">
+</p>
+
 <table>
   <tr>
     <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: os dois fornecedores recomendados, depois fornecedor, chave de API e modelo"></td>

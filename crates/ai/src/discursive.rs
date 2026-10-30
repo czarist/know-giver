@@ -140,7 +140,7 @@ pub fn generate_proposal(client: &Client, input: &ProposalInput) -> Result<Propo
         ],
     );
     let messages = [
-        ChatMessage::system(system),
+        client.cultured(system),
         ChatMessage::user(lang.pick("Escreva a proposta.", "Write the prompt.")),
     ];
     chat_json(client, Task::Quiz, &messages, 6_000)
@@ -374,7 +374,7 @@ pub fn evaluate_writing(
         ],
     );
     let messages = [
-        ChatMessage::system(system),
+        client.cultured(system),
         ChatMessage::user(lang.pick(
             "Avalie o texto conforme a rubrica.",
             "Grade the text against the rubric.",
@@ -439,7 +439,7 @@ pub fn find_recurring_issues(
         &[("items", &data(&text))],
     );
     let messages = [
-        ChatMessage::system(system),
+        client.cultured(system),
         ChatMessage::user(lang.pick(
             "Liste as dificuldades recorrentes.",
             "List the recurring difficulties.",

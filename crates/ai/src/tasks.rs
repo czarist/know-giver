@@ -370,7 +370,7 @@ pub fn generate_plan(
         ],
     );
     let messages = [
-        ChatMessage::system(system),
+        client.cultured(system),
         ChatMessage::user(format!("EDITAL:\n{edital}")),
     ];
     chat_json(client, Task::StudyPlan, &messages, 32_000)
@@ -408,7 +408,7 @@ pub fn find_roles(client: &Client, edital: &str) -> Result<Vec<String>, AiError>
 /// The tutor's opening message for a lesson.
 pub fn start_lesson(client: &Client, topic: &TopicContext) -> Result<TutorReply, AiError> {
     let messages = [
-        tutor_system(topic, client.language()),
+        client.cultured(tutor_system(topic, client.language()).content),
         ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     client
@@ -429,7 +429,7 @@ pub fn start_lesson_stream(
     on_sentence: impl FnMut(&str),
 ) -> Result<TutorReply, AiError> {
     let messages = [
-        tutor_system(topic, client.language()),
+        client.cultured(tutor_system(topic, client.language()).content),
         ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     stream_tutor(client, &messages, on_sentence)
@@ -443,7 +443,7 @@ pub fn tutor_reply_stream(
     on_sentence: impl FnMut(&str),
 ) -> Result<TutorReply, AiError> {
     let mut messages = vec![
-        tutor_system(topic, client.language()),
+        client.cultured(tutor_system(topic, client.language()).content),
         ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
@@ -515,7 +515,7 @@ pub fn tutor_reply(
     history: &[ChatMessage],
 ) -> Result<TutorReply, AiError> {
     let mut messages = vec![
-        tutor_system(topic, client.language()),
+        client.cultured(tutor_system(topic, client.language()).content),
         ChatMessage::user(prompts::get(client.language()).lesson_start.trim()),
     ];
     messages.extend(history.iter().filter(|m| m.role != Role::System).cloned());
@@ -756,15 +756,17 @@ fn quiz_batch(
 ) -> Result<Vec<QuestionDraft>, AiError> {
     let lang = client.language();
     let count = count.to_string();
+    let options = client.quiz_options().to_string();
     let mut values = topic.values().to_vec();
     values.push(("count", &count));
+    values.push(("options", &options));
     let ask = lang.pick("Gere as questões.", "Write the questions.");
     let request = match focus {
         Some((pt, en)) => format!("{ask} {}", lang.pick(pt, en)),
         None => ask.to_owned(),
     };
     let messages = [
-        ChatMessage::system(fill(prompts::get(lang).quiz, &values)),
+        client.cultured(fill(prompts::get(lang).quiz, &values)),
         ChatMessage::user(request),
     ];
     let draft: QuizDraft = chat_json(client, Task::Quiz, &messages, 8_000)?;
@@ -789,7 +791,8 @@ pub fn generate_handout(
     topic: &TopicContext,
     edital: &str,
 ) -> Result<HandoutDraft, AiError> {
-    let messages = handout_messages(topic, edital, client.language())?;
+    let mut messages = handout_messages(topic, edital, client.language())?;
+    messages[0] = client.cultured(std::mem::take(&mut messages[0].content));
     chat_json(client, Task::Handout, &messages, 16_000)
 }
 
@@ -854,7 +857,7 @@ pub fn review_question_avoiding(
         request.push_str(&format!("\n{intro}\n{}", list.join("\n")));
     }
     let messages = [
-        ChatMessage::system(fill(prompts::get(lang).review_question, &topic.values())),
+        client.cultured(fill(prompts::get(lang).review_question, &topic.values())),
         ChatMessage::user(request),
     ];
     let draft: ReviewQuestionDraft = chat_json(client, Task::Quiz, &messages, 4_096)?;
@@ -872,7 +875,7 @@ pub fn evaluate_review(
     values.push(("question", question));
     values.push(("answer", answer));
     let messages = [
-        ChatMessage::system(fill(prompts::get(client.language()).review_eval, &values)),
+        client.cultured(fill(prompts::get(client.language()).review_eval, &values)),
         ChatMessage::user(
             client
                 .language()

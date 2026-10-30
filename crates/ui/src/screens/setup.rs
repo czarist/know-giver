@@ -33,6 +33,8 @@ pub struct SetupUi {
     /// The saved AI settings when the setup only asks for the region and
     /// terms again; kept as they are unless the AI step is changed.
     pub original_ai: Option<AiConfig>,
+    /// The AI step shows services with a free plan instead of paid ones.
+    pub free_tab: bool,
 }
 
 impl SetupUi {
@@ -80,6 +82,14 @@ impl SetupUi {
         self.model = provider.default_model().to_owned();
         self.typing_model = false;
         self.base_url = provider.base_url.to_owned();
+    }
+
+    /// Picks a service for its free plan, with the model the plan covers.
+    fn pick_free(&mut self, provider: &'static kg_engine::Provider) {
+        self.pick_provider(provider);
+        if let Some(tier) = provider.free_tier().filter(|t| !t.model.is_empty()) {
+            self.model = tier.model.to_owned();
+        }
     }
 }
 
@@ -235,10 +245,29 @@ fn teacher_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi) {
 }
 
 fn ai_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mut Actions) {
-    let p = theme::palette(ui.ctx());
     step_title(ui, &t!("setup.ai.title"), &t!("setup.ai.hint"));
 
-    // The two recommendations, side by side in equal columns.
+    // Paid services or services with a free plan.
+    ui.horizontal(|ui| {
+        ui.selectable_value(&mut setup.free_tab, false, t!("setup.ai.tab_paid"));
+        ui.selectable_value(&mut setup.free_tab, true, t!("setup.ai.tab_free"));
+    });
+    ui.add_space(10.0);
+    if setup.free_tab {
+        free_plans(ui, setup);
+        ui.add_space(16.0);
+    } else {
+        paid_recommendations(ui, setup);
+    }
+
+    field(ui, &t!("setup.ai.provider"), |ui| {
+        provider_select(ui, setup)
+    });
+    ai_fields(ui, engine, setup, actions);
+}
+
+/// The two recommendations, side by side in equal columns.
+fn paid_recommendations(ui: &mut egui::Ui, setup: &mut SetupUi) {
     let mainland = setup.mainland();
     let recommended: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
         .iter()
@@ -253,10 +282,103 @@ fn ai_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mu
         });
     });
     ui.add_space(16.0);
+}
 
-    field(ui, &t!("setup.ai.provider"), |ui| {
-        provider_select(ui, setup)
-    });
+/// Services with a free plan where the app is used: the model the plan
+/// covers, what it does with the data, and its rules.
+fn free_plans(ui: &mut egui::Ui, setup: &mut SetupUi) {
+    widgets::hint(ui, &t!("setup.ai.free_hint"));
+    ui.add_space(6.0);
+    let mainland = setup.mainland();
+    let free: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
+        .iter()
+        .filter(|provider| provider.offered(mainland) && provider.free_tier().is_some())
+        .collect();
+    for provider in free {
+        free_card(ui, setup, provider);
+        ui.add_space(8.0);
+    }
+}
+
+/// One free plan as a card: the service, the model the plan covers, what it
+/// does with the data and its links, stacked so nothing crowds the right.
+fn free_card(ui: &mut egui::Ui, setup: &mut SetupUi, provider: &'static kg_engine::Provider) {
+    let Some(tier) = provider.free_tier() else {
+        return;
+    };
+    let p = theme::palette(ui.ctx());
+    let selected = setup.provider.map(|x| x.id) == Some(provider.id);
+    let (data, data_color) = match tier.data {
+        kg_engine::FreeData::Private => (t!("setup.ai.free_private"), p.success),
+        kg_engine::FreeData::NotForTraining => (t!("setup.ai.free_no_training"), p.muted),
+        kg_engine::FreeData::MayTrain => (t!("setup.ai.free_may_train"), p.warning),
+        kg_engine::FreeData::Unclear => (t!("setup.ai.free_unclear"), p.muted),
+    };
+    // The click area sits under the card's content, so its links still work.
+    let response = ui
+        .scope_builder(egui::UiBuilder::new().sense(egui::Sense::click()), |ui| {
+            egui::Frame::new()
+                .fill(if selected {
+                    p.accent.gamma_multiply(0.12)
+                } else {
+                    p.surface
+                })
+                .stroke(egui::Stroke::new(
+                    if selected { 2.0 } else { 1.0 },
+                    if selected { p.accent } else { p.border },
+                ))
+                .corner_radius(6.0)
+                .inner_margin(egui::Margin::symmetric(14, 12))
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.horizontal_top(|ui| {
+                        ui.spacing_mut().item_spacing.x = 12.0;
+                        crate::provider_logo::show(ui, provider, 26.0);
+                        ui.vertical(|ui| {
+                            ui.spacing_mut().item_spacing.y = 4.0;
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    RichText::new(provider_name(provider))
+                                        .family(theme::strong_family())
+                                        .size(16.0),
+                                );
+                                if selected {
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.add(crate::icons::Icon::Check.image(18.0, p.accent));
+                                        },
+                                    );
+                                }
+                            });
+                            if !tier.model.is_empty() {
+                                ui.label(
+                                    RichText::new(t!("setup.ai.free_model", model = tier.model))
+                                        .color(p.text),
+                                );
+                            }
+                            ui.label(RichText::new(data).small().color(data_color));
+                            ui.horizontal(|ui| {
+                                widgets::link(ui, &t!("setup.ai.free_rules"), tier.url);
+                                if !provider.key_url.is_empty() && provider.key_url != tier.url {
+                                    ui.label(RichText::new("·").color(p.muted));
+                                    widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
+                                }
+                            });
+                        });
+                    });
+                });
+        })
+        .response
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    if response.clicked() {
+        setup.pick_free(provider);
+    }
+}
+
+/// Address, key, model and the connection check for the chosen service.
+fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mut Actions) {
+    let p = theme::palette(ui.ctx());
     let Some(provider) = setup.provider else {
         return;
     };
@@ -437,7 +559,10 @@ pub(crate) fn provider_list(
         ui.add_space(4.0);
         ui.label(RichText::new(title.to_uppercase()).small().color(p.muted));
         for provider in members {
-            let note = provider.recommendation(mainland).map(recommendation);
+            let note = provider
+                .recommendation(mainland)
+                .map(recommendation)
+                .or_else(|| provider.free_tier().map(|_| t!("setup.ai.free_badge").into_owned()));
             let selected = current == Some(provider.id);
             if crate::provider_logo::row(
                 ui,

@@ -38,6 +38,24 @@ pub enum Region {
 }
 
 impl Region {
+    /// How people study for exams here, for the AI's teaching tasks; `None`
+    /// for "other", where only the exam notice guides it.
+    pub fn exam_culture(self) -> Option<kg_ai::ExamCulture> {
+        use kg_ai::ExamCulture as C;
+        Some(match self {
+            Self::Br => C::Brazil,
+            Self::Us => C::UnitedStates,
+            Self::Eu => C::EuropeanUnion,
+            Self::Uk => C::UnitedKingdom,
+            Self::Jp => C::Japan,
+            Self::Tw => C::Taiwan,
+            Self::Hk => C::HongKong,
+            Self::Sg => C::Singapore,
+            Self::Cn => C::MainlandChina,
+            Self::Other => return None,
+        })
+    }
+
     pub const ALL: [Self; 10] = [
         Self::Br,
         Self::Us,

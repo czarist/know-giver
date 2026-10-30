@@ -133,6 +133,14 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 首先有五個簡短步驟：語言、名字、老師、AI 和金鑰、國家或地區及同意條款。可以從 21 個 AI 服務商中選擇（**Z.ai** 價效比高，**Claude** 準確度高），並附有建立金鑰的連結。之後有一段簡短的介面導覽。
 
+**免費或付費。** AI 步驟有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
+
+**你所在地區的備考方式。** 課堂、測驗、講義與申論題會依照你所在地區的備考方式進行：臺灣是國家考試的測驗題與申論題；香港是 HKDSE 與公務員考試的形式；中國大陸是行测與申论；日本是五選一與按字數寫的小論文；巴西、美國與英國也各有其題型。考試簡章與歷屆試題始終優先。
+
+<p align="center">
+  <img src="docs/images/zh-Hant/setup-ai-free.png" alt="AI 步驟的「免費」分頁：有免費方案的服務、包含的模型與資料使用方式" width="60%">
+</p>
+
 <table>
   <tr>
     <td><img src="docs/images/zh-Hant/setup-ai.png" alt="首次設定的 AI 步驟"></td>

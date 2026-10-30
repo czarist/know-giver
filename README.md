@@ -202,6 +202,23 @@ value and **Claude** for accuracy, each with a link to create a key. Load the mo
 key can use, or type any model name. A short tour of the screens follows. Plans made
 before are kept.
 
+**Free or paid.** The AI step has two tabs. *Paid* shows the recommended services (Z.ai for
+value, Claude for accuracy). *Free* lists services with a free plan (Gemini, Mistral,
+OpenRouter, Groq, NVIDIA, GitHub Models, and Ollama or LM Studio on your own computer), each
+with the model the plan covers, what it does with what you send (some free plans train on
+it) and a link to its limits and rules.
+
+**Your region's way of studying.** Lessons, quizzes, handouts and written answers follow
+how people prepare for exams where you live: in Brazil, Cebraspe true/false items and
+five-option questions from FCC and FGV, and an essay counted in lines; in Japan, five-option
+questions and a 小論文 counted in characters; in mainland China, the 行测 and the 申论; in
+Taiwan and Hong Kong, their civil service formats; in the US and UK, standardized tests, the
+bar and mark schemes. The exam notice and past exams always come first.
+
+<p align="center">
+  <img src="docs/images/setup-ai-free.png" alt="The AI step's Free tab: services with a free plan, the model each covers and what it does with your data" width="60%">
+</p>
+
 <table>
   <tr>
     <td><img src="docs/images/setup-ai.png" alt="First run, AI step: the two recommended providers, then provider, API key and model"></td>
