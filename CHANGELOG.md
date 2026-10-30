@@ -4,6 +4,19 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Dual license: Know Giver is now available under `MIT OR Apache-2.0`
+  (`LICENSE-MIT`, `LICENSE-APACHE`).
+
+### Added
+- `SECURITY.md`: how to report a vulnerability, what is in scope and the known
+  limitations (downloads without checksums, API key stored in plain text, the local
+  speech server without authentication).
+- README in Brazilian Portuguese (`README.pt-BR.md`) with a language switch on both, and
+  screenshots of v0.30.1 in English and Portuguese.
+
 ## [0.30.1] - 2026-10-29
 
 ### Fixed

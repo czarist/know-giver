@@ -7,6 +7,10 @@
 <h3 align="center">Your exam. Your plan. A teacher who talks back.</h3>
 
 <p align="center">
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a>
+</p>
+
+<p align="center">
   <b>A desktop app that builds study plans for exams, built in pure Rust.</b><br>
   Drop in the exam notice or syllabus PDF, get a week-by-week plan, and study out loud with a tutor that listens, explains and quizzes you.
 </p>
@@ -15,7 +19,7 @@
   <img alt="Pure Rust" src="https://img.shields.io/badge/pure-Rust-3f8f7c?style=flat-square&logo=rust&logoColor=white">
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2c6b5c?style=flat-square"></a>
+  <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square"></a>
 </p>
 
 <br>
@@ -267,4 +271,9 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 
 ## License
 
-[MIT](LICENSE). Third-party fonts, portraits and voices keep their own licenses, listed under [Credits](#credits).
+Licensed under either of [MIT](LICENSE-MIT) or [Apache License 2.0](LICENSE-APACHE), at your
+option (`MIT OR Apache-2.0`). Unless you state otherwise, any contribution you submit for
+inclusion is dual-licensed the same way, without additional terms.
+
+Third-party fonts, portraits and voices keep their own licenses, listed under
+[Credits](#credits). To report a vulnerability, see [SECURITY.md](SECURITY.md).
