@@ -23,6 +23,8 @@ All notable changes to Know Giver. Format based on
 
 ### Changed
 - The update bar is taller, with the version on the left and roomier actions on the right.
+- The Free tab shows each plan as a card: service, free model, what it does with the data,
+  and links to its rules and to create a key, stacked instead of pushed to the right.
 - The region hint says the region also sets the way of studying.
 
 ## [0.33.1] - 2026-10-30
