@@ -42,6 +42,13 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - First run is required (`Settings::needs_setup`, `SETUP_VERSION`): language, name, teacher, AI provider and key, terms. It never touches plans or progress. The provider list is `crates/ai/src/providers.rs`; model names there are suggestions, the app also lists the account's models
 - The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
 
+## Git workflow
+- `main` holds released code; `dev` collects finished work. The owner merges `dev` into `main` on GitHub.
+- Start every task on a short-lived branch from `dev`: `git switch dev && git pull && git switch -c <type>/<short-name>` (types: `feat`, `fix`, `docs`, `chore`).
+- Commit on that branch, then merge it into `dev` and push `dev`: `git switch dev && git merge --no-ff <branch> && git push origin dev`. Delete the task branch afterwards (`git branch -d <branch>`; also on `origin` if it was pushed).
+- Never commit or push to `main` directly.
+- A release still gets its CHANGELOG entry and version bump on the task branch. The annotated tag `vX.Y.Z` goes on `main` after the owner merges `dev` into `main`.
+
 ## Planned exceptions (not implemented)
 Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external
 projects for it, integrated as published and run outside the app process, with all
