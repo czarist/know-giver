@@ -76,6 +76,8 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
 
 Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
 LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
+Then proxy mode (Phase 9): several keys and models, including free plans, in a fallback
+order through the same LiteLLM proxy, with llama.cpp as the local link.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
 Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
@@ -546,6 +548,88 @@ Tasks:
 - **No vision model:** text features work; scanned-edital OCR and written-answer reading show
   "needs a vision model" with the option to install one; no image ever reaches a text
   model.
+
+## Phase 9 — Proxy mode: several keys and models with fallback (planned, not started)
+
+**Goal:** the student registers several AI services, keys and models, including many free
+plans, and puts them in an order. The app sends each request to the first one and, when
+it fails or hits its limit, moves to the next, so lessons keep going without the student
+changing settings. Free plans have low daily limits; stacked together they can cover a
+study day without paying.
+
+**Status:** planning only. Today the app has one provider, one key and one model per task
+(`AiConfig`, `ModelSet`). Proxy mode builds on Phase 8: the same LiteLLM proxy on
+loopback, supervised by `kg-engine`, with llama.cpp running the local model, so the local
+model can be the first or the last link of the chain.
+
+```text
+Know Giver ──loopback──> LiteLLM (proxy mode)
+                           ├─ 1. Groq free (key A)
+                           ├─ 2. Gemini free (key B)
+                           ├─ 3. OpenRouter :free model (key C)
+                           └─ 4. llama.cpp on this computer (always available, slower)
+```
+
+### 9.1 Settings
+- [ ] A "Proxy mode" option in Settings → AI and in the first run's AI step, next to a
+      single service and "on this computer".
+- [ ] A list of entries, each with provider (from `PROVIDERS`), key, model and an
+      optional name; add, edit, remove, reorder by dragging, turn an entry off without
+      deleting it. Free plans from the Free tab can be added in one click with their
+      suggested model.
+- [ ] A connection check per entry (the existing test) and for the whole chain.
+- [ ] Separate chains per task where it matters: text tasks, structured JSON (study plan,
+      quizzes, grading) and vision. A vision chain holds only models that see images; a
+      text model never receives an image, even as a fallback.
+- [ ] Keys stored like today's key, then in the system keychain (see Next ideas); never
+      shown in full after saving, never in logs.
+
+### 9.2 Fallback rules
+- [ ] Move to the next entry on rate limit (429), quota exhausted, timeout, server error
+      or a model the account cannot use; never on a bad request the next one would also
+      reject.
+- [ ] Remember an exhausted entry until its limit resets (the `Retry-After` header or
+      the plan's daily reset) and skip it meanwhile, so each request does not wait on it.
+- [ ] A reply that fails the app's checks (invalid JSON, wrong scores or quotes) can be
+      retried on the next entry, with a limit.
+- [ ] A streamed lesson reply that fails midway restarts from the next entry without the
+      student hearing the half sentence twice.
+- [ ] When every entry fails: a clear message with each entry's reason, as errors are
+      shown today.
+
+### 9.3 Proxy configuration
+- [ ] Generate the LiteLLM config (`model_list`, `router_settings`, `fallbacks`,
+      cooldowns, retries and timeouts) from the app's settings; loopback only, random
+      master key, admin UI, telemetry and spend database off, as in 8.4. Keys go to
+      the process through environment variables (`os.environ/…` in the config), never
+      written into the config file.
+- [ ] Without Phase 8 installed (no local model), proxy mode still works with external
+      entries only; LiteLLM ships with the installer either way (see Decisions in Phase 8).
+- [ ] Map LiteLLM errors to the `AiError` kinds the UI translates.
+
+### 9.4 Transparency and rules
+- [ ] Show which entry answered each request (a small label in lessons and a log in
+      Settings) and how much of each free plan was used today, when the service reports
+      it.
+- [ ] Show each entry's data note (free plans that may train on what is sent, from
+      `Provider::free_tier`); the order the student sets is the order data goes out.
+- [ ] Do not offer several keys of the same service to get around its limits: several
+      accounts on one free plan usually break its terms. The chain mixes services; more
+      than one key per service is for the student's own separate accounts (for example
+      work and personal) and the UI says so.
+- [ ] Mainland China: only services offered there (`Provider::offered`).
+- [ ] Update `docs/legal` (all languages and regions) to say requests may go to several
+      services in the student's order, and bump `TERMS_VERSION`.
+
+### Acceptance criteria
+- With three free entries and the first at its limit, a lesson, a quiz and a study plan
+  complete on the second without the student doing anything, and the label shows which
+  one answered.
+- A vision request never reaches a text-only entry.
+- With every external entry failing and a local model installed, the request completes
+  on this computer; without one, the message lists each entry's reason.
+- No key appears in logs, in the LiteLLM config left on disk after exit, or in error
+  messages.
 
 ## Not yet verified
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
