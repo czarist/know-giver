@@ -305,9 +305,9 @@ Ollama (`AiConfig` default `http://localhost:11434/v1`), with one model per task
 ### Target architecture
 
 ```text
-Know Giver (Rust) ──HTTP, loopback──> LiteLLM (proxy) ──> local inference engine ──> model files
+Know Giver (Rust) ──HTTP, loopback──> LiteLLM (proxy) ──> llama.cpp server ──> model files (GGUF)
                                                         ▲
-gpu-unlock (optional, Linux, boot time) ── prepares the GPU, never in the request path
+gpu-unlock (optional, boot time, Linux or Windows) ── prepares the GPU, never in the request path
 ```
 
 - **Know Giver** keeps all orchestration in Rust: diagnosis, catalog, downloads, process
@@ -317,24 +317,29 @@ gpu-unlock (optional, Linux, boot time) ── prepares the GPU, never in the re
   model aliases.
 - **LiteLLM** is the gateway: one stable endpoint, per-task model aliases, a key, request
   limits and timeouts. It does not load or run models.
-- **The inference engine** loads the model and runs it on CPU or GPU. To be chosen (8.3).
+- **llama.cpp** (`llama-server`) loads the model and runs it on CPU or GPU (8.3).
 - **gpu-unlock** belongs to hardware preparation. Local AI must work with it absent,
   unsupported or failed.
 
 ### Exceptions to the pure-Rust preference
 
-The owner authorized these two external projects. Each is integrated as published, not
-rewritten in Rust, and runs outside the app process. This is not a general permission for
-dependencies in other languages: any further one (including the inference engine, if it
-is not Rust) needs its own recorded decision.
+The owner authorized these external projects. Each is integrated as published, not
+rewritten in Rust, and runs outside the app process; orchestration stays in Rust. This is
+not a general permission for dependencies in other languages: any further one needs its own
+recorded decision.
 
-- **LiteLLM** — <https://github.com/BerriAI/litellm>. Python, run as a managed child
-  process bound to loopback. Use only the open-source part; features under the LiteLLM
-  commercial license stay off. Confirm the license of the pinned version before shipping.
-- **gpu-unlock** — <https://github.com/Zagitta/gpu-unlock>. A Linux kernel module (C,
-  GPL-2.0-only; NVIDIA firmware under NVIDIA's terms) loaded at boot. Optional, installed
-  only by an explicit user action, never linked into or bundled inside the app without a
-  license review.
+- **LiteLLM** — <https://github.com/BerriAI/litellm>. Python, embedded in the installer
+  and run as a managed child process bound to loopback. Use only the open-source part;
+  features under the LiteLLM commercial license stay off. Confirm the license of the
+  pinned version before shipping.
+- **llama.cpp** — <https://github.com/ggml-org/llama.cpp>. C/C++ (MIT), the inference
+  engine: its `llama-server` binary runs as a child process, like the sherpa-onnx runtime
+  today. Not linked into the app.
+- **gpu-unlock** — <https://github.com/Zagitta/gpu-unlock> on Linux (kernel module, C,
+  GPL-2.0-only) and its Windows port **Windows-GPU-UNLOCK** —
+  <https://github.com/impacifist/Windows-GPU-UNLOCK> (UEFI pre-boot tool, GPL-2.0-only).
+  Optional, only on an explicit user action through the system's administrator prompt.
+  Not bundled in the installer; NVIDIA firmware is never redistributed.
 
 ### Dependencies
 
@@ -359,15 +364,15 @@ is not Rust) needs its own recorded decision.
       and vision (scanned editais, handwritten pages).
 - [ ] Shortlist Portuguese-capable open models per task and size class, with license,
       quantizations and vision support; record sources and dates.
-- [ ] Decide how LiteLLM is distributed (see Pending decisions) and measure its install
-      size, start time and memory.
+- [ ] Measure the installer with LiteLLM and llama.cpp embedded: size, start time,
+      memory, and Windows antivirus behaviour with the embedded Python.
 
 ### 8.2 Hardware diagnosis
 - [ ] Detect OS and architecture; CPU model, cores and instruction sets (AVX2, AVX-512,
       NEON); total and available RAM.
 - [ ] Detect GPUs: vendor, device ID, VRAM total and free, driver version. NVIDIA, AMD,
       Intel and Apple, with a source per platform (to investigate: NVML, DXGI, Metal, sysfs,
-      or the engine's own device listing).
+      or llama.cpp's own device listing).
 - [ ] Detect which inference backends really work (CUDA, Vulkan, ROCm/HIP, SYCL, Metal,
       CPU) by asking the chosen engine to list and initialize devices, not by guessing from
       the GPU name.
@@ -382,21 +387,19 @@ is not Rust) needs its own recorded decision.
 - [ ] Evaluate NVIDIA without unlock, AMD, Intel, Apple Silicon and CPU-only on their own
       backends. A missing gpu-unlock never blocks local mode by itself.
 
-### 8.3 Inference engine selection
-- [ ] Compare candidates on hardware coverage (CUDA, Vulkan/ROCm, Metal, CPU), Windows /
-      Linux / macOS binaries, OpenAI-compatible server, vision models, structured JSON
-      output, streaming, memory use, start time, license and fit with the Rust rules:
-  - `mistral.rs` (Rust, server mode): best fit with the pure-Rust rule; check AMD/Intel
-    coverage and prebuilt binaries.
-  - `llama.cpp` server (C/C++, MIT): widest hardware coverage and GGUF models; would be
-    run as a downloaded child process, as sherpa-onnx is today, which needs an exception.
-  - Ollama (Go, MIT): wraps llama.cpp with its own model store, which overlaps with an
-    app-managed catalog.
-  - candle in process (already a dependency): no extra process, but serving, quantization
-    and vision would be ours to build.
-  - vLLM and similar server stacks are out of scope for a desktop app.
-- [ ] Decide one engine (or one per platform) and record the reason; if it is not Rust,
-      record the exception like those above.
+### 8.3 Inference engine: llama.cpp
+Chosen 2026-10-29 for its hardware coverage (CUDA, Vulkan, ROCm/HIP, SYCL, Metal, CPU),
+prebuilt Windows/Linux/macOS binaries, GGUF models, an OpenAI-compatible server, vision
+models and grammar-constrained JSON. Alternatives considered: `mistral.rs` (Rust, narrower
+hardware), Ollama (its own model store overlaps an app-managed catalog), candle in process
+(serving and vision would be ours to build), vLLM-style server stacks (not for a desktop).
+- [ ] Pin one `llama.cpp` release; list which of its builds the app uses per platform
+      and backend, with SHA-256 in the manifest (see Decisions).
+- [ ] Use the engine's device listing for the backend check in 8.2.
+- [ ] Check vision models (multimodal projector files), JSON grammar and streaming through
+      LiteLLM with the app's real prompts.
+- [ ] Settings per model: context size, GPU layers, threads (leave cores for STT/TTS),
+      batch size; from the catalog, not typed by the student.
 
 ### 8.4 LiteLLM integration
 - [ ] Generate the LiteLLM config from the app: only local engine backends, one alias per
@@ -409,13 +412,13 @@ is not Rust) needs its own recorded decision.
 - [ ] Start, health-check (LiteLLM and engine), stop and restart from a supervisor worker in
       `kg-engine`; restart with a limit and backoff; stop both processes on app exit and
       clean up leftovers on the next start, as the Parakeet server does.
-- [ ] Pin LiteLLM and engine versions; updates only through an app release or an explicit
-      user action, with the same checks as a first install.
+- [ ] Pin LiteLLM and llama.cpp in the manifest; updates only through an app release,
+      with the same checks as a first install.
 - [ ] Map errors (engine not ready, out of memory, model missing, timeout) to `AiError`
       kinds the UI already translates, with new keys where needed.
 
 ### 8.5 Model catalog and installation
-- [ ] A curated, versioned catalog shipped with the app: source and revision, license,
+- [ ] The model part of the `local-ai.toml` manifest (see Decisions): source and revision, license,
       SHA-256, download and installed size, quantization, context, memory needed at that
       context (weights + KV cache + engine overhead), and capabilities per task (text,
       structured JSON, tools if ever needed, vision).
@@ -437,9 +440,9 @@ is not Rust) needs its own recorded decision.
 - [ ] Diagnosis and recommendation before anything is installed: what was found, the
       recommended model, download and disk size, expected speed, what will not work
       (for example, no vision).
-- [ ] Local mode sends no study content to outside providers. Downloads of components and
-      models come only from pinned sources. Decide whether other network features (such
-      as Wikipedia pictures in handouts) stay on in local mode.
+- [ ] Local mode sends no AI request outside the machine. Downloads of components and
+      models come only from pinned sources. Wikipedia pictures and update checks stay on;
+      Settings lists the services the app still reaches.
 - [ ] No automatic fallback to an external API; if the local service fails, the app says
       so and offers retry, a smaller model, or switching mode on purpose.
 - [ ] Status in the app: starting, ready, busy, stopped, failed, with the reason.
@@ -448,21 +451,30 @@ is not Rust) needs its own recorded decision.
       stays responsive.
 
 ### 8.7 Optional gpu-unlock
-Upstream at 2.0.0 (checked 2026-10-29): Linux only (a Windows port exists outside the
-project). Ampere (RTX 30) stable, Ada (RTX 40) and Turing (RTX 20) experimental, Blackwell
-(RTX 50) unsupported, laptops mixed. It removes a cap on FP16/BF16/TF32 tensor math. Its own
-reports show little gain for quantized llama.cpp/Ollama models (0–15%) and none for token
-decoding, which dominates tutor replies.
-- [ ] Check exact compatibility against the pinned upstream version: PCI device IDs,
-      distribution, kernel and headers, driver, Secure Boot (unsigned module) and boot
-      loader. Never assume every CUDA card qualifies.
-- [ ] Explain before enabling: administrator rights, a kernel module, a kernel
-      command-line change and a reboot; what it changes and how to undo it.
-- [ ] Enable only on an explicit request, never silently; the app does not hide the
-      privileged steps.
-- [ ] Verify after reboot (kernel log); offer disable (remove the boot parameter) and
-      uninstall, and recovery steps if the system or driver misbehaves.
-- [ ] Benchmark the app's real workload with and without it on the chosen engine and
+Upstream, checked 2026-10-29:
+- **Linux, gpu-unlock 2.0.0:** kernel module loaded at boot with a kernel command-line
+  parameter. Ampere (RTX 30) stable, Ada (RTX 40) and Turing (RTX 20) experimental,
+  Blackwell (RTX 50) unsupported, laptops mixed.
+- **Windows, Windows-GPU-UNLOCK 0.3.1 (source-only pre-release):** a UEFI tool picked from
+  a boot entry before Windows starts. It needs Secure Boot off, BitLocker off, a separate
+  FAT32 EFI partition, Python and clang, and firmware files the user obtains. Success is
+  reported per card and system (RTX 3060–3090 Ti), not per model.
+- Both remove a cap on FP16/BF16/TF32 tensor math. Upstream's own reports show little gain
+  for quantized llama.cpp models (0–15%) and none for token decoding, which dominates
+  tutor replies.
+
+Tasks:
+- [ ] Check exact compatibility against the pinned upstream versions: PCI device IDs,
+      OS, kernel and headers or UEFI and boot setup, driver, Secure Boot and disk
+      encryption. Never assume every CUDA card qualifies.
+- [ ] Explain before enabling: administrator rights, boot changes, a reboot, what changes
+      and how to undo it; then run the allowed steps through the administrator prompt
+      after consent.
+- [ ] Enable only on an explicit request, never silently.
+- [ ] Verify after reboot (Linux kernel log; the Windows tool's own check). Offer disable
+      (Linux: remove the boot parameter; Windows: boot the normal Windows entry and the
+      port's restore script), uninstall, and recovery steps.
+- [ ] Benchmark the app's real workload with and without it on llama.cpp and the chosen
       model; recommend it only with a measured gain. Never promise a speedup.
 - [ ] If it is unavailable or fails, local mode runs normally when it is otherwise viable.
 
@@ -477,22 +489,42 @@ decoding, which dominates tutor replies.
 - [ ] Tests for the supervisor, catalog checks, config generation (loopback only, no
       external providers) and availability rules with simulated processes.
 - [ ] Fill the compatibility matrix with at least one verified row per supported backend.
+- [ ] Measure LiteLLM's overhead against calling `llama-server` directly (latency to first
+      token, memory) and record it.
 
-### Pending decisions
-- **Inference engine** (8.3): `mistral.rs` keeps the Rust rule; `llama.cpp` covers more
-  hardware but needs an exception.
-- **LiteLLM packaging:** a pinned Python runtime and hashed wheels downloaded into the data
-  folder, bundled in the installer, or a frozen build; Docker is not a fit for students.
-  Size, start time and antivirus behaviour on Windows decide it.
-- **Is LiteLLM worth its cost for a single local engine?** The owner chose it as the proxy;
-  measure its overhead and record the result.
-- **gpu-unlock on Windows:** upstream does not maintain one; the third-party port is not
-  covered by the exception unless decided.
-- **gpu-unlock privilege flow:** show the commands for the user to run, or run them through
-  the system's admin prompt after consent.
-- **Network features in local mode** (Wikipedia pictures, update checks).
-- **Where the matrix and catalog live** (repo file shipped with the app, updated only by
-  releases).
+### Decisions (2026-10-29, owner)
+- **Inference engine:** `llama.cpp` server, with an exception like LiteLLM's.
+- **LiteLLM packaging:** embedded in the installer (pinned Python runtime and hashed
+  wheels, no Docker, nothing installed system-wide).
+- **LiteLLM stays** as the proxy even with a single local engine; its overhead is
+  measured and recorded (8.8), not a reason to drop it.
+- **gpu-unlock on Linux and Windows:** the Windows port is included in the exception.
+- **Privileged steps:** the app asks for consent, then calls the system's administrator
+  prompt (UAC on Windows, `pkexec`/polkit on Linux). Steps the app must not do for the
+  student, such as turning off Secure Boot or BitLocker or changing firmware settings, are
+  explained with instructions and checked afterwards, never done silently.
+- **Network features stay on in local mode:** Wikipedia pictures in handouts and update
+  checks keep working. The local-mode promise covers AI requests; Settings says which
+  other services the app still reaches.
+- **Catalog and matrix: one manifest, used like a lockfile** (recommended by the agent;
+  the owner wants components installed like package dependencies):
+  - A versioned `local-ai.toml` in the repo lists every pinned component (LiteLLM,
+    llama.cpp builds per platform/backend, models) with source, revision, license,
+    SHA-256 and sizes, plus the compatibility matrix rows.
+  - The packaging scripts read it to fetch and verify what the installer embeds: LiteLLM
+    and the llama.cpp CPU and Vulkan builds.
+  - The app embeds the same file at build time (`include_str!`). After diagnosis it
+    fetches what is too large or too specific for the installer the same way, with
+    consent: models, and the CUDA or ROCm build of llama.cpp when such a GPU is found.
+  - Changes only through a release, so each version ships the set that was tested with it.
+    A generated `docs/local-ai-compatibility.md` shows the matrix for people.
+
+### Still open
+- Installer size with LiteLLM and llama.cpp embedded, and Windows antivirus behaviour with
+  the embedded Python; measure in 8.1.
+- How far Windows-GPU-UNLOCK can be guided: it needs Secure Boot off, BitLocker off, a
+  separate FAT32 EFI partition and firmware files the user obtains; decide whether the
+  app offers it on Windows or only links to its instructions after the benchmark.
 
 ### Acceptance criteria
 - **Compatible hardware:** diagnosis recommends a catalog model; after consent it downloads,

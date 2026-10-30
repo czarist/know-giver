@@ -37,12 +37,17 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Calm, readable UI focused on long study sessions
 
 ## Planned exceptions (not implemented)
-Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized two external
+Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external
 projects for it, integrated as published and run outside the app process, with all
-orchestration in Rust: LiteLLM (<https://github.com/BerriAI/litellm>, local proxy) and
-gpu-unlock (<https://github.com/Zagitta/gpu-unlock>, optional Linux GPU preparation, only on
-explicit user action). This is not a general permission for other non-Rust dependencies; the
-inference engine, if not Rust, needs its own decision. Do not describe these components as
+orchestration in Rust:
+- LiteLLM (<https://github.com/BerriAI/litellm>): local proxy, embedded in the installer
+- llama.cpp (<https://github.com/ggml-org/llama.cpp>): inference engine, `llama-server` as a child process
+- gpu-unlock (<https://github.com/Zagitta/gpu-unlock>, Linux) and Windows-GPU-UNLOCK
+  (<https://github.com/impacifist/Windows-GPU-UNLOCK>): optional GPU preparation at boot, only
+  on explicit user action through the administrator prompt
+
+This is not a general permission for other non-Rust dependencies. Pinned versions and
+checksums go in one manifest (`local-ai.toml`, planned). Do not describe these components as
 available until they ship.
 
 ## Do not
