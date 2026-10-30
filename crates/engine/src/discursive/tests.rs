@@ -11,14 +11,15 @@ use kg_pdf::{Edital, EditalText};
 
 use super::images::tests::page_png;
 use super::*;
-use crate::{AiConfig, AppPaths, Command, RubricSource, WritingKind};
+use crate::{AppPaths, Command, RubricSource, WritingKind};
 
 const NOTICE: &str = "EDITAL\n12. DA PROVA DISCURSIVA\n12.1 A prova discursiva consistirá \
     na redação de texto dissertativo de 20 a 30 linhas.\nCONTEÚDO: Português.";
 
 fn engine_with(notice: &str) -> (Engine, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let mut engine = Engine::in_memory(AppPaths::new(dir.path()), AiConfig::default()).unwrap();
+    let mut engine =
+        Engine::in_memory(AppPaths::new(dir.path()), crate::tests::silent_ai()).unwrap();
     engine.settings.board_images = false;
     // Requests that slip through fail at once instead of reaching a server.
     engine.settings.ai.base_url = "http://127.0.0.1:1/v1".into();

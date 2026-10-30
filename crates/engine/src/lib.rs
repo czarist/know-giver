@@ -43,8 +43,7 @@ pub use illustrations::{BoardImage, Illustration, illustration_key};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_ai::{
     FreeData, FreeTier, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation,
-    provider as ai_provider,
-    provider_for_url,
+    provider as ai_provider, provider_for_url,
 };
 pub use kg_audio::{
     AudioError, CloudSpeechConfig, EnglishVoice, KokoroVoice, ModelId, PiperVoice, SttEngine,
@@ -1065,7 +1064,11 @@ impl Engine {
     pub(crate) fn ai_client(&self) -> kg_ai::Client {
         kg_ai::Client::new(self.settings.ai.clone())
             .with_language(self.prompt_language())
-            .with_culture(self.settings.region.and_then(settings::Region::exam_culture))
+            .with_culture(
+                self.settings
+                    .region
+                    .and_then(settings::Region::exam_culture),
+            )
     }
 
     /// Prompt context for a topic of the active plan.

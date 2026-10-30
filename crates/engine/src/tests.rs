@@ -10,10 +10,25 @@ use crate::*;
 
 fn engine() -> (Engine, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
-    let mut engine = Engine::in_memory(AppPaths::new(dir.path()), AiConfig::default()).unwrap();
+    let mut engine = Engine::in_memory(AppPaths::new(dir.path()), silent_ai()).unwrap();
     // Tests never reach Wikipedia.
     engine.settings.board_images = false;
     (engine, dir)
+}
+
+/// An AI server that accepts connections and never answers. Workers the
+/// tests start (lessons, quizzes, reviews) then wait instead of failing at
+/// once: with nothing listening, a fast runner delivered "connection
+/// refused" inside the same `poll` that the test meant for its own event,
+/// ending the session before the test looked at it.
+pub(crate) fn silent_ai() -> AiConfig {
+    static SERVER: std::sync::OnceLock<std::net::TcpListener> = std::sync::OnceLock::new();
+    let server = SERVER.get_or_init(|| std::net::TcpListener::bind("127.0.0.1:0").unwrap());
+    let port = server.local_addr().unwrap().port();
+    AiConfig {
+        base_url: format!("http://127.0.0.1:{port}/v1"),
+        ..AiConfig::default()
+    }
 }
 
 fn edital() -> Edital {
