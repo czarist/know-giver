@@ -32,8 +32,12 @@ trap 'rm -rf -- "$tmp"' EXIT
 archive="${KG_ARCHIVE:-}"
 if [[ -z "$archive" ]]; then
   printf 'Downloading %s\n' "$asset"
-  curl -fL --progress-bar -o "$tmp/$asset" "$base/$asset"
-  curl -fsSL -o "$tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt"
+  if ! curl -fL --progress-bar -o "$tmp/$asset" "$base/$asset" ||
+     ! curl -fsSL -o "$tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt"; then
+    printf 'No Know Giver release with %s is published yet. See https://github.com/%s/releases
+'       "$asset" "$repo" >&2
+    exit 1
+  fi
   expected="$(awk -v f="$asset" '$2 == f || $2 == "*" f { print tolower($1) }' "$tmp/SHA256SUMS.txt")"
   if command -v sha256sum >/dev/null; then
     actual="$(sha256sum "$tmp/$asset" | awk '{ print $1 }')"
