@@ -22,6 +22,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev
       - name: Verify
         run: cargo test --locked --workspace
+      - name: Inno Setup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
       - name: Windows package
         if: runner.os == 'Windows'
         shell: pwsh
@@ -37,3 +41,43 @@ jobs:
             dist/*.exe
             dist/*.tar.gz
           if-no-files-found: error
+
+  # A version tag publishes a GitHub release with fixed asset names, which
+  # the README's one-line installs and the app's updater download.
+  release:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Assets with fixed names
+        run: |
+          mkdir release
+          for file in artifacts/*/*; do
+            name="$(basename "$file" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+//')"
+            cp "$file" "release/$name"
+          done
+          ls release
+          for required in KnowGiver-setup.exe KnowGiver-windows-x64.zip \
+              KnowGiver-linux-x86_64.tar.gz KnowGiver-macos-arm64.tar.gz; do
+            test -f "release/$required"
+          done
+          (cd release && sha256sum * > SHA256SUMS.txt)
+      - name: Release notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || echo "Know Giver $GITHUB_REF_NAME" > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --title "Know Giver $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

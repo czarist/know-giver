@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of October 30, 2026 (2026-10-30). This international version applies in every
+Version of October 31, 2026 (2026-10-31). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -74,6 +74,7 @@ Privacy Policy explains.
 The app may reach these third-party services:
 - the AI provider you choose;
 - Wikipedia, for whiteboard pictures;
+- GitHub, to check for and download new versions;
 - the sites it downloads voice and speech recognition models from;
 - a cloud voice service, if you turn one on.
 

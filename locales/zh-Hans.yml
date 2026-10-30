@@ -54,6 +54,7 @@ nav:
   settings: "设置"
   in_progress: "进行中"
   active_plan: "当前计划"
+  source: "GitHub 上的源代码"
 
 status:
   not_started: "未开始"
@@ -423,6 +424,15 @@ setup:
     read_privacy: "阅读隐私政策"
     agree: "我已阅读并同意使用条款和隐私政策"
 
+update:
+  available: "有新版本 %{version}"
+  failed: "无法自动安装版本 %{version}。"
+  install: "更新"
+  download: "下载"
+  notes: "更新内容"
+  later: "以后再说"
+  downloading: "正在下载版本 %{version}… %{percent}%"
+  installing: "正在安装版本 %{version}。应用会关闭并重新打开。"
 tour:
   step: "%{n} / %{total}"
   next: "下一步"
@@ -570,6 +580,10 @@ settings:
     quick_hint: "只讲重点：最多 3 步，每步一个简短问题。"
     normal_hint: "最多 5 步，讲完讲义的每个要点，每步有例子和检查问题。"
     full_hint: "讲义每一节一步（最多 8 步），包含例子、考试陷阱和更多问题。"
+  about:
+    title: "关于与更新"
+    check_updates: "打开时检查更新"
+    check_updates_hint: "打开时，应用会向 GitHub 查询最新版本。只有这个请求会离开你的电脑。"
   legal:
     title: "条款与隐私"
     region: "国家或地区：%{region}"

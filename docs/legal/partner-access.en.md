@@ -1,6 +1,6 @@
 # Know Giver Partner Access Terms
 
-Version of October 30, 2026 (2026-10-30). These terms apply to every country and region
+Version of October 31, 2026 (2026-10-31). These terms apply to every country and region
 where Know Giver is not offered to the public.
 
 ## 1. Not offered to the public

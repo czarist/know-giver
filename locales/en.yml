@@ -54,6 +54,7 @@ nav:
   settings: "Settings"
   in_progress: "in progress"
   active_plan: "Active plan"
+  source: "Code on GitHub"
 
 status:
   not_started: "Not started"
@@ -423,6 +424,15 @@ setup:
     read_privacy: "Read the Privacy Policy"
     agree: "I have read and agree to the Terms of Use and the Privacy Policy"
 
+update:
+  available: "Version %{version} is available"
+  failed: "Could not install version %{version} by itself."
+  install: "Update"
+  download: "Download"
+  notes: "What's new"
+  later: "Not now"
+  downloading: "Downloading version %{version}… %{percent}%"
+  installing: "Installing version %{version}. The app will close and open again."
 tour:
   step: "%{n} of %{total}"
   next: "Next"
@@ -570,6 +580,10 @@ settings:
     quick_hint: "The essentials: up to 3 steps, one short question each."
     normal_hint: "Up to 5 steps with every point of the handout, an example and a check question in each."
     full_hint: "One step per handout section (up to 8), with examples, exam pitfalls and more questions."
+  about:
+    title: "About and updates"
+    check_updates: "Check for updates when the app opens"
+    check_updates_hint: "When it opens, the app asks GitHub for the latest version. Only that request leaves your computer."
   legal:
     title: "Terms and privacy"
     region: "Country or region: %{region}"

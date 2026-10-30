@@ -54,6 +54,7 @@ nav:
   settings: "設定"
   in_progress: "進行中"
   active_plan: "使用中のプラン"
+  source: "GitHub のソースコード"
 
 status:
   not_started: "未着手"
@@ -423,6 +424,15 @@ setup:
     read_privacy: "プライバシーポリシーを読む"
     agree: "利用規約とプライバシーポリシーを読み、同意します"
 
+update:
+  available: "バージョン %{version} があります"
+  failed: "バージョン %{version} を自動でインストールできませんでした。"
+  install: "アップデート"
+  download: "ダウンロード"
+  notes: "新機能"
+  later: "あとで"
+  downloading: "バージョン %{version} をダウンロード中… %{percent}%"
+  installing: "バージョン %{version} をインストールしています。アプリはいったん閉じて、また開きます。"
 tour:
   step: "%{n} / %{total}"
   next: "次へ"
@@ -570,6 +580,10 @@ settings:
     quick_hint: "要点だけ：最大3ステップ、各ステップに短い質問を1つ。"
     normal_hint: "最大5ステップで、テキストの要点をすべて、例と確認の質問付きで。"
     full_hint: "テキストの節ごとに1ステップ（最大8）。例、試験の落とし穴、質問を多めに。"
+  about:
+    title: "アプリについて・アップデート"
+    check_updates: "起動時にアップデートを確認する"
+    check_updates_hint: "起動時に、最新のバージョンを GitHub に問い合わせます。コンピューターから送られるのはこの問い合わせだけです。"
   legal:
     title: "規約とプライバシー"
     region: "国・地域：%{region}"

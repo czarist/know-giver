@@ -2,3 +2,6 @@
 # out of GitHub's language statistics.
 .agents/** linguist-vendored
 .aider-desk/** linguist-vendored
+
+# Shell scripts run on macOS and Linux (and from the in-app updater): LF only.
+*.sh text eol=lf
