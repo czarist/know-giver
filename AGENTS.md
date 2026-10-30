@@ -36,6 +36,15 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
 
+## Planned exceptions (not implemented)
+Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized two external
+projects for it, integrated as published and run outside the app process, with all
+orchestration in Rust: LiteLLM (<https://github.com/BerriAI/litellm>, local proxy) and
+gpu-unlock (<https://github.com/Zagitta/gpu-unlock>, optional Linux GPU preparation, only on
+explicit user action). This is not a general permission for other non-Rust dependencies; the
+inference engine, if not Rust, needs its own decision. Do not describe these components as
+available until they ship.
+
 ## Do not
 - Unnecessary C/C++ dependencies
 - unwrap/expect in production code

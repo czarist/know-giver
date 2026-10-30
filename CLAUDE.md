@@ -40,6 +40,15 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Images go only to the configured vision model, never to a text model as fallback; the model's answers about written work are checked in code (scores, quotes, pages and lines)
 - The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
 
+## Planned exceptions (not implemented)
+Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized two external
+projects for it, integrated as published and run outside the app process, with all
+orchestration in Rust: LiteLLM (<https://github.com/BerriAI/litellm>, local proxy) and
+gpu-unlock (<https://github.com/Zagitta/gpu-unlock>, optional Linux GPU preparation, only on
+explicit user action). This is not a general permission for other non-Rust dependencies; the
+inference engine, if not Rust, needs its own decision. Do not describe these components as
+available until they ship.
+
 ## Do not
 - Unnecessary C/C++ dependencies
 - unwrap/expect in production code

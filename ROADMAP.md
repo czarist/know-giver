@@ -72,6 +72,9 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
 8. Try a different model family as `MODEL_VERIFIER` (for example a local Ollama model)
    and compare the drop rate with `handout_check`.
 
+Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
+LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
+
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
 Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
 voice; Piper stays the default until the listening comparison.
@@ -286,6 +289,230 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] Speed and pitch sliders
 - [x] The teacher avatar (Phase 6) matches the chosen voice
 
+## Phase 8 — Managed local AI (planned, not started)
+
+**Goal:** the student picks "run the AI on this computer" and gets a working setup without
+starting servers, downloading model files or typing an API key. The app checks the machine,
+recommends a model, installs it after consent and runs the needed processes in the
+background. When no supported setup meets the minimum, local mode stays off and the app
+says why and what could change that.
+
+**Status:** planning only. None of the components below ship today. What exists: the
+student can point Settings → AI at any OpenAI-compatible endpoint, including a local
+Ollama (`AiConfig` default `http://localhost:11434/v1`), with one model per task
+(`ModelSet`) and a separate vision model. That manual path stays as it is.
+
+### Target architecture
+
+```text
+Know Giver (Rust) ──HTTP, loopback──> LiteLLM (proxy) ──> local inference engine ──> model files
+                                                        ▲
+gpu-unlock (optional, Linux, boot time) ── prepares the GPU, never in the request path
+```
+
+- **Know Giver** keeps all orchestration in Rust: diagnosis, catalog, downloads, process
+  supervision, health checks and settings live in `kg-engine` workers and report through
+  `Event`s, like model downloads and the Parakeet server today. The AI client keeps
+  talking OpenAI-compatible HTTP; local mode only changes the base URL, the key and the
+  model aliases.
+- **LiteLLM** is the gateway: one stable endpoint, per-task model aliases, a key, request
+  limits and timeouts. It does not load or run models.
+- **The inference engine** loads the model and runs it on CPU or GPU. To be chosen (8.3).
+- **gpu-unlock** belongs to hardware preparation. Local AI must work with it absent,
+  unsupported or failed.
+
+### Exceptions to the pure-Rust preference
+
+The owner authorized these two external projects. Each is integrated as published, not
+rewritten in Rust, and runs outside the app process. This is not a general permission for
+dependencies in other languages: any further one (including the inference engine, if it
+is not Rust) needs its own recorded decision.
+
+- **LiteLLM** — <https://github.com/BerriAI/litellm>. Python, run as a managed child
+  process bound to loopback. Use only the open-source part; features under the LiteLLM
+  commercial license stay off. Confirm the license of the pinned version before shipping.
+- **gpu-unlock** — <https://github.com/Zagitta/gpu-unlock>. A Linux kernel module (C,
+  GPL-2.0-only; NVIDIA firmware under NVIDIA's terms) loaded at boot. Optional, installed
+  only by an explicit user action, never linked into or bundled inside the app without a
+  license review.
+
+### Dependencies
+
+- Existing: the model download code (`kg_audio::models::ModelStore`/`Fetcher`, which has
+  no checksum or resume today), engine workers and events, `Settings`/`AiConfig`, the rule
+  that images go only to a vision model, the vision probe (`check_vision`), the i18n
+  system, and the packaging scripts (`scripts/package.ps1`, `scripts/package-unix.sh`).
+- Order inside the phase: 8.1 → 8.2 and 8.3 in parallel → 8.4 → 8.5 → 8.6 → 8.8.
+  8.7 depends only on 8.2 and 8.8's benchmark and can come last or never.
+- Related items elsewhere: the optional CUDA build of candle (Whisper on the GPU shares
+  VRAM with the model), "CUDA execution … unverified" under Not yet verified, and the idea
+  of a local model as `MODEL_VERIFIER` (Next up #8), which a managed install would make
+  easy to try.
+
+### 8.1 Investigation
+- [ ] Measure what the app already uses while a lesson runs: RAM and VRAM for Whisper or
+      Parakeet, Kokoro or Piper, the reader and the UI, on Windows and Linux. These are
+      the reserve the model must leave free.
+- [ ] Write per-task needs from the current prompts: context length (edital excerpts,
+      handouts with board material), output length (study plan, handout), JSON reliability
+      (quiz, correction, written-answer grades), streaming latency (tutor first sentence)
+      and vision (scanned editais, handwritten pages).
+- [ ] Shortlist Portuguese-capable open models per task and size class, with license,
+      quantizations and vision support; record sources and dates.
+- [ ] Decide how LiteLLM is distributed (see Pending decisions) and measure its install
+      size, start time and memory.
+
+### 8.2 Hardware diagnosis
+- [ ] Detect OS and architecture; CPU model, cores and instruction sets (AVX2, AVX-512,
+      NEON); total and available RAM.
+- [ ] Detect GPUs: vendor, device ID, VRAM total and free, driver version. NVIDIA, AMD,
+      Intel and Apple, with a source per platform (to investigate: NVML, DXGI, Metal, sysfs,
+      or the engine's own device listing).
+- [ ] Detect which inference backends really work (CUDA, Vulkan, ROCm/HIP, SYCL, Metal,
+      CPU) by asking the chosen engine to list and initialize devices, not by guessing from
+      the GPU name.
+- [ ] Check free disk space for download, unpacking and running (download and installed
+      size counted separately).
+- [ ] Subtract the app's own use (8.1) and a safety margin from available memory.
+- [ ] Keep a fingerprint of hardware, driver, engine and model; when it changes, run the
+      diagnosis again before starting local mode.
+- [ ] Keep a versioned compatibility matrix in the repo (OS, hardware, driver, backend,
+      engine version, model, quantization), each row marked **verified**, **experimental**
+      or **incompatible**, with who tested it and when.
+- [ ] Evaluate NVIDIA without unlock, AMD, Intel, Apple Silicon and CPU-only on their own
+      backends. A missing gpu-unlock never blocks local mode by itself.
+
+### 8.3 Inference engine selection
+- [ ] Compare candidates on hardware coverage (CUDA, Vulkan/ROCm, Metal, CPU), Windows /
+      Linux / macOS binaries, OpenAI-compatible server, vision models, structured JSON
+      output, streaming, memory use, start time, license and fit with the Rust rules:
+  - `mistral.rs` (Rust, server mode): best fit with the pure-Rust rule; check AMD/Intel
+    coverage and prebuilt binaries.
+  - `llama.cpp` server (C/C++, MIT): widest hardware coverage and GGUF models; would be
+    run as a downloaded child process, as sherpa-onnx is today, which needs an exception.
+  - Ollama (Go, MIT): wraps llama.cpp with its own model store, which overlaps with an
+    app-managed catalog.
+  - candle in process (already a dependency): no extra process, but serving, quantization
+    and vision would be ours to build.
+  - vLLM and similar server stacks are out of scope for a desktop app.
+- [ ] Decide one engine (or one per platform) and record the reason; if it is not Rust,
+      record the exception like those above.
+
+### 8.4 LiteLLM integration
+- [ ] Generate the LiteLLM config from the app: only local engine backends, one alias per
+      task (`kg-study-plan`, `kg-tutor`, `kg-vision`, …) mapped to installed models, no
+      external providers in local mode.
+- [ ] Bind LiteLLM and the engine to `127.0.0.1` on free ports; protect LiteLLM with a
+      random master key kept in the app's settings and the engine with its own key or a
+      loopback-only socket; turn off the admin UI, telemetry, callbacks and spend
+      database.
+- [ ] Start, health-check (LiteLLM and engine), stop and restart from a supervisor worker in
+      `kg-engine`; restart with a limit and backoff; stop both processes on app exit and
+      clean up leftovers on the next start, as the Parakeet server does.
+- [ ] Pin LiteLLM and engine versions; updates only through an app release or an explicit
+      user action, with the same checks as a first install.
+- [ ] Map errors (engine not ready, out of memory, model missing, timeout) to `AiError`
+      kinds the UI already translates, with new keys where needed.
+
+### 8.5 Model catalog and installation
+- [ ] A curated, versioned catalog shipped with the app: source and revision, license,
+      SHA-256, download and installed size, quantization, context, memory needed at that
+      context (weights + KV cache + engine overhead), and capabilities per task (text,
+      structured JSON, tools if ever needed, vision).
+- [ ] Recommend from the diagnosis: Portuguese quality on the app's tasks, latency,
+      context and running memory with room for STT/TTS. Fitting the file into VRAM is not
+      enough.
+- [ ] After the student accepts the size: download with progress, cancel, resume
+      (HTTP ranges) and SHA-256 check, staged so an interrupted install never looks
+      installed; remove frees the space. Extend the existing downloader rather than add a
+      second one, so speech models gain checksums and resume too.
+- [ ] Per-feature availability: a text-only setup enables lessons, plans, quizzes and
+      handouts, and marks image features (scanned editais, written answers) unavailable
+      with the reason. A text model never receives images.
+- [ ] Optional vision model as a separate install, checked with the existing vision probe.
+
+### 8.6 Setup experience
+- [ ] A clear choice in Settings → AI and onboarding: external API or on this computer.
+      The external settings are kept, so switching back needs no retyping.
+- [ ] Diagnosis and recommendation before anything is installed: what was found, the
+      recommended model, download and disk size, expected speed, what will not work
+      (for example, no vision).
+- [ ] Local mode sends no study content to outside providers. Downloads of components and
+      models come only from pinned sources. Decide whether other network features (such
+      as Wikipedia pictures in handouts) stay on in local mode.
+- [ ] No automatic fallback to an external API; if the local service fails, the app says
+      so and offers retry, a smaller model, or switching mode on purpose.
+- [ ] Status in the app: starting, ready, busy, stopped, failed, with the reason.
+- [ ] All new UI text through `locales/*.yml` in every locale.
+- [ ] Heavy work (diagnosis, downloads, test runs, process start) in workers; the UI
+      stays responsive.
+
+### 8.7 Optional gpu-unlock
+Upstream at 2.0.0 (checked 2026-10-29): Linux only (a Windows port exists outside the
+project). Ampere (RTX 30) stable, Ada (RTX 40) and Turing (RTX 20) experimental, Blackwell
+(RTX 50) unsupported, laptops mixed. It removes a cap on FP16/BF16/TF32 tensor math. Its own
+reports show little gain for quantized llama.cpp/Ollama models (0–15%) and none for token
+decoding, which dominates tutor replies.
+- [ ] Check exact compatibility against the pinned upstream version: PCI device IDs,
+      distribution, kernel and headers, driver, Secure Boot (unsigned module) and boot
+      loader. Never assume every CUDA card qualifies.
+- [ ] Explain before enabling: administrator rights, a kernel module, a kernel
+      command-line change and a reboot; what it changes and how to undo it.
+- [ ] Enable only on an explicit request, never silently; the app does not hide the
+      privileged steps.
+- [ ] Verify after reboot (kernel log); offer disable (remove the boot parameter) and
+      uninstall, and recovery steps if the system or driver misbehaves.
+- [ ] Benchmark the app's real workload with and without it on the chosen engine and
+      model; recommend it only with a measured gain. Never promise a speedup.
+- [ ] If it is unavailable or fails, local mode runs normally when it is otherwise viable.
+
+### 8.8 Validation
+- [ ] Minimum profile per feature (tutor, study plan, quiz/correction, handout, vision),
+      set from measurements on real machines, not universal RAM/VRAM numbers.
+- [ ] A short trial run after install and after any fingerprint change: model loads, peak
+      memory with STT/TTS loaded, time to first token, tokens per second, one valid JSON
+      answer, and the vision probe when a vision model is installed.
+- [ ] Out-of-memory and start failures: detect them, stop cleanly, explain, and offer a
+      smaller model or shorter context.
+- [ ] Tests for the supervisor, catalog checks, config generation (loopback only, no
+      external providers) and availability rules with simulated processes.
+- [ ] Fill the compatibility matrix with at least one verified row per supported backend.
+
+### Pending decisions
+- **Inference engine** (8.3): `mistral.rs` keeps the Rust rule; `llama.cpp` covers more
+  hardware but needs an exception.
+- **LiteLLM packaging:** a pinned Python runtime and hashed wheels downloaded into the data
+  folder, bundled in the installer, or a frozen build; Docker is not a fit for students.
+  Size, start time and antivirus behaviour on Windows decide it.
+- **Is LiteLLM worth its cost for a single local engine?** The owner chose it as the proxy;
+  measure its overhead and record the result.
+- **gpu-unlock on Windows:** upstream does not maintain one; the third-party port is not
+  covered by the exception unless decided.
+- **gpu-unlock privilege flow:** show the commands for the user to run, or run them through
+  the system's admin prompt after consent.
+- **Network features in local mode** (Wikipedia pictures, update checks).
+- **Where the matrix and catalog live** (repo file shipped with the app, updated only by
+  releases).
+
+### Acceptance criteria
+- **Compatible hardware:** diagnosis recommends a catalog model; after consent it downloads,
+  verifies, starts LiteLLM and the engine on loopback, passes the trial run, and a lesson,
+  a quiz and a study plan work with nothing sent outside the machine.
+- **GPU without gpu-unlock support:** the GPU is used through its normal backend, or CPU if
+  none works; gpu-unlock is shown as unavailable with the reason and nothing else is
+  blocked.
+- **Insufficient computer:** local mode stays disabled with the measured reason (for example
+  "4 GB free, the smallest supported setup needs 6 GB with voice loaded") and the
+  possible action (free memory, use an external API); no partial install is left.
+- **Interrupted download:** resumes from where it stopped or restarts cleanly; a corrupt or
+  partial file never counts as installed; cancel removes the temporary files.
+- **Service failure:** a crash or failed start of LiteLLM or the engine shows a clear
+  status, restarts within the limit, then stops with an explanation and actions; no
+  silent switch to an external API; no orphan processes after exit.
+- **No vision model:** text features work; scanned-edital OCR and written-answer reading show
+  "needs a vision model" with the option to install one; no image ever reaches a text
+  model.
+
 ## Not yet verified
 - Written answers with real handwriting and the owner's vision model (v0.29.0–v0.30.1):
   transcript faithfulness, photo warning thresholds, grades against a human correction;
@@ -319,5 +546,6 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] Stream sentences into lesson playback before the full reply arrives (v0.17.0:
       first sentence at 2.7 s instead of 10.8 s in a live check).
 - [x] Optional GPU (CUDA) build of candle; benchmark on supported hardware remains pending.
+      With managed local AI (Phase 8), Whisper on the GPU shares VRAM with the model.
 - [x] OCR fallback for scanned editais (vision model).
 - [x] Linux/macOS native packaging scripts and CI; native execution remains unverified.
