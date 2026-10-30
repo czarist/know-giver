@@ -22,19 +22,35 @@ pub enum PromptLanguage {
     #[default]
     Portuguese,
     English,
+    Japanese,
+    /// Simplified Chinese (mainland, Singapore).
+    ChineseSimplified,
+    /// Traditional Chinese (Taiwan, Hong Kong).
+    ChineseTraditional,
 }
 
 impl PromptLanguage {
-    /// From a locale such as "pt-BR" or "en"; anything not English is Portuguese.
+    /// From a locale such as "pt-BR", "en", "ja", "zh-Hans" or "zh-Hant";
+    /// anything else is Portuguese.
     pub fn from_locale(locale: &str) -> Self {
-        if locale.trim().to_ascii_lowercase().starts_with("en") {
+        let locale = locale.trim().to_ascii_lowercase().replace('_', "-");
+        if locale.starts_with("en") {
             Self::English
+        } else if locale.starts_with("ja") {
+            Self::Japanese
+        } else if ["zh-hant", "zh-tw", "zh-hk", "zh-mo"]
+            .iter()
+            .any(|t| locale.starts_with(t))
+        {
+            Self::ChineseTraditional
+        } else if locale.starts_with("zh") {
+            Self::ChineseSimplified
         } else {
             Self::Portuguese
         }
     }
 
-    /// From `KG_PROMPT_LANG` ("en" or "pt"), for the examples.
+    /// From `KG_PROMPT_LANG` ("pt", "en", "ja", "zh-Hans", "zh-Hant"), for the examples.
     pub fn from_env() -> Self {
         Self::from_locale(&std::env::var("KG_PROMPT_LANG").unwrap_or_default())
     }
@@ -43,14 +59,36 @@ impl PromptLanguage {
         match self {
             Self::Portuguese => "pt",
             Self::English => "en",
+            Self::Japanese => "ja",
+            Self::ChineseSimplified => "zh-Hans",
+            Self::ChineseTraditional => "zh-Hant",
         }
     }
 
-    /// The text in this language.
-    pub fn pick<'a>(self, portuguese: &'a str, english: &'a str) -> &'a str {
+    /// The language short instructions written in code fall back to:
+    /// Portuguese, or English for every other language. The prompt files
+    /// themselves exist in every language and set the reply language.
+    pub fn base(self) -> Self {
         match self {
+            Self::Portuguese => Self::Portuguese,
+            _ => Self::English,
+        }
+    }
+
+    /// Chinese or Japanese: no spaces between words.
+    pub fn is_cjk(self) -> bool {
+        matches!(
+            self,
+            Self::Japanese | Self::ChineseSimplified | Self::ChineseTraditional
+        )
+    }
+
+    /// The text in this language: Portuguese, or English for the others
+    /// (see [`Self::base`]).
+    pub fn pick<'a>(self, portuguese: &'a str, english: &'a str) -> &'a str {
+        match self.base() {
             Self::Portuguese => portuguese,
-            Self::English => english,
+            _ => english,
         }
     }
 }

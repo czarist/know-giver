@@ -10,7 +10,7 @@
 #let rule = luma(210)
 
 #set document(title: data.title)
-#set text(font: "Libertinus Serif", size: 11pt, lang: data.lang)
+#set text(font: "Libertinus Serif", size: 11pt, lang: lower(data.lang.split("-").at(0)))
 #set par(justify: true, leading: 0.68em, spacing: 1.05em)
 #set list(indent: 0.6em, body-indent: 0.5em)
 #set enum(indent: 0.6em, body-indent: 0.5em)

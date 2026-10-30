@@ -74,12 +74,18 @@ macro_rules! prompts {
 
 static PORTUGUESE: Prompts = prompts!("pt");
 static ENGLISH: Prompts = prompts!("en");
+static JAPANESE: Prompts = prompts!("ja");
+static CHINESE_SIMPLIFIED: Prompts = prompts!("zh-Hans");
+static CHINESE_TRADITIONAL: Prompts = prompts!("zh-Hant");
 
 /// The prompts in `language`.
 pub fn get(language: PromptLanguage) -> &'static Prompts {
     match language {
         PromptLanguage::Portuguese => &PORTUGUESE,
         PromptLanguage::English => &ENGLISH,
+        PromptLanguage::Japanese => &JAPANESE,
+        PromptLanguage::ChineseSimplified => &CHINESE_SIMPLIFIED,
+        PromptLanguage::ChineseTraditional => &CHINESE_TRADITIONAL,
     }
 }
 
@@ -153,12 +159,29 @@ mod tests {
             .collect()
     }
 
+    const ALL: [PromptLanguage; 5] = [
+        PromptLanguage::Portuguese,
+        PromptLanguage::English,
+        PromptLanguage::Japanese,
+        PromptLanguage::ChineseSimplified,
+        PromptLanguage::ChineseTraditional,
+    ];
+
     #[test]
-    fn both_languages_have_the_same_placeholders_keys_and_markers() {
-        let (pt, en) = (
-            get(PromptLanguage::Portuguese),
-            get(PromptLanguage::English),
+    fn every_language_has_the_same_placeholders_keys_and_markers() {
+        for lang in ALL {
+            same_as_portuguese(lang);
+        }
+        let pipelines: BTreeSet<String> = ALL.iter().map(|l| handout_pipeline(*l)).collect();
+        assert_eq!(
+            pipelines.len(),
+            ALL.len(),
+            "each language has its own handout cache key"
         );
+    }
+
+    fn same_as_portuguese(lang: PromptLanguage) {
+        let (pt, en) = (get(PromptLanguage::Portuguese), get(lang));
         let pairs = [
             (pt.plan, en.plan),
             (pt.roles, en.roles),
@@ -200,9 +223,12 @@ mod tests {
         for mark in ["[?", "[ilegível]", "[rasura"] {
             assert!(en.discursive_transcribe.contains(mark), "{mark}");
         }
-        assert_ne!(
-            handout_pipeline(PromptLanguage::Portuguese),
-            handout_pipeline(PromptLanguage::English)
-        );
+        for marker in ["ROTEIRO:", "ETAPA:", "FIM"] {
+            assert_eq!(
+                pt.tutor.contains(marker) || pt.lesson_start.contains(marker),
+                en.tutor.contains(marker) || en.lesson_start.contains(marker),
+                "{lang:?} {marker}"
+            );
+        }
     }
 }

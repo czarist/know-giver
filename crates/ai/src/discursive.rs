@@ -184,7 +184,7 @@ pub fn read_manuscript_page(
 ) -> Result<PageReading, AiError> {
     let request = match client.language() {
         PromptLanguage::Portuguese => format!("Página {page} de {pages}. Transcreva esta página."),
-        PromptLanguage::English => format!("Page {page} of {pages}. Transcribe this page."),
+        _ => format!("Page {page} of {pages}. Transcribe this page."),
     };
     let mut last_error = String::new();
     for attempt in 1..=2 {

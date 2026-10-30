@@ -1,7 +1,7 @@
 # Política de Privacidade do Know Giver
 
-Versão de 29 de outubro de 2026, de acordo com a Lei Geral de Proteção de Dados (Lei nº
-13.709/2018, LGPD).
+Versão de 30 de outubro de 2026 (2026-10-30), de acordo com a Lei Geral de Proteção de
+Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
 
@@ -91,7 +91,7 @@ LGPD).
 ## 10. Inteligência artificial
 
 As respostas geradas pela IA podem conter erros, e a qualidade depende dos limites do
-modelo que você escolheu. Veja os Termos de Uso, item 5.
+modelo que você escolheu. Veja os Termos de Uso, item 6.
 
 ## 11. Alterações
 

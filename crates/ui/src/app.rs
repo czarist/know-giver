@@ -141,6 +141,8 @@ pub struct KnowGiverApp {
     shown_since: f64,
     /// Where each sidebar entry was drawn last frame, for the tour.
     pub(crate) nav_rects: Vec<(Screen, egui::Rect)>,
+    /// UI language the fonts were set for (Chinese and Japanese need their own).
+    fonts_locale: String,
 }
 
 impl std::fmt::Debug for KnowGiverApp {
@@ -207,6 +209,7 @@ impl KnowGiverApp {
             shown_screen: screen,
             shown_since: 0.0,
             nav_rects: Vec::new(),
+            fonts_locale: String::new(),
         }
     }
 
@@ -457,6 +460,11 @@ impl Badges {
 
 impl eframe::App for KnowGiverApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let locale = i18n::current();
+        if locale != self.fonts_locale {
+            theme::set_fonts(ui.ctx(), &locale);
+            self.fonts_locale = locale;
+        }
         let badges = match self.engine.as_mut() {
             Ok(engine) => {
                 let study_surface = match self.ui.screen {

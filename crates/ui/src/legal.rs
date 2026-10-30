@@ -1,8 +1,15 @@
-//! Terms of use and privacy policy, shown in the app's language. The texts
-//! live in `docs/legal` and are compiled in, so the app shows exactly the
-//! version the student agrees to.
+//! Terms of use, privacy policy and partner access terms. The texts live in
+//! `docs/legal` and are compiled in, so the app shows exactly the version
+//! the student agrees to.
+//!
+//! The law that applies is the region's, not the language's. Each language
+//! has a version for the regions where it is used; the English version covers
+//! every public region and is shown when the language has no version for the
+//! chosen region. Outside the public regions only the partner access terms
+//! apply.
 
 use egui::RichText;
+use kg_engine::Region;
 
 use crate::theme;
 
@@ -10,21 +17,81 @@ use crate::theme;
 pub enum LegalDoc {
     Terms,
     Privacy,
+    /// Use limited to partners authorized in writing.
+    Partner,
+}
+
+macro_rules! doc {
+    ($name:literal) => {
+        include_str!(concat!("../../../docs/legal/", $name, ".md"))
+    };
 }
 
 impl LegalDoc {
-    pub const ALL: [Self; 2] = [Self::Terms, Self::Privacy];
-
-    /// The document in `locale`: Portuguese, or English for any other.
-    pub fn text(self, locale: &str) -> &'static str {
-        let portuguese = locale.starts_with("pt");
-        match (self, portuguese) {
-            (Self::Terms, true) => include_str!("../../../docs/legal/terms-of-use.pt-BR.md"),
-            (Self::Terms, false) => include_str!("../../../docs/legal/terms-of-use.en.md"),
-            (Self::Privacy, true) => include_str!("../../../docs/legal/privacy-policy.pt-BR.md"),
-            (Self::Privacy, false) => include_str!("../../../docs/legal/privacy-policy.en.md"),
+    /// The documents that apply in `region`.
+    pub fn for_region(region: Region) -> &'static [Self] {
+        if region.is_public() {
+            &[Self::Terms, Self::Privacy]
+        } else {
+            &[Self::Partner]
         }
     }
+
+    /// The language a document is shown in: the UI language when it has a
+    /// version for the region, otherwise English.
+    pub fn language(self, locale: &str, region: Region) -> &'static str {
+        if self == Self::Partner {
+            return match locale {
+                "pt-BR" => "pt-BR",
+                "ja" => "ja",
+                "zh-Hans" => "zh-Hans",
+                "zh-Hant" => "zh-Hant",
+                _ => "en",
+            };
+        }
+        match (locale, region) {
+            ("pt-BR", Region::Br) => "pt-BR",
+            ("ja", Region::Jp) => "ja",
+            ("zh-Hant", Region::Tw | Region::Hk) => "zh-Hant",
+            ("zh-Hans", Region::Sg) => "zh-Hans",
+            _ => "en",
+        }
+    }
+
+    pub fn text(self, locale: &str, region: Region) -> &'static str {
+        match (self, self.language(locale, region)) {
+            (Self::Terms, "pt-BR") => doc!("terms-of-use.pt-BR"),
+            (Self::Terms, "ja") => doc!("terms-of-use.ja"),
+            (Self::Terms, "zh-Hant") => doc!("terms-of-use.zh-Hant"),
+            (Self::Terms, "zh-Hans") => doc!("terms-of-use.zh-Hans"),
+            (Self::Terms, _) => doc!("terms-of-use.en"),
+            (Self::Privacy, "pt-BR") => doc!("privacy-policy.pt-BR"),
+            (Self::Privacy, "ja") => doc!("privacy-policy.ja"),
+            (Self::Privacy, "zh-Hant") => doc!("privacy-policy.zh-Hant"),
+            (Self::Privacy, "zh-Hans") => doc!("privacy-policy.zh-Hans"),
+            (Self::Privacy, _) => doc!("privacy-policy.en"),
+            (Self::Partner, "pt-BR") => doc!("partner-access.pt-BR"),
+            (Self::Partner, "ja") => doc!("partner-access.ja"),
+            (Self::Partner, "zh-Hant") => doc!("partner-access.zh-Hant"),
+            (Self::Partner, "zh-Hans") => doc!("partner-access.zh-Hans"),
+            (Self::Partner, _) => doc!("partner-access.en"),
+        }
+    }
+}
+
+/// Chinese and Japanese characters: lines join without a space.
+fn is_cjk(c: char) -> bool {
+    matches!(c as u32, 0x2E80..=0x9FFF | 0xF900..=0xFAFF | 0xFF00..=0xFFEF)
+}
+
+/// Joins a continuation line to a paragraph: with a space between words,
+/// without one between Chinese or Japanese characters.
+fn join(text: &mut String, next: &str) {
+    let cjk = text.chars().last().is_some_and(is_cjk) || next.chars().next().is_some_and(is_cjk);
+    if !cjk {
+        text.push(' ');
+    }
+    text.push_str(next);
 }
 
 /// A piece of a document, ready to draw.
@@ -88,10 +155,7 @@ fn parse(text: &str) -> Vec<Part> {
                 parts.push(Part::Table(std::mem::take(&mut table)));
             }
             match &mut open {
-                Some(Part::Paragraph(text) | Part::Item(text)) => {
-                    text.push(' ');
-                    text.push_str(&plain(trimmed));
-                }
+                Some(Part::Paragraph(text) | Part::Item(text)) => join(text, &plain(trimmed)),
                 _ => open = Some(Part::Paragraph(plain(trimmed))),
             }
         }
@@ -163,25 +227,94 @@ fn plain(text: &str) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn every_document_exists_in_both_languages_with_the_terms_date() {
-        for doc in LegalDoc::ALL {
-            for locale in crate::i18n::LOCALES {
-                let text = doc.text(locale);
-                assert!(text.starts_with("# "), "{doc:?} {locale}");
-                assert!(text.contains("2026"), "{doc:?} {locale} has no date");
-                assert!(text.contains("trentin.software"), "{doc:?} {locale}");
+    /// Every document a student can be shown, with its region.
+    fn all_shown() -> Vec<(LegalDoc, &'static str, Region, &'static str)> {
+        let mut docs = Vec::new();
+        for region in Region::ALL {
+            for doc in LegalDoc::for_region(region) {
+                for locale in crate::i18n::LOCALES {
+                    docs.push((*doc, locale, region, doc.text(locale, region)));
+                }
             }
         }
-        // The date in the documents is the version the app records.
-        let date = kg_engine::TERMS_VERSION;
-        assert_eq!(date, "2026-10-29");
-        assert!(
-            LegalDoc::Terms
-                .text("pt-BR")
-                .contains("29 de outubro de 2026")
-        );
-        assert!(LegalDoc::Terms.text("en").contains("October 29, 2026"));
+        docs
+    }
+
+    #[test]
+    fn every_document_is_complete_and_dated_with_the_terms_version() {
+        for (doc, locale, region, text) in all_shown() {
+            let at = format!("{doc:?} {locale} {region:?}");
+            assert!(text.starts_with("# "), "{at}");
+            assert!(
+                text.contains(kg_engine::TERMS_VERSION),
+                "{at} has no version date"
+            );
+            assert!(text.contains("trentin.software"), "{at}");
+        }
+    }
+
+    #[test]
+    fn law_follows_the_region() {
+        // A Japanese UI in Japan reads the Japanese version; in Brazil, the
+        // English one, which covers every public region.
+        assert_eq!(LegalDoc::Terms.language("ja", Region::Jp), "ja");
+        assert_eq!(LegalDoc::Terms.language("ja", Region::Br), "en");
+        assert_eq!(LegalDoc::Terms.language("zh-Hant", Region::Hk), "zh-Hant");
+        assert_eq!(LegalDoc::Terms.language("zh-Hans", Region::Sg), "zh-Hans");
+        assert_eq!(LegalDoc::Terms.language("pt-BR", Region::Eu), "en");
+        assert_eq!(LegalDoc::for_region(Region::Other), [LegalDoc::Partner]);
+        let en = [
+            LegalDoc::Terms.text("en", Region::Us),
+            LegalDoc::Privacy.text("en", Region::Us),
+        ]
+        .concat();
+        for law in ["LGPD", "APPI", "Taiwan", "Hong Kong", "Singapore", "GDPR"] {
+            assert!(en.contains(law), "{law}");
+        }
+    }
+
+    #[test]
+    fn partner_terms_name_no_country() {
+        for locale in crate::i18n::LOCALES {
+            let text = LegalDoc::Partner.text(locale, Region::Other);
+            for name in [
+                "China", "中国", "中國", "中华", "中華", "大陆", "大陸", "PRC",
+            ] {
+                assert!(!text.contains(name), "{locale} mentions {name}");
+            }
+        }
+    }
+
+    #[test]
+    fn every_terms_text_says_the_ai_can_be_wrong() {
+        let says = |text: &str, phrases: &[&str]| phrases.iter().any(|p| text.contains(p));
+        for (doc, locale, region, text) in all_shown() {
+            if doc == LegalDoc::Privacy {
+                continue;
+            }
+            let at = format!("{doc:?} {locale} {region:?}");
+            assert!(
+                says(
+                    text,
+                    &["podem conter erros", "may be wrong", "誤り", "错误", "錯誤"]
+                ),
+                "{at}: AI errors"
+            );
+            assert!(
+                says(text, &["limites da IA", "limits of the AI", "限界", "限制"]),
+                "{at}: limits of the chosen AI"
+            );
+        }
+    }
+
+    #[test]
+    fn chinese_and_japanese_lines_join_without_spaces() {
+        let mut text = String::from("本アプリは");
+        join(&mut text, "学習用です。");
+        assert_eq!(text, "本アプリは学習用です。");
+        let mut text = String::from("one");
+        join(&mut text, "two");
+        assert_eq!(text, "one two");
     }
 
     #[test]
@@ -222,9 +355,8 @@ and the next.
     #[test]
     fn no_document_line_is_lost() {
         // Every word of every document reaches some part.
-        for doc in LegalDoc::ALL {
-            for locale in crate::i18n::LOCALES {
-                let text = doc.text(locale);
+        for (doc, locale, _, text) in all_shown() {
+            {
                 let parts = parse(text);
                 let shown: String = parts
                     .iter()
@@ -244,21 +376,5 @@ and the next.
                 }
             }
         }
-    }
-
-    #[test]
-    fn terms_say_the_ai_can_be_wrong() {
-        assert!(LegalDoc::Terms.text("pt-BR").contains("podem conter erros"));
-        assert!(
-            LegalDoc::Terms
-                .text("pt-BR")
-                .contains("limites da IA que você escolheu")
-        );
-        assert!(LegalDoc::Terms.text("en").contains("may be wrong"));
-        assert!(
-            LegalDoc::Terms
-                .text("en")
-                .contains("limits of the AI you chose")
-        );
     }
 }

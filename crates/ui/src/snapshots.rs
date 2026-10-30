@@ -185,6 +185,11 @@ fn finish_setup(paths: &AppPaths, english: bool) {
     settings.student_name = tr(english, "Ana", "Anna").into();
     settings.teacher = Some(settings.teacher());
     settings.locale = if english { "en" } else { "pt-BR" }.into();
+    settings.region = Some(if english {
+        kg_engine::Region::Us
+    } else {
+        kg_engine::Region::Br
+    });
     engine
         .handle(Command::CompleteSetup(Box::new(settings)))
         .unwrap();
@@ -196,7 +201,7 @@ fn finish_setup(paths: &AppPaths, english: bool) {
 #[ignore = "needs a GPU; run with --ignored"]
 fn setup_snapshots() {
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
-    for locale in ["pt-BR", "en"] {
+    for locale in crate::i18n::LOCALES {
         let data = tempfile::tempdir().unwrap();
         let paths = AppPaths::new(data.path());
         crate::i18n::set(locale);
@@ -236,6 +241,9 @@ fn setup_snapshots() {
         setup.step = 4;
         setup.agreed = true;
         setup.reading = Some(crate::legal::LegalDoc::Terms);
+        if let Some(draft) = &mut setup.draft {
+            draft.region = kg_engine::Region::guess(locale).or(Some(kg_engine::Region::Us));
+        }
         render(
             &mut harness,
             out.as_deref(),
@@ -265,7 +273,8 @@ fn setup_snapshots() {
 #[ignore = "needs a GPU; run with --ignored"]
 fn legal_snapshot() {
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
-    for locale in ["pt-BR", "en"] {
+    for locale in crate::i18n::LOCALES {
+        crate::i18n::set(locale);
         let mut harness = Harness::builder()
             .with_size([620.0, 2400.0])
             .build_ui(move |ui| {
@@ -283,7 +292,9 @@ fn legal_snapshot() {
                     .fill(crate::theme::palette(ui.ctx()).surface)
                     .inner_margin(egui::Margin::same(12))
                     .show(ui, |ui| {
-                        crate::legal::show(ui, crate::legal::LegalDoc::Terms.text(locale));
+                        let region =
+                            kg_engine::Region::guess(locale).unwrap_or(kg_engine::Region::Us);
+                        crate::legal::show(ui, crate::legal::LegalDoc::Terms.text(locale, region));
                     });
             });
         harness.run_steps(3);

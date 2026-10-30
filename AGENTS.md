@@ -32,10 +32,12 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 ## Rules
 - Do not mix business logic into the UI
 - Errors with context (thiserror)
-- Prioritize Brazilian Portuguese (TTS, prompts, STT)
+- Prioritize Brazilian Portuguese (TTS, prompts, STT); Chinese and Japanese are typed-only until their voices exist
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
 - Terms of use and privacy policy live in `docs/legal/` and are compiled into the app. Change both languages together; a content change bumps the date in the texts and `TERMS_VERSION`, which asks users to agree again
+- Five UI and prompt languages: pt-BR, en, ja, zh-Hans, zh-Hant (`locales/*.yml`, `crates/ai/prompts/<lang>/`). New keys go into every locale file. Traditional Chinese can be converted from Simplified with OpenCC (`s2twp`) and then checked by hand
+- Legal texts follow the region (`Region` in engine `settings.rs`), not the language: `docs/legal/{terms-of-use,privacy-policy}.<lang>.md` per region version, `partner-access.<lang>.md` for regions where the app is not public. The partner text names no country; a test checks it
 - First run is required (language, name, teacher, AI provider and key, terms) and never touches plans or progress
 
 ## Git workflow

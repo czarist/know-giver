@@ -50,8 +50,8 @@ pub use kg_audio::{
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{
-    Document as HandoutDocument, Exercise as HandoutExercise, HandoutError,
-    Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout,
+    CjkScript, Document as HandoutDocument, Exercise as HandoutExercise, HandoutError,
+    Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout, cjk_font,
 };
 pub use kg_pdf::{Edital, EditalText, PdfError, Role};
 pub use kg_study::discursive::{REWRITE_RATIO, change_ratio, marks as transcript_marks};
@@ -78,7 +78,8 @@ pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{
-    DEFAULT_TURN_PAUSE, SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE, TermsAcceptance,
+    DEFAULT_TURN_PAUSE, Region, SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE,
+    TermsAcceptance,
 };
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
@@ -1070,7 +1071,11 @@ impl Engine {
                     .topic_mistakes(id)
                     .unwrap_or_default()
                     .iter()
-                    .map(|m| m.summary_in(self.prompt_language() == kg_ai::PromptLanguage::English))
+                    .map(|m| {
+                        m.summary_in(
+                            self.prompt_language().base() == kg_ai::PromptLanguage::English,
+                        )
+                    })
                     .collect(),
             },
             topic.title.clone(),

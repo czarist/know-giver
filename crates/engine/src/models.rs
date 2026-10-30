@@ -111,13 +111,22 @@ impl Engine {
 
     /// True when speech recognition can run.
     pub fn stt_ready(&self) -> bool {
-        self.stt_job().is_some()
+        self.local_speech_language() && self.stt_job().is_some()
+    }
+
+    /// The local voices and speech recognition handle the app's language.
+    /// They are Portuguese (with English passages); Chinese and Japanese
+    /// lessons are typed until voices for them exist.
+    pub fn local_speech_language(&self) -> bool {
+        !self.prompt_language().is_cjk()
     }
 
     /// True when the tutor can speak.
     pub fn tts_ready(&self) -> bool {
         match self.settings.tts_backend {
-            TtsBackend::Local => self.voice_available(self.settings.voice),
+            TtsBackend::Local => {
+                self.local_speech_language() && self.voice_available(self.settings.voice)
+            }
             TtsBackend::Cloud => {
                 !self.settings.cloud_speech.base_url.trim().is_empty()
                     && !self.settings.cloud_speech.model.trim().is_empty()

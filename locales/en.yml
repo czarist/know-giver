@@ -8,6 +8,20 @@ app:
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
+  ja: "日本語"
+  zh-Hans: "简体中文"
+  zh-Hant: "繁體中文"
+
+region:
+  br: "Brazil"
+  us: "United States"
+  eu: "European Union"
+  uk: "United Kingdom"
+  jp: "Japan"
+  tw: "Taiwan"
+  hk: "Hong Kong"
+  sg: "Singapore"
+  other: "Other countries and regions (authorized partners only)"
 
 format:
   date: "%b %d, %Y"
@@ -211,6 +225,7 @@ lesson:
   open_settings: "Open settings"
   need_stt: "To talk to the tutor, download a speech recognition model in Settings."
   need_tts: "To hear the tutor, download Piper and a voice in Settings."
+  voice_language: "Voice lessons are not available in this language yet. Type your answers; the tutor answers in writing."
   phase:
     idle: "Ready"
     listening: "Listening…"
@@ -346,7 +361,7 @@ setup:
     name: "Type your name"
     teacher: "Choose a teacher"
     ai: "Choose the provider and model, and enter the key"
-    terms: "Tick that you agree to the terms"
+    terms: "Choose your country or region and tick that you agree to the terms"
   language:
     title: "Escolha o idioma · Choose your language"
     hint: "The app, the tutor and the AI prompts follow this language. You can change it later in Settings."
@@ -393,6 +408,11 @@ setup:
     ollama: "Ollama (on your computer)"
   terms:
     title: "Terms of use and privacy"
+    region: "Country or region"
+    region_hint: "The terms follow the law of the place where you use the app."
+    partner_notice: "Know Giver is not offered to the public in other countries and regions. There, use is limited to partners Trentin authorized in a written agreement."
+    read_partner: "Read the Partner Access Terms"
+    agree_partner: "I am an authorized partner with a written agreement, and I agree to the Partner Access Terms"
     hint: "Read the main points and the full texts before you agree."
     point_ai: "AI can make mistakes. Always check the exam notice and official sources; grades are estimates for study."
     point_quality: "Answer quality depends on the limits of the AI you chose."
@@ -551,6 +571,8 @@ settings:
     full_hint: "One step per handout section (up to 8), with examples, exam pitfalls and more questions."
   legal:
     title: "Terms and privacy"
+    region: "Country or region: %{region}"
+    change_region: "Change country or region"
     accepted: "You agreed on %{date} (version %{version})."
     tour: "Take the tour again"
   ai:

@@ -16,7 +16,7 @@ use rust_i18n::t;
 pub const DEFAULT_LOCALE: &str = "pt-BR";
 
 /// Locales offered in Settings, in display order.
-pub const LOCALES: [&str; 2] = ["pt-BR", "en"];
+pub const LOCALES: [&str; 5] = ["pt-BR", "en", "ja", "zh-Hans", "zh-Hant"];
 
 pub fn current() -> String {
     rust_i18n::locale().to_string()
@@ -30,6 +30,23 @@ pub fn set(locale: &str) {
         DEFAULT_LOCALE
     };
     rust_i18n::set_locale(locale);
+}
+
+/// A country or region, for the terms.
+pub fn region_name(region: kg_engine::Region) -> String {
+    use kg_engine::Region;
+    match region {
+        Region::Br => t!("region.br"),
+        Region::Us => t!("region.us"),
+        Region::Eu => t!("region.eu"),
+        Region::Uk => t!("region.uk"),
+        Region::Jp => t!("region.jp"),
+        Region::Tw => t!("region.tw"),
+        Region::Hk => t!("region.hk"),
+        Region::Sg => t!("region.sg"),
+        Region::Other => t!("region.other"),
+    }
+    .into_owned()
 }
 
 /// The language's own name (e.g. "English"), for the language picker.
