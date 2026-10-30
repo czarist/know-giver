@@ -247,6 +247,19 @@ fn setup_snapshots() {
         setup.api_key = "sk-demo-key".into();
         setup.step = 3;
         render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai"));
+        // The free plans, with one picked.
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.free_tab = true;
+        setup.provider = kg_engine::ai_provider("groq");
+        setup.model = setup
+            .provider
+            .and_then(|p| p.free_tier())
+            .map(|t| t.model.to_owned())
+            .unwrap_or_default();
+        render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai-free"));
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.free_tab = false;
+        setup.provider = Some(zai);
 
         let setup = &mut harness.state_mut().ui.setup;
         setup.step = 4;
@@ -1353,7 +1366,7 @@ fn update_bar_snapshots() {
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         if let Ok(engine) = harness.state_mut().engine.as_mut() {
-            engine.simulate_update("0.33.0");
+            engine.simulate_update("0.35.0");
         }
         harness.state_mut().ui.screen = Screen::Today;
         render(&mut harness, out.as_deref(), &format!("{locale}-update"));

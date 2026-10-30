@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::AiError;
+use crate::culture::ExamCulture;
 use crate::config::{AiConfig, PromptLanguage, Task};
 use crate::providers::{Quirks, parse_model_list};
 use crate::throttle::{self, MAX_ATTEMPTS, Throttle};
@@ -69,6 +70,8 @@ pub struct Client {
     throttle: Option<Arc<Throttle>>,
     /// Language of the prompts this client's tasks send.
     language: PromptLanguage,
+    /// The student's exam culture, added to teaching tasks.
+    culture: Option<ExamCulture>,
 }
 
 #[derive(Deserialize)]
@@ -113,7 +116,29 @@ impl Client {
             agent,
             throttle: None,
             language: PromptLanguage::default(),
+            culture: None,
         }
+    }
+
+    /// Teaching tasks run with this client follow `culture`.
+    pub fn with_culture(mut self, culture: Option<ExamCulture>) -> Self {
+        self.culture = culture;
+        self
+    }
+
+    /// Options per quiz question: the local exams' usual number, or 4.
+    pub(crate) fn quiz_options(&self) -> u32 {
+        self.culture.map_or(4, ExamCulture::quiz_options)
+    }
+
+    /// A teaching task's system message, followed by the exam culture note.
+    pub(crate) fn cultured(&self, system: impl Into<String>) -> ChatMessage {
+        let mut content = system.into();
+        if let Some(culture) = self.culture {
+            content.push_str("\n\n");
+            content.push_str(culture.note(self.language));
+        }
+        ChatMessage::system(content)
     }
 
     /// Tasks run with this client use prompts in `language`.

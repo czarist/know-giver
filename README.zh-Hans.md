@@ -133,6 +133,14 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 首先有五个简短步骤：语言、名字、老师、AI 和密钥、国家或地区及同意条款。可以从 21 个 AI 服务商中选择（**Z.ai** 性价比高，**Claude** 准确度高），并附有创建密钥的链接。之后有一段简短的界面导览。
 
+**免费或付费。** AI 步骤有两个标签页。“付费”显示推荐的服务（性价比的 Z.ai、准确度的 Claude）；“免费”列出有免费套餐的服务（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你电脑上运行的 Ollama 或 LM Studio；在中国大陆为智谱、硅基流动等），每项显示套餐包含的模型、如何使用你发送的内容（有些免费套餐会用于训练）以及限额与规则的链接。
+
+**你所在地区的备考方式。** 课堂、测验、讲义和主观题会按照你所在地区的备考方式进行：中国大陆是行测和申论；新加坡是 PSLE、O/A-Level 的题型；台湾和香港是各自的公务员考试形式；日本是五选一和按字数写的小论文；巴西、美国和英国也各有其题型。考试公告和历年真题始终优先。
+
+<p align="center">
+  <img src="docs/images/zh-Hans/setup-ai-free.png" alt="AI 步骤的“免费”标签页：有免费套餐的服务、包含的模型和数据使用方式" width="60%">
+</p>
+
 <table>
   <tr>
     <td><img src="docs/images/zh-Hans/setup-ai.png" alt="首次设置的 AI 步骤"></td>

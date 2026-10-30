@@ -8,6 +8,7 @@
 mod board;
 mod client;
 mod config;
+mod culture;
 mod discursive;
 mod handout_review;
 mod prompts;
@@ -22,6 +23,7 @@ pub use board::{
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, PromptLanguage, Task};
+pub use culture::ExamCulture;
 pub use discursive::{
     CriterionDraft, CriterionInput, EvaluationDraft, EvaluationInput, EvidenceDraft, IssueDraft,
     IssueExampleDraft, IssueInput, PageReading, ProblemDraft, ProposalDraft, ProposalInput,
@@ -32,7 +34,8 @@ pub use handout_review::{ReviewedHandout, review_handout};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use prompts::{Prompts, get as prompts_in};
 pub use providers::{
-    Market, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation, provider,
+    FreeData, FreeTier, Market, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation,
+    provider,
     provider_for_url,
 };
 pub use tasks::{
