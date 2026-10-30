@@ -631,6 +631,45 @@ Know Giver ──loopback──> LiteLLM (proxy mode)
 - No key appears in logs, in the LiteLLM config left on disk after exit, or in error
   messages.
 
+## Phase 10 — Lesson types: straight to the point, balanced, in depth (planned, not started)
+
+**Goal:** the student chooses how deep each lesson goes, at the moment they start it:
+- **Straight to the point (summary):** what the exam asks about the topic, the rules
+  and the usual traps, one example, short checks. For reviewing, for the days before the
+  exam, or for a topic already known.
+- **Balanced:** today's normal lesson; every point of the handout, one example and one
+  check each.
+- **In depth:** the reasoning behind each rule, exceptions, several examples, how the
+  board has asked it in past exams, links to related topics, more checks and a longer
+  written question at the end. For a new or weak topic.
+
+**Status:** a global "Lesson length" exists in Settings (`LessonLength`: Quick, Normal,
+Full) and only changes the number of steps and checks (`max_steps`, `teaching`). It
+applies to every lesson until changed.
+
+- [ ] Pick the type when starting a lesson (three options on the lesson start, the
+      Settings value as default), not only in Settings.
+- [ ] Rename the levels in every locale to the three types, keeping the saved values
+      (`quick`, `normal`, `full`) so settings and old lessons still load.
+- [ ] The type changes the content, not only the length: what each prompt asks for in
+      every `crates/ai/prompts/<lang>/` and in `LessonLength::teaching`, following the
+      region's exam culture (`culture.rs`).
+- [ ] Suggest a type from the student's data: a topic never studied or with low quiz
+      scores suggests in depth; a topic mastered or an exam date close suggests straight
+      to the point. The student always decides.
+- [ ] Change during the lesson: "go deeper" and "make it shorter" buttons (and the same
+      by voice) adjust the remaining steps without restarting.
+- [ ] Remember the last type per topic and show it in the topic's history.
+- [ ] Handouts and quizzes follow the type: a summary handout (one page of rules and
+      traps) for straight to the point, the full handout for in depth; quiz size and
+      difficulty to match.
+- [ ] Every UI text in the five locales; README sections and screenshots updated in each
+      language.
+
+**Acceptance criteria:** the same topic in the three types gives visibly different
+lessons (length, number of examples, past-exam questions, final check), and switching
+mid-lesson keeps what was already covered.
+
 ## Not yet verified
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
   review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
