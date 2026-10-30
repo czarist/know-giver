@@ -4,6 +4,14 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.34.1] - 2026-10-30
+
+### Fixed
+- The v0.34.0 release build stopped on Linux: a review test hit the default local AI
+  address, failed at once and ended its session mid-test. Engine tests now talk to a
+  local server that accepts connections and never answers, so no real reply arrives
+  while a test runs. The app itself is unchanged from v0.34.0.
+
 ## [0.34.0] - 2026-10-30
 
 ### Added
