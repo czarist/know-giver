@@ -34,8 +34,8 @@ if [[ -z "$archive" ]]; then
   printf 'Downloading %s\n' "$asset"
   if ! curl -fL --progress-bar -o "$tmp/$asset" "$base/$asset" ||
      ! curl -fsSL -o "$tmp/SHA256SUMS.txt" "$base/SHA256SUMS.txt"; then
-    printf 'No Know Giver release with %s is published yet. See https://github.com/%s/releases
-'       "$asset" "$repo" >&2
+    printf 'No Know Giver release with %s is published yet. See https://github.com/%s/releases\n' \
+      "$asset" "$repo" >&2
     exit 1
   fi
   expected="$(awk -v f="$asset" '$2 == f || $2 == "*" f { print tolower($1) }' "$tmp/SHA256SUMS.txt")"
