@@ -55,6 +55,7 @@ impl Engine {
         let ai = &settings.ai;
         if settings.student_name.trim().is_empty()
             || settings.teacher.is_none()
+            || settings.region.is_none()
             || ai.base_url.trim().is_empty()
             || ai.models.tutor.trim().is_empty()
         {
@@ -65,6 +66,7 @@ impl Engine {
         settings.terms_accepted = Some(TermsAcceptance {
             version: TERMS_VERSION.to_owned(),
             accepted_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            region: settings.region,
         });
         self.save_settings(settings)
     }

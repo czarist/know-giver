@@ -57,6 +57,41 @@ pub struct Provider {
 }
 
 impl Provider {
+    /// Where the provider can be used.
+    pub fn market(&self) -> Market {
+        match self.id {
+            "deepseek" | "ollama" | "lmstudio" | "custom" => Market::Both,
+            "zhipu" | "bailian" | "moonshot-cn" | "qianfan" | "hunyuan" | "doubao" => {
+                Market::Mainland
+            }
+            _ => Market::Global,
+        }
+    }
+
+    /// Whether to offer it to someone in mainland China (`mainland`) or
+    /// elsewhere.
+    pub fn offered(&self, mainland: bool) -> bool {
+        match self.market() {
+            Market::Both => true,
+            Market::Mainland => mainland,
+            Market::Global => !mainland,
+        }
+    }
+
+    /// Why it is highlighted. In mainland China, Zhipu (the mainland GLM
+    /// platform) is the value pick and Qwen Max on Alibaba Bailian, the most
+    /// capable paid model there, takes Claude's place.
+    pub fn recommendation(&self, mainland: bool) -> Option<Recommendation> {
+        if !mainland {
+            return self.recommended;
+        }
+        match self.id {
+            "zhipu" => Some(Recommendation::Value),
+            "bailian" => Some(Recommendation::Accuracy),
+            _ => None,
+        }
+    }
+
     pub fn default_model(&self) -> &'static str {
         self.models.first().map_or("", |m| m.id)
     }
@@ -95,6 +130,19 @@ impl Provider {
             fast_responses: true,
         }
     }
+}
+
+/// Where a provider can be used. Services from outside mainland China
+/// (OpenAI, Anthropic, Google and most others) do not serve it, and Chinese
+/// providers have separate mainland endpoints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Market {
+    /// Everywhere except mainland China.
+    Global,
+    /// Only for use in mainland China (mainland endpoints).
+    Mainland,
+    /// Both: a service that serves mainland China, or a local server.
+    Both,
 }
 
 /// How a provider is grouped in the list.
@@ -211,6 +259,29 @@ pub const PROVIDERS: &[Provider] = &[
     provider!("lmstudio", "LM Studio", Local, "http://localhost:1234/v1",
         "https://lmstudio.ai/", "https://lmstudio.ai/",
         key: false, None, [], fallback: "", vision: ""),
+    // Mainland China endpoints (suggested models to confirm with a real key).
+    provider!("zhipu", "Zhipu BigModel (GLM)", Lab, "https://open.bigmodel.cn/api/paas/v4",
+        "https://open.bigmodel.cn/usercenter/apikeys", "https://open.bigmodel.cn/pricing",
+        key: true, None,
+        [text("glm-5.3"), text("glm-5.3-flash"), text("glm-4.7-flash"), sees("glm-5v-turbo")],
+        fallback: "glm-4.7-flash", vision: "glm-5v-turbo"),
+    provider!("bailian", "Alibaba Bailian (Qwen)", Platform, "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "https://bailian.console.aliyun.com/", "https://help.aliyun.com/zh/model-studio/",
+        key: true, None,
+        [text("qwen-max"), text("qwen-plus"), text("qwen-turbo"), sees("qwen-vl-max")],
+        fallback: "qwen-plus", vision: "qwen-vl-max"),
+    provider!("moonshot-cn", "Moonshot Kimi (mainland)", Lab, "https://api.moonshot.cn/v1",
+        "https://platform.moonshot.cn/console/api-keys", "https://platform.moonshot.cn/",
+        key: true, None, [], fallback: "", vision: ""),
+    provider!("qianfan", "Baidu Qianfan (ERNIE)", Platform, "https://qianfan.baidubce.com/v2",
+        "https://console.bce.baidu.com/iam/#/iam/apikey/list", "https://cloud.baidu.com/product/wenxinworkshop",
+        key: true, None, [], fallback: "", vision: ""),
+    provider!("hunyuan", "Tencent Hunyuan", Lab, "https://api.hunyuan.cloud.tencent.com/v1",
+        "https://console.cloud.tencent.com/hunyuan/api-key", "https://cloud.tencent.com/product/hunyuan",
+        key: true, None, [], fallback: "", vision: ""),
+    provider!("doubao", "Volcano Engine Ark (Doubao)", Platform, "https://ark.cn-beijing.volces.com/api/v3",
+        "https://console.volcengine.com/ark/", "https://www.volcengine.com/product/ark",
+        key: true, None, [], fallback: "", vision: ""),
     provider!("custom", "OpenAI-compatible", Custom, "",
         "", "", key: false, None, [], fallback: "", vision: ""),
 ];
@@ -317,6 +388,57 @@ mod tests {
         }
         assert_eq!(PROVIDERS[0].recommended, Some(Recommendation::Value));
         assert_eq!(PROVIDERS[1].recommended, Some(Recommendation::Accuracy));
+    }
+
+    #[test]
+    fn mainland_china_gets_only_services_that_serve_it() {
+        let offered = |mainland: bool| -> Vec<&str> {
+            PROVIDERS
+                .iter()
+                .filter(|p| p.offered(mainland))
+                .map(|p| p.id)
+                .collect()
+        };
+        let mainland = offered(true);
+        for gone in [
+            "openai",
+            "anthropic",
+            "gemini",
+            "xai",
+            "groq",
+            "openrouter",
+            "zai",
+        ] {
+            assert!(!mainland.contains(&gone), "{gone}");
+        }
+        for kept in ["zhipu", "bailian", "deepseek", "ollama", "custom"] {
+            assert!(mainland.contains(&kept), "{kept}");
+        }
+        let elsewhere = offered(false);
+        assert!(elsewhere.contains(&"anthropic") && !elsewhere.contains(&"bailian"));
+
+        let picks = |mainland: bool| -> Vec<(&str, Recommendation)> {
+            PROVIDERS
+                .iter()
+                .filter(|p| p.offered(mainland))
+                .filter_map(|p| p.recommendation(mainland).map(|r| (p.id, r)))
+                .collect()
+        };
+        assert_eq!(
+            picks(true),
+            [
+                ("zhipu", Recommendation::Value),
+                ("bailian", Recommendation::Accuracy)
+            ]
+        );
+        assert_eq!(
+            picks(false),
+            [
+                ("zai", Recommendation::Value),
+                ("anthropic", Recommendation::Accuracy)
+            ]
+        );
+        assert_eq!(provider("bailian").unwrap().default_model(), "qwen-max");
     }
 
     #[test]

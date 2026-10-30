@@ -4,7 +4,49 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.31.2] - 2026-10-29
+## [0.32.0] - 2026-10-30
+
+### Added
+- **Japanese, Simplified Chinese and Traditional Chinese:**
+  - the whole interface;
+  - every AI prompt (the app's line markers and JSON keys unchanged);
+  - teachers with their own names: 遥, 莉子, 涼, 修 in Japanese; 何静, 李悦, 任浩, 欧阳文
+    in Simplified Chinese; 何靜, 李悅, 任浩, 歐陽文 in Traditional Chinese;
+  - READMEs in each language (`README.ja.md`, `README.zh-Hans.md`, `README.zh-Hant.md`),
+    with a language switch on all five.
+- **Chinese and Japanese text** uses the system's fonts for each script (Yu Gothic,
+  Microsoft YaHei/JhengHei, Hiragino/PingFang, Noto Sans CJK), the UI language's script
+  first. Handouts in these languages embed the same fonts.
+- **Country or region in the terms step.** The terms follow the region's law:
+  - Brazil (LGPD) in Portuguese;
+  - Japan (APPI, Consumer Contract Act) in Japanese;
+  - Taiwan (Personal Data Protection Act, Consumer Protection Act) and Hong Kong (PDPO,
+    Control of Exemption Clauses Ordinance) in Traditional Chinese;
+  - Singapore (PDPA, Unfair Contract Terms Act) in Simplified Chinese, the English version
+    prevailing;
+  - an international English version with a section per region (US, EU, UK, Brazil,
+    Japan, Taiwan, Hong Kong, Singapore).
+- **Partner Access Terms**, in all five languages: outside those regions the app is not
+  offered to the public, only to partners authorized in writing. The text names no
+  country.
+- Settings show the region, with **Change country or region**.
+- **Mainland China** in the region list, always as authorized partners only (Partner
+  Access Terms).
+  - The AI list there shows only services that serve mainland China: Zhipu BigModel,
+    Alibaba Bailian (Qwen), DeepSeek, Moonshot Kimi, Baidu Qianfan, Tencent Hunyuan, Volcano
+    Engine Ark (Doubao), and local servers.
+  - Qwen Max on Bailian takes Claude's place as the most accurate pick, and Zhipu takes
+    Z.ai's as best value.
+- The region is chosen in the first step, with the language, so the AI step can list the
+  services available there.
+
+### Changed
+- Terms version 2026-10-30: everyone agrees again, choosing a region. Returning students
+  keep their name, teacher and AI settings and go straight to the terms.
+- Chinese and Japanese lessons are typed for now. Local voices and speech recognition are
+  Portuguese/English only, so they are off in these languages, with a notice; a cloud
+  voice still works.
+
 
 ### Changed
 - In English, the teachers are Helen, Lucy, Richard and Oliver (same initial and portrait

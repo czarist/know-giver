@@ -33,12 +33,22 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 ## Rules
 - Do not mix business logic into the UI
 - Errors with context (thiserror)
-- Prioritize Brazilian Portuguese (TTS, prompts, STT)
+- Prioritize Brazilian Portuguese (TTS, prompts, STT); Chinese and Japanese are typed-only until their voices exist
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
 - Prompts exist in Portuguese and English (`crates/ai/prompts/{pt,en}`) and follow the app's language. Change both together: same placeholders, JSON keys and line markers (`QUADRO:`, `ROTEIRO:`, `ETAPA:`, `FIM`, `[ilegível]`, `[?…?]`, `[rasura]`); a test in `crates/ai/src/prompts.rs` checks it. Text the code sends to the model also has both versions (`PromptLanguage::pick`)
 - Images go only to the configured vision model, never to a text model as fallback; the model's answers about written work are checked in code (scores, quotes, pages and lines)
 - Terms of use and privacy policy live in `docs/legal/` (pt-BR under the LGPD; en for US/UK/EU) and are compiled into the app (`crates/ui/src/legal.rs`). Change both languages together; any change to their content bumps the date in the texts and `TERMS_VERSION` (engine `settings.rs`), which asks every user to agree again. They must keep saying that the AI can be wrong and that quality depends on the chosen model
+- Every feature covers all five languages (pt-BR, en, ja, zh-Hans, zh-Hant) in the same change, never Portuguese/English first and the rest later:
+  - UI text: the key in every `locales/*.yml`;
+  - AI prompts: the same file in every `crates/ai/prompts/<lang>/`, same placeholders, JSON keys and markers;
+  - text the code sends to the model: Portuguese and English through `PromptLanguage::pick` (the others fall back to English);
+  - legal texts: every language and region version in `docs/legal/`, with `TERMS_VERSION` bumped;
+  - user-facing docs: every `README*.md` when the feature is visible there;
+  - screenshots of new screens in each language when a README shows them.
+  Run `cargo test -p kg-ui` and `-p kg-ai` (key and prompt parity). A real gap (for example, no voice yet for a language) is stated in the UI and in ROADMAP, never left silent
+- Five UI and prompt languages: pt-BR, en, ja, zh-Hans, zh-Hant (`locales/*.yml`, `crates/ai/prompts/<lang>/`). New keys go into every locale file. Traditional Chinese can be converted from Simplified with OpenCC (`s2twp`) and then checked by hand
+- Legal texts follow the region (`Region` in engine `settings.rs`), not the language: `docs/legal/{terms-of-use,privacy-policy}.<lang>.md` per region version, `partner-access.<lang>.md` for regions where the app is not public. The partner text names no country; a test checks it
 - First run is required (`Settings::needs_setup`, `SETUP_VERSION`): language, name, teacher, AI provider and key, terms. It never touches plans or progress. The provider list is `crates/ai/src/providers.rs`; model names there are suggestions, the app also lists the account's models
 - The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
 

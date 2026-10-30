@@ -84,7 +84,7 @@ pub fn strong_family() -> FontFamily {
 /// Applies the Know Giver look for both light and dark mode.
 /// egui follows the system theme by default.
 pub fn apply(ctx: &egui::Context) {
-    ctx.set_fonts(fonts());
+    set_fonts(ctx, &crate::i18n::current());
     ctx.set_visuals_of(Theme::Light, visuals(Visuals::light(), &LIGHT));
     ctx.set_visuals_of(Theme::Dark, visuals(Visuals::dark(), &DARK));
 
@@ -104,7 +104,17 @@ pub fn apply(ctx: &egui::Context) {
     });
 }
 
-fn fonts() -> FontDefinitions {
+/// Sets the fonts for a UI language: Chinese and Japanese text uses the
+/// system's font for that script first (Han characters differ between
+/// Japan, mainland China and Taiwan), the others after it.
+/// How far Japanese glyphs move down, as a fraction of the font size.
+const JAPANESE_Y_OFFSET: f32 = 0.22;
+
+pub fn set_fonts(ctx: &egui::Context, locale: &str) {
+    ctx.set_fonts(fonts(locale));
+}
+
+fn fonts(locale: &str) -> FontDefinitions {
     let mut fonts = FontDefinitions::default();
     let mut add = |name: &str, bytes: &'static [u8]| {
         fonts
@@ -125,12 +135,44 @@ fn fonts() -> FontDefinitions {
         include_bytes!("../assets/fonts/IBMPlexMono-Regular.ttf"),
     );
 
+    // Chinese and Japanese: the UI language's script first. Other languages
+    // load one, so language names like 日本語 still show.
+    let first = kg_engine::CjkScript::of_locale(locale);
+    let scripts: Vec<kg_engine::CjkScript> = match first {
+        Some(first) => std::iter::once(first)
+            .chain(
+                kg_engine::CjkScript::ALL
+                    .into_iter()
+                    .filter(|s| *s != first),
+            )
+            .collect(),
+        None => vec![kg_engine::CjkScript::Simplified],
+    };
+    let mut cjk = Vec::new();
+    for script in scripts {
+        if let Some(font) = kg_engine::cjk_font(script) {
+            let name = format!("cjk-{script:?}");
+            let mut data = FontData::from_static(font.bytes.as_slice());
+            data.index = font.index;
+            // Yu Gothic's glyphs sit high next to Latin text; move them down
+            // onto the same baseline.
+            if script == kg_engine::CjkScript::Japanese {
+                data.tweak.y_offset_factor = JAPANESE_Y_OFFSET;
+            }
+            fonts.font_data.insert(name.clone(), Arc::new(data));
+            cjk.push(name);
+        }
+    }
+
     // egui's default fonts stay as fallbacks for symbols the new fonts lack.
-    let defaults = fonts
+    let defaults: Vec<String> = fonts
         .families
         .get(&FontFamily::Proportional)
         .cloned()
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .into_iter()
+        .chain(cjk)
+        .collect();
     let with_defaults = |first: &str| {
         std::iter::once(first.to_owned())
             .chain(defaults.iter().cloned())

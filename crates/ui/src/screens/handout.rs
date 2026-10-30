@@ -40,7 +40,7 @@ pub fn request(plan: &StudyPlan, scope: HandoutScope, regenerate: bool) -> Optio
         title: plan.title.clone(),
         subtitle,
         generated: t!("handout.generated", date = i18n::date(Engine::today())).into_owned(),
-        lang: i18n::current().split('-').next().unwrap_or("pt").to_owned(),
+        lang: i18n::current(),
         labels: labels(),
         regenerate,
     })
@@ -52,7 +52,7 @@ pub fn prepare_request() -> PrepareRequest {
         file_prefix: t!("handout.file_prefix").into_owned(),
         whole_plan: t!("handout.whole_plan").into_owned(),
         generated: t!("handout.generated", date = i18n::date(Engine::today())).into_owned(),
-        lang: i18n::current().split('-').next().unwrap_or("pt").to_owned(),
+        lang: i18n::current(),
         labels: labels(),
     }
 }

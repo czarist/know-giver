@@ -14,8 +14,10 @@ use typst::{Library, LibraryExt, World};
 use typst_kit::fonts::FontStore;
 use typst_layout::PagedDocument;
 
+mod cjk;
 mod pages;
 
+pub use cjk::{CjkFont, CjkScript, cjk_font};
 pub use pages::{PageImage, Pages, TextBox, paginate};
 
 const TEMPLATE: &str = include_str!("../templates/handout.typ");
@@ -166,7 +168,7 @@ pub(crate) fn layout(document: &Document) -> Result<PagedDocument, HandoutError>
         return Err(HandoutError::Empty);
     }
     let data = serde_json::to_vec(document).map_err(|e| HandoutError::Layout(e.to_string()))?;
-    let world = HandoutWorld::new(data, &document.files)?;
+    let world = HandoutWorld::new(data, &document.files, &document.lang)?;
     let compiled = typst::compile::<PagedDocument>(&world).output;
     compiled.map_err(|errors| HandoutError::Layout(join(&errors)))
 }
@@ -190,7 +192,7 @@ struct HandoutWorld {
 }
 
 impl HandoutWorld {
-    fn new(data: Vec<u8>, files: &[(String, Vec<u8>)]) -> Result<Self, HandoutError> {
+    fn new(data: Vec<u8>, files: &[(String, Vec<u8>)], lang: &str) -> Result<Self, HandoutError> {
         let file = |name: &str| {
             VirtualPath::new(name)
                 .map(|path| FileId::new(RootedPath::new(VirtualRoot::Project, path)))
@@ -198,6 +200,22 @@ impl HandoutWorld {
         };
         let mut fonts = FontStore::new();
         fonts.extend(typst_kit::fonts::embedded());
+        // Chinese and Japanese handouts use the system's fonts for those
+        // scripts, the handout's own script first.
+        if let Some(first) = CjkScript::of_locale(lang)
+            .or_else(|| lang.starts_with("zh").then_some(CjkScript::Simplified))
+        {
+            let order =
+                std::iter::once(first).chain(CjkScript::ALL.into_iter().filter(|s| *s != first));
+            for script in order {
+                if let Some(font) = cjk_font(script) {
+                    fonts.extend(Font::iter(Bytes::new(font.bytes.as_slice())).map(|font| {
+                        let info = font.info().clone();
+                        (font, info)
+                    }));
+                }
+            }
+        }
         Ok(Self {
             library: LazyHash::new(Library::default()),
             fonts,

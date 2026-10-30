@@ -16,7 +16,62 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-10-29";
+pub const TERMS_VERSION: &str = "2026-10-30";
+
+/// Where the student uses the app; the terms follow its law. The app is
+/// offered to the public only in the listed regions; elsewhere ("other"),
+/// only to partners Trentin authorized in writing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Region {
+    Br,
+    Us,
+    Eu,
+    Uk,
+    Jp,
+    Tw,
+    Hk,
+    Sg,
+    /// Mainland China: authorized partners only, never offered to the public.
+    Cn,
+    Other,
+}
+
+impl Region {
+    pub const ALL: [Self; 10] = [
+        Self::Br,
+        Self::Us,
+        Self::Eu,
+        Self::Uk,
+        Self::Jp,
+        Self::Tw,
+        Self::Hk,
+        Self::Sg,
+        Self::Cn,
+        Self::Other,
+    ];
+
+    /// The app is offered to the public here.
+    pub fn is_public(self) -> bool {
+        !matches!(self, Self::Cn | Self::Other)
+    }
+
+    /// AI services must be ones that serve mainland China.
+    pub fn is_mainland_china(self) -> bool {
+        self == Self::Cn
+    }
+
+    /// A likely region for a UI language, to preselect; the student confirms.
+    pub fn guess(locale: &str) -> Option<Self> {
+        match locale {
+            "pt-BR" => Some(Self::Br),
+            "ja" => Some(Self::Jp),
+            "zh-Hant" => Some(Self::Tw),
+            "zh-Hans" => Some(Self::Sg),
+            _ => None,
+        }
+    }
+}
 
 /// When the student agreed to the terms of use and the privacy policy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -25,6 +80,9 @@ pub struct TermsAcceptance {
     pub version: String,
     /// Local time, `%Y-%m-%d %H:%M:%S`.
     pub accepted_at: String,
+    /// The region whose terms were shown.
+    #[serde(default)]
+    pub region: Option<Region>,
 }
 
 /// Seconds of quiet that end the student's turn (see [`Settings::turn_pause`]).
@@ -95,6 +153,8 @@ pub struct Settings {
     pub ai_provider: String,
     /// The guided tour of the screens was finished or skipped.
     pub tour_done: bool,
+    /// Where the app is used; chosen with the terms.
+    pub region: Option<Region>,
 }
 
 impl Default for Settings {
@@ -128,6 +188,7 @@ impl Default for Settings {
             terms_accepted: None,
             ai_provider: String::new(),
             tour_done: false,
+            region: None,
         }
     }
 }
@@ -161,10 +222,11 @@ impl Settings {
     /// terms changed since the student agreed.
     pub fn needs_setup(&self) -> bool {
         self.setup_version < SETUP_VERSION
+            || self.region.is_none()
             || self
                 .terms_accepted
                 .as_ref()
-                .is_none_or(|t| t.version != TERMS_VERSION)
+                .is_none_or(|t| t.version != TERMS_VERSION || t.region != self.region)
     }
 
     /// The chosen teacher, or one matching the voice's gender.
@@ -264,11 +326,23 @@ mod tests {
             setup_version: SETUP_VERSION,
             terms_accepted: Some(TermsAcceptance {
                 version: TERMS_VERSION.into(),
-                accepted_at: "2026-10-29 20:00:00".into(),
+                accepted_at: "2026-10-30 20:00:00".into(),
+                region: Some(Region::Jp),
             }),
+            region: Some(Region::Jp),
             ..Settings::default()
         };
         assert!(!done.needs_setup());
+        // Moving to another region asks for its terms.
+        let moved = Settings {
+            region: Some(Region::Tw),
+            ..done.clone()
+        };
+        assert!(moved.needs_setup());
+        // Agreement to an older version (before regions) asks again.
+        let old: TermsAcceptance =
+            serde_json::from_str(r#"{"version":"2026-10-29","accepted_at":"x"}"#).unwrap();
+        assert_eq!(old.region, None);
     }
 
     #[test]

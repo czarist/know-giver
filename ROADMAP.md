@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.31.2. Everything an agent can build and check without a human ear, a
+Version 0.32.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -548,6 +548,18 @@ Tasks:
   model.
 
 ## Not yet verified
+- Chinese and Japanese (v0.32.0): a native speaker should review each language.
+  - Japanese, Simplified and Traditional UI texts and prompts. Traditional was converted
+    from Simplified with OpenCC (Taiwan phrasing) and corrected by hand; Hong Kong usage
+    differs in places.
+  - Lessons, quizzes, handouts and grades with a real model in each language.
+  - Fonts on macOS and Linux (the font paths there are not tested).
+- Mainland China AI services (v0.32.0): endpoints, key pages and model names of Zhipu
+  BigModel, Alibaba Bailian, Moonshot (mainland), Baidu Qianfan, Tencent Hunyuan and
+  Volcano Engine Ark were written from memory; confirm each with a real key.
+- Legal texts for Japan, Taiwan, Hong Kong, Singapore and the Partner Access Terms
+  (v0.32.0): drafts that need review by a local lawyer in each place before a public
+  launch there.
 - First run with real keys (v0.31.0):
   - **Load my models** on each provider: which `/models` lists answer, and Anthropic's
     with a Bearer key;
@@ -583,6 +595,17 @@ Tasks:
 - CUDA execution and native Linux/macOS packages (tooling is implemented).
 
 ## Next ideas
+- [ ] Voices in Chinese and Japanese:
+  - speech recognition with SenseVoice (zh, yue, ja) on the sherpa-onnx runtime;
+  - Kokoro's Mandarin voices; check whether its Japanese voices run on sherpa-onnx;
+  - Cantonese through a cloud voice;
+  - turn end on `。？！`; per-language fillers (「えーと」, 「嗯」);
+  - Traditional to Simplified before a Mandarin voice.
+- [ ] Count characters instead of words for Chinese and Japanese written answers (字数,
+      原稿用紙): unreadable threshold, rewrite detection, line limits.
+- [ ] Whiteboard pictures from the Wikipedia of the app's language (today Portuguese).
+- [ ] Code-side prompt snippets (`PromptLanguage::pick`) in Chinese and Japanese; today
+      they fall back to English inside prompts that are otherwise translated.
 - [ ] Native Anthropic Messages API client for Claude: Anthropic calls its
       OpenAI-compatible endpoint a testing aid, not a production path (`response_format`
       and `reasoning_effort` are ignored there; no prompt caching).
