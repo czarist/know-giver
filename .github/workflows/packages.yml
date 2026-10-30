@@ -13,7 +13,7 @@ jobs:
         os: [windows-latest, ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         shell: bash
         run: rustup update stable --no-self-update && rustup default stable
@@ -33,7 +33,7 @@ jobs:
       - name: Unix package
         if: runner.os != 'Windows'
         run: bash scripts/package-unix.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: KnowGiver-${{ runner.os }}-${{ runner.arch }}
           path: |
@@ -51,14 +51,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           path: artifacts
       - name: Assets with fixed names
         run: |
           mkdir release
-          for file in artifacts/*/*; do
+          find artifacts -type f | while read -r file; do
             name="$(basename "$file" | sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+//')"
             cp "$file" "release/$name"
           done

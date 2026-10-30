@@ -25,6 +25,8 @@ if [[ "$platform" == Darwin ]]; then
   mkdir -p "$bundle/MacOS" "$bundle/Resources"
   cp "$target_dir/release/know-giver" "$bundle/MacOS/"
   cp .env.example "$bundle/MacOS/"
+  cp scripts/uninstall.sh "$bundle/Resources/uninstall.sh"
+  chmod +x "$bundle/Resources/uninstall.sh"
   cat > "$bundle/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -40,10 +42,11 @@ if [[ "$platform" == Darwin ]]; then
 </dict></plist>
 EOF
   plutil -lint "$bundle/Info.plist"
-  cp packaging/unix/README.txt "$stage/README.txt"
+  cp packaging/unix/README.*.txt "$stage/"
 else
   mkdir -p "$stage/KnowGiver"
-  cp "$target_dir/release/know-giver" .env.example packaging/unix/README.txt "$stage/KnowGiver/"
+  cp "$target_dir/release/know-giver" .env.example packaging/unix/README.*.txt scripts/uninstall.sh "$stage/KnowGiver/"
+  chmod +x "$stage/KnowGiver/uninstall.sh"
   cp crates/ui/assets/icon.png "$stage/KnowGiver/know-giver.png"
   cat > "$stage/KnowGiver/know-giver.desktop" <<EOF
 [Desktop Entry]
