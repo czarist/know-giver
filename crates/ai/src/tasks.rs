@@ -538,7 +538,7 @@ fn tutor_system(topic: &TopicContext, lang: PromptLanguage) -> ChatMessage {
         (false, PromptLanguage::Portuguese) => format!(
             "- O aluno quer ser chamado de {name}. Use esse nome de vez em quando, com naturalidade: no cumprimento, ao elogiar ou ao chamar a atenção, não em toda frase."
         ),
-        (false, PromptLanguage::English) => format!(
+        (false, _) => format!(
             "- The student wants to be called {name}. Use the name now and then, naturally: when greeting, praising or calling their attention, not in every sentence."
         ),
     };
@@ -551,10 +551,10 @@ fn tutor_system(topic: &TopicContext, lang: PromptLanguage) -> ChatMessage {
         (false, false, PromptLanguage::Portuguese) => format!(
             "- Seu nome é {name} e você é o professor. Fale de si no masculino (por exemplo, \"obrigado\", \"estou pronto\")."
         ),
-        (false, true, PromptLanguage::English) => {
+        (false, true, _) => {
             format!("- Your name is {name} and you are the teacher; speak of yourself as a woman.")
         }
-        (false, false, PromptLanguage::English) => {
+        (false, false, _) => {
             format!("- Your name is {name} and you are the teacher; speak of yourself as a man.")
         }
     };
@@ -588,7 +588,7 @@ fn lesson_plan(topic: &TopicContext, lang: PromptLanguage) -> String {
         format!("\n- {intro}\n{}", list.join("\n"))
     };
     let quiz = format!("{quiz}{}", mistakes_block(topic, lang));
-    if lang == PromptLanguage::English {
+    if lang.base() == PromptLanguage::English {
         return lesson_plan_en(topic, teaching, &quiz);
     }
     let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
@@ -809,7 +809,7 @@ fn handout_messages(
             PromptLanguage::Portuguese => format!(
                 "EDITAL (dados de referência):\n{edital}\n\nEscreva a apostila apenas para o tópico solicitado e dentro deste programa."
             ),
-            PromptLanguage::English => format!(
+            _ => format!(
                 "EXAM NOTICE (reference data):\n{edital}\n\nWrite the handout only for the requested topic and within this syllabus."
             ),
         }),

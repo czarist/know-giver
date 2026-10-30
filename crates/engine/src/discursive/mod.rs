@@ -418,14 +418,14 @@ impl Engine {
                 let lesson = match (topic.lesson_taken(), lang) {
                     (true, PromptLanguage::Portuguese) => "aula feita",
                     (false, PromptLanguage::Portuguese) => "sem aula",
-                    (true, PromptLanguage::English) => "lesson taken",
-                    (false, PromptLanguage::English) => "no lesson yet",
+                    (true, _) => "lesson taken",
+                    (false, _) => "no lesson yet",
                 };
                 history.push(match lang {
                     PromptLanguage::Portuguese => {
                         format!("{}: {lesson}, {mistakes} erro(s) no quiz", topic.title)
                     }
-                    PromptLanguage::English => {
+                    _ => {
                         format!("{}: {lesson}, {mistakes} quiz mistake(s)", topic.title)
                     }
                 });
@@ -1383,7 +1383,7 @@ impl Engine {
 fn kind_name(kind: kg_study::WritingKind, lang: PromptLanguage) -> &'static str {
     match lang {
         PromptLanguage::Portuguese => kind.prompt_name(),
-        PromptLanguage::English => match kind {
+        _ => match kind {
             kg_study::WritingKind::Essay => "argumentative essay",
             kg_study::WritingKind::Technical => "technical discursive question",
             kg_study::WritingKind::CaseStudy => "case study",

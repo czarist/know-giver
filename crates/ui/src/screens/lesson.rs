@@ -869,6 +869,11 @@ fn model_warnings(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
             });
         });
     };
+    if !engine.local_speech_language() {
+        // Chinese and Japanese: typed lessons until voices exist.
+        warn(ui, &t!("lesson.voice_language"));
+        return;
+    }
     if !engine.stt_ready() {
         warn(ui, &t!("lesson.need_stt"));
     }

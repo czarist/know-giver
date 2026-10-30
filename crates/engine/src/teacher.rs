@@ -27,9 +27,27 @@ impl Teacher {
         }
     }
 
-    /// The name in the lesson's language.
+    /// The name in the lesson's language. Chinese teachers keep a surname
+    /// with the same initial in pinyin (何 He, 李 Li, 任 Ren, 欧阳 Ouyang);
+    /// Japanese ones a given name (Haruka, Riko, Ryō, Osamu).
     pub fn name_in(self, language: kg_ai::PromptLanguage) -> &'static str {
-        language.pick(self.name(), self.english_name())
+        use kg_ai::PromptLanguage as L;
+        match (language, self) {
+            (L::Portuguese, _) => self.name(),
+            (L::English, _) => self.english_name(),
+            (L::Japanese, Self::Helena) => "遥",
+            (L::Japanese, Self::Lia) => "莉子",
+            (L::Japanese, Self::Rafael) => "涼",
+            (L::Japanese, Self::Otavio) => "修",
+            (L::ChineseSimplified, Self::Helena) => "何静",
+            (L::ChineseSimplified, Self::Lia) => "李悦",
+            (L::ChineseSimplified, Self::Rafael) => "任浩",
+            (L::ChineseSimplified, Self::Otavio) => "欧阳文",
+            (L::ChineseTraditional, Self::Helena) => "何靜",
+            (L::ChineseTraditional, Self::Lia) => "李悅",
+            (L::ChineseTraditional, Self::Rafael) => "任浩",
+            (L::ChineseTraditional, Self::Otavio) => "歐陽文",
+        }
     }
 
     /// The name the tutor gives itself in lessons.
@@ -103,6 +121,11 @@ mod tests {
             "Otávio"
         );
         assert_eq!(Teacher::Otavio.name_in(PromptLanguage::English), "Oliver");
+        assert_eq!(Teacher::Helena.name_in(PromptLanguage::Japanese), "遥");
+        assert_eq!(
+            Teacher::Otavio.name_in(PromptLanguage::ChineseTraditional),
+            "歐陽文"
+        );
         for teacher in Teacher::ALL {
             let (pt, en) = (teacher.name(), teacher.english_name());
             assert_eq!(pt.chars().next(), en.chars().next(), "{teacher:?}");

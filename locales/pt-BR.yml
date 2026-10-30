@@ -8,6 +8,20 @@ app:
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
+  ja: "日本語"
+  zh-Hans: "简体中文"
+  zh-Hant: "繁體中文"
+
+region:
+  br: "Brasil"
+  us: "Estados Unidos"
+  eu: "União Europeia"
+  uk: "Reino Unido"
+  jp: "Japão"
+  tw: "Taiwan"
+  hk: "Hong Kong"
+  sg: "Singapura"
+  other: "Outros países e regiões (só parceiros autorizados)"
 
 format:
   date: "%d/%m/%Y"
@@ -211,6 +225,7 @@ lesson:
   open_settings: "Abrir configurações"
   need_stt: "Para falar com o tutor, baixe um modelo de reconhecimento de voz em Configurações."
   need_tts: "Para ouvir o tutor, baixe o Piper e uma voz em Configurações."
+  voice_language: "Aulas por voz ainda não estão disponíveis neste idioma. Digite suas respostas; o tutor responde por escrito."
   phase:
     idle: "Pronto"
     listening: "Ouvindo…"
@@ -346,7 +361,7 @@ setup:
     name: "Digite seu nome"
     teacher: "Escolha um professor"
     ai: "Escolha o fornecedor, o modelo e informe a chave"
-    terms: "Marque que concorda com os termos"
+    terms: "Escolha o país ou região e marque que concorda com os termos"
   language:
     title: "Escolha o idioma · Choose your language"
     hint: "O app, o tutor e os prompts da IA seguem este idioma. Dá para trocar depois nas Configurações."
@@ -393,6 +408,11 @@ setup:
     ollama: "Ollama (no seu computador)"
   terms:
     title: "Termos de uso e privacidade"
+    region: "País ou região"
+    region_hint: "Os termos seguem a lei do lugar onde você usa o app."
+    partner_notice: "O Know Giver não é oferecido ao público em outros países e regiões. Nesses lugares, o uso é restrito a parceiros autorizados pela Trentin por acordo escrito."
+    read_partner: "Ler os Termos de Acesso de Parceiros"
+    agree_partner: "Sou parceiro autorizado, com acordo escrito, e concordo com os Termos de Acesso de Parceiros"
     hint: "Leia os pontos principais e os textos completos antes de concordar."
     point_ai: "A IA pode cometer erros. Confira sempre o edital e as fontes oficiais; as notas são estimativas para estudo."
     point_quality: "A qualidade das respostas depende dos limites da IA que você escolheu."
@@ -551,6 +571,8 @@ settings:
     full_hint: "Uma etapa por seção da apostila (até 8), com exemplos, pegadinhas de prova e mais perguntas."
   legal:
     title: "Termos e privacidade"
+    region: "País ou região: %{region}"
+    change_region: "Mudar país ou região"
     accepted: "Você concordou em %{date} (versão %{version})."
     tour: "Ver o tour de novo"
   ai:

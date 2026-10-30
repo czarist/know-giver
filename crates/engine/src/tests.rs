@@ -1075,6 +1075,7 @@ fn setup_choices(engine: &Engine) -> Settings {
     let zai = kg_ai::provider("zai").unwrap();
     settings.ai = zai.config(zai.base_url, "typed-key", zai.default_model());
     settings.ai_provider = zai.id.into();
+    settings.region = Some(Region::Jp);
     settings
 }
 
@@ -1115,6 +1116,10 @@ fn setup_keeps_existing_plans_and_asks_for_the_tour() {
         settings.terms_accepted.as_ref().map(|t| t.version.as_str()),
         Some(TERMS_VERSION)
     );
+    assert_eq!(
+        settings.terms_accepted.as_ref().and_then(|t| t.region),
+        Some(Region::Jp)
+    );
 
     assert!(engine.needs_tour());
     engine.handle(Command::FinishTour).unwrap();
@@ -1131,6 +1136,7 @@ fn new_terms_ask_for_agreement_again() {
     engine.settings.terms_accepted = Some(TermsAcceptance {
         version: "2000-01-01".into(),
         accepted_at: "2000-01-01 10:00:00".into(),
+        region: Some(Region::Jp),
     });
     assert!(engine.needs_setup());
 }
@@ -1158,4 +1164,17 @@ fn connection_test_and_model_list_are_kept_per_config() {
     assert_eq!(engine.connection_result(&other), None);
     let list = engine.model_list().unwrap();
     assert!(list.is_for(&config) && !list.is_for(&other));
+}
+
+#[test]
+fn chinese_and_japanese_lessons_have_no_local_voice() {
+    let (mut engine, _dir) = engine();
+    assert!(engine.local_speech_language());
+    for locale in ["ja", "zh-Hans", "zh-Hant"] {
+        engine.settings.locale = locale.into();
+        assert!(!engine.local_speech_language(), "{locale}");
+        assert!(!engine.stt_ready(), "{locale}");
+    }
+    engine.settings.locale = "en".into();
+    assert!(engine.local_speech_language());
 }

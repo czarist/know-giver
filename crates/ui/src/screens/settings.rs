@@ -702,7 +702,15 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
 /// Terms and privacy: when the student agreed, the texts, and the tour again.
 fn legal_section(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     section(ui, &t!("settings.legal.title"), |ui| {
-        if let Some(accepted) = &engine.settings().terms_accepted {
+        let settings = engine.settings();
+        let Some(region) = settings.region else {
+            return;
+        };
+        widgets::hint(
+            ui,
+            &t!("settings.legal.region", region = i18n::region_name(region)),
+        );
+        if let Some(accepted) = &settings.terms_accepted {
             widgets::hint(
                 ui,
                 &t!(
@@ -712,34 +720,38 @@ fn legal_section(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
                 ),
             );
         }
+        let docs = crate::legal::LegalDoc::for_region(region);
         let id = egui::Id::new("settings_legal_open");
-        let mut open: Option<u8> = ui.ctx().data(|d| d.get_temp(id)).flatten();
+        let mut open: Option<usize> = ui.ctx().data(|d| d.get_temp(id)).flatten();
         ui.horizontal_wrapped(|ui| {
-            for (n, doc) in crate::legal::LegalDoc::ALL.into_iter().enumerate() {
-                let label = match doc {
-                    crate::legal::LegalDoc::Terms => t!("setup.terms.read_terms"),
-                    crate::legal::LegalDoc::Privacy => t!("setup.terms.read_privacy"),
-                };
-                let n = n as u8;
+            for (n, doc) in docs.iter().enumerate() {
                 if ui
-                    .add(egui::Button::new(label).selected(open == Some(n)))
+                    .add(egui::Button::new(super::setup::doc_label(*doc)).selected(open == Some(n)))
                     .clicked()
                 {
                     open = if open == Some(n) { None } else { Some(n) };
                 }
             }
+            if ui.button(t!("settings.legal.change_region")).clicked() {
+                // Asks for the region and its terms again; nothing else changes.
+                let mut settings = settings.clone();
+                settings.region = None;
+                actions.send(Command::SaveSettings(settings));
+            }
             if ui.button(t!("settings.legal.tour")).clicked() {
-                let mut settings = engine.settings().clone();
+                let mut settings = settings.clone();
                 settings.tour_done = false;
                 actions.send(Command::SaveSettings(settings));
             }
         });
         ui.ctx().data_mut(|d| d.insert_temp(id, open));
-        if let Some(doc) = open.and_then(|n| crate::legal::LegalDoc::ALL.get(n as usize)) {
+        if let Some(doc) = open.and_then(|n| docs.get(n)) {
             egui::ScrollArea::vertical()
                 .id_salt("settings_legal_text")
                 .max_height(360.0)
-                .show(ui, |ui| crate::legal::show(ui, doc.text(&i18n::current())));
+                .show(ui, |ui| {
+                    crate::legal::show(ui, doc.text(&i18n::current(), region));
+                });
         }
     });
 }

@@ -30,6 +30,9 @@ pub struct SetupUi {
     pub base_url: String,
     pub agreed: bool,
     pub reading: Option<LegalDoc>,
+    /// The saved AI settings when the setup only asks for the region and
+    /// terms again; kept as they are unless the AI step is changed.
+    pub original_ai: Option<AiConfig>,
 }
 
 impl SetupUi {
@@ -57,7 +60,7 @@ impl SetupUi {
             1 => !draft.student_name.trim().is_empty(),
             2 => draft.teacher.is_some(),
             3 => self.ai_ready(),
-            _ => self.agreed,
+            _ => self.agreed && draft.region.is_some(),
         }
     }
 
@@ -79,11 +82,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     };
     let setup = &mut app.ui.setup;
     if setup.draft.is_none() {
-        let mut draft = engine.settings().clone();
-        draft.student_name.clear();
-        draft.teacher = None;
-        draft.ai_provider.clear();
-        setup.draft = Some(draft);
+        start(setup, engine.settings());
     }
 
     egui::ScrollArea::vertical().show(ui, |ui| {
@@ -186,6 +185,9 @@ fn language_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
                 setup.language_chosen = true;
                 if let Some(draft) = &mut setup.draft {
                     draft.locale = locale.to_owned();
+                    if draft.region.is_none() {
+                        draft.region = kg_engine::Region::guess(locale);
+                    }
                 }
             }
         }
@@ -577,9 +579,47 @@ fn model_select(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi) {
     }
 }
 
+/// Starts the setup. Someone who finished it before and only needs to agree
+/// to new terms (or a new region) keeps every choice and starts at the
+/// terms; everyone else starts blank.
+fn start(setup: &mut SetupUi, settings: &Settings) {
+    let returning = settings.setup_version >= kg_engine::SETUP_VERSION
+        && !settings.student_name.trim().is_empty()
+        && settings.teacher.is_some();
+    let mut draft = settings.clone();
+    if returning {
+        setup.language_chosen = true;
+        setup.provider = kg_engine::ai_provider(&settings.ai_provider)
+            .or_else(|| kg_engine::provider_for_url(&settings.ai.base_url))
+            .or_else(|| kg_engine::ai_provider("custom"));
+        setup.model = settings.ai.models.tutor.clone();
+        setup.api_key = settings.ai.api_key.clone();
+        setup.base_url = settings.ai.base_url.clone();
+        setup.original_ai = Some(settings.ai.clone());
+        setup.step = STEPS - 1;
+    } else {
+        draft.student_name.clear();
+        draft.teacher = None;
+        draft.ai_provider.clear();
+        draft.region = None;
+    }
+    setup.draft = Some(draft);
+}
+
 fn terms_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
     let p = theme::palette(ui.ctx());
     step_title(ui, &t!("setup.terms.title"), &t!("setup.terms.hint"));
+    region_select(ui, setup);
+    let Some(region) = setup.draft.as_ref().and_then(|d| d.region) else {
+        return;
+    };
+    ui.add_space(8.0);
+    if !region.is_public() {
+        widgets::callout(ui, p.highlight, |ui| {
+            ui.label(t!("setup.terms.partner_notice"));
+        });
+        ui.add_space(6.0);
+    }
     for point in [
         t!("setup.terms.point_ai"),
         t!("setup.terms.point_quality"),
@@ -589,12 +629,13 @@ fn terms_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
         bullet(ui, &point);
     }
     ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        for doc in LegalDoc::ALL {
-            let label = match doc {
-                LegalDoc::Terms => t!("setup.terms.read_terms"),
-                LegalDoc::Privacy => t!("setup.terms.read_privacy"),
-            };
+    let docs = LegalDoc::for_region(region);
+    if setup.reading.is_some_and(|doc| !docs.contains(&doc)) {
+        setup.reading = None;
+    }
+    ui.horizontal_wrapped(|ui| {
+        for &doc in docs {
+            let label = doc_label(doc);
             if ui
                 .add(egui::Button::new(label).selected(setup.reading == Some(doc)))
                 .clicked()
@@ -617,11 +658,52 @@ fn terms_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
                 egui::ScrollArea::vertical()
                     .id_salt(("legal", doc as u8))
                     .max_height(320.0)
-                    .show(ui, |ui| legal::show(ui, doc.text(&i18n::current())));
+                    .show(ui, |ui| legal::show(ui, doc.text(&i18n::current(), region)));
             });
     }
     ui.add_space(8.0);
-    ui.checkbox(&mut setup.agreed, t!("setup.terms.agree"));
+    let agree = if region.is_public() {
+        t!("setup.terms.agree")
+    } else {
+        t!("setup.terms.agree_partner")
+    };
+    ui.checkbox(&mut setup.agreed, agree);
+}
+
+/// The country or region whose law the terms follow.
+fn region_select(ui: &mut egui::Ui, setup: &mut SetupUi) {
+    let Some(draft) = &mut setup.draft else {
+        return;
+    };
+    ui.label(RichText::new(t!("setup.terms.region")).strong());
+    ui.add_space(2.0);
+    let selected = draft
+        .region
+        .map_or_else(|| t!("setup.ai.choose").into_owned(), i18n::region_name);
+    let before = draft.region;
+    egui::ComboBox::from_id_salt("setup_region")
+        .selected_text(selected)
+        .width(FIELD_WIDTH)
+        .show_ui(ui, |ui| {
+            for region in kg_engine::Region::ALL {
+                ui.selectable_value(&mut draft.region, Some(region), i18n::region_name(region));
+            }
+        });
+    widgets::hint(ui, &t!("setup.terms.region_hint"));
+    if draft.region != before {
+        // Agreement is to the texts of one region.
+        setup.agreed = false;
+    }
+}
+
+/// The button that opens a legal document.
+pub(crate) fn doc_label(doc: LegalDoc) -> String {
+    match doc {
+        LegalDoc::Terms => t!("setup.terms.read_terms"),
+        LegalDoc::Privacy => t!("setup.terms.read_privacy"),
+        LegalDoc::Partner => t!("setup.terms.read_partner"),
+    }
+    .into_owned()
 }
 
 fn navigation(ui: &mut egui::Ui, setup: &mut SetupUi, actions: &mut Actions) {
@@ -697,7 +779,19 @@ fn finished(setup: &SetupUi) -> Option<Settings> {
     }
     let mut settings = setup.draft.clone()?;
     let provider = setup.provider?;
-    settings.ai = setup.ai_config()?;
+    let ai = setup.ai_config()?;
+    // Returning students keep their per-task models unless they changed
+    // the AI step.
+    settings.ai = match &setup.original_ai {
+        Some(original)
+            if original.base_url.trim_end_matches('/') == ai.base_url
+                && original.api_key.trim() == ai.api_key
+                && original.models.tutor == ai.models.tutor =>
+        {
+            original.clone()
+        }
+        _ => ai,
+    };
     settings.ai_provider = provider.id.to_owned();
     settings.locale = i18n::current();
     Some(settings)
@@ -733,6 +827,7 @@ mod tests {
         if let Some(d) = &mut setup.draft {
             d.student_name = "Ana".into();
             d.teacher = Some(kg_engine::Teacher::ALL[0]);
+            d.region = Some(kg_engine::Region::Br);
         }
         setup.pick_provider(kg_engine::ai_provider("zai").unwrap());
         setup.api_key = "key".into();
@@ -760,6 +855,48 @@ mod tests {
             d.teacher = None;
         }
         assert!(finished(&no_teacher).is_none());
+    }
+
+    #[test]
+    fn region_is_required() {
+        let mut setup = ready();
+        if let Some(d) = &mut setup.draft {
+            d.region = None;
+        }
+        assert!(!setup.step_done(4));
+        assert!(finished(&setup).is_none());
+    }
+
+    #[test]
+    fn returning_students_keep_their_choices_and_start_at_the_terms() {
+        let zai = kg_engine::ai_provider("zai").unwrap();
+        let mut saved = Settings {
+            setup_version: kg_engine::SETUP_VERSION,
+            student_name: "Ana".into(),
+            teacher: Some(kg_engine::Teacher::ALL[2]),
+            ai: zai.config(zai.base_url, "key", "glm-5.3"),
+            ai_provider: "zai".into(),
+            ..Settings::default()
+        };
+        saved.ai.models.quiz = "glm-5.3-flash".into();
+        let mut setup = SetupUi::default();
+        start(&mut setup, &saved);
+        assert_eq!(setup.step, STEPS - 1);
+        assert!((0..3).all(|step| setup.step_done(step)));
+        assert!(setup.step_done(3));
+        if let Some(d) = &mut setup.draft {
+            d.region = Some(kg_engine::Region::Jp);
+        }
+        setup.agreed = true;
+        let settings = finished(&setup).unwrap();
+        // The per-task model set before is kept.
+        assert_eq!(settings.ai.models.quiz, "glm-5.3-flash");
+        assert_eq!(settings.student_name, "Ana");
+
+        let mut new = SetupUi::default();
+        start(&mut new, &Settings::default());
+        assert_eq!(new.step, 0);
+        assert!(!new.step_done(1));
     }
 
     #[test]
