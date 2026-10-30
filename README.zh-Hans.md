@@ -24,7 +24,7 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/lesson.png" alt="课堂画面：老师的肖像和字幕、写有要点的板书、学生的麦克风" width="100%">
+  <img src="docs/images/zh-Hans/lesson.png" alt="课堂画面：老师的肖像和字幕、写有要点的板书、学生的麦克风" width="100%">
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@
 - **扫描版 PDF。** 没有文字的页面可以由你设置的图片模型转写。
 
 <p align="center">
-  <img src="docs/images/edital-roles.png" alt="从包含多个职位的考试公告中选择职位" width="80%">
+  <img src="docs/images/zh-Hans/edital-roles.png" alt="从包含多个职位的考试公告中选择职位" width="80%">
 </p>
 
 ## 课堂
@@ -66,17 +66,21 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 除了要点，老师还会写**公式**、**流程图**、**对比表**、**时间线**、**思维导图**、**考试提示**和**例子**，并展示 Wikipedia 的**图片**（只有搜索词会离开你的电脑）。
 
 <p align="center">
-  <img src="docs/images/whiteboard.png" alt="板书项目：公式、流程图、表格、时间线、思维导图和考试提示" width="80%">
+  <img src="docs/images/zh-Hans/whiteboard.png" alt="板书项目：公式、流程图、表格、时间线、思维导图和考试提示" width="80%">
 </p>
 
 四位老师：**何静**、**李悦**、**任浩**、**欧阳文**。会呼吸、眨眼、点头的水墨肖像。
+
+<p align="center">
+  <img src="docs/images/teachers.png" alt="四位老师的状态：休息、倾听、思考、讲话" width="70%">
+</p>
 
 ## 阅读并标记讲义
 
 生成的讲义在应用内打开，页面与 PDF 完全相同。拖动文字即可标记，点击标记可写笔记，侧边列表可跳到每处标记。应用会记住读到哪里，也可以保存带标记的 PDF。
 
 <p align="center">
-  <img src="docs/images/reader.png" alt="阅读讲义：标记的段落、笔记和阅读进度" width="100%">
+  <img src="docs/images/zh-Hans/reader.png" alt="阅读讲义：标记的段落、笔记和阅读进度" width="100%">
 </p>
 
 ## 练习、复习、讲义
@@ -99,6 +103,20 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 照片由设置 → AI 中的**图片模型**读取。按字数要求的中文作文，字数要求会写在题目说明中。
 
+<table>
+  <tr>
+    <td><img src="docs/images/zh-Hans/writing-check.png" alt="核对转写：照片旁边是可编辑的文字，并列出不确定的词"></td>
+    <td><img src="docs/images/zh-Hans/writing.png" alt="已评分的作文：公告中的评分标准、每项的估计分数和引文、问题与建议"></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><img src="docs/images/zh-Hans/today.png" alt="今天：连续天数、待复习和下一步"></td>
+    <td><img src="docs/images/zh-Hans/board.png" alt="历年真题：与计划对应的题目，超纲的题目单独列出"></td>
+  </tr>
+</table>
+
 ## 首次设置
 
 首先有五个简短步骤：语言、名字、老师、AI 和密钥、国家或地区及同意条款。可以从 21 个 AI 服务商中选择（**Z.ai** 性价比高，**Claude** 准确度高），并附有创建密钥的链接。之后有一段简短的界面导览。
@@ -109,6 +127,10 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
     <td><img src="docs/images/zh-Hans/setup-terms.png" alt="首次设置的条款步骤"></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/images/zh-Hans/tour.png" alt="引导：侧边栏标出“课堂”，旁边有说明该页面的卡片" width="80%">
+</p>
 
 ## 隐私
 

@@ -24,7 +24,7 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/lesson.png" alt="課堂畫面：老師的肖像和字幕、寫有要點的板書、學生的麥克風" width="100%">
+  <img src="docs/images/zh-Hant/lesson.png" alt="課堂畫面：老師的肖像和字幕、寫有要點的板書、學生的麥克風" width="100%">
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@
 - **掃描版 PDF。** 沒有文字的頁面可以由你設定的圖片模型轉寫。
 
 <p align="center">
-  <img src="docs/images/edital-roles.png" alt="從包含多個職位的考試公告中選擇職位" width="80%">
+  <img src="docs/images/zh-Hant/edital-roles.png" alt="從包含多個職位的考試公告中選擇職位" width="80%">
 </p>
 
 ## 課堂
@@ -66,17 +66,21 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 除了要點，老師還會寫**公式**、**流程圖**、**對比表**、**時間線**、**思維導圖**、**考試提示**和**例子**，並展示 Wikipedia 的**圖片**（只有搜尋詞會離開你的電腦）。
 
 <p align="center">
-  <img src="docs/images/whiteboard.png" alt="板書專案：公式、流程圖、表格、時間線、思維導圖和考試提示" width="80%">
+  <img src="docs/images/zh-Hant/whiteboard.png" alt="板書專案：公式、流程圖、表格、時間線、思維導圖和考試提示" width="80%">
 </p>
 
 四位老師：**何靜**、**李悅**、**任浩**、**歐陽文**。會呼吸、眨眼、點頭的水墨肖像。
+
+<p align="center">
+  <img src="docs/images/teachers.png" alt="四位老師的狀態：休息、傾聽、思考、講話" width="70%">
+</p>
 
 ## 閱讀並標記講義
 
 生成的講義在程式內開啟，頁面與 PDF 完全相同。拖動文字即可標記，點選標記可寫筆記，側邊列表可跳到每處標記。程式會記住讀到哪裡，也可以儲存帶標記的 PDF。
 
 <p align="center">
-  <img src="docs/images/reader.png" alt="閱讀講義：標記的段落、筆記和閱讀進度" width="100%">
+  <img src="docs/images/zh-Hant/reader.png" alt="閱讀講義：標記的段落、筆記和閱讀進度" width="100%">
 </p>
 
 ## 練習、複習、講義
@@ -99,6 +103,20 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 照片由設定 → AI 中的**圖片模型**讀取。按字數要求的中文作文，字數要求會寫在題目說明中。
 
+<table>
+  <tr>
+    <td><img src="docs/images/zh-Hant/writing-check.png" alt="核對轉寫：照片旁邊是可編輯的文字，並列出不確定的詞"></td>
+    <td><img src="docs/images/zh-Hant/writing.png" alt="已評分的作文：簡章中的評分標準、每項的估計分數與引文、問題與建議"></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><img src="docs/images/zh-Hant/today.png" alt="今天：連續天數、待複習與下一步"></td>
+    <td><img src="docs/images/zh-Hant/board.png" alt="歷屆試題：與計畫對應的題目，超出範圍的題目另外列出"></td>
+  </tr>
+</table>
+
 ## 首次設定
 
 首先有五個簡短步驟：語言、名字、老師、AI 和金鑰、國家或地區及同意條款。可以從 21 個 AI 服務商中選擇（**Z.ai** 價效比高，**Claude** 準確度高），並附有建立金鑰的連結。之後有一段簡短的介面導覽。
@@ -109,6 +127,10 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
     <td><img src="docs/images/zh-Hant/setup-terms.png" alt="首次設定的條款步驟"></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/images/zh-Hant/tour.png" alt="導覽：側邊欄標出「課堂」，旁邊有說明該頁面的卡片" width="80%">
+</p>
 
 ## 隱私
 
