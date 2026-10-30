@@ -9,12 +9,18 @@ All notable changes to Know Giver. Format based on
 ### Fixed
 - Highlights in Chinese and Japanese handouts no longer get a space where a line breaks
   (the text in the highlight list read "短语 ，剩下的").
+- A test of past exams sent with their answer key failed on Linux runners (the key's
+  worker finished inside the same `poll`), which failed the v0.31.2 package build.
 
 ### Changed
 - README screenshots in each README's own language: Japanese and Chinese now show the
   lesson, exam notice, whiteboard, reader, written answers, today, exam board and tour in
   their language, and the Portuguese README its own whiteboard. The screenshot tests
   render every screen in all five languages, with demo content written for each.
+- README badges: the stack (Rust, egui, SQLite, Typst, Whisper and Parakeet, Piper and
+  Kokoro, OpenAI-compatible AI), one badge per system (Windows, macOS, Linux) with its
+  icon, the license with its icon, the latest version, the five languages and the
+  package build.
 
 ## [0.32.0] - 2026-10-30
 

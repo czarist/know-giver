@@ -1047,9 +1047,11 @@ fn an_exam_sent_with_its_answer_key_reads_the_key_next() {
     let (mut engine, dir) = engine_with_plan();
     let plan = engine.active_plan().unwrap().id;
     let key = dir.path().join("gabarito.pdf");
+    // Handled directly, not through `poll`: the key's worker fails at once
+    // (no such file), and `poll` would also take that failure and end the
+    // job before it can be checked.
     engine
-        .events_tx
-        .send(Event::BoardImported(Ok(board::BoardImport {
+        .on_board_imported(Ok(board::BoardImport {
             plan,
             kind: DocumentKind::Exam,
             file_name: "prova.pdf".into(),
@@ -1057,9 +1059,8 @@ fn an_exam_sent_with_its_answer_key_reads_the_key_next() {
             questions: vec![],
             excerpts: vec![],
             answer_key: Some(key),
-        })))
+        }))
         .unwrap();
-    engine.poll();
     assert_eq!(engine.board_documents().len(), 1);
     let job = engine.board_job().unwrap();
     assert_eq!(job.kind, DocumentKind::AnswerKey);
