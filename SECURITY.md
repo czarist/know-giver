@@ -18,7 +18,7 @@ publish exploit details, proof-of-concept code or crafted files.
 
 - Use GitHub's private vulnerability reporting (**Security → Report a vulnerability** on
   the repository) when it is available.
-- Otherwise, get in touch through [cezartrentin.dev](https://cezartrentin.dev) with a
+- Otherwise, get in touch through [trentin.software](https://trentin.software) with a
   short, non-exploitable summary and ask for a private way to send the details.
 - Do not open a public issue containing a working exploit, an API key, a crash dump with
   personal data, or a malicious attachment.
