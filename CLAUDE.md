@@ -38,6 +38,8 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Calm, readable UI focused on long study sessions
 - Prompts exist in Portuguese and English (`crates/ai/prompts/{pt,en}`) and follow the app's language. Change both together: same placeholders, JSON keys and line markers (`QUADRO:`, `ROTEIRO:`, `ETAPA:`, `FIM`, `[ilegível]`, `[?…?]`, `[rasura]`); a test in `crates/ai/src/prompts.rs` checks it. Text the code sends to the model also has both versions (`PromptLanguage::pick`)
 - Images go only to the configured vision model, never to a text model as fallback; the model's answers about written work are checked in code (scores, quotes, pages and lines)
+- Terms of use and privacy policy live in `docs/legal/` (pt-BR under the LGPD; en for US/UK/EU) and are compiled into the app (`crates/ui/src/legal.rs`). Change both languages together; any change to their content bumps the date in the texts and `TERMS_VERSION` (engine `settings.rs`), which asks every user to agree again. They must keep saying that the AI can be wrong and that quality depends on the chosen model
+- First run is required (`Settings::needs_setup`, `SETUP_VERSION`): language, name, teacher, AI provider and key, terms. It never touches plans or progress. The provider list is `crates/ai/src/providers.rs`; model names there are suggestions, the app also lists the account's models
 - The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
 
 ## Planned exceptions (not implemented)

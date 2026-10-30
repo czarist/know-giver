@@ -12,6 +12,7 @@ pub mod quiz;
 pub mod reader;
 pub mod review;
 pub mod settings;
+pub mod setup;
 pub mod today;
 pub mod welcome;
 

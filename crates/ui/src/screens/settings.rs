@@ -30,7 +30,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         });
         ui.add_space(12.0);
         section(ui, &t!("settings.teacher.title"), |ui| {
-            teacher_picker(ui, engine, draft);
+            teacher_picker(ui, engine, draft, false);
         });
         ui.add_space(12.0);
         language(ui, engine, draft, &mut actions);
@@ -40,6 +40,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         voice_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
         models_section(ui, engine, draft, &mut actions);
+        ui.add_space(12.0);
+        legal_section(ui, engine, &mut actions);
         ui.add_space(12.0);
 
         let changed = draft != engine.settings();
@@ -122,6 +124,7 @@ fn language(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &
 fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &mut Actions) {
     section(ui, &t!("settings.ai.title"), |ui| {
         widgets::hint(ui, &t!("settings.ai.hint"));
+        provider_picker(ui, draft);
         egui::Grid::new("ai_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
@@ -392,16 +395,27 @@ fn english_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actio
 
 /// One card per teacher. Picking one also picks their voice when it is
 /// installed, or another installed voice of the same gender.
-fn teacher_picker(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
+/// Teacher cards. With `require_choice` (first run) none is marked until
+/// the student picks one.
+pub(crate) fn teacher_picker(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    draft: &mut Settings,
+    require_choice: bool,
+) {
     let p = theme::palette(ui.ctx());
     widgets::hint(ui, &t!("settings.teacher.hint"));
     ui.add_space(6.0);
-    let current = draft.teacher();
+    let current = if require_choice {
+        draft.teacher
+    } else {
+        Some(draft.teacher())
+    };
     let mut picked = None;
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(12.0, 12.0);
         for option in Teacher::ALL {
-            let selected = option == current;
+            let selected = Some(option) == current;
             let response = egui::Frame::new()
                 .fill(if selected {
                     p.accent.gamma_multiply(0.12)
@@ -632,6 +646,100 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
                     .small()
                     .color(p.muted),
             );
+        }
+    });
+}
+
+/// Picks an AI service: fills the address and one model for every task.
+/// The key typed so far is kept.
+fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
+    let current = kg_engine::ai_provider(&draft.ai_provider)
+        .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url));
+    ui.horizontal_wrapped(|ui| {
+        ui.label(t!("settings.ai.provider"));
+        let selected = current.map_or_else(
+            || t!("setup.ai.custom").into_owned(),
+            super::setup::provider_name,
+        );
+        if let Some(provider) = current {
+            crate::provider_logo::show(ui, provider, 20.0);
+        }
+        egui::ComboBox::from_id_salt("settings_provider")
+            .selected_text(selected)
+            .width(260.0)
+            .height(460.0)
+            .show_ui(ui, |ui| {
+                let clicked = super::setup::provider_list(ui, current.map(|p| p.id));
+                if let Some(provider) = clicked {
+                    let picked = current.map(|p| p.id) == Some(provider.id);
+                    if !picked {
+                        let base_url = if provider.base_url.is_empty() {
+                            draft.ai.base_url.clone()
+                        } else {
+                            provider.base_url.to_owned()
+                        };
+                        let fast = draft.ai.fast_responses;
+                        draft.ai =
+                            provider.config(&base_url, &draft.ai.api_key, provider.default_model());
+                        draft.ai.fast_responses = fast;
+                        draft.ai_provider = provider.id.to_owned();
+                    }
+                }
+            });
+        if let Some(provider) = current {
+            if !provider.key_url.is_empty() {
+                ui.hyperlink_to(t!("setup.ai.get_key"), provider.key_url);
+            }
+            if !provider.site.is_empty() {
+                ui.hyperlink_to(t!("setup.ai.prices"), provider.site);
+            }
+        }
+    });
+    widgets::hint(ui, &t!("settings.ai.provider_hint"));
+    ui.add_space(6.0);
+}
+
+/// Terms and privacy: when the student agreed, the texts, and the tour again.
+fn legal_section(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
+    section(ui, &t!("settings.legal.title"), |ui| {
+        if let Some(accepted) = &engine.settings().terms_accepted {
+            widgets::hint(
+                ui,
+                &t!(
+                    "settings.legal.accepted",
+                    date = accepted.accepted_at.as_str(),
+                    version = accepted.version.as_str()
+                ),
+            );
+        }
+        let id = egui::Id::new("settings_legal_open");
+        let mut open: Option<u8> = ui.ctx().data(|d| d.get_temp(id)).flatten();
+        ui.horizontal_wrapped(|ui| {
+            for (n, doc) in crate::legal::LegalDoc::ALL.into_iter().enumerate() {
+                let label = match doc {
+                    crate::legal::LegalDoc::Terms => t!("setup.terms.read_terms"),
+                    crate::legal::LegalDoc::Privacy => t!("setup.terms.read_privacy"),
+                };
+                let n = n as u8;
+                if ui
+                    .add(egui::Button::new(label).selected(open == Some(n)))
+                    .clicked()
+                {
+                    open = if open == Some(n) { None } else { Some(n) };
+                }
+            }
+            if ui.button(t!("settings.legal.tour")).clicked() {
+                let mut settings = engine.settings().clone();
+                settings.tour_done = false;
+                actions.send(Command::SaveSettings(settings));
+            }
+        });
+        ui.ctx().data_mut(|d| d.insert_temp(id, open));
+        if let Some(doc) = open.and_then(|n| crate::legal::LegalDoc::ALL.get(n as usize)) {
+            egui::ScrollArea::vertical()
+                .id_salt("settings_legal_text")
+                .max_height(360.0)
+                .show(ui, |ui| crate::legal::show(ui, doc.text(&i18n::current())));
         }
     });
 }

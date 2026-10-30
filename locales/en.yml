@@ -27,6 +27,7 @@ nav:
   preparing: "%{done}/%{total}"
   today: "Today"
   welcome: "Welcome"
+  setup: "First run"
   edital: "Exam notice"
   plan: "Study plan"
   reader: "Handouts"
@@ -328,15 +329,123 @@ today:
     review_action: "Review now"
   all_done: "All caught up. How about a review quiz?"
 
+setup:
+  title: "Let's set up Know Giver"
+  subtitle: "Five quick steps. Your plans and progress stay as they are."
+  steps:
+    language: "Language"
+    name: "Name"
+    teacher: "Teacher"
+    ai: "AI"
+    terms: "Terms"
+  back: "Back"
+  next: "Continue"
+  finish: "Agree and start"
+  missing:
+    language: "Choose a language"
+    name: "Type your name"
+    teacher: "Choose a teacher"
+    ai: "Choose the provider and model, and enter the key"
+    terms: "Tick that you agree to the terms"
+  language:
+    title: "Escolha o idioma · Choose your language"
+    hint: "The app, the tutor and the AI prompts follow this language. You can change it later in Settings."
+  name:
+    title: "What should we call you?"
+    hint: "The tutor uses this name in lessons."
+  teacher:
+    title: "Choose who teaches you"
+    hint: "The voice follows the teacher. You can change it later."
+  ai:
+    title: "Connect your AI"
+    hint: "Know Giver uses your own key from an AI provider. Choose the provider and the model, and paste the key."
+    provider: "Provider"
+    choose: "Choose…"
+    address: "Address"
+    key: "API key"
+    key_placeholder: "Paste your key here"
+    key_optional: "Optional for local servers"
+    get_key: "Create a key"
+    prices: "Prices and details"
+    model: "Model"
+    model_placeholder: "Or type the model name"
+    other_model: "Other model…"
+    no_suggestions: "No suggestions for this provider. Load my models, or pick Other model."
+    group_recommended: "Recommended"
+    group_labs: "AI labs"
+    group_platforms: "Platforms with many models"
+    group_local: "On your computer"
+    group_other: "Other"
+    reads_images: "reads images"
+    load_models: "Load my models"
+    load_models_hint: "Asks the provider which models your key can use."
+    models_loaded: "%{count} models from your account in the list."
+    models_failed: "Could not load the list. Pick a suggestion or type the model name."
+    vision: "Photos of written answers and scanned PDFs will be read by %{model}."
+    no_vision: "This model does not read images: photos of written answers stay off until you choose a vision model in Settings."
+    connected: "Connected"
+    failed: "The connection failed. Check the key and the model."
+    value: "Recommended: best value"
+    accuracy: "Recommended: most accurate"
+    value_text: "Low-cost GLM models that do well in Portuguese and English. Good for plans, handouts and quizzes on a budget."
+    accuracy_text: "Claude makes fewer mistakes in explanations, corrections and essay reading. It costs more per use."
+    custom: "Another OpenAI-compatible server"
+    ollama: "Ollama (on your computer)"
+  terms:
+    title: "Terms of use and privacy"
+    hint: "Read the main points and the full texts before you agree."
+    point_ai: "AI can make mistakes. Always check the exam notice and official sources; grades are estimates for study."
+    point_quality: "Answer quality depends on the limits of the AI you chose."
+    point_data: "Your data stays on your computer. Only what each task needs goes to the AI provider you chose."
+    point_costs: "Use of your key is charged by the provider, under its own terms."
+    read_terms: "Read the Terms of Use"
+    read_privacy: "Read the Privacy Policy"
+    agree: "I have read and agree to the Terms of Use and the Privacy Policy"
+
+tour:
+  step: "%{n} of %{total}"
+  next: "Next"
+  back: "Back"
+  skip: "Skip the tour"
+  done: "Start studying"
+  today:
+    title: "Today"
+    text: "What to study today, reviews due, your streak and the next step."
+  edital:
+    title: "Exam notice"
+    text: "Upload the exam notice PDF. The AI builds your plan from its syllabus and the position you pick."
+  plan:
+    title: "Study plan"
+    text: "Weeks, subjects and topics. From here you start lessons, write handouts and prepare everything at once."
+  reader:
+    title: "Handouts"
+    text: "Your handouts open here. Highlight passages, write notes and see how much you have read."
+  board:
+    title: "Exam board"
+    text: "Upload past exams and answer keys. Questions that fit your notice go into quizzes and lessons."
+  lesson:
+    title: "Lesson"
+    text: "A voice lesson with your teacher: you talk, they answer, write on the board and check you got it."
+  quiz:
+    title: "Quiz"
+    text: "Exam-style questions with explanations. What you miss goes into the mistakes notebook."
+  review:
+    title: "Review"
+    text: "Topics come back right before you would forget them, with questions to answer out loud or in writing."
+  discursive:
+    title: "Written answers"
+    text: "Write by hand, send photos and get an estimated score per criterion, with suggestions."
+  progress:
+    title: "Progress"
+    text: "Your progress per subject and your study time each day."
+  settings:
+    title: "Settings"
+    text: "Change the language, teacher, voice or AI, and read the terms again. That's it: over to you!"
+
 welcome:
   title: "Welcome to Know Giver"
-  subtitle: "Three quick steps and you can start studying."
+  subtitle: "Two more steps: voice and your exam notice."
   skip: "Skip for now"
-  ai:
-    title: "Connect the AI"
-    from_env: "The AI key was loaded from the .env file. Test the connection to confirm."
-    ready: "AI configured. Test the connection to confirm."
-    missing: "Enter the AI address and key in Settings."
   voice:
     title: "Voice (optional)"
     text: "To talk to the tutor and hear it, download speech recognition and a Portuguese voice. About 380 MB, once."
@@ -440,9 +549,15 @@ settings:
     quick_hint: "The essentials: up to 3 steps, one short question each."
     normal_hint: "Up to 5 steps with every point of the handout, an example and a check question in each."
     full_hint: "One step per handout section (up to 8), with examples, exam pitfalls and more questions."
+  legal:
+    title: "Terms and privacy"
+    accepted: "You agreed on %{date} (version %{version})."
+    tour: "Take the tour again"
   ai:
     title: "Artificial intelligence"
-    hint: "Any server compatible with the OpenAI API: Z.ai (GLM), Ollama, LiteLLM."
+    hint: "Any server compatible with the OpenAI API: Z.ai (GLM), Anthropic (Claude), OpenAI, Gemini, Ollama, LiteLLM."
+    provider: "Provider"
+    provider_hint: "Changing the provider fills in the address and models below; the key you typed is kept. Save to apply."
     base_url: "Address"
     api_key: "API key"
     key_from_env: "Loaded from the .env file"
@@ -756,6 +871,7 @@ discursive:
     case_language_hint: "Standard Portuguese: agreement, verb government, spelling, accents and punctuation."
 
 error:
+  setup_incomplete: "Something is still missing in the first-run setup."
   image:
     too_large: "The photo is over 25 MB. Use a smaller one."
     unsupported: "The file is not a JPEG or PNG image."

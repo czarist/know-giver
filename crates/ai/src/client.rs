@@ -10,6 +10,7 @@ use serde_json::json;
 
 use crate::AiError;
 use crate::config::{AiConfig, PromptLanguage, Task};
+use crate::providers::{Quirks, parse_model_list};
 use crate::throttle::{self, MAX_ATTEMPTS, Throttle};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -206,6 +207,71 @@ impl Client {
         }
     }
 
+    /// Drops or renames request fields the service refuses (see
+    /// [`Quirks`]).
+    fn adjusted(&self, model: &str, body: &serde_json::Value) -> serde_json::Value {
+        let quirks = Quirks::of(&self.config.base_url, model);
+        let mut body = body.clone();
+        if let Some(fields) = body.as_object_mut() {
+            if quirks.omit_temperature {
+                fields.remove("temperature");
+            }
+            if quirks.completion_tokens
+                && let Some(max) = fields.remove("max_tokens")
+            {
+                fields.insert("max_completion_tokens".into(), max);
+            }
+        }
+        body
+    }
+
+    /// Models the service offers to this key, from its `/models` list.
+    pub fn list_models(&self) -> Result<Vec<String>, AiError> {
+        let url = format!("{}/models", self.config.base_url.trim_end_matches('/'));
+        let quirks = Quirks::of(&self.config.base_url, "");
+        let mut call = self
+            .agent
+            .get(&url)
+            .config()
+            .timeout_global(Some(Duration::from_secs(20)))
+            .build();
+        if !self.config.api_key.is_empty() {
+            call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
+            if quirks.anthropic_headers {
+                call = call
+                    .header("x-api-key", &self.config.api_key)
+                    .header("anthropic-version", "2023-06-01");
+            }
+        }
+        let mut response = call.call().map_err(|e| AiError::Connection {
+            url: url.clone(),
+            reason: e.to_string(),
+        })?;
+        let status = response.status().as_u16();
+        match status {
+            200..=299 => {}
+            401 | 403 => return Err(AiError::Auth { status }),
+            429 => return Err(AiError::RateLimited),
+            _ => {
+                return Err(AiError::Http {
+                    status,
+                    body: "model list refused".into(),
+                });
+            }
+        }
+        let body: serde_json::Value = response
+            .body_mut()
+            .with_config()
+            .limit(4 * 1024 * 1024)
+            .read_json()
+            .map_err(|e| AiError::InvalidResponse(e.to_string()))?;
+        let models = parse_model_list(&body);
+        if models.is_empty() {
+            return Err(AiError::InvalidResponse("empty model list".into()));
+        }
+        Ok(models)
+    }
+
     /// Checks that the endpoint answers with the tutor model.
     pub fn ping(&self) -> Result<(), AiError> {
         let messages = [ChatMessage::user("ok")];
@@ -272,6 +338,7 @@ impl Client {
         if self.config.fast_responses {
             skip_reasoning(&mut body, model);
         }
+        let body = self.adjusted(model, &body);
         let mut call = self.agent.post(&url).header("Accept", "text/event-stream");
         if !self.config.api_key.is_empty() {
             call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));
@@ -350,6 +417,7 @@ impl Client {
         body: &serde_json::Value,
     ) -> Result<String, (AiError, Option<Duration>)> {
         let url = self.config.chat_url();
+        let body = &self.adjusted(model, body);
         let mut call = self.agent.post(&url);
         if !self.config.api_key.is_empty() {
             call = call.header("Authorization", &format!("Bearer {}", self.config.api_key));

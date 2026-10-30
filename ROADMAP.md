@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.30.1. Everything an agent can build and check without a human ear, a
+Version 0.31.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`
@@ -546,6 +546,13 @@ Tasks:
   model.
 
 ## Not yet verified
+- First run with real keys (v0.31.0):
+  - **Load my models** on each provider: which `/models` lists answer, and Anthropic's
+    with a Bearer key;
+  - the suggested model names, which change often (checked 2026-10-29);
+  - Claude through Anthropic's OpenAI-compatible endpoint, with `temperature` left out;
+  - GPT-5 with `max_completion_tokens`;
+  - an existing install going through the setup and keeping its plans.
 - Written answers with real handwriting and the owner's vision model (v0.29.0–v0.30.1):
   transcript faithfulness, photo warning thresholds, grades against a human correction;
   see [docs/validation-discursive.md](docs/validation-discursive.md).
@@ -574,6 +581,12 @@ Tasks:
 - CUDA execution and native Linux/macOS packages (tooling is implemented).
 
 ## Next ideas
+- [ ] Native Anthropic Messages API client for Claude: Anthropic calls its
+      OpenAI-compatible endpoint a testing aid, not a production path (`response_format`
+      and `reasoning_effort` are ignored there; no prompt caching).
+- [ ] Store the API key in the system keychain instead of the local database.
+- [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
+      public release.
 - [x] Streaming AI client with silent whiteboard metadata and sentence callbacks.
 - [x] Stream sentences into lesson playback before the full reply arrives (v0.17.0:
       first sentence at 2.7 s instead of 10.8 s in a live check).

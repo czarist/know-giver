@@ -4,18 +4,53 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Changed
-- Dual license: Know Giver is now available under `MIT OR Apache-2.0`
-  (`LICENSE-MIT`, `LICENSE-APACHE`).
+## [0.31.0] - 2026-10-29
 
 ### Added
+- **Required first run.** Before anything else opens, the student:
+  - picks a language;
+  - types a name;
+  - picks a teacher;
+  - connects an AI service;
+  - agrees to the terms.
+  
+  Existing installs go through it once. Plans, progress and materials are kept; only these
+  choices start blank.
+- **AI provider list**, grouped and with logos:
+  - recommended: Z.ai (best value) and Anthropic Claude (most accurate);
+  - AI labs: OpenAI, Google Gemini, DeepSeek, Mistral, xAI, Alibaba Qwen, Moonshot Kimi,
+    Maritaca Sabiá, Cohere, Perplexity;
+  - platforms: OpenRouter, Groq, Together, Fireworks, Cerebras, NVIDIA NIM;
+  - local: Ollama, LM Studio;
+  - any OpenAI-compatible server.
+  
+  Each comes with suggested models and links to create a key and see prices. Logos come
+  from Simple Icons (CC0); providers without one get a monogram.
+  - **Load my models** asks the service which models the key can use, and any model name
+    can be typed.
+  - One model is set for every task, plus a vision model when the provider has one.
+- **Settings:** the same provider picker; terms and privacy, with the date you agreed; and
+  **Take the tour again**.
+- **Guided tour** after the setup: each screen opens with its sidebar entry marked and a
+  short explanation.
+- **Terms of Use and Privacy Policy** (`docs/legal/`): Portuguese under the LGPD; English
+  for the US, UK and EU. Both say the AI can make mistakes and that quality depends on
+  the limits of the chosen model. They are shown in the app, and a new version asks for
+  agreement again.
 - `SECURITY.md`: how to report a vulnerability, what is in scope and the known
   limitations (downloads without checksums, API key stored in plain text, the local
   speech server without authentication).
 - README in Brazilian Portuguese (`README.pt-BR.md`) with a language switch on both, and
   screenshots of v0.30.1 in English and Portuguese.
+
+### Changed
+- Requests leave out fields some services refuse:
+  - no `temperature` for Claude and GPT-5 models (they reject values below 1);
+  - `max_completion_tokens` instead of `max_tokens` on OpenAI.
+- Dual license: Know Giver is now available under `MIT OR Apache-2.0`
+  (`LICENSE-MIT`, `LICENSE-APACHE`).
+- The welcome screen keeps only the voice models and the first notice; the name and the
+  AI moved to the setup.
 
 ## [0.30.1] - 2026-10-29
 

@@ -35,6 +35,8 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Prioritize Brazilian Portuguese (TTS, prompts, STT)
 - No hardcoded user-facing text: every string shown in the UI comes from `locales/<locale>.yml` via `t!("key")` (pt-BR is default and fallback). Add new keys to every locale file; `cargo test -p kg-ui` checks this. Error `Display` messages in lower crates are English, for logs only; the UI translates errors in `crates/ui/src/i18n.rs`
 - Calm, readable UI focused on long study sessions
+- Terms of use and privacy policy live in `docs/legal/` and are compiled into the app. Change both languages together; a content change bumps the date in the texts and `TERMS_VERSION`, which asks users to agree again
+- First run is required (language, name, teacher, AI provider and key, terms) and never touches plans or progress
 
 ## Planned exceptions (not implemented)
 Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external

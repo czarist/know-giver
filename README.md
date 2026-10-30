@@ -191,16 +191,25 @@ is not lost to long reasoning.
   scanned PDFs) are sent to it to be read. The app says where before sending; the photos
   stay in your data folder and are deleted with their attempt. Logs never hold images,
   answers or keys.
+- No account, telemetry or ads. Read the [Terms of Use](docs/legal/terms-of-use.en.md) and
+  the [Privacy Policy](docs/legal/privacy-policy.en.md) (EU, UK and US), also shown in the
+  app.
 
 ## Quick start
 
 ```bash
-cp .env.example .env      # then fill in OPENAI_API_KEY (or set it in Settings)
 cargo run --release
 ```
 
-`.env` overrides global variables with the same name. On first use, download the speech
-models in Settings. Rust 1.95 or newer.
+The first run asks for five things before anything else opens: language, your name, a
+teacher, the AI service and your key, and agreement to the terms. Pick the provider and
+the model from the list (**Z.ai** is recommended for value, **Claude** for accuracy, each
+with a link to create a key), or load the models your key can use. A short tour of the
+screens follows. Plans made before are kept.
+
+For development, `.env` (copy `.env.example`) can still set the endpoint and models;
+`.env` overrides global variables with the same name. Download the speech models in
+Settings. Rust 1.95 or newer.
 
 **Windows package:**
 
@@ -268,6 +277,8 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 - Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
   caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
+- AI provider logos: [Simple Icons](https://simpleicons.org), CC0 (`crates/ui/assets/providers`);
+  the logos are trademarks of their owners, shown only to identify each service.
 
 ## License
 

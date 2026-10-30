@@ -200,16 +200,25 @@ raciocínio longo.
   páginas de PDFs escaneados) são enviadas a ele para leitura. O app diz para onde antes de
   enviar; as fotos ficam na sua pasta de dados e são apagadas junto com a tentativa. Os logs
   nunca guardam imagens, respostas ou chaves.
+- Sem conta, telemetria ou anúncios. Leia os [Termos de Uso](docs/legal/terms-of-use.pt-BR.md)
+  e a [Política de Privacidade](docs/legal/privacy-policy.pt-BR.md) (LGPD), também
+  mostrados no app.
 
 ## Começo rápido
 
 ```bash
-cp .env.example .env      # depois preencha OPENAI_API_KEY (ou defina nas Configurações)
 cargo run --release
 ```
 
-O `.env` tem prioridade sobre variáveis globais com o mesmo nome. No primeiro uso, baixe os
-modelos de fala nas Configurações. Rust 1.95 ou mais novo.
+O primeiro acesso pede cinco coisas antes de abrir o resto: idioma, seu nome, um
+professor, o serviço de IA com a sua chave e o aceite dos termos. Escolha o fornecedor e o
+modelo na lista (**Z.ai** é a recomendação de custo-benefício, **Claude** a de maior
+acerto, cada um com o link para criar a chave) ou carregue os modelos que a sua chave pode
+usar. Depois vem um tour rápido pelas telas. Planos já criados são mantidos.
+
+Para desenvolvimento, o `.env` (copie o `.env.example`) ainda pode definir o endereço e os
+modelos; ele tem prioridade sobre variáveis globais com o mesmo nome. Baixe os modelos de
+fala nas Configurações. Rust 1.95 ou mais novo.
 
 **Pacote para Windows:**
 
@@ -278,6 +287,9 @@ Mais: [builds nativos/CUDA](docs/builds.md), [avaliação do Kokoro](docs/kokoro
 - As imagens do quadro vêm da [Wikipédia](https://pt.wikipedia.org); a legenda indica o
   artigo, onde estão o autor e a licença de cada imagem.
 - Ícones: [Lucide](https://lucide.dev), licença ISC (`crates/ui/assets/icons`).
+- Logos dos fornecedores de IA: [Simple Icons](https://simpleicons.org), CC0
+  (`crates/ui/assets/providers`); os logos são marcas dos seus donos, usados só para
+  identificar cada serviço.
 
 ## Licença
 

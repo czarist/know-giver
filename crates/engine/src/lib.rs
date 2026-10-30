@@ -19,6 +19,7 @@ mod prepare;
 mod progress;
 mod reader;
 mod settings;
+mod setup;
 mod stt;
 mod study_time;
 mod teacher;
@@ -39,6 +40,10 @@ pub use discursive::{
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
+pub use kg_ai::{
+    ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation, provider as ai_provider,
+    provider_for_url,
+};
 pub use kg_audio::{
     AudioError, CloudSpeechConfig, EnglishVoice, KokoroVoice, ModelId, PiperVoice, SttEngine,
     TtsBackend, Voice, VoiceGender, WhisperModel,
@@ -72,7 +77,10 @@ pub use practice::{QuizSession, QuizStep, REVIEW_ROUNDS, ReviewSession, ReviewSt
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
-pub use settings::{DEFAULT_TURN_PAUSE, Settings, TURN_PAUSE_RANGE};
+pub use settings::{
+    DEFAULT_TURN_PAUSE, SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE, TermsAcceptance,
+};
+pub use setup::ModelList;
 pub use study_time::StudyPresence;
 pub use teacher::Teacher;
 
@@ -138,6 +146,14 @@ pub enum Command {
 
     SaveSettings(Settings),
     TestConnection,
+    /// Tests settings not saved yet (first-run setup).
+    TestAiConfig(Box<AiConfig>),
+    /// Asks the service which models a key can use.
+    ListModels(Box<AiConfig>),
+    /// Saves the first-run setup and the agreement to the terms.
+    CompleteSetup(Box<Settings>),
+    /// Ends (or skips) the guided tour of the screens.
+    FinishTour,
     DownloadModel(ModelId),
     CancelDownload(ModelId),
     RemoveModel(ModelId),
@@ -295,6 +311,8 @@ pub enum EngineError {
     NotEnoughAttempts,
     #[error(transparent)]
     Rubric(#[from] RubricError),
+    #[error("the first-run setup is missing a choice")]
+    SetupIncomplete,
 }
 
 /// Something the UI should tell the user about.
@@ -365,7 +383,8 @@ pub(crate) enum Event {
         prefs: PlanPrefs,
         result: Result<kg_ai::PlanDraft, AiError>,
     },
-    ConnectionTested(Result<(), AiError>),
+    ConnectionTested(Box<AiConfig>, Result<(), AiError>),
+    ModelsListed(setup::ModelList),
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
     DownloadFinished(ModelId, Result<(), AudioError>),
@@ -416,6 +435,10 @@ pub struct Engine {
     finding_roles: bool,
     generating_since: Option<Instant>,
     testing_connection: bool,
+    /// Last connection test: the settings tested and whether it worked.
+    last_test: Option<(AiConfig, bool)>,
+    listing_models: bool,
+    model_list: Option<setup::ModelList>,
 
     lesson: Option<LessonSession>,
     quiz: Option<QuizSession>,
@@ -522,6 +545,9 @@ impl Engine {
             finding_roles: false,
             generating_since: None,
             testing_connection: false,
+            last_test: None,
+            listing_models: false,
+            model_list: None,
             lesson: None,
             quiz: None,
             review: None,
@@ -807,6 +833,16 @@ impl Engine {
             Command::RemoveModel(id) => self.remove_model(id),
 
             Command::FinishOnboarding => self.finish_onboarding(),
+            Command::TestAiConfig(config) => {
+                self.test_config(*config);
+                Ok(())
+            }
+            Command::ListModels(config) => {
+                self.list_models(*config);
+                Ok(())
+            }
+            Command::CompleteSetup(settings) => self.complete_setup(*settings),
+            Command::FinishTour => self.finish_tour(),
             Command::ExportHandout(request) => self.export_handout(request),
             Command::ImportBoard {
                 path,
@@ -897,11 +933,16 @@ impl Engine {
                     prefs,
                     result,
                 } => self.on_plan_generated(edital, &prefs, result),
-                Event::ConnectionTested(result) => {
+                Event::ConnectionTested(config, result) => {
                     self.testing_connection = false;
+                    self.last_test = Some((*config, result.is_ok()));
                     result
                         .map(|()| self.notices.push(Notice::ConnectionOk))
                         .map_err(EngineError::from)
+                }
+                Event::ModelsListed(list) => {
+                    self.on_models_listed(list);
+                    Ok(())
                 }
                 Event::Lesson(event) => self.on_lesson_event(event),
                 Event::Practice(event) => self.on_practice_event(event),
@@ -946,12 +987,16 @@ impl Engine {
     }
 
     fn test_connection(&mut self) {
+        self.test_config(self.settings.ai.clone());
+    }
+
+    fn test_config(&mut self, config: AiConfig) {
         if self.testing_connection {
             return;
         }
         self.testing_connection = true;
-        let client = kg_ai::Client::new(self.settings.ai.clone());
-        self.spawn(move || Event::ConnectionTested(client.ping()));
+        let client = kg_ai::Client::new(config.clone());
+        self.spawn(move || Event::ConnectionTested(Box::new(config), client.ping()));
     }
 
     /// Runs `job` on a worker thread and delivers its event.

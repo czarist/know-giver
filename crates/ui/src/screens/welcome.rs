@@ -1,4 +1,4 @@
-//! First run: three short steps (AI, voice, edital) before the first plan.
+//! After the setup and the tour: voice models and the first edital.
 
 use egui::{Color32, RichText};
 use kg_engine::{Command, Engine, ModelId, ModelStatus, PiperVoice, WhisperModel};
@@ -22,10 +22,6 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let Ok(engine) = &app.engine else {
         return;
     };
-    let name = app
-        .ui
-        .welcome_name
-        .get_or_insert_with(|| engine.settings().student_name.clone());
     egui::ScrollArea::vertical().show(ui, |ui| {
         ui.vertical_centered_justified(|ui| {
             ui.set_max_width(680.0);
@@ -37,19 +33,9 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 &t!("welcome.subtitle"),
                 Art::Mark,
                 230.0,
-                |ui| {
-                    ui.add_space(12.0);
-                    let response = super::settings::name_field(ui, name);
-                    let typed = name.trim();
-                    if response.lost_focus() && typed != engine.settings().student_name.trim() {
-                        let mut settings = engine.settings().clone();
-                        settings.student_name = typed.to_owned();
-                        actions.send(Command::SaveSettings(settings));
-                    }
-                },
+                |_| {},
             );
             ui.add_space(16.0);
-            ai_step(ui, engine, &mut actions);
             voice_step(ui, engine, &mut actions);
             edital_step(ui, &mut actions);
             ui.add_space(8.0);
@@ -91,38 +77,6 @@ fn step(ui: &mut egui::Ui, number: u8, done: bool, title: &str, add: impl FnOnce
     ui.add_space(6.0);
 }
 
-fn ai_step(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
-    let configured = !engine.settings().ai.api_key.is_empty()
-        || engine.settings().ai.base_url.contains("localhost");
-    step(ui, 1, configured, &t!("welcome.ai.title"), |ui| {
-        let note = if engine.api_key_from_env() {
-            t!("welcome.ai.from_env")
-        } else if configured {
-            t!("welcome.ai.ready")
-        } else {
-            t!("welcome.ai.missing")
-        };
-        widgets::hint(ui, &note);
-        ui.horizontal(|ui| {
-            if ui
-                .add_enabled(
-                    !engine.is_testing_connection(),
-                    egui::Button::new(t!("settings.ai.test")),
-                )
-                .clicked()
-            {
-                actions.send(Command::TestConnection);
-            }
-            if engine.is_testing_connection() {
-                ui.spinner();
-            }
-            if ui.button(t!("lesson.open_settings")).clicked() {
-                actions.go_to(Screen::Settings);
-            }
-        });
-    });
-}
-
 fn voice_step(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     let statuses: Vec<ModelStatus> = VOICE_MODELS
         .iter()
@@ -140,7 +94,7 @@ fn voice_step(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
         })
         .collect();
     let done = installed == VOICE_MODELS.len();
-    step(ui, 2, done, &t!("welcome.voice.title"), |ui| {
+    step(ui, 1, done, &t!("welcome.voice.title"), |ui| {
         widgets::hint(ui, &t!("welcome.voice.text"));
         if done {
             return;
@@ -171,7 +125,7 @@ fn voice_step(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
 }
 
 fn edital_step(ui: &mut egui::Ui, actions: &mut Actions) {
-    step(ui, 3, false, &t!("welcome.edital.title"), |ui| {
+    step(ui, 2, false, &t!("welcome.edital.title"), |ui| {
         widgets::hint(ui, &t!("welcome.edital.text"));
         let p = theme::palette(ui.ctx());
         let start = egui::Button::image_and_text(

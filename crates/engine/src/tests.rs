@@ -1066,3 +1066,96 @@ fn an_exam_sent_with_its_answer_key_reads_the_key_next() {
     assert_eq!(job.file, "gabarito.pdf");
     engine.handle(Command::CancelBoard).unwrap();
 }
+
+fn setup_choices(engine: &Engine) -> Settings {
+    let mut settings = engine.settings().clone();
+    settings.locale = "en".into();
+    settings.student_name = "  Ana ".into();
+    settings.teacher = Some(Teacher::ALL[0]);
+    let zai = kg_ai::provider("zai").unwrap();
+    settings.ai = zai.config(zai.base_url, "typed-key", zai.default_model());
+    settings.ai_provider = zai.id.into();
+    settings
+}
+
+#[test]
+fn setup_keeps_existing_plans_and_asks_for_the_tour() {
+    let (mut engine, _dir) = engine_with_plan();
+    let plans = engine.plans().len();
+    assert!(engine.needs_setup(), "settings from before the setup");
+    assert!(!engine.needs_tour());
+
+    let mut missing = setup_choices(&engine);
+    missing.student_name = " ".into();
+    assert!(matches!(
+        engine.handle(Command::CompleteSetup(Box::new(missing))),
+        Err(EngineError::SetupIncomplete)
+    ));
+    let mut no_teacher = setup_choices(&engine);
+    no_teacher.teacher = None;
+    assert!(
+        engine
+            .handle(Command::CompleteSetup(Box::new(no_teacher)))
+            .is_err()
+    );
+    assert!(engine.needs_setup());
+
+    engine
+        .handle(Command::CompleteSetup(Box::new(setup_choices(&engine))))
+        .unwrap();
+    assert!(!engine.needs_setup());
+    assert_eq!(engine.plans().len(), plans);
+    assert!(engine.active_plan().is_some());
+    let settings = engine.settings();
+    assert_eq!(settings.student_name, "Ana");
+    assert_eq!(settings.locale, "en");
+    assert_eq!(settings.ai.base_url, "https://api.z.ai/api/paas/v4");
+    assert_eq!(settings.ai.api_key, "typed-key");
+    assert_eq!(
+        settings.terms_accepted.as_ref().map(|t| t.version.as_str()),
+        Some(TERMS_VERSION)
+    );
+
+    assert!(engine.needs_tour());
+    engine.handle(Command::FinishTour).unwrap();
+    assert!(!engine.needs_tour());
+}
+
+#[test]
+fn new_terms_ask_for_agreement_again() {
+    let (mut engine, _dir) = engine();
+    engine
+        .handle(Command::CompleteSetup(Box::new(setup_choices(&engine))))
+        .unwrap();
+    assert!(!engine.needs_setup());
+    engine.settings.terms_accepted = Some(TermsAcceptance {
+        version: "2000-01-01".into(),
+        accepted_at: "2000-01-01 10:00:00".into(),
+    });
+    assert!(engine.needs_setup());
+}
+
+#[test]
+fn connection_test_and_model_list_are_kept_per_config() {
+    let (mut engine, _dir) = engine();
+    let zai = kg_ai::provider("zai").unwrap();
+    let config = zai.config(zai.base_url, "k", "glm-5.3");
+    engine
+        .events_tx
+        .send(Event::ConnectionTested(Box::new(config.clone()), Ok(())))
+        .unwrap();
+    engine
+        .events_tx
+        .send(Event::ModelsListed(ModelList {
+            base_url: config.base_url.clone(),
+            api_key: config.api_key.clone(),
+            result: Ok(vec!["glm-5.3".into()]),
+        }))
+        .unwrap();
+    engine.poll();
+    assert_eq!(engine.connection_result(&config), Some(true));
+    let other = zai.config(zai.base_url, "other", "glm-5.3");
+    assert_eq!(engine.connection_result(&other), None);
+    let list = engine.model_list().unwrap();
+    assert!(list.is_for(&config) && !list.is_for(&other));
+}

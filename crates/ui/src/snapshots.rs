@@ -174,6 +174,120 @@ fn seed(paths: &AppPaths, english: bool) {
             today,
         )
         .unwrap();
+    drop(store);
+    finish_setup(paths, english);
+}
+
+/// Saves the first-run choices, so screenshots open on the screens.
+fn finish_setup(paths: &AppPaths, english: bool) {
+    let mut engine = Engine::new(paths.clone(), AiConfig::default()).unwrap();
+    let mut settings = engine.settings().clone();
+    settings.student_name = tr(english, "Ana", "Anna").into();
+    settings.teacher = Some(settings.teacher());
+    settings.locale = if english { "en" } else { "pt-BR" }.into();
+    engine
+        .handle(Command::CompleteSetup(Box::new(settings)))
+        .unwrap();
+    engine.handle(Command::FinishTour).unwrap();
+}
+
+/// The first-run setup, its AI and terms steps, and the tour that follows.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn setup_snapshots() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in ["pt-BR", "en"] {
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        crate::i18n::set(locale);
+        let mut harness = Harness::builder()
+            .with_size([1180.0, 900.0])
+            .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+        crate::i18n::set(locale);
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-language"),
+        );
+
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.language_chosen = true;
+        if let Some(draft) = &mut setup.draft {
+            draft.student_name = "Ana".into();
+            draft.teacher = Some(kg_engine::Teacher::ALL[1]);
+        }
+        setup.step = 2;
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-teacher"),
+        );
+
+        let setup = &mut harness.state_mut().ui.setup;
+        let zai = kg_engine::ai_provider("zai").unwrap();
+        setup.provider = Some(zai);
+        setup.model = zai.default_model().into();
+        setup.base_url = zai.base_url.into();
+        setup.api_key = "sk-demo-key".into();
+        setup.step = 3;
+        render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai"));
+
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.step = 4;
+        setup.agreed = true;
+        setup.reading = Some(crate::legal::LegalDoc::Terms);
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-terms"),
+        );
+
+        // Finishing opens the tour.
+        let settings = {
+            let setup = &harness.state().ui.setup;
+            let mut s = setup.draft.clone().unwrap();
+            s.ai = zai.config(zai.base_url, "sk-demo-key", zai.default_model());
+            s.ai_provider = zai.id.into();
+            s.locale = locale.into();
+            s
+        };
+        harness
+            .state_mut()
+            .dispatch(Command::CompleteSetup(Box::new(settings)));
+        harness.state_mut().ui.tour_step = 5;
+        render(&mut harness, out.as_deref(), &format!("{locale}-tour"));
+    }
+}
+
+/// The provider list as it opens, with logos and groups.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn provider_list_snapshot() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    crate::i18n::set("pt-BR");
+    let mut harness = Harness::builder().with_size([460.0, 860.0]).build_ui(|ui| {
+        // Fonts load between frames: set them up first, draw from the next one.
+        let ready = egui::Id::new("theme_ready");
+        if !ui.ctx().data(|d| d.get_temp::<bool>(ready)).unwrap_or(false) {
+            crate::theme::apply(ui.ctx());
+            egui_extras::install_image_loaders(ui.ctx());
+            ui.ctx().data_mut(|d| d.insert_temp(ready, true));
+            return;
+        }
+        egui::Frame::new()
+            .fill(crate::theme::palette(ui.ctx()).surface)
+            .inner_margin(egui::Margin::same(8))
+            .show(ui, |ui| {
+                crate::screens::setup::provider_list(ui, Some("anthropic"));
+            });
+    });
+    harness.run_steps(4);
+    std::thread::sleep(std::time::Duration::from_millis(150));
+    harness.run_steps(4);
+    let image = harness.render().unwrap();
+    if let Some(dir) = out.as_deref() {
+        image.save(dir.join("providers.png")).unwrap();
+    }
 }
 
 fn render(harness: &mut Harness<'_, KnowGiverApp>, dir: Option<&std::path::Path>, name: &str) {

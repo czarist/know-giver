@@ -11,6 +11,8 @@ use crate::{i18n, screens, theme, widgets};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Screen {
     Today,
+    /// Required first run (language, name, teacher, AI, terms); no sidebar.
+    Setup,
     /// First-run steps; not in the sidebar.
     Welcome,
     #[default]
@@ -46,7 +48,7 @@ impl Screen {
     fn icon(self) -> Icon {
         match self {
             Self::Today => Icon::Today,
-            Self::Welcome => Icon::Sparkles,
+            Self::Setup | Self::Welcome => Icon::Sparkles,
             Self::Edital => Icon::Edital,
             Self::Plan => Icon::Plan,
             Self::Reader => Icon::Handout,
@@ -63,6 +65,7 @@ impl Screen {
     fn label(self) -> String {
         match self {
             Self::Today => t!("nav.today"),
+            Self::Setup => t!("nav.setup"),
             Self::Welcome => t!("nav.welcome"),
             Self::Edital => t!("nav.edital"),
             Self::Plan => t!("nav.plan"),
@@ -120,8 +123,10 @@ pub struct UiState {
     pub plan_view: PlanView,
     /// Prepare handouts and quizzes right after the plan is created.
     pub prepare_all: bool,
-    /// Name typed on the welcome screen, before it is saved.
-    pub welcome_name: Option<String>,
+    /// Choices of the required first run, before they are saved.
+    pub setup: crate::screens::setup::SetupUi,
+    /// Step of the guided tour on screen.
+    pub tour_step: usize,
     pub reader: crate::screens::reader::ReaderUi,
     pub discursive: crate::screens::discursive::DiscursiveUi,
 }
@@ -134,6 +139,8 @@ pub struct KnowGiverApp {
     /// Screen shown last frame and when it appeared, for the fade-in.
     shown_screen: Screen,
     shown_since: f64,
+    /// Where each sidebar entry was drawn last frame, for the tour.
+    pub(crate) nav_rects: Vec<(Screen, egui::Rect)>,
 }
 
 impl std::fmt::Debug for KnowGiverApp {
@@ -166,6 +173,8 @@ impl KnowGiverApp {
             }
         };
         let screen = match &engine {
+            Ok(e) if e.needs_setup() => Screen::Setup,
+            Ok(e) if e.needs_tour() => Screen::Today,
             Ok(e) if e.needs_onboarding() => Screen::Welcome,
             Ok(e) if e.active_plan().is_some() => Screen::Today,
             _ => Screen::Edital,
@@ -189,13 +198,15 @@ impl KnowGiverApp {
                 board_choice: std::collections::HashMap::new(),
                 plan_view: PlanView::default(),
                 prepare_all: true,
-                welcome_name: None,
+                setup: Default::default(),
+                tour_step: 0,
                 reader: Default::default(),
                 discursive: Default::default(),
             },
             toasts: Vec::new(),
             shown_screen: screen,
             shown_since: 0.0,
+            nav_rects: Vec::new(),
         }
     }
 
@@ -271,6 +282,7 @@ impl KnowGiverApp {
                 widgets::rule(ui, 3.0);
                 ui.add_space(12.0);
 
+                self.nav_rects.clear();
                 for screen in Screen::ALL {
                     // Written answers only when the notice describes a written test.
                     if screen == Screen::Discursive
@@ -294,7 +306,9 @@ impl KnowGiverApp {
                         button = button
                             .right_text(egui::RichText::new(badge).small().color(p.highlight));
                     }
-                    if ui.add(button).clicked() {
+                    let response = ui.add(button);
+                    self.nav_rects.push((screen, response.rect));
+                    if response.clicked() {
                         self.go_to(screen);
                     }
                 }
@@ -482,7 +496,20 @@ impl eframe::App for KnowGiverApp {
             Err(_) => Badges::default(),
         };
 
-        self.sidebar(ui, &badges);
+        // Nothing else opens until the required first run is done.
+        let (needs_setup, needs_tour) = match &self.engine {
+            Ok(engine) => (engine.needs_setup(), engine.needs_tour()),
+            Err(_) => (false, false),
+        };
+        if needs_setup {
+            self.ui.screen = Screen::Setup;
+        } else if self.ui.screen == Screen::Setup {
+            self.ui.setup = Default::default();
+            self.ui.screen = Screen::Today;
+        }
+        if !needs_setup {
+            self.sidebar(ui, &badges);
+        }
         self.toasts(ui);
 
         let content = egui::Frame::new()
@@ -514,6 +541,7 @@ impl eframe::App for KnowGiverApp {
                 ui.set_max_width(860.0);
                 match self.ui.screen {
                     Screen::Today => screens::today::show(self, ui),
+                    Screen::Setup => screens::setup::show(self, ui),
                     Screen::Welcome => screens::welcome::show(self, ui),
                     Screen::Edital => screens::edital::show(self, ui),
                     Screen::Plan => screens::plan::show(self, ui),
@@ -527,5 +555,8 @@ impl eframe::App for KnowGiverApp {
                     Screen::Settings => screens::settings::show(self, ui),
                 }
             });
+        if needs_tour {
+            crate::tour::show(self, ui.ctx(), badges.writing);
+        }
     }
 }

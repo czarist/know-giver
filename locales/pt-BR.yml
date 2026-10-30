@@ -27,6 +27,7 @@ nav:
   preparing: "%{done}/%{total}"
   today: "Hoje"
   welcome: "Boas-vindas"
+  setup: "Primeiro acesso"
   edital: "Edital"
   plan: "Plano de estudo"
   reader: "Apostilas"
@@ -328,15 +329,123 @@ today:
     review_action: "Revisar agora"
   all_done: "Tudo em dia. Que tal um quiz de revisão?"
 
+setup:
+  title: "Vamos preparar o Know Giver"
+  subtitle: "Cinco passos rápidos. Seus planos e seu progresso continuam como estão."
+  steps:
+    language: "Idioma"
+    name: "Nome"
+    teacher: "Professor"
+    ai: "IA"
+    terms: "Termos"
+  back: "Voltar"
+  next: "Continuar"
+  finish: "Concordar e começar"
+  missing:
+    language: "Escolha um idioma"
+    name: "Digite seu nome"
+    teacher: "Escolha um professor"
+    ai: "Escolha o fornecedor, o modelo e informe a chave"
+    terms: "Marque que concorda com os termos"
+  language:
+    title: "Escolha o idioma · Choose your language"
+    hint: "O app, o tutor e os prompts da IA seguem este idioma. Dá para trocar depois nas Configurações."
+  name:
+    title: "Como você quer ser chamado?"
+    hint: "O tutor usa esse nome nas aulas."
+  teacher:
+    title: "Escolha quem vai dar as aulas"
+    hint: "A voz acompanha o professor. Dá para trocar depois."
+  ai:
+    title: "Conecte a sua IA"
+    hint: "O Know Giver usa a sua própria chave de um fornecedor de IA. Escolha o fornecedor e o modelo e cole a chave."
+    provider: "Fornecedor"
+    choose: "Escolha…"
+    address: "Endereço"
+    key: "Chave de API"
+    key_placeholder: "Cole aqui a sua chave"
+    key_optional: "Opcional para servidores locais"
+    get_key: "Criar chave"
+    prices: "Preços e detalhes"
+    model: "Modelo"
+    model_placeholder: "Ou digite o nome do modelo"
+    other_model: "Outro modelo…"
+    no_suggestions: "Sem sugestões para este fornecedor. Carregue os modelos da conta ou escolha Outro modelo."
+    group_recommended: "Recomendados"
+    group_labs: "Laboratórios de IA"
+    group_platforms: "Plataformas com vários modelos"
+    group_local: "No seu computador"
+    group_other: "Outro"
+    reads_images: "lê imagens"
+    load_models: "Carregar modelos da conta"
+    load_models_hint: "Pergunta ao fornecedor quais modelos a sua chave pode usar."
+    models_loaded: "%{count} modelos da sua conta na lista."
+    models_failed: "Não foi possível carregar a lista. Escolha uma sugestão ou digite o nome do modelo."
+    vision: "Fotos das discursivas e PDFs escaneados serão lidos por %{model}."
+    no_vision: "Este modelo não lê imagens: as fotos das discursivas ficam desligadas até você escolher um modelo de visão nas Configurações."
+    connected: "Conectado"
+    failed: "A conexão falhou. Confira a chave e o modelo."
+    value: "Recomendado: custo-benefício"
+    accuracy: "Recomendado: maior acerto"
+    value_text: "Modelos GLM baratos e bons em português. Bom para gerar planos, apostilas e quizzes sem gastar muito."
+    accuracy_text: "Claude erra menos em explicações, correções e leitura de redações. Custa mais por uso."
+    custom: "Outro servidor compatível com OpenAI"
+    ollama: "Ollama (no seu computador)"
+  terms:
+    title: "Termos de uso e privacidade"
+    hint: "Leia os pontos principais e os textos completos antes de concordar."
+    point_ai: "A IA pode cometer erros. Confira sempre o edital e as fontes oficiais; as notas são estimativas para estudo."
+    point_quality: "A qualidade das respostas depende dos limites da IA que você escolheu."
+    point_data: "Seus dados ficam no seu computador. Só o necessário para cada tarefa vai para o fornecedor de IA que você escolheu."
+    point_costs: "O uso da chave é cobrado pelo fornecedor, conforme as regras dele."
+    read_terms: "Ler os Termos de Uso"
+    read_privacy: "Ler a Política de Privacidade"
+    agree: "Li e concordo com os Termos de Uso e a Política de Privacidade"
+
+tour:
+  step: "%{n} de %{total}"
+  next: "Próximo"
+  back: "Voltar"
+  skip: "Pular o tour"
+  done: "Começar a estudar"
+  today:
+    title: "Hoje"
+    text: "O que estudar hoje, revisões pendentes, sua sequência de dias e o próximo passo."
+  edital:
+    title: "Edital"
+    text: "Envie o PDF do edital. A IA monta o plano a partir do conteúdo programático e do cargo que você escolher."
+  plan:
+    title: "Plano de estudo"
+    text: "Semanas, matérias e tópicos. Daqui você começa aulas, gera apostilas e prepara tudo de uma vez."
+  reader:
+    title: "Apostilas"
+    text: "As apostilas geradas abrem aqui. Destaque trechos, escreva notas e acompanhe o quanto já leu."
+  board:
+    title: "Banca"
+    text: "Envie provas anteriores e gabaritos. As questões que caem no seu edital entram nos quizzes e nas aulas."
+  lesson:
+    title: "Aula"
+    text: "Aula por voz com o seu professor: fale, ele responde, escreve no quadro e confere se você entendeu."
+  quiz:
+    title: "Quiz"
+    text: "Questões no estilo da banca, com explicação. O que você erra vai para o caderno de erros."
+  review:
+    title: "Revisão"
+    text: "Os tópicos voltam pouco antes de você esquecer, com perguntas para responder falando ou escrevendo."
+  discursive:
+    title: "Discursivas"
+    text: "Escreva à mão, envie fotos e receba uma nota estimada por critério, com sugestões."
+  progress:
+    title: "Progresso"
+    text: "Seu avanço por matéria e o tempo de estudo de cada dia."
+  settings:
+    title: "Configurações"
+    text: "Troque o idioma, o professor, a voz ou a IA, e releia os termos. Pronto: agora é com você!"
+
 welcome:
   title: "Bem-vindo ao Know Giver"
-  subtitle: "Três passos rápidos e você começa a estudar."
+  subtitle: "Mais dois passos: a voz e o seu edital."
   skip: "Pular por agora"
-  ai:
-    title: "Conecte a IA"
-    from_env: "A chave da IA foi carregada do arquivo .env. Teste a conexão para confirmar."
-    ready: "IA configurada. Teste a conexão para confirmar."
-    missing: "Informe o endereço e a chave da IA em Configurações."
   voice:
     title: "Voz (opcional)"
     text: "Para falar com o tutor e ouvi-lo, baixe o reconhecimento de voz e uma voz em português. Cerca de 380 MB, uma vez só."
@@ -440,9 +549,15 @@ settings:
     quick_hint: "Só o essencial: até 3 etapas, uma pergunta curta em cada."
     normal_hint: "Até 5 etapas com todos os pontos da apostila, um exemplo e uma pergunta de checagem em cada."
     full_hint: "Uma etapa por seção da apostila (até 8), com exemplos, pegadinhas de prova e mais perguntas."
+  legal:
+    title: "Termos e privacidade"
+    accepted: "Você concordou em %{date} (versão %{version})."
+    tour: "Ver o tour de novo"
   ai:
     title: "Inteligência artificial"
-    hint: "Qualquer servidor compatível com a API da OpenAI: Z.ai (GLM), Ollama, LiteLLM."
+    hint: "Qualquer servidor compatível com a API da OpenAI: Z.ai (GLM), Anthropic (Claude), OpenAI, Gemini, Ollama, LiteLLM."
+    provider: "Fornecedor"
+    provider_hint: "Trocar o fornecedor preenche o endereço e os modelos abaixo; a chave digitada é mantida. Salve para aplicar."
     base_url: "Endereço"
     api_key: "Chave da API"
     key_from_env: "Carregada do arquivo .env"
@@ -756,6 +871,7 @@ discursive:
     case_language_hint: "Norma-padrão: concordância, regência, ortografia, acentuação e pontuação."
 
 error:
+  setup_incomplete: "Falta escolher algo no primeiro acesso."
   image:
     too_large: "A foto passa de 25 MB. Use uma foto menor."
     unsupported: "O arquivo não é uma imagem JPEG ou PNG."

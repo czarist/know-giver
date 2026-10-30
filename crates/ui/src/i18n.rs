@@ -279,6 +279,7 @@ pub fn error_message(err: &EngineError) -> String {
             t!("error.writing.rubric_line", line = line)
         }
         EngineError::Rubric(_) => t!("error.writing.rubric"),
+        EngineError::SetupIncomplete => t!("error.setup_incomplete"),
     };
     text.into_owned()
 }
@@ -468,6 +469,9 @@ mod tests {
             include_str!("screens/review.rs"),
             include_str!("screens/progress.rs"),
             include_str!("screens/settings.rs"),
+            include_str!("screens/setup.rs"),
+            include_str!("tour.rs"),
+            include_str!("legal.rs"),
             include_str!("screens/today.rs"),
             include_str!("screens/welcome.rs"),
         ];

@@ -9,6 +9,24 @@ use serde::{Deserialize, Serialize};
 
 const SETTINGS_KEY: &str = "app_settings";
 
+/// Version of the required first-run setup (language, name, teacher, AI,
+/// terms). Raising it asks every user to go through the setup again; study
+/// data is never touched.
+pub const SETUP_VERSION: u32 = 1;
+
+/// Date of the terms of use and privacy policy in `docs/legal`. A new date
+/// asks for agreement again.
+pub const TERMS_VERSION: &str = "2026-10-29";
+
+/// When the student agreed to the terms of use and the privacy policy.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TermsAcceptance {
+    /// [`TERMS_VERSION`] at the time.
+    pub version: String,
+    /// Local time, `%Y-%m-%d %H:%M:%S`.
+    pub accepted_at: String,
+}
+
 /// Seconds of quiet that end the student's turn (see [`Settings::turn_pause`]).
 pub const DEFAULT_TURN_PAUSE: f32 = 1.0;
 pub const TURN_PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
@@ -69,6 +87,14 @@ pub struct Settings {
     pub locale: String,
     /// The first-run welcome steps were closed.
     pub onboarding_done: bool,
+    /// Last [`SETUP_VERSION`] completed; 0 in settings saved before it.
+    pub setup_version: u32,
+    pub terms_accepted: Option<TermsAcceptance>,
+    /// Id of the AI service picked on setup (`kg_ai::PROVIDERS`); empty when
+    /// typed by hand.
+    pub ai_provider: String,
+    /// The guided tour of the screens was finished or skipped.
+    pub tour_done: bool,
 }
 
 impl Default for Settings {
@@ -98,6 +124,10 @@ impl Default for Settings {
             lesson_length: kg_ai::LessonLength::default(),
             locale: "pt-BR".into(),
             onboarding_done: false,
+            setup_version: 0,
+            terms_accepted: None,
+            ai_provider: String::new(),
+            tour_done: false,
         }
     }
 }
@@ -125,6 +155,16 @@ impl Settings {
         }
         settings.normalize();
         Ok(settings)
+    }
+
+    /// The required setup is missing, older than [`SETUP_VERSION`], or the
+    /// terms changed since the student agreed.
+    pub fn needs_setup(&self) -> bool {
+        self.setup_version < SETUP_VERSION
+            || self
+                .terms_accepted
+                .as_ref()
+                .is_none_or(|t| t.version != TERMS_VERSION)
     }
 
     /// The chosen teacher, or one matching the voice's gender.
@@ -211,6 +251,24 @@ mod tests {
             api_key: "env-key".into(),
             ..AiConfig::default()
         }
+    }
+
+    #[test]
+    fn settings_from_before_the_setup_need_it() {
+        let old = r#"{"student_name":"Lucas","onboarding_done":true}"#;
+        let settings: Settings = serde_json::from_str(old).unwrap();
+        assert_eq!(settings.student_name, "Lucas");
+        assert_eq!(settings.setup_version, 0);
+        assert!(settings.needs_setup());
+        let done = Settings {
+            setup_version: SETUP_VERSION,
+            terms_accepted: Some(TermsAcceptance {
+                version: TERMS_VERSION.into(),
+                accepted_at: "2026-10-29 20:00:00".into(),
+            }),
+            ..Settings::default()
+        };
+        assert!(!done.needs_setup());
     }
 
     #[test]
