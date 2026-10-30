@@ -36,6 +36,7 @@
   <a href="#read-and-highlight-your-handouts">Reader</a> ·
   <a href="#practice-review-handouts">Practice</a> ·
   <a href="#written-answers">Written answers</a> ·
+  <a href="#first-run">First run</a> ·
   <a href="#private-by-default">Privacy</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#development">Development</a>
@@ -180,6 +181,25 @@ is not lost to long reasoning.
     <td><img src="docs/images/board.png" alt="Exam board: past questions matched to the plan, with the ones out of scope set aside"></td>
   </tr>
 </table>
+
+## First run
+
+Five short steps before anything else: language, your name, a teacher, your AI service and
+key, and the terms. Pick from 21 providers with their logos: **Z.ai** is recommended for
+value and **Claude** for accuracy, each with a link to create a key. Load the models your
+key can use, or type any model name. A short tour of the screens follows. Plans made
+before are kept.
+
+<table>
+  <tr>
+    <td><img src="docs/images/setup-ai.png" alt="First run, AI step: the two recommended providers, then provider, API key and model"></td>
+    <td><img src="docs/images/setup-terms.png" alt="First run, terms step: the main points, the full terms of use and the agreement box"></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/images/tour.png" alt="The guided tour: the Lesson entry marked in the sidebar with a card explaining the screen" width="80%">
+</p>
 
 ## Private by default
 

@@ -36,6 +36,7 @@
   <a href="#leia-e-destaque-suas-apostilas">Leitor</a> ·
   <a href="#prática-revisão-e-apostilas">Prática</a> ·
   <a href="#discursivas">Discursivas</a> ·
+  <a href="#primeiro-acesso">Primeiro acesso</a> ·
   <a href="#privado-por-padrão">Privacidade</a> ·
   <a href="#começo-rápido">Começo rápido</a> ·
   <a href="#desenvolvimento">Desenvolvimento</a>
@@ -188,6 +189,25 @@ raciocínio longo.
     <td><img src="docs/images/pt-BR/board.png" alt="Banca: questões de provas anteriores ligadas ao plano, com as fora do escopo separadas"></td>
   </tr>
 </table>
+
+## Primeiro acesso
+
+Cinco passos curtos antes de tudo: idioma, seu nome, um professor, o serviço de IA com a sua
+chave e os termos. Escolha entre 21 fornecedores com seus logos: **Z.ai** é a recomendação
+de custo-benefício e **Claude** a de maior acerto, cada um com o link para criar a chave.
+Carregue os modelos que a sua chave pode usar ou digite qualquer nome de modelo. Depois vem
+um tour rápido pelas telas. Planos já criados são mantidos.
+
+<table>
+  <tr>
+    <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: os dois fornecedores recomendados, depois fornecedor, chave de API e modelo"></td>
+    <td><img src="docs/images/pt-BR/setup-terms.png" alt="Primeiro acesso, passo dos termos: os pontos principais, os termos de uso completos e a caixa de aceite"></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/images/pt-BR/tour.png" alt="O tour guiado: o item Aula marcado na barra lateral com um cartão explicando a tela" width="80%">
+</p>
 
 ## Privado por padrão
 
