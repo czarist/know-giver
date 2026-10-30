@@ -38,6 +38,13 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Terms of use and privacy policy live in `docs/legal/` and are compiled into the app. Change both languages together; a content change bumps the date in the texts and `TERMS_VERSION`, which asks users to agree again
 - First run is required (language, name, teacher, AI provider and key, terms) and never touches plans or progress
 
+## Git workflow
+- `main` holds released code; `dev` collects finished work. The owner merges `dev` into `main` on GitHub.
+- Start every task on a short-lived branch from `dev`: `git switch dev && git pull && git switch -c <type>/<short-name>` (types: `feat`, `fix`, `docs`, `chore`).
+- Commit on that branch, then merge it into `dev` and push `dev`: `git switch dev && git merge --no-ff <branch> && git push origin dev`. Delete the task branch afterwards (`git branch -d <branch>`; also on `origin` if it was pushed).
+- Never commit or push to `main` directly.
+- A release still gets its CHANGELOG entry and version bump on the task branch. The annotated tag `vX.Y.Z` goes on `main` after the owner merges `dev` into `main`.
+
 ## Planned exceptions (not implemented)
 Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external
 projects for it, integrated as published and run outside the app process, with all
