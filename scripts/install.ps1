@@ -45,8 +45,20 @@ try {
         throw "Checksum mismatch for $asset; nothing was installed."
     }
 
+    $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CLOSEAPPLICATIONS')
+    # The desktop shortcut is asked once, on the first install; updates keep
+    # the earlier choice. KG_DESKTOP_SHORTCUT=1 or 0 answers in advance.
+    $installed = Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\KnowGiver\know-giver.exe')
+    if (-not $installed) {
+        $answer = $env:KG_DESKTOP_SHORTCUT
+        if (-not $answer) {
+            try { $answer = Read-Host 'Create a desktop shortcut? [y/N]' } catch { $answer = '' }
+        }
+        if ($answer -match '^(1|y|s)') { $arguments += '/MERGETASKS=desktopicon' }
+    }
+
     Write-Host 'Installing Know Giver'
-    $process = Start-Process $installer -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CLOSEAPPLICATIONS' -Wait -PassThru
+    $process = Start-Process $installer -ArgumentList $arguments -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "The installer stopped with code $($process.ExitCode)." }
     Write-Host "Installed in $env:LOCALAPPDATA\Programs\KnowGiver"
 }

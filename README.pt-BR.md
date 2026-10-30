@@ -261,6 +261,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 
 No Windows, vai para `%LOCALAPPDATA%\Programs\KnowGiver`, com atalho no menu Iniciar; no macOS, para `~/Applications/Know Giver.app`; no Linux, para `~/.local/opt/KnowGiver`, com o comando `know-giver` e um atalho no menu de aplicativos.
 
+Na primeira instalação, o instalador pergunta se você quer um **atalho na área de trabalho**; as atualizações mantêm a escolha. **Para desinstalar**: no Windows, Configurações → Aplicativos → Know Giver (ou *Desinstalar Know Giver* no menu Iniciar, e também `unins000.exe` na pasta do programa); no macOS, `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`; no Linux, `~/.local/opt/KnowGiver/uninstall.sh`. O desinstalador pergunta se deve apagar também os seus dados de estudo e os mantém, a menos que você diga sim.
+
 **Atualizações:** quando sai uma versão nova, uma barra discreta no topo do app oferece a atualização com um botão verde de download. O app baixa, confere, instala e abre de novo. Configurações → Sobre e atualizações desliga a busca.
 
 ## Começo rápido

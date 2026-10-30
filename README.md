@@ -253,6 +253,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 
 Windows installs to `%LOCALAPPDATA%\Programs\KnowGiver` with a Start menu entry; macOS to `~/Applications/Know Giver.app`; Linux to `~/.local/opt/KnowGiver`, with the `know-giver` command and an applications menu entry.
 
+A first install asks whether to add a **desktop shortcut**; updates keep your choice. **To uninstall**: on Windows, Settings → Apps → Know Giver (or *Uninstall Know Giver* in the Start menu, also `unins000.exe` in the program folder); on macOS, `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`; on Linux, `~/.local/opt/KnowGiver/uninstall.sh`. The uninstaller asks whether to delete your study data too, and keeps it unless you say yes.
+
 **Updates:** when a newer version is out, a slim bar at the top of the app offers it with a green download button. The app downloads it, checks it, installs it and opens again. Settings → About and updates turns the check off.
 
 ## Quick start

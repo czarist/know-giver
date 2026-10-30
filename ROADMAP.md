@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.33.0. Everything an agent can build and check without a human ear, a
+Version 0.33.1. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -555,6 +555,8 @@ Tasks:
   - In-app update end to end: the bar, download, checksum, silent installer on Windows (it
     closes the app and opens the new version) and the install script on macOS and Linux.
   - No Intel macOS or ARM Linux package yet: those systems get the release page.
+  - Desktop shortcut question and uninstallers (v0.33.1): the Inno uninstaller's study-data
+    question on Windows, and `uninstall.sh` on macOS and Linux.
 - Chinese and Japanese (v0.32.0): a native speaker should review each language.
   - Japanese, Simplified and Traditional UI texts and prompts. Traditional was converted
     from Simplified with OpenCC (Taiwan phrasing) and corrected by hand; Hong Kong usage

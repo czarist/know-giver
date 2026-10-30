@@ -7,10 +7,14 @@
 # macOS (Apple silicon): "Know Giver.app" in ~/Applications.
 # Linux (x86_64): the app in ~/.local/opt/KnowGiver, the command in
 # ~/.local/bin and an entry in the applications menu.
+# A first install asks whether to add a desktop shortcut. The program folder
+# gets uninstall.sh, which removes the app and asks before deleting study
+# data.
 #
 # Your study data is not touched. The app itself runs this script to update,
 # with KG_ARCHIVE (a package it already downloaded and checked) and
-# KG_LAUNCH=1 (open the new version afterwards).
+# KG_LAUNCH=1 (open the new version afterwards; no questions asked).
+# KG_DESKTOP_SHORTCUT=1 or 0 answers the shortcut question in advance.
 set -euo pipefail
 
 repo="czarist/know-giver"
@@ -25,6 +29,26 @@ case "$(uname -s)-$(uname -m)" in
     exit 1
     ;;
 esac
+
+# Yes or no from the terminal, also when this script comes through a pipe.
+# No answer (no terminal, or an update run by the app) means no.
+ask() {
+  local answer=""
+  if [[ "${KG_LAUNCH:-}" != 1 ]] && { exec 3</dev/tty; } 2>/dev/null; then
+    read -r -p "$1 [y/N] " answer <&3 || true
+    exec 3<&-
+  fi
+  [[ "$answer" =~ ^[yYsS] ]]
+}
+
+# Whether to add a desktop shortcut: asked once, on the first install.
+want_shortcut() {
+  case "${KG_DESKTOP_SHORTCUT:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  ask "Create a desktop shortcut?"
+}
 
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
@@ -56,39 +80,62 @@ tar -xzf "$archive" -C "$tmp/x"
 
 if [[ "$(uname -s)" == Darwin ]]; then
   apps="$HOME/Applications"
+  app="$apps/Know Giver.app"
+  first_install=1
+  [[ -d "$app" ]] && first_install=0
   mkdir -p "$apps"
-  rm -rf -- "$apps/Know Giver.app.new"
-  mv "$tmp/x/Know Giver.app" "$apps/Know Giver.app.new"
-  rm -rf -- "$apps/Know Giver.app"
-  mv "$apps/Know Giver.app.new" "$apps/Know Giver.app"
-  printf 'Installed: %s\n' "$apps/Know Giver.app"
+  rm -rf -- "$app.new"
+  mv "$tmp/x/Know Giver.app" "$app.new"
+  rm -rf -- "$app"
+  mv "$app.new" "$app"
+  if [[ $first_install == 1 ]] && want_shortcut; then
+    ln -sfn "$app" "$HOME/Desktop/Know Giver"
+  fi
+  printf 'Installed: %s\n' "$app"
+  printf 'To uninstall: "%s/Contents/Resources/uninstall.sh"\n' "$app"
   if [[ "${KG_LAUNCH:-}" == 1 ]]; then
-    open -n "$apps/Know Giver.app"
+    open -n "$app"
   fi
 else
   dest="$HOME/.local/opt/KnowGiver"
   bin="$HOME/.local/bin"
   menu="$HOME/.local/share/applications"
   icons="$HOME/.local/share/icons/hicolor/256x256/apps"
+  first_install=1
+  [[ -x "$dest/know-giver" ]] && first_install=0
   mkdir -p "$dest" "$bin" "$menu" "$icons"
   # Replaced by renaming, so a running copy keeps working until it closes.
   cp "$tmp/x/KnowGiver/know-giver" "$dest/know-giver.new"
   chmod +x "$dest/know-giver.new"
   mv -f "$dest/know-giver.new" "$dest/know-giver"
-  cp "$tmp/x/KnowGiver/README.txt" "$tmp/x/KnowGiver/.env.example" "$dest/"
+  # Read-me files in each app language (one README.txt before v0.33.1).
+  rm -f -- "$dest"/README*.txt
+  cp "$tmp/x/KnowGiver/"README*.txt "$tmp/x/KnowGiver/.env.example" "$dest/"
+  if [[ -f "$tmp/x/KnowGiver/uninstall.sh" ]]; then
+    cp "$tmp/x/KnowGiver/uninstall.sh" "$dest/uninstall.sh"
+    chmod +x "$dest/uninstall.sh"
+  fi
   cp "$tmp/x/KnowGiver/know-giver.png" "$icons/know-giver.png"
   ln -sf "$dest/know-giver" "$bin/know-giver"
-  cat > "$menu/know-giver.desktop" <<EOF
-[Desktop Entry]
+  entry="[Desktop Entry]
 Type=Application
 Name=Know Giver
 Comment=Study plans and voice lessons for exams
 Exec=$dest/know-giver
 Icon=know-giver
 Categories=Education;
-Terminal=false
-EOF
+Terminal=false"
+  printf '%s\n' "$entry" > "$menu/know-giver.desktop"
+  if [[ $first_install == 1 ]] && want_shortcut; then
+    desktop="$(xdg-user-dir DESKTOP 2>/dev/null || printf '%s' "$HOME/Desktop")"
+    mkdir -p "$desktop"
+    printf '%s\n' "$entry" > "$desktop/know-giver.desktop"
+    chmod +x "$desktop/know-giver.desktop"
+    # GNOME asks before opening an untrusted launcher.
+    gio set "$desktop/know-giver.desktop" metadata::trusted true 2>/dev/null || true
+  fi
   printf 'Installed: %s (command: know-giver)\n' "$dest"
+  printf 'To uninstall: %s/uninstall.sh\n' "$dest"
   case ":$PATH:" in
     *":$bin:"*) ;;
     *) printf 'Add %s to your PATH to run know-giver from a terminal.\n' "$bin" ;;
