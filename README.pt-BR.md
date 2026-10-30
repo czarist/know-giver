@@ -237,9 +237,37 @@ um tour rápido pelas telas. Planos já criados são mantidos.
   páginas de PDFs escaneados) são enviadas a ele para leitura. O app diz para onde antes de
   enviar; as fotos ficam na sua pasta de dados e são apagadas junto com a tentativa. Os logs
   nunca guardam imagens, respostas ou chaves.
+- Ao abrir, o app pergunta ao GitHub qual é a versão mais recente; só esse pedido sai, e
+  Configurações → Sobre e atualizações desliga a busca.
 - Sem conta, telemetria ou anúncios. Leia os [Termos de Uso](docs/legal/terms-of-use.pt-BR.md)
   e a [Política de Privacidade](docs/legal/privacy-policy.pt-BR.md) (LGPD), também
   mostrados no app.
+
+## Instalação
+
+Cada versão sai como um [release no GitHub](https://github.com/czarist/know-giver/releases/latest), com pacotes para Windows (x64), macOS (Apple silicon) e Linux (x86_64). Um comando baixa a mais recente, confere com os checksums do release e instala para o seu usuário, sem precisar de administrador. Seus planos e o seu progresso continuam.
+
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.ps1 | iex
+```
+
+**macOS** (Terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+**Linux** (terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+No Windows, vai para `%LOCALAPPDATA%\Programs\KnowGiver`, com atalho no menu Iniciar; no macOS, para `~/Applications/Know Giver.app`; no Linux, para `~/.local/opt/KnowGiver`, com o comando `know-giver` e um atalho no menu de aplicativos.
+
+**Atualizações:** quando sai uma versão nova, uma barra discreta no topo do app oferece a atualização com um botão verde de download. O app baixa, confere, instala e abre de novo. Configurações → Sobre e atualizações desliga a busca.
 
 ## Começo rápido
 

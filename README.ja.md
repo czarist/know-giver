@@ -155,9 +155,36 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 - 音声認識と読み上げはお使いのコンピューターで動作し、録音は外に出ません。
 - データ（SQLiteのデータベース、モデル、ログ）は `%LOCALAPPDATA%\KnowGiver` に保存されます。
 - AIサービスには、作業に必要な文章だけが送られます。画像対応モデルを設定した場合に限り、答案の写真もそのモデルに送られます。
+- 起動時に、最新のバージョンを GitHub に問い合わせます。送られるのはこの問い合わせだけで、設定 → アプリについて・アップデート でオフにできます。
 - アカウント、テレメトリー、広告はありません。[利用規約](docs/legal/terms-of-use.ja.md)と[プライバシーポリシー](docs/legal/privacy-policy.ja.md)（日本法）をお読みください。アプリ内でも表示されます。
 
 Know Giver は日本、ブラジル、アメリカ合衆国、欧州連合、イギリス、台湾、香港、シンガポールで一般に提供しています。その他の国・地域では、書面で認めたパートナーだけが[パートナーアクセス規約](docs/legal/partner-access.ja.md)に基づいて利用できます。
+
+## インストール
+
+各バージョンは [GitHub のリリース](https://github.com/czarist/know-giver/releases/latest) として公開され、Windows（x64）、macOS（Apple シリコン）、Linux（x86_64）のパッケージがあります。次のコマンドで最新版をダウンロードし、リリースのチェックサムで確認してから、管理者権限なしでお使いのユーザーにインストールします。プランと進捗はそのまま残ります。
+
+**Windows**（PowerShell）：
+
+```powershell
+irm https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.ps1 | iex
+```
+
+**macOS**（ターミナル）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+**Linux**（ターミナル）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+インストール先は、Windows では `%LOCALAPPDATA%\Programs\KnowGiver`（スタートメニューに登録）、macOS では `~/Applications/Know Giver.app`、Linux では `~/.local/opt/KnowGiver`（`know-giver` コマンドとアプリメニューに登録）です。
+
+**アップデート：** 新しいバージョンが出ると、アプリの上部に細いバーが表示され、緑のダウンロードボタンで案内します。アプリがダウンロード・確認・インストールを行い、もう一度開きます。確認は 設定 → アプリについて・アップデート でオフにできます。
 
 ## はじめかた
 

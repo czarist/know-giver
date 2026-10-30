@@ -49,3 +49,5 @@ Name: "{userdesktop}\Know Giver"; Filename: "{app}\know-giver.exe"; Tasks: deskt
 
 [Run]
 Filename: "{app}\know-giver.exe"; Description: "{cm:LaunchProgram,Know Giver}"; Flags: nowait postinstall skipifsilent
+; Silent installs (the one-line install and in-app updates) open the new version.
+Filename: "{app}\know-giver.exe"; Flags: nowait; Check: WizardSilent

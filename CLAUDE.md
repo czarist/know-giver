@@ -58,6 +58,7 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Commit on that branch, then merge it into `dev` and push `dev`: `git switch dev && git merge --no-ff <branch> && git push origin dev`. Delete the task branch afterwards (`git branch -d <branch>`; also on `origin` if it was pushed).
 - Never commit or push to `main` directly.
 - A release still gets its CHANGELOG entry and version bump on the task branch. The annotated tag `vX.Y.Z` goes on `main` after the owner merges `dev` into `main`.
+- Pushing the tag runs `.github/workflows/packages.yml`: it tests and packages on Windows, macOS and Linux, then publishes a GitHub release with fixed asset names (`KnowGiver-setup.exe`, `KnowGiver-windows-x64.zip`, `KnowGiver-linux-x86_64.tar.gz`, `KnowGiver-macos-arm64.tar.gz`, `SHA256SUMS.txt`). The README one-line installs (`scripts/install.ps1`, `scripts/install.sh`) and the in-app updater (engine `update.rs`) depend on those names; change them together. Binaries are never committed to the repository.
 
 ## Planned exceptions (not implemented)
 Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external

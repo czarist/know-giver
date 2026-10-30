@@ -229,9 +229,37 @@ before are kept.
   scanned PDFs) are sent to it to be read. The app says where before sending; the photos
   stay in your data folder and are deleted with their attempt. Logs never hold images,
   answers or keys.
+- When it opens, the app asks GitHub for the latest version; only that request is sent,
+  and Settings → About and updates turns it off.
 - No account, telemetry or ads. Read the [Terms of Use](docs/legal/terms-of-use.en.md) and
   the [Privacy Policy](docs/legal/privacy-policy.en.md) (EU, UK and US), also shown in the
   app.
+
+## Install
+
+Each version is published as a [GitHub release](https://github.com/czarist/know-giver/releases/latest) with packages for Windows (x64), macOS (Apple silicon) and Linux (x86_64). One command downloads the latest, checks it against the release's checksums and installs it for your user, without administrator rights. Your plans and progress are kept.
+
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.ps1 | iex
+```
+
+**macOS** (Terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+**Linux** (terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+Windows installs to `%LOCALAPPDATA%\Programs\KnowGiver` with a Start menu entry; macOS to `~/Applications/Know Giver.app`; Linux to `~/.local/opt/KnowGiver`, with the `know-giver` command and an applications menu entry.
+
+**Updates:** when a newer version is out, a slim bar at the top of the app offers it with a green download button. The app downloads it, checks it, installs it and opens again. Settings → About and updates turns the check off.
 
 ## Quick start
 

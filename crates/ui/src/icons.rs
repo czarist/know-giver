@@ -24,6 +24,8 @@ pub enum Icon {
     Download,
     Mic,
     Writing,
+    GitHub,
+    Update,
 }
 
 impl Icon {
@@ -48,6 +50,8 @@ impl Icon {
             Self::Download => include_image!("../assets/icons/file-down.svg"),
             Self::Mic => include_image!("../assets/icons/mic.svg"),
             Self::Writing => include_image!("../assets/icons/pen-line.svg"),
+            Self::GitHub => include_image!("../assets/icons/github.svg"),
+            Self::Update => include_image!("../assets/icons/download.svg"),
         }
     }
 

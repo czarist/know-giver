@@ -1,6 +1,6 @@
 # Termos de Acesso de Parceiros do Know Giver
 
-Versão de 30 de outubro de 2026 (2026-10-30). Estes termos valem para todos os países e
+Versão de 31 de outubro de 2026 (2026-10-31). Estes termos valem para todos os países e
 regiões onde o Know Giver não é oferecido ao público.
 
 ## 1. Não oferecido ao público

@@ -54,6 +54,7 @@ nav:
   settings: "Configurações"
   in_progress: "em andamento"
   active_plan: "Plano ativo"
+  source: "Código no GitHub"
 
 status:
   not_started: "Não iniciado"
@@ -423,6 +424,15 @@ setup:
     read_privacy: "Ler a Política de Privacidade"
     agree: "Li e concordo com os Termos de Uso e a Política de Privacidade"
 
+update:
+  available: "Versão %{version} disponível"
+  failed: "Não deu para instalar a versão %{version} sozinho."
+  install: "Atualizar"
+  download: "Baixar"
+  notes: "Novidades"
+  later: "Agora não"
+  downloading: "Baixando a versão %{version}… %{percent}%"
+  installing: "Instalando a versão %{version}. O app vai fechar e abrir de novo."
 tour:
   step: "%{n} de %{total}"
   next: "Próximo"
@@ -570,6 +580,10 @@ settings:
     quick_hint: "Só o essencial: até 3 etapas, uma pergunta curta em cada."
     normal_hint: "Até 5 etapas com todos os pontos da apostila, um exemplo e uma pergunta de checagem em cada."
     full_hint: "Uma etapa por seção da apostila (até 8), com exemplos, pegadinhas de prova e mais perguntas."
+  about:
+    title: "Sobre e atualizações"
+    check_updates: "Procurar atualizações ao abrir"
+    check_updates_hint: "Ao abrir, o app pergunta ao GitHub qual é a versão mais recente. Só esse pedido sai do computador."
   legal:
     title: "Termos e privacidade"
     region: "País ou região: %{region}"

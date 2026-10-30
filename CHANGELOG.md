@@ -4,6 +4,29 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.33.0] - 2026-10-30
+
+### Added
+- **Updates:** when the app opens it asks GitHub for the latest release. A newer one shows a
+  slim bar at the top with a green download button: the app downloads this system's
+  package, checks it against the release's `SHA256SUMS.txt`, installs it and opens again
+  (the Windows installer runs silently; macOS and Linux run the install script). "Not now"
+  hides it until the next start; Settings → About and updates turns the check off.
+- **One-line installs** in every README: `irm …/install.ps1 | iex` on Windows and
+  `curl -fsSL …/install.sh | bash` on macOS (Apple silicon) and Linux (x86_64). They install
+  for the current user without administrator rights and keep study data.
+- **Releases:** a version tag now publishes a GitHub release with the Windows installer and
+  zip, the macOS and Linux packages and their checksums, under fixed names; notes come from
+  this changelog. The Windows build installs Inno Setup when the runner lacks it.
+- The GitHub mark next to the version in the sidebar, and in Settings → About and updates,
+  links to the source code.
+
+### Changed
+- Terms of use and privacy policy (2026-10-31, every language): GitHub is listed for the
+  update check (your IP address and the app version) and the update download. Everyone is
+  asked to agree again.
+- The silent Windows install opens the app afterwards.
+
 ## [0.32.1] - 2026-10-30
 
 ### Fixed
