@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.31.1. Everything an agent can build and check without a human ear, a
+Version 0.31.2. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`

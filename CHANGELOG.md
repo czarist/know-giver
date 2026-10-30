@@ -4,6 +4,18 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.31.2] - 2026-10-29
+
+### Changed
+- In English, the teachers are Helen, Lucy, Richard and Oliver (same initial and portrait
+  as Helena, Lia, Rafael and Otávio). The tutor introduces itself with the name in the
+  lesson's language.
+
+### Fixed
+- Terms of use and privacy policy wrapped unevenly: each source line of a list item
+  showed as its own line, and the first line could run past the edge. Paragraphs and list
+  items are now joined and wrap to the width, with the bullet's indent.
+
 ## [0.31.1] - 2026-10-29
 
 ### Fixed

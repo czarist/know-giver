@@ -662,10 +662,19 @@ fn navigation(ui: &mut egui::Ui, setup: &mut SetupUi, actions: &mut Actions) {
 
 /// A list item whose wrapped lines stay right of the bullet.
 pub(crate) fn bullet(ui: &mut egui::Ui, text: &str) {
+    const INDENT: f32 = 18.0;
     let p = theme::palette(ui.ctx());
+    let width = (ui.available_width() - INDENT).max(80.0);
     ui.horizontal_top(|ui| {
-        ui.label(RichText::new("•").color(p.accent));
-        ui.add(egui::Label::new(text).wrap());
+        ui.spacing_mut().item_spacing.x = 0.0;
+        ui.allocate_ui(egui::vec2(INDENT, 0.0), |ui| {
+            ui.set_width(INDENT);
+            ui.label(RichText::new("•").color(p.accent));
+        });
+        ui.allocate_ui(egui::vec2(width, 0.0), |ui| {
+            ui.set_max_width(width);
+            ui.add(egui::Label::new(text).wrap());
+        });
     });
 }
 

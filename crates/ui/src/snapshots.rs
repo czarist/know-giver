@@ -259,6 +259,41 @@ fn setup_snapshots() {
     }
 }
 
+/// The terms of use drawn at a narrow width: paragraphs and list items
+/// must wrap evenly.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn legal_snapshot() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in ["pt-BR", "en"] {
+        let mut harness = Harness::builder()
+            .with_size([620.0, 2400.0])
+            .build_ui(move |ui| {
+                let ready = egui::Id::new("theme_ready");
+                if !ui
+                    .ctx()
+                    .data(|d| d.get_temp::<bool>(ready))
+                    .unwrap_or(false)
+                {
+                    crate::theme::apply(ui.ctx());
+                    ui.ctx().data_mut(|d| d.insert_temp(ready, true));
+                    return;
+                }
+                egui::Frame::new()
+                    .fill(crate::theme::palette(ui.ctx()).surface)
+                    .inner_margin(egui::Margin::same(12))
+                    .show(ui, |ui| {
+                        crate::legal::show(ui, crate::legal::LegalDoc::Terms.text(locale));
+                    });
+            });
+        harness.run_steps(3);
+        let image = harness.render().unwrap();
+        if let Some(dir) = out.as_deref() {
+            image.save(dir.join(format!("{locale}-terms.png"))).unwrap();
+        }
+    }
+}
+
 /// The provider list as it opens, with logos and groups.
 #[test]
 #[ignore = "needs a GPU; run with --ignored"]

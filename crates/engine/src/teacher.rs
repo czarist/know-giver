@@ -16,6 +16,22 @@ pub enum Teacher {
 impl Teacher {
     pub const ALL: [Self; 4] = [Self::Helena, Self::Lia, Self::Rafael, Self::Otavio];
 
+    /// The name the tutor gives itself in lessons taught in English: an
+    /// English name with the same initial.
+    pub fn english_name(self) -> &'static str {
+        match self {
+            Self::Helena => "Helen",
+            Self::Lia => "Lucy",
+            Self::Rafael => "Richard",
+            Self::Otavio => "Oliver",
+        }
+    }
+
+    /// The name in the lesson's language.
+    pub fn name_in(self, language: kg_ai::PromptLanguage) -> &'static str {
+        language.pick(self.name(), self.english_name())
+    }
+
     /// The name the tutor gives itself in lessons.
     pub fn name(self) -> &'static str {
         match self {
@@ -77,6 +93,20 @@ mod tests {
             serde_json::to_string(&Teacher::Otavio).unwrap(),
             "\"otavio\""
         );
+    }
+
+    #[test]
+    fn english_lessons_use_english_names() {
+        use kg_ai::PromptLanguage;
+        assert_eq!(
+            Teacher::Otavio.name_in(PromptLanguage::Portuguese),
+            "Otávio"
+        );
+        assert_eq!(Teacher::Otavio.name_in(PromptLanguage::English), "Oliver");
+        for teacher in Teacher::ALL {
+            let (pt, en) = (teacher.name(), teacher.english_name());
+            assert_eq!(pt.chars().next(), en.chars().next(), "{teacher:?}");
+        }
     }
 
     #[test]

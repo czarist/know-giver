@@ -100,7 +100,8 @@ Besides key points, the tutor writes **formulas**, **diagrams**, **comparison ta
 
 ## Teachers & voices
 
-Choose who teaches: **Helena**, **Lia**, **Rafael** or **Otávio**.
+Choose who teaches: **Helen**, **Lucy**, **Richard** or **Oliver** (in Portuguese: Helena,
+Lia, Rafael and Otávio).
 Ink portraits that breathe, blink, nod while you talk and move their lips with the voice:
 human enough to talk to, drawn enough to stay out of the uncanny valley.
 

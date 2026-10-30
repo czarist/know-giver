@@ -930,14 +930,14 @@ error:
 
 teachers:
   helena:
-    name: "Helena"
+    name: "Helen"
     about: "Calm and organized. Voice: Dora."
   lia:
-    name: "Lia"
+    name: "Lucy"
     about: "Young and upbeat. Voice: Dii."
   rafael:
-    name: "Rafael"
+    name: "Richard"
     about: "Straight to the point. Voice: Faber."
   otavio:
-    name: "Otávio"
+    name: "Oliver"
     about: "Experienced and patient. Voice: Cadu."
