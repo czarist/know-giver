@@ -278,7 +278,11 @@ fn version(text: &str) -> Option<(u64, u64, u64)> {
     let core = text.trim().trim_start_matches('v');
     let core = core.split(['-', '+']).next()?;
     let mut parts = core.split('.').map(|p| p.parse::<u64>().ok());
-    Some((parts.next()??, parts.next()??, parts.next().unwrap_or(Some(0))?))
+    Some((
+        parts.next()??,
+        parts.next()??,
+        parts.next().unwrap_or(Some(0))?,
+    ))
 }
 
 /// The SHA-256 listed for `name` in a `sha256sum` file.
@@ -410,16 +414,26 @@ mod tests {
             );
         }
         // 0.40 is newer than 0.32, not older as text would say.
-        assert!(parse_release(&answer("v0.40.0"), "0.32.1", None).unwrap().is_some());
+        assert!(
+            parse_release(&answer("v0.40.0"), "0.32.1", None)
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]
     fn a_system_without_a_package_gets_the_release_page() {
-        let found = parse_release(&answer("v1.0.0"), "0.32.1", Some("KnowGiver-macos-arm64.tar.gz"))
+        let found = parse_release(
+            &answer("v1.0.0"),
+            "0.32.1",
+            Some("KnowGiver-macos-arm64.tar.gz"),
+        )
+        .unwrap()
+        .unwrap();
+        assert!(!found.installable());
+        let none = parse_release(&answer("v1.0.0"), "0.32.1", None)
             .unwrap()
             .unwrap();
-        assert!(!found.installable());
-        let none = parse_release(&answer("v1.0.0"), "0.32.1", None).unwrap().unwrap();
         assert!(!none.installable());
     }
 
@@ -430,12 +444,14 @@ mod tests {
         assert_eq!(version("1.2"), Some((1, 2, 0)));
         assert_eq!(version("latest"), None);
         let sums = "ABC123  KnowGiver-setup.exe\ndef456 *KnowGiver-linux-x86_64.tar.gz\n";
-        assert_eq!(expected_hash(sums, "KnowGiver-setup.exe").as_deref(), Some("abc123"));
+        assert_eq!(
+            expected_hash(sums, "KnowGiver-setup.exe").as_deref(),
+            Some("abc123")
+        );
         assert_eq!(
             expected_hash(sums, "KnowGiver-linux-x86_64.tar.gz").as_deref(),
             Some("def456")
         );
         assert_eq!(expected_hash(sums, "other"), None);
     }
-
 }
