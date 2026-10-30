@@ -629,6 +629,23 @@ Tasks:
 - [ ] Store the API key in the system keychain instead of the local database.
 - [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
       public release.
+- [ ] Security audit before a public release:
+  - updater (engine `update.rs`): releases are checked by SHA-256 from the same release,
+    not signed; consider signing (minisign or code signing on Windows and macOS) and
+    check that a download cannot write or run anything outside its temporary folder;
+  - one-line installs (`scripts/install.ps1`, `scripts/install.sh`): what they run, from
+    where, with which rights; the uninstaller only removes its own files;
+  - API keys: stored in the local database today (see the keychain item above); never in
+    logs, crash messages or exported files;
+  - untrusted input: editais, past exams and photos of written answers can carry prompt
+    injection; check that the model's answers cannot trigger file, network or process
+    actions, and that links opened from the UI are only `https`;
+  - child processes (Piper, later llama.cpp and LiteLLM): fixed paths, no shell, arguments
+    never built from user or model text;
+  - local data: SQLite file and model folders in `%LOCALAPPDATA%` or the platform
+    equivalent, with the user's permissions only;
+  - dependencies: `cargo audit` and `cargo deny` (advisories, licenses, sources) in CI;
+  - CI and releases: workflow token permissions, pinned actions, who can push tags.
 - [x] Streaming AI client with silent whiteboard metadata and sentence callbacks.
 - [x] Stream sentences into lesson playback before the full reply arrives (v0.17.0:
       first sentence at 2.7 s instead of 10.8 s in a live check).
