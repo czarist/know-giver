@@ -4,6 +4,18 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.32.1] - 2026-10-30
+
+### Fixed
+- Highlights in Chinese and Japanese handouts no longer get a space where a line breaks
+  (the text in the highlight list read "短语 ，剩下的").
+
+### Changed
+- README screenshots in each README's own language: Japanese and Chinese now show the
+  lesson, exam notice, whiteboard, reader, written answers, today, exam board and tour in
+  their language, and the Portuguese README its own whiteboard. The screenshot tests
+  render every screen in all five languages, with demo content written for each.
+
 ## [0.32.0] - 2026-10-30
 
 ### Added

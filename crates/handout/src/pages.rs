@@ -87,23 +87,12 @@ impl Pages {
         self.text.get(page).map_or(&[], Vec::as_slice)
     }
 
-    /// The text of a run of boxes on a page, with a space where a line breaks.
+    /// The text of a run of boxes on a page, with a space where a line
+    /// breaks (none next to Chinese or Japanese text).
     pub fn text_of(&self, page: usize, range: Range<usize>) -> String {
         let boxes = self.text(page);
         let range = range.start.min(boxes.len())..range.end.min(boxes.len());
-        let mut out = String::new();
-        let mut last_top: Option<f32> = None;
-        for b in &boxes[range] {
-            if let Some(top) = last_top
-                && (b.rect[1] - top).abs() > 2.0
-                && !out.ends_with(' ')
-            {
-                out.push(' ');
-            }
-            out.push_str(&b.text);
-            last_top = Some(b.rect[1]);
-        }
-        out.split_whitespace().collect::<Vec<_>>().join(" ")
+        join_boxes(boxes[range].iter().map(|b| (b.text.as_str(), b.rect[1])))
     }
 
     /// Boxes `first..=last` of a page joined into one rectangle per line
@@ -175,4 +164,62 @@ fn apply(ts: Transform, p: Point) -> [f32; 2] {
     let x = ts.sx.get() * p.x.to_pt() + ts.kx.get() * p.y.to_pt() + ts.tx.to_pt();
     let y = ts.ky.get() * p.x.to_pt() + ts.sy.get() * p.y.to_pt() + ts.ty.to_pt();
     [x as f32, y as f32]
+}
+
+/// Joins `(text, top)` boxes in reading order: a line break becomes a space,
+/// except next to Chinese or Japanese characters, which take no spaces.
+fn join_boxes<'a>(boxes: impl Iterator<Item = (&'a str, f32)>) -> String {
+    let mut out = String::new();
+    let mut last_top: Option<f32> = None;
+    for (text, top) in boxes {
+        let breaks = last_top.is_some_and(|last| (top - last).abs() > 2.0);
+        if breaks {
+            let cjk = out.trim_end().chars().last().is_some_and(is_cjk)
+                || text.trim_start().chars().next().is_some_and(is_cjk);
+            if cjk {
+                out.truncate(out.trim_end().len());
+                out.push_str(text.trim_start());
+            } else {
+                if !out.ends_with(' ') {
+                    out.push(' ');
+                }
+                out.push_str(text);
+            }
+        } else {
+            out.push_str(text);
+        }
+        last_top = Some(top);
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Han, kana and their full-width punctuation.
+fn is_cjk(c: char) -> bool {
+    matches!(c,
+        '\u{3000}'..='\u{30FF}'
+        | '\u{3400}'..='\u{4DBF}'
+        | '\u{4E00}'..='\u{9FFF}'
+        | '\u{F900}'..='\u{FAFF}'
+        | '\u{FF00}'..='\u{FFEF}')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::join_boxes;
+
+    #[test]
+    fn line_breaks_become_spaces_except_in_chinese_and_japanese() {
+        let latin = [("The list of", 10.0), ("names is long.", 24.0)];
+        assert_eq!(join_boxes(latin.into_iter()), "The list of names is long.");
+        let chinese = [("先去掉以 of 开头的短语", 10.0), ("，剩下的就是中心词", 24.0)];
+        assert_eq!(
+            join_boxes(chinese.into_iter()),
+            "先去掉以 of 开头的短语，剩下的就是中心词"
+        );
+        let japanese = [("動詞は主語に", 10.0), ("一致します。", 24.0), ("the list", 38.0)];
+        assert_eq!(
+            join_boxes(japanese.into_iter()),
+            "動詞は主語に一致します。the list"
+        );
+    }
 }

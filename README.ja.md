@@ -24,7 +24,7 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/lesson.png" alt="レッスン画面：先生の肖像と字幕、要点の板書、受験者のマイク" width="100%">
+  <img src="docs/images/ja/lesson.png" alt="レッスン画面：先生の肖像と字幕、要点の板書、受験者のマイク" width="100%">
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@
 - **スキャンしたPDF。** 文字のないページは、設定した画像対応モデルで書き起こせます。
 
 <p align="center">
-  <img src="docs/images/edital-roles.png" alt="複数の職種がある試験要項から職種を選ぶ画面" width="80%">
+  <img src="docs/images/ja/edital-roles.png" alt="複数の職種がある試験要項から職種を選ぶ画面" width="80%">
 </p>
 
 ## レッスン
@@ -66,17 +66,21 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 要点に加えて、先生は**式**、**図**、**比較表**、**年表**、**マインドマップ**、**試験のポイント**、**例**を書き、Wikipedia の**画像**も表示します（コンピューターから出るのは検索語だけです）。
 
 <p align="center">
-  <img src="docs/images/whiteboard.png" alt="板書の項目：式、図、表、年表、マインドマップ、試験のポイント" width="80%">
+  <img src="docs/images/ja/whiteboard.png" alt="板書の項目：式、図、表、年表、マインドマップ、試験のポイント" width="80%">
 </p>
 
 先生は4人：**遥**、**莉子**、**涼**、**修**。呼吸し、まばたきし、うなずくインクの肖像です。
+
+<p align="center">
+  <img src="docs/images/teachers.png" alt="4人の先生の状態：休んでいる、聞いている、考えている、話している" width="70%">
+</p>
 
 ## テキストを読んでマーカーを引く
 
 作ったテキストはアプリの中で、PDFとまったく同じページで開きます。文章をドラッグしてマーカーを引き、クリックしてメモを書き、サイドの一覧からすべてのマーカーに移動できます。どこまで読んだかを覚えていて、マーカー付きのPDFも保存できます。
 
 <p align="center">
-  <img src="docs/images/reader.png" alt="テキストを読む画面：マーカーを引いた箇所、メモ、読んだ割合" width="100%">
+  <img src="docs/images/ja/reader.png" alt="テキストを読む画面：マーカーを引いた箇所、メモ、読んだ割合" width="100%">
 </p>
 
 ## 練習・復習・テキスト
@@ -99,6 +103,20 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 
 写真は設定 → AI の**画像対応モデル**が読み取ります。字数で評価する日本の小論文では、課題の指示に字数が示されます。
 
+<table>
+  <tr>
+    <td><img src="docs/images/ja/writing-check.png" alt="読み取りの確認：写真と、編集できる書き起こし、不確かな語の一覧"></td>
+    <td><img src="docs/images/ja/writing.png" alt="採点済みの小論文：要項の評価基準、基準ごとの目安の点数と引用、課題と改善案"></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><img src="docs/images/ja/today.png" alt="今日：連続日数、今日の復習、次のステップ"></td>
+    <td><img src="docs/images/ja/board.png" alt="過去問：プランに対応づけた問題と、範囲外として除いた問題"></td>
+  </tr>
+</table>
+
 ## 初回設定
 
 最初に5つの短いステップがあります：言語、名前、先生、AIとキー、国・地域と規約への同意。21のAI提供元から選べ（**Z.ai** はコスパ、**Claude** は正確さでおすすめ）、キーの作成ページへのリンクがあります。その後、画面を案内する短いツアーがあります。
@@ -109,6 +127,10 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
     <td><img src="docs/images/ja/setup-terms.png" alt="初回設定の規約のステップ"></td>
   </tr>
 </table>
+
+<p align="center">
+  <img src="docs/images/ja/tour.png" alt="ツアー：サイドバーのレッスンに印がつき、画面を説明するカード" width="80%">
+</p>
 
 ## プライバシー
 
