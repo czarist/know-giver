@@ -100,7 +100,7 @@ resolvidos**, e mostra **imagens** da Wikipédia (só o termo de busca sai do se
 computador).
 
 <p align="center">
-  <img src="docs/images/whiteboard.png" alt="Itens do quadro: fórmula, diagrama, tabela, linha do tempo, mapa mental e dica de prova" width="80%">
+  <img src="docs/images/pt-BR/whiteboard.png" alt="Itens do quadro: fórmula, diagrama, tabela, linha do tempo, mapa mental e dica de prova" width="80%">
 </p>
 
 ## Professores e vozes
