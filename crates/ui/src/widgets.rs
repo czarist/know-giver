@@ -201,3 +201,12 @@ pub fn primary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
 pub fn megabytes(bytes: u64) -> String {
     format!("{:.0}", bytes as f64 / 1_000_000.0)
 }
+
+/// A link that opens `url` in the system's browser.
+pub fn link(ui: &mut egui::Ui, text: &str, url: &str) -> egui::Response {
+    let response = ui.link(text).on_hover_text(url);
+    if response.clicked() {
+        crate::app::open_url(url);
+    }
+    response
+}

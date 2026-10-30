@@ -688,10 +688,10 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
             });
         if let Some(provider) = current {
             if !provider.key_url.is_empty() {
-                ui.hyperlink_to(t!("setup.ai.get_key"), provider.key_url);
+                widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
             }
             if !provider.site.is_empty() {
-                ui.hyperlink_to(t!("setup.ai.prices"), provider.site);
+                widgets::link(ui, &t!("setup.ai.prices"), provider.site);
             }
         }
     });

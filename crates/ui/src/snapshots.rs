@@ -268,7 +268,11 @@ fn provider_list_snapshot() {
     let mut harness = Harness::builder().with_size([460.0, 860.0]).build_ui(|ui| {
         // Fonts load between frames: set them up first, draw from the next one.
         let ready = egui::Id::new("theme_ready");
-        if !ui.ctx().data(|d| d.get_temp::<bool>(ready)).unwrap_or(false) {
+        if !ui
+            .ctx()
+            .data(|d| d.get_temp::<bool>(ready))
+            .unwrap_or(false)
+        {
             crate::theme::apply(ui.ctx());
             egui_extras::install_image_loaders(ui.ctx());
             ui.ctx().data_mut(|d| d.insert_temp(ready, true));

@@ -395,6 +395,25 @@ pub(crate) fn open_file(path: &std::path::Path) {
     }
 }
 
+/// Opens a web page in the system's browser. Only http(s) addresses.
+pub(crate) fn open_url(url: &str) {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return;
+    }
+    let mut command = if cfg!(windows) {
+        let mut c = std::process::Command::new("rundll32");
+        c.arg("url.dll,FileProtocolHandler");
+        c
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open")
+    } else {
+        std::process::Command::new("xdg-open")
+    };
+    if let Err(err) = command.arg(url).spawn() {
+        tracing::warn!(%err, url, "could not open link");
+    }
+}
+
 /// Counts shown next to sidebar entries.
 #[derive(Debug, Default)]
 struct Badges {

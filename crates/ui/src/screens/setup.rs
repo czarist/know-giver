@@ -346,13 +346,13 @@ fn links(ui: &mut egui::Ui, provider: &kg_engine::Provider) {
     }
     ui.horizontal(|ui| {
         if !provider.key_url.is_empty() {
-            ui.hyperlink_to(t!("setup.ai.get_key"), provider.key_url);
+            widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
         }
         if !provider.key_url.is_empty() && !provider.site.is_empty() {
             ui.label(RichText::new("·").color(p.muted));
         }
         if !provider.site.is_empty() {
-            ui.hyperlink_to(t!("setup.ai.prices"), provider.site);
+            widgets::link(ui, &t!("setup.ai.prices"), provider.site);
         }
     });
 }
@@ -451,48 +451,54 @@ fn recommendation_card(
         kg_engine::Recommendation::Value => t!("setup.ai.value_text"),
         kg_engine::Recommendation::Accuracy => t!("setup.ai.accuracy_text"),
     };
-    let response = egui::Frame::new()
-        .fill(if selected {
-            p.accent.gamma_multiply(0.12)
-        } else {
-            p.surface
-        })
-        .stroke(egui::Stroke::new(
-            if selected { 2.0 } else { 1.0 },
-            if selected { p.accent } else { p.border },
-        ))
-        .corner_radius(6.0)
-        .inner_margin(egui::Margin::same(16))
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            ui.set_min_height(RECOMMENDATION_HEIGHT);
-            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-                ui.spacing_mut().item_spacing.y = 6.0;
-                ui.horizontal(|ui| {
-                    widgets::chip(ui, &recommendation(why), p.highlight);
-                    if selected {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.add(crate::icons::Icon::Check.image(18.0, p.accent));
+    // The click area sits under the card's content, so its links still work.
+    let response = ui
+        .scope_builder(egui::UiBuilder::new().sense(egui::Sense::click()), |ui| {
+            egui::Frame::new()
+                .fill(if selected {
+                    p.accent.gamma_multiply(0.12)
+                } else {
+                    p.surface
+                })
+                .stroke(egui::Stroke::new(
+                    if selected { 2.0 } else { 1.0 },
+                    if selected { p.accent } else { p.border },
+                ))
+                .corner_radius(6.0)
+                .inner_margin(egui::Margin::same(16))
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.set_min_height(RECOMMENDATION_HEIGHT);
+                    ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                        ui.spacing_mut().item_spacing.y = 6.0;
+                        ui.horizontal(|ui| {
+                            widgets::chip(ui, &recommendation(why), p.highlight);
+                            if selected {
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        ui.add(crate::icons::Icon::Check.image(18.0, p.accent));
+                                    },
+                                );
+                            }
                         });
-                    }
+                        ui.add_space(2.0);
+                        ui.label(
+                            RichText::new(provider.name)
+                                .family(theme::strong_family())
+                                .size(17.0),
+                        );
+                        ui.label(RichText::new(text).color(p.muted));
+                        ui.add_space(4.0);
+                        ui.horizontal(|ui| {
+                            widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
+                            ui.label(RichText::new("·").color(p.muted));
+                            widgets::link(ui, &t!("setup.ai.prices"), provider.site);
+                        });
+                    });
                 });
-                ui.add_space(2.0);
-                ui.label(
-                    RichText::new(provider.name)
-                        .family(theme::strong_family())
-                        .size(17.0),
-                );
-                ui.label(RichText::new(text).color(p.muted));
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.hyperlink_to(t!("setup.ai.get_key"), provider.key_url);
-                    ui.label(RichText::new("·").color(p.muted));
-                    ui.hyperlink_to(t!("setup.ai.prices"), provider.site);
-                });
-            });
         })
         .response
-        .interact(egui::Sense::click())
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
         setup.pick_provider(provider);

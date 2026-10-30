@@ -4,6 +4,14 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.31.1] - 2026-10-29
+
+### Fixed
+- "Create a key" and "Prices and details" did not open the browser:
+  - the links on the recommended cards were covered by the card's own click area;
+  - links now open through the system (`rundll32` on Windows, `open` on macOS,
+    `xdg-open` on Linux), like PDFs do.
+
 ## [0.31.0] - 2026-10-29
 
 ### Added
