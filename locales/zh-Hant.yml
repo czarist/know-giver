@@ -21,6 +21,7 @@ region:
   tw: "臺灣"
   hk: "香港"
   sg: "新加坡"
+  cn: "中國大陸（僅限授權合作夥伴）"
   other: "其他國家和地區（僅限授權合作伙伴）"
 
 format:
@@ -348,7 +349,7 @@ setup:
   title: "我們來設定 Know Giver"
   subtitle: "五個簡單步驟。你的計劃和進度都保持不變。"
   steps:
-    language: "語言"
+    language: "語言和地區"
     name: "名字"
     teacher: "老師"
     ai: "AI"
@@ -357,7 +358,7 @@ setup:
   next: "繼續"
   finish: "同意並開始"
   missing:
-    language: "請選擇語言"
+    language: "請選擇語言和國家或地區"
     name: "請輸入你的名字"
     teacher: "請選擇老師"
     ai: "請選擇服務商和模型，並填寫金鑰"

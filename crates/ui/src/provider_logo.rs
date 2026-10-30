@@ -16,8 +16,8 @@ fn source(id: &str) -> Option<ImageSource<'static>> {
         "ollama" => include_image!("../assets/providers/ollama.svg"),
         "perplexity" => include_image!("../assets/providers/perplexity.svg"),
         "nvidia" => include_image!("../assets/providers/nvidia.svg"),
-        "qwen" => include_image!("../assets/providers/qwen.svg"),
-        "moonshot" => include_image!("../assets/providers/kimi.svg"),
+        "qwen" | "bailian" => include_image!("../assets/providers/qwen.svg"),
+        "moonshot" | "moonshot-cn" => include_image!("../assets/providers/kimi.svg"),
         "lmstudio" => include_image!("../assets/providers/lmstudio.svg"),
         _ => return None,
     })

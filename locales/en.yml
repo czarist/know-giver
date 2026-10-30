@@ -21,6 +21,7 @@ region:
   tw: "Taiwan"
   hk: "Hong Kong"
   sg: "Singapore"
+  cn: "Mainland China (authorized partners only)"
   other: "Other countries and regions (authorized partners only)"
 
 format:
@@ -348,7 +349,7 @@ setup:
   title: "Let's set up Know Giver"
   subtitle: "Five quick steps. Your plans and progress stay as they are."
   steps:
-    language: "Language"
+    language: "Language and region"
     name: "Name"
     teacher: "Teacher"
     ai: "AI"
@@ -357,7 +358,7 @@ setup:
   next: "Continue"
   finish: "Agree and start"
   missing:
-    language: "Choose a language"
+    language: "Choose a language and your country or region"
     name: "Type your name"
     teacher: "Choose a teacher"
     ai: "Choose the provider and model, and enter the key"

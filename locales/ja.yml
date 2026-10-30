@@ -21,6 +21,7 @@ region:
   tw: "台湾"
   hk: "香港"
   sg: "シンガポール"
+  cn: "中国本土（認定パートナーのみ）"
   other: "その他の国・地域（認定パートナーのみ）"
 
 format:
@@ -348,7 +349,7 @@ setup:
   title: "Know Giver の準備をしましょう"
   subtitle: "5つの簡単なステップです。プランと進捗はそのまま残ります。"
   steps:
-    language: "言語"
+    language: "言語と地域"
     name: "名前"
     teacher: "先生"
     ai: "AI"
@@ -357,7 +358,7 @@ setup:
   next: "次へ"
   finish: "同意して始める"
   missing:
-    language: "言語を選んでください"
+    language: "言語と国・地域を選んでください"
     name: "名前を入力してください"
     teacher: "先生を選んでください"
     ai: "提供元とモデルを選び、キーを入力してください"

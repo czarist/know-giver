@@ -311,32 +311,36 @@ fn legal_snapshot() {
 fn provider_list_snapshot() {
     let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
     crate::i18n::set("pt-BR");
-    let mut harness = Harness::builder().with_size([460.0, 860.0]).build_ui(|ui| {
-        // Fonts load between frames: set them up first, draw from the next one.
-        let ready = egui::Id::new("theme_ready");
-        if !ui
-            .ctx()
-            .data(|d| d.get_temp::<bool>(ready))
-            .unwrap_or(false)
-        {
-            crate::theme::apply(ui.ctx());
-            egui_extras::install_image_loaders(ui.ctx());
-            ui.ctx().data_mut(|d| d.insert_temp(ready, true));
-            return;
-        }
-        egui::Frame::new()
-            .fill(crate::theme::palette(ui.ctx()).surface)
-            .inner_margin(egui::Margin::same(8))
-            .show(ui, |ui| {
-                crate::screens::setup::provider_list(ui, Some("anthropic"));
+    for (mainland, name) in [(false, "providers"), (true, "providers-mainland")] {
+        let mut harness = Harness::builder()
+            .with_size([460.0, 1000.0])
+            .build_ui(move |ui| {
+                // Fonts load between frames: set them up first, draw from the next one.
+                let ready = egui::Id::new("theme_ready");
+                if !ui
+                    .ctx()
+                    .data(|d| d.get_temp::<bool>(ready))
+                    .unwrap_or(false)
+                {
+                    crate::theme::apply(ui.ctx());
+                    egui_extras::install_image_loaders(ui.ctx());
+                    ui.ctx().data_mut(|d| d.insert_temp(ready, true));
+                    return;
+                }
+                egui::Frame::new()
+                    .fill(crate::theme::palette(ui.ctx()).surface)
+                    .inner_margin(egui::Margin::same(8))
+                    .show(ui, |ui| {
+                        crate::screens::setup::provider_list(ui, None, mainland);
+                    });
             });
-    });
-    harness.run_steps(4);
-    std::thread::sleep(std::time::Duration::from_millis(150));
-    harness.run_steps(4);
-    let image = harness.render().unwrap();
-    if let Some(dir) = out.as_deref() {
-        image.save(dir.join("providers.png")).unwrap();
+        harness.run_steps(4);
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        harness.run_steps(4);
+        let image = harness.render().unwrap();
+        if let Some(dir) = out.as_deref() {
+            image.save(dir.join(format!("{name}.png"))).unwrap();
+        }
     }
 }
 

@@ -30,6 +30,15 @@ All notable changes to Know Giver. Format based on
   offered to the public, only to partners authorized in writing. The text names no
   country.
 - Settings show the region, with **Change country or region**.
+- **Mainland China** in the region list, always as authorized partners only (Partner
+  Access Terms).
+  - The AI list there shows only services that serve mainland China: Zhipu BigModel,
+    Alibaba Bailian (Qwen), DeepSeek, Moonshot Kimi, Baidu Qianfan, Tencent Hunyuan, Volcano
+    Engine Ark (Doubao), and local servers.
+  - Qwen Max on Bailian takes Claude's place as the most accurate pick, and Zhipu takes
+    Z.ai's as best value.
+- The region is chosen in the first step, with the language, so the AI step can list the
+  services available there.
 
 ### Changed
 - Terms version 2026-10-30: everyone agrees again, choosing a region. Returning students

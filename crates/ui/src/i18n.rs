@@ -44,6 +44,7 @@ pub fn region_name(region: kg_engine::Region) -> String {
         Region::Tw => t!("region.tw"),
         Region::Hk => t!("region.hk"),
         Region::Sg => t!("region.sg"),
+        Region::Cn => t!("region.cn"),
         Region::Other => t!("region.other"),
     }
     .into_owned()
