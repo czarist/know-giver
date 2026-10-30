@@ -41,6 +41,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.add_space(12.0);
         models_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
+        about_section(ui, draft);
+        ui.add_space(12.0);
         legal_section(ui, engine, &mut actions);
         ui.add_space(12.0);
 
@@ -703,6 +705,20 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
 }
 
 /// Terms and privacy: when the student agreed, the texts, and the tour again.
+/// Version, update checks and the source code.
+fn about_section(ui: &mut egui::Ui, draft: &mut kg_engine::Settings) {
+    section(ui, &t!("settings.about.title"), |ui| {
+        widgets::hint(
+            ui,
+            &t!("app.version", version = env!("CARGO_PKG_VERSION")),
+        );
+        ui.checkbox(&mut draft.check_updates, t!("settings.about.check_updates"))
+            .on_hover_text(t!("settings.about.check_updates_hint"));
+        let muted = crate::theme::palette(ui.ctx()).muted;
+        crate::app::source_link(ui, muted);
+    });
+}
+
 fn legal_section(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     section(ui, &t!("settings.legal.title"), |ui| {
         let settings = engine.settings();

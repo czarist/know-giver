@@ -181,7 +181,7 @@ impl KnowGiverApp {
             Ok(e) if e.active_plan().is_some() => Screen::Today,
             _ => Screen::Edital,
         };
-        Self {
+        let mut app = Self {
             engine,
             ui: UiState {
                 screen,
@@ -210,7 +210,11 @@ impl KnowGiverApp {
             shown_since: 0.0,
             nav_rects: Vec::new(),
             fonts_locale: String::new(),
+        };
+        if !cfg!(test) {
+            app.dispatch(Command::CheckForUpdate);
         }
+        app
     }
 
     /// Sends a command to the engine; errors become toasts.
@@ -269,15 +273,28 @@ impl KnowGiverApp {
                                 .size(18.0)
                                 .color(p.text),
                         );
-                        ui.label(
-                            egui::RichText::new(t!(
-                                "app.version",
-                                version = env!("CARGO_PKG_VERSION")
-                            ))
-                            .family(theme::mono_family())
-                            .size(10.5)
-                            .color(p.muted),
-                        );
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 6.0;
+                            ui.label(
+                                egui::RichText::new(t!(
+                                    "app.version",
+                                    version = env!("CARGO_PKG_VERSION")
+                                ))
+                                .family(theme::mono_family())
+                                .size(10.5)
+                                .color(p.muted),
+                            );
+                            // The source code, as the GitHub mark.
+                            let mark = egui::Button::image(Icon::GitHub.image(12.0, p.muted))
+                                .frame(false);
+                            if ui
+                                .add(mark)
+                                .on_hover_text(t!("nav.source"))
+                                .clicked()
+                            {
+                                open_url(kg_engine::REPOSITORY);
+                            }
+                        });
                         widgets::kicker(ui, &t!("app.tagline"), p.muted);
                     });
                 });
@@ -399,6 +416,22 @@ pub(crate) fn open_file(path: &std::path::Path) {
 }
 
 /// Opens a web page in the system's browser. Only http(s) addresses.
+/// The GitHub mark and a link to the source code.
+pub(crate) fn source_link(ui: &mut egui::Ui, color: egui::Color32) {
+    let button = egui::Button::image_and_text(
+        icons::Icon::GitHub.image(14.0, color),
+        egui::RichText::new(t!("nav.source")).small().color(color),
+    )
+    .frame(false);
+    if ui
+        .add(button)
+        .on_hover_text(kg_engine::REPOSITORY)
+        .clicked()
+    {
+        open_url(kg_engine::REPOSITORY);
+    }
+}
+
 pub(crate) fn open_url(url: &str) {
     if !(url.starts_with("https://") || url.starts_with("http://")) {
         return;
@@ -500,6 +533,10 @@ impl eframe::App for KnowGiverApp {
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
                 engine.poll();
+                if engine.take_quit_request() {
+                    // The new version is installed or installing: make way.
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
                 let notices = engine.take_notices();
                 let mut go_to_reader = false;
                 let busy = engine.is_busy();
@@ -535,6 +572,7 @@ impl eframe::App for KnowGiverApp {
             self.ui.screen = Screen::Today;
         }
         if !needs_setup {
+            crate::update_bar::show(self, ui);
             self.sidebar(ui, &badges);
         }
         self.toasts(ui);

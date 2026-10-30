@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 30 de outubro de 2026 (2026-10-30). Esta é a versão para quem usa o
+Versão de 31 de outubro de 2026 (2026-10-31). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -72,7 +72,7 @@ necessário para cada tarefa, como explica a Política de Privacidade.
 ## 9. Serviços e conteúdos de terceiros
 
 O aplicativo pode acessar serviços de terceiros: o fornecedor de IA escolhido, a Wikipédia
-(imagens do quadro), sites de onde baixa modelos de voz e de reconhecimento de fala, e um
+(imagens do quadro), o GitHub (para procurar e baixar novas versões), sites de onde baixa modelos de voz e de reconhecimento de fala, e um
 serviço de voz na nuvem, se você ativar. Vozes, fontes e imagens de terceiros têm licenças
 próprias. A voz Dii, por exemplo, é só para uso pessoal e não comercial. A Trentin não
 controla esses serviços e não responde por eles.

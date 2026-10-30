@@ -16,10 +16,27 @@
 </p>
 
 <p align="center">
-  <img alt="Rust puro" src="https://img.shields.io/badge/Rust-puro-3f8f7c?style=flat-square&logo=rust&logoColor=white">
-  <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2c6b5c?style=flat-square">
-  <img alt="Voz local" src="https://img.shields.io/badge/voz-local-2c6b5c?style=flat-square">
-  <a href="#licença"><img alt="Licença: MIT OR Apache-2.0" src="https://img.shields.io/badge/licen%C3%A7a-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square"></a>
+  <a href="https://www.rust-lang.org"><img alt="Pure Rust, 2024 edition" src="https://img.shields.io/badge/pure%20Rust-2024-3f8f7c?style=flat-square&logo=rust&logoColor=white"></a>
+  <a href="https://github.com/emilk/egui"><img alt="UI: egui" src="https://img.shields.io/badge/UI-egui%200.36-2c6b5c?style=flat-square"></a>
+  <a href="https://www.sqlite.org"><img alt="Storage: SQLite" src="https://img.shields.io/badge/storage-SQLite-2c6b5c?style=flat-square&logo=sqlite&logoColor=white"></a>
+  <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
+  <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
+  <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
+  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+</p>
+
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
+  <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
+  <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
+</p>
+
+<p align="center">
+  <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
+  <a href="https://github.com/czarist/know-giver/tags"><img alt="Latest version" src="https://img.shields.io/github/v/tag/czarist/know-giver?sort=semver&label=version&color=2c6b5c&style=flat-square&logo=github&logoColor=white"></a>
+  <img alt="Languages: Portuguese, English, Japanese, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
+  <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
+  <a href="https://github.com/czarist/know-giver/actions/workflows/packages.yml"><img alt="Native packages build" src="https://img.shields.io/github/actions/workflow/status/czarist/know-giver/packages.yml?label=packages&style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
 
 <br>
@@ -220,9 +237,37 @@ um tour rápido pelas telas. Planos já criados são mantidos.
   páginas de PDFs escaneados) são enviadas a ele para leitura. O app diz para onde antes de
   enviar; as fotos ficam na sua pasta de dados e são apagadas junto com a tentativa. Os logs
   nunca guardam imagens, respostas ou chaves.
+- Ao abrir, o app pergunta ao GitHub qual é a versão mais recente; só esse pedido sai, e
+  Configurações → Sobre e atualizações desliga a busca.
 - Sem conta, telemetria ou anúncios. Leia os [Termos de Uso](docs/legal/terms-of-use.pt-BR.md)
   e a [Política de Privacidade](docs/legal/privacy-policy.pt-BR.md) (LGPD), também
   mostrados no app.
+
+## Instalação
+
+Cada versão sai como um [release no GitHub](https://github.com/czarist/know-giver/releases/latest), com pacotes para Windows (x64), macOS (Apple silicon) e Linux (x86_64). Um comando baixa a mais recente, confere com os checksums do release e instala para o seu usuário, sem precisar de administrador. Seus planos e o seu progresso continuam.
+
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.ps1 | iex
+```
+
+**macOS** (Terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+**Linux** (terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/install.sh | bash
+```
+
+No Windows, vai para `%LOCALAPPDATA%\Programs\KnowGiver`, com atalho no menu Iniciar; no macOS, para `~/Applications/Know Giver.app`; no Linux, para `~/.local/opt/KnowGiver`, com o comando `know-giver` e um atalho no menu de aplicativos.
+
+**Atualizações:** quando sai uma versão nova, uma barra discreta no topo do app oferece a atualização com um botão verde de download. O app baixa, confere, instala e abre de novo. Configurações → Sobre e atualizações desliga a busca.
 
 ## Começo rápido
 

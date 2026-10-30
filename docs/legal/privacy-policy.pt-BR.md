@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 30 de outubro de 2026 (2026-10-30), de acordo com a Lei Geral de Proteção de
+Versão de 31 de outubro de 2026 (2026-10-31), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -48,6 +48,7 @@ gravações temporárias de diagnóstico ficam só na pasta de dados.
 | Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Só se você configurar um modelo de visão e enviar fotos |
 | Wikipédia | O termo de busca de uma imagem do quadro | Se a opção de imagens estiver ligada |
 | Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz ou de fala |
+| GitHub | Um pedido da versão mais recente, que mostra o seu endereço IP e a versão do app; o pacote da nova versão, se você escolher atualizar | Cada vez que o app abre, se a busca de atualizações estiver ligada (Configurações → Sobre e atualizações) |
 | Serviço de voz na nuvem | O texto que o tutor vai falar | Só se você ativar a voz na nuvem |
 
 Muitos fornecedores de IA ficam fora do Brasil. Ao escolher um deles, os dados enviados

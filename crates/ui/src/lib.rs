@@ -20,6 +20,7 @@ mod screens;
 mod teacher;
 mod theme;
 mod tour;
+mod update_bar;
 mod whiteboard;
 mod widgets;
 mod working;

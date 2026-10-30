@@ -23,6 +23,7 @@ mod setup;
 mod stt;
 mod study_time;
 mod teacher;
+mod update;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -84,6 +85,7 @@ pub use settings::{
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
 pub use teacher::Teacher;
+pub use update::{REPOSITORY, Release, UpdateStatus};
 
 use kg_audio::ModelStore;
 use kg_study::Store;
@@ -155,6 +157,12 @@ pub enum Command {
     CompleteSetup(Box<Settings>),
     /// Ends (or skips) the guided tour of the screens.
     FinishTour,
+    /// Asks GitHub whether a newer version exists (when checks are on).
+    CheckForUpdate,
+    /// Downloads and installs the version on offer, then closes the app.
+    InstallUpdate,
+    /// Hides the update offer until the app opens again.
+    DismissUpdate,
     DownloadModel(ModelId),
     CancelDownload(ModelId),
     RemoveModel(ModelId),
@@ -406,6 +414,8 @@ pub(crate) enum Event {
         plan: PlanId,
         result: Result<Edital, EngineError>,
     },
+    UpdateChecked(Result<Option<update::Release>, String>),
+    UpdateInstalled(Result<(), String>),
 }
 
 /// Called by workers after sending an event, so the UI wakes up.
@@ -463,6 +473,7 @@ pub struct Engine {
     streak: u32,
     studied_today: bool,
     study_clock: study_time::StudyClock,
+    updates: update::Updates,
 
     notices: Vec<Notice>,
     events_tx: mpsc::Sender<Event>,
@@ -569,6 +580,7 @@ impl Engine {
             streak: 0,
             studied_today: false,
             study_clock: study_time::StudyClock::new(Self::today(), Instant::now()),
+            updates: update::Updates::default(),
             notices,
             events_tx,
             events_rx,
@@ -844,6 +856,18 @@ impl Engine {
             }
             Command::CompleteSetup(settings) => self.complete_setup(*settings),
             Command::FinishTour => self.finish_tour(),
+            Command::CheckForUpdate => {
+                self.check_for_update();
+                Ok(())
+            }
+            Command::InstallUpdate => {
+                self.install_update();
+                Ok(())
+            }
+            Command::DismissUpdate => {
+                self.dismiss_update();
+                Ok(())
+            }
             Command::ExportHandout(request) => self.export_handout(request),
             Command::ImportBoard {
                 path,
@@ -954,6 +978,14 @@ impl Engine {
                 Event::Prepare(event) => self.on_prepare_event(event),
                 Event::BoardImported(result) => self.on_board_imported(result),
                 Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),
+                Event::UpdateChecked(result) => {
+                    self.on_update_checked(result);
+                    Ok(())
+                }
+                Event::UpdateInstalled(result) => {
+                    self.on_update_installed(result);
+                    Ok(())
+                }
                 Event::Discursive(event) => self.on_discursive_event(event),
                 Event::EditalRevalidated { plan, result } => {
                     self.on_edital_revalidated(plan, result)

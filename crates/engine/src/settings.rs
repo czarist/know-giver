@@ -16,7 +16,7 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-10-30";
+pub const TERMS_VERSION: &str = "2026-10-31";
 
 /// Where the student uses the app; the terms follow its law. The app is
 /// offered to the public only in the listed regions; elsewhere ("other"),
@@ -132,6 +132,9 @@ pub struct Settings {
     /// Look up pictures for the lesson whiteboard on Portuguese Wikipedia
     /// (only the search term is sent).
     pub board_images: bool,
+    /// Ask GitHub for a newer version when the app opens (only that request
+    /// is sent).
+    pub check_updates: bool,
     /// Who teaches; `None` in settings saved before teachers existed (see
     /// [`Settings::teacher`]).
     #[serde(default, deserialize_with = "crate::teacher::lenient")]
@@ -178,6 +181,7 @@ impl Default for Settings {
             speech_expressiveness: kg_audio::DEFAULT_EXPRESSIVENESS,
             speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
             board_images: true,
+            check_updates: true,
             teacher: None,
             speech_rate: 0.95,
             quiz_size: 5,

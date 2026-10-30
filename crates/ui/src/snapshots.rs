@@ -1337,3 +1337,28 @@ fn whiteboard_snapshots() {
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }
+
+/// The update offer above the Today screen, in each language.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn update_bar_snapshots() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in crate::i18n::LOCALES {
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        seed(&paths, locale);
+        crate::i18n::set(locale);
+        let mut harness = Harness::builder()
+            .with_size([1180.0, 760.0])
+            .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+        crate::i18n::set(locale);
+        if let Ok(engine) = harness.state_mut().engine.as_mut() {
+            engine.simulate_update("0.33.0");
+        }
+        harness.state_mut().ui.screen = Screen::Today;
+        render(&mut harness, out.as_deref(), &format!("{locale}-update"));
+        harness.state_mut().ui.screen = Screen::Settings;
+        render(&mut harness, out.as_deref(), &format!("{locale}-settings-about"));
+    }
+    crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}

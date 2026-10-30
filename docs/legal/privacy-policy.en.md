@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of October 30, 2026 (2026-10-30). This international version applies in every
+Version of October 31, 2026 (2026-10-31). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -51,6 +51,7 @@ diagnostic recordings stay in the data folder.
 | The provider's vision model | Photos of written answers and pages of scanned PDFs | Only if you set a vision model and send photos |
 | Wikipedia | The search term for a whiteboard picture | If whiteboard pictures are on |
 | Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice or speech models |
+| GitHub | A request for the latest version, which shows your IP address and the app's version; the new version's package, if you choose to update | Each time the app opens, if update checks are on (Settings → About and updates) |
 | A cloud voice service | The text the tutor will speak | Only if you turn on cloud voices |
 
 Many AI providers are in other countries, so choosing one may transfer data
