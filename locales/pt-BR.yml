@@ -100,7 +100,7 @@ edital:
   generating_note: "Isso pode demorar: costuma levar de 30 segundos a 2 minutos."
   generating_then_prepare: "Isso pode demorar. Depois do plano, as apostilas e os quizzes de cada tópico começam a ser preparados; você acompanha na tela do plano."
   prepare_all: "Preparar apostilas e quizzes de todos os tópicos agora"
-  prepare_all_hint: "Escreve de uma vez a apostila e um banco de questões de cada tópico, e salva o PDF completo em Documentos › Know Giver. Leva alguns minutos por matéria, em segundo plano: você pode usar o app enquanto isso."
+  prepare_all_hint: "Escreve de uma vez a apostila e um banco de questões de cada tópico, e salva o PDF completo na pasta de dados do Know Giver. Leva alguns minutos por matéria, em segundo plano: você pode usar o app enquanto isso."
   your_plans: "Seus planos"
   no_plans: "Nenhum plano ainda."
   active: "Ativo"
@@ -111,7 +111,7 @@ edital:
 
 plan:
   prepare_all: "Preparar tudo agora"
-  prepare_all_hint: "Escreve as apostilas e os quizzes que faltam para todos os tópicos e salva o PDF completo em Documentos › Know Giver."
+  prepare_all_hint: "Escreve as apostilas e os quizzes que faltam para todos os tópicos e salva o PDF completo na pasta de dados do Know Giver."
   prepare_title: "Preparando o conteúdo do plano"
   prepare_writing: "Escrevendo e revisando: %{topics}"
   prepare_saving: "Montando o PDF completo"
@@ -166,6 +166,8 @@ reader:
   read: "Ler"
   continue: "Continuar lendo"
   open_pdf: "Abrir PDF"
+  export_pdf: "Exportar PDF"
+  export_pdf_title: "Exportar apostila"
   delete: "Excluir"
   not_opened: "Ainda não aberta"
   pages_read: "%{seen} de %{total} páginas lidas"
@@ -539,7 +541,6 @@ board:
 handout:
   whole_plan: "Plano completo"
   file_prefix: "apostila"
-  save_title: "Salvar apostila"
   pdf_filter: "Documento PDF"
   generated: "Gerada em %{date}"
   label:

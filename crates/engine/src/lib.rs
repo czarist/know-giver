@@ -227,6 +227,11 @@ pub enum Command {
     DeleteHighlight(HighlightId),
     /// Saves the open handout as a PDF with its highlights.
     ExportReading(PathBuf),
+    /// Copies a saved handout PDF to a location chosen by the user.
+    ExportSavedReading {
+        reading: ReadingId,
+        path: PathBuf,
+    },
 
     /// Asks for a written-answer proposal on the active plan.
     GenerateProposal(ProposalRequest),
@@ -756,6 +761,9 @@ impl Engine {
             Command::ExportReading(path) => {
                 self.export_reading(path);
                 Ok(())
+            }
+            Command::ExportSavedReading { reading, path } => {
+                self.export_saved_reading(reading, path)
             }
 
             Command::StartLesson(id) => {

@@ -350,6 +350,24 @@ impl Engine {
         Ok(())
     }
 
+    pub(crate) fn export_saved_reading(
+        &mut self,
+        id: ReadingId,
+        path: PathBuf,
+    ) -> Result<(), EngineError> {
+        let reading = self
+            .readings
+            .iter()
+            .find(|reading| reading.id == id)
+            .ok_or(EngineError::NoActivePlan)?;
+        std::fs::copy(&reading.path, &path).map_err(|source| EngineError::Export {
+            path: path.clone(),
+            source,
+        })?;
+        self.notices.push(Notice::Exported(path));
+        Ok(())
+    }
+
     /// Saves the open handout as a PDF at `path`, with its highlights.
     pub(crate) fn export_reading(&mut self, path: PathBuf) {
         let Some(reader) = &self.reader else {

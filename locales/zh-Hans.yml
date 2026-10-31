@@ -100,7 +100,7 @@ edital:
   generating_note: "可能需要一些时间，通常为 30 秒到 2 分钟。"
   generating_then_prepare: "可能需要一些时间。计划生成后，会开始为每个知识点准备讲义和测验，可在计划页面查看进度。"
   prepare_all: "现在为所有知识点准备讲义和测验"
-  prepare_all_hint: "一次性写好每个知识点的讲义和题库，并把完整 PDF 保存到「文档 › Know Giver」。每个科目需要几分钟，在后台进行，你可以继续使用应用。"
+  prepare_all_hint: "一次性写好每个知识点的讲义和题库，并把完整 PDF 保存到 Know Giver 的数据文件夹。每个科目需要几分钟，在后台进行，你可以继续使用应用。"
   your_plans: "你的计划"
   no_plans: "还没有计划。"
   active: "当前"
@@ -111,7 +111,7 @@ edital:
 
 plan:
   prepare_all: "现在全部准备"
-  prepare_all_hint: "为所有知识点补齐缺少的讲义和测验，并把完整 PDF 保存到「文档 › Know Giver」。"
+  prepare_all_hint: "为所有知识点补齐缺少的讲义和测验，并把完整 PDF 保存到 Know Giver 的数据文件夹。"
   prepare_title: "正在准备计划的内容"
   prepare_writing: "正在编写和审核：%{topics}"
   prepare_saving: "正在汇总完整 PDF"
@@ -166,6 +166,8 @@ reader:
   read: "阅读"
   continue: "继续阅读"
   open_pdf: "打开 PDF"
+  export_pdf: "导出 PDF"
+  export_pdf_title: "导出讲义"
   delete: "删除"
   not_opened: "尚未打开"
   pages_read: "%{total} 页中已读 %{seen} 页"
@@ -539,7 +541,6 @@ board:
 handout:
   whole_plan: "整个计划"
   file_prefix: "handout"
-  save_title: "保存讲义"
   pdf_filter: "PDF 文档"
   generated: "%{date} 生成"
   label:

@@ -100,7 +100,7 @@ edital:
   generating_note: "少し時間がかかります。通常は30秒〜2分です。"
   generating_then_prepare: "少し時間がかかります。プランの後、全トピックのテキストとクイズの準備が始まります。進み具合はプラン画面で確認できます。"
   prepare_all: "全トピックのテキストとクイズを今すぐ準備する"
-  prepare_all_hint: "各トピックのテキストと問題をまとめて作り、全体のPDFを「ドキュメント › Know Giver」に保存します。1科目につき数分かかりますが、バックグラウンドで進むのでアプリはそのまま使えます。"
+  prepare_all_hint: "各トピックのテキストと問題をまとめて作り、全体のPDFをKnow Giverのデータフォルダーに保存します。1科目につき数分かかりますが、バックグラウンドで進むのでアプリはそのまま使えます。"
   your_plans: "あなたのプラン"
   no_plans: "まだプランがありません。"
   active: "使用中"
@@ -111,7 +111,7 @@ edital:
 
 plan:
   prepare_all: "今すぐすべて準備する"
-  prepare_all_hint: "足りないテキストとクイズを全トピック分作り、全体のPDFを「ドキュメント › Know Giver」に保存します。"
+  prepare_all_hint: "足りないテキストとクイズを全トピック分作り、全体のPDFをKnow Giverのデータフォルダーに保存します。"
   prepare_title: "プランの教材を準備中"
   prepare_writing: "作成と確認中：%{topics}"
   prepare_saving: "全体のPDFをまとめています"
@@ -166,6 +166,8 @@ reader:
   read: "読む"
   continue: "続きを読む"
   open_pdf: "PDFを開く"
+  export_pdf: "PDFを書き出す"
+  export_pdf_title: "テキストを書き出す"
   delete: "削除"
   not_opened: "未読"
   pages_read: "%{total} ページ中 %{seen} ページ既読"
@@ -539,7 +541,6 @@ board:
 handout:
   whole_plan: "プラン全体"
   file_prefix: "handout"
-  save_title: "テキストを保存"
   pdf_filter: "PDF文書"
   generated: "%{date} 作成"
   label:

@@ -4,6 +4,16 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.35.0] - 2026-10-31
+
+### Added
+- Generated handout PDFs are kept in the app's local data folder. The handout library
+  can export a copy to a location chosen by the student.
+
+### Changed
+- Generating a handout with an existing file name now creates a numbered copy instead
+  of replacing the previous PDF.
+
 ## [0.34.1] - 2026-10-30
 
 ### Fixed

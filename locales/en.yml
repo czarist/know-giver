@@ -100,7 +100,7 @@ edital:
   generating_note: "This can take a while: usually 30 seconds to 2 minutes."
   generating_then_prepare: "This can take a while. After the plan, handouts and quizzes for every topic start being prepared; follow along on the plan screen."
   prepare_all: "Prepare handouts and quizzes for every topic now"
-  prepare_all_hint: "Writes each topic's handout and a question bank in one go, and saves the full PDF to Documents › Know Giver. Takes a few minutes per subject, in the background: you can keep using the app."
+  prepare_all_hint: "Writes each topic's handout and a question bank in one go, and saves the full PDF in Know Giver's data folder. Takes a few minutes per subject, in the background: you can keep using the app."
   your_plans: "Your plans"
   no_plans: "No plans yet."
   active: "Active"
@@ -111,7 +111,7 @@ edital:
 
 plan:
   prepare_all: "Prepare everything now"
-  prepare_all_hint: "Writes the missing handouts and quizzes for every topic and saves the full PDF to Documents › Know Giver."
+  prepare_all_hint: "Writes the missing handouts and quizzes for every topic and saves the full PDF in Know Giver's data folder."
   prepare_title: "Preparing the plan's content"
   prepare_writing: "Writing and reviewing: %{topics}"
   prepare_saving: "Putting the full PDF together"
@@ -166,6 +166,8 @@ reader:
   read: "Read"
   continue: "Continue reading"
   open_pdf: "Open PDF"
+  export_pdf: "Export PDF"
+  export_pdf_title: "Export handout"
   delete: "Delete"
   not_opened: "Not opened yet"
   pages_read: "%{seen} of %{total} pages read"
@@ -539,7 +541,6 @@ board:
 handout:
   whole_plan: "Full plan"
   file_prefix: "handout"
-  save_title: "Save handout"
   pdf_filter: "PDF document"
   generated: "Generated on %{date}"
   label:
