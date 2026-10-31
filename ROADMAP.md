@@ -171,10 +171,10 @@ Inno Setup 6).
 - [x] Render to PDF in pure Rust (`typst` as a library), with embedded fonts
 - [x] Export one topic, one subject or the whole plan as a single handout, with table of contents
 - [x] Cache generated text in SQLite so regenerating the PDF is free; "write again" for a new version
-- [x] Open or save the PDF from the Plan screen
+- [x] Open handouts in the reader and export their PDFs from the handout library
 - [x] Prepare everything at once (v0.19.0): optional on plan creation, or "Prepare
       everything now"; handouts plus a 10-question quiz bank per topic, then the plan PDF
-      in Documents › Know Giver, with a progress panel and time estimate
+      in the app's local data folder, with a progress panel and time estimate
 - [ ] Run "prepare everything" on a real full plan (40+ topics) and record time, failures
       and rate-limit behaviour with 3 topics in parallel
 - [x] Pictures in handouts (v0.26.0): one per topic and up to two per topic in sections,
