@@ -184,6 +184,22 @@ fn reading_card(ui: &mut egui::Ui, reading: &Reading, actions: &mut Actions) {
                     if ui.button(t!("reader.delete")).clicked() {
                         actions.send(Command::DeleteReading(reading.id));
                     }
+                    if ui.button(t!("reader.export_pdf")).clicked()
+                        && let Some(path) = rfd::FileDialog::new()
+                            .set_title(t!("reader.export_pdf_title"))
+                            .set_file_name(format!(
+                                "{}-{}.pdf",
+                                t!("handout.file_prefix"),
+                                kg_engine::slug(&reading.title)
+                            ))
+                            .add_filter(t!("handout.pdf_filter"), &["pdf"])
+                            .save_file()
+                    {
+                        actions.send(Command::ExportSavedReading {
+                            reading: reading.id,
+                            path,
+                        });
+                    }
                     if ui.button(t!("reader.open_pdf")).clicked() {
                         crate::app::open_file(std::path::Path::new(&reading.path));
                     }

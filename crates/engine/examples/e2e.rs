@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let t = plan.find_topic(topic).ok_or("topic vanished")?.1;
     println!("topic after: {:?} due {:?}", t.status, t.review.due);
 
-    // Handout for the first topic, saved next to the edital (or in $KG_E2E_OUT).
+    // Handouts stay in the app data folder; optionally export a copy.
     let out = std::env::var("KG_E2E_OUT")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::env::temp_dir().join("kg-e2e-apostila.pdf"));
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
     engine.handle(Command::ExportHandout(kg_engine::HandoutRequest {
         scope: kg_engine::HandoutScope::Topic(topic),
-        path: out.clone(),
+        file_name: "handout-e2e-topic-test.pdf".into(),
         title,
         subtitle: "Tópico de teste".into(),
         generated: "Gerada pelo teste e2e".into(),
@@ -125,9 +125,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         regenerate: false,
     }))?;
     wait(&mut engine, "handout", |e| e.handout_job().is_none())?;
+    let reading = engine.readings().last().ok_or("handout was not saved")?;
+    let saved = std::path::PathBuf::from(&reading.path);
+    engine.handle(Command::ExportSavedReading {
+        reading: reading.id,
+        path: out.clone(),
+    })?;
     println!(
-        "handout in {:?}: {} ({} topics cached)",
+        "handout generated in {:?}; saved in {}; exported to {} ({} topics cached)",
         started.elapsed(),
+        saved.display(),
         out.display(),
         engine.handouts_cached()
     );

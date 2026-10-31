@@ -29,12 +29,11 @@ pub enum HandoutScope {
     Plan,
 }
 
-/// Everything the UI decides about the PDF: where it goes and its fixed
-/// words, already translated.
+/// The handout content and file name selected by the UI.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HandoutRequest {
     pub scope: HandoutScope,
-    pub path: PathBuf,
+    pub file_name: String,
     pub title: String,
     pub subtitle: String,
     pub generated: String,
@@ -153,6 +152,13 @@ impl Engine {
             });
         }
 
+        let path = self
+            .paths
+            .available_handout_path(&request.file_name)
+            .map_err(|source| EngineError::Export {
+                path: self.paths.handouts_dir(),
+                source,
+            })?;
         let done = Arc::new(AtomicUsize::new(0));
         let cancel = Arc::new(AtomicBool::new(false));
         self.handout_job = Some(HandoutJob {
@@ -168,6 +174,7 @@ impl Engine {
                 &client,
                 items,
                 &request,
+                &path,
                 pictures.as_deref(),
                 &done,
                 &cancel,
@@ -204,7 +211,7 @@ impl Engine {
         self.handout_job = None;
         match result {
             Ok(saved) => {
-                // Opens in the reader; the PDF is also saved where asked.
+                // Opens in the reader; the PDF stays in the app's handouts folder.
                 self.keep_handout(&saved, true)?;
                 self.notices.push(Notice::HandoutSaved(saved.path));
                 Ok(())
@@ -272,6 +279,7 @@ fn build_handout(
     client: &kg_ai::Client,
     items: Vec<Item>,
     request: &HandoutRequest,
+    path: &std::path::Path,
     pictures: Option<&std::path::Path>,
     done: &AtomicUsize,
     cancel: &AtomicBool,
@@ -338,7 +346,7 @@ fn build_handout(
         files: Vec::new(),
         marks: Vec::new(),
     };
-    saved_handout(document, &request.path, pictures)
+    saved_handout(document, path, pictures)
 }
 
 /// Writes the PDF and returns what to keep for reading it in the app.

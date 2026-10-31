@@ -1,5 +1,4 @@
-//! Builds handout export requests: asks where to save and fills in the
-//! translated words of the PDF.
+//! Builds handout requests and fills in the translated words of the PDF.
 
 use kg_engine::{
     Engine, HandoutLabels, HandoutRequest, HandoutScope, PrepareRequest, StudyPlan, slug,
@@ -8,7 +7,7 @@ use rust_i18n::t;
 
 use crate::i18n;
 
-/// Asks where to save, then returns the request. `None` if cancelled.
+/// Builds a request for a handout. `None` if its scope is unavailable.
 pub fn request(plan: &StudyPlan, scope: HandoutScope, regenerate: bool) -> Option<HandoutRequest> {
     let (subtitle, file_part) = match scope {
         HandoutScope::Topic(id) => {
@@ -29,14 +28,9 @@ pub fn request(plan: &StudyPlan, scope: HandoutScope, regenerate: bool) -> Optio
         }
     };
     let file_name = format!("{}-{}.pdf", t!("handout.file_prefix"), slug(&file_part));
-    let path = rfd::FileDialog::new()
-        .set_title(t!("handout.save_title"))
-        .set_file_name(file_name)
-        .add_filter(t!("handout.pdf_filter"), &["pdf"])
-        .save_file()?;
     Some(HandoutRequest {
         scope,
-        path,
+        file_name,
         title: plan.title.clone(),
         subtitle,
         generated: t!("handout.generated", date = i18n::date(Engine::today())).into_owned(),

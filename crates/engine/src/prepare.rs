@@ -131,7 +131,13 @@ impl Engine {
         }
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
         let file_name = format!("{}-{}.pdf", request.file_prefix, slug(&plan.title));
-        let path = self.paths.handouts_dir().join(file_name);
+        let path = self
+            .paths
+            .available_handout_path(&file_name)
+            .map_err(|source| EngineError::Export {
+                path: self.paths.handouts_dir(),
+                source,
+            })?;
         let document = Document {
             title: plan.title.clone(),
             subtitle: if plan.exam.is_empty() {

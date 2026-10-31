@@ -100,7 +100,7 @@ edital:
   generating_note: "可能需要一些時間，通常為 30 秒到 2 分鐘。"
   generating_then_prepare: "可能需要一些時間。計劃生成後，會開始為每個知識點準備講義和測驗，可在計劃頁面檢視進度。"
   prepare_all: "現在為所有知識點準備講義和測驗"
-  prepare_all_hint: "一次性寫好每個知識點的講義和題庫，並把完整 PDF 儲存到「文件 › Know Giver」。每個科目需要幾分鐘，在背景進行，你可以繼續使用程式。"
+  prepare_all_hint: "一次性寫好每個知識點的講義和題庫，並把完整 PDF 儲存到 Know Giver 的資料夾。每個科目需要幾分鐘，在背景進行，你可以繼續使用程式。"
   your_plans: "你的計劃"
   no_plans: "還沒有計劃。"
   active: "當前"
@@ -111,7 +111,7 @@ edital:
 
 plan:
   prepare_all: "現在全部準備"
-  prepare_all_hint: "為所有知識點補齊缺少的講義和測驗，並把完整 PDF 儲存到「文件 › Know Giver」。"
+  prepare_all_hint: "為所有知識點補齊缺少的講義和測驗，並把完整 PDF 儲存到 Know Giver 的資料夾。"
   prepare_title: "正在準備計劃的內容"
   prepare_writing: "正在編寫和稽核：%{topics}"
   prepare_saving: "正在彙總完整 PDF"
@@ -166,6 +166,8 @@ reader:
   read: "閱讀"
   continue: "繼續閱讀"
   open_pdf: "開啟 PDF"
+  export_pdf: "匯出 PDF"
+  export_pdf_title: "匯出講義"
   delete: "刪除"
   not_opened: "尚未開啟"
   pages_read: "%{total} 頁中已讀 %{seen} 頁"
@@ -539,7 +541,6 @@ board:
 handout:
   whole_plan: "整個計劃"
   file_prefix: "handout"
-  save_title: "儲存講義"
   pdf_filter: "PDF 文件"
   generated: "%{date} 生成"
   label:

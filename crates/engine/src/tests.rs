@@ -793,6 +793,24 @@ fn generated_handout_opens_in_the_reader_with_progress_and_highlights() {
             .iter()
             .any(|n| matches!(n, Notice::HandoutSaved(_)))
     );
+    let reading = engine.readings()[0].clone();
+    let exported = dir.path().join("exported-crase.pdf");
+    engine
+        .handle(Command::ExportSavedReading {
+            reading: reading.id,
+            path: exported.clone(),
+        })
+        .unwrap();
+    assert_eq!(
+        std::fs::read(&exported).unwrap(),
+        std::fs::read(&reading.path).unwrap()
+    );
+    assert!(
+        engine
+            .take_notices()
+            .iter()
+            .any(|notice| matches!(notice, Notice::Exported(path) if path == &exported))
+    );
 
     poll_until(&mut engine, |e| {
         e.reader().is_some_and(|r| r.pages.is_some())
