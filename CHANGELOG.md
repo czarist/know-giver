@@ -4,6 +4,15 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Closing the window keeps Know Giver in the system tray, with options to reopen or quit.
+  The first install can optionally enable startup at login and study reminders; both are
+  off by default. While the app is running in the tray, reminders appear every three hours
+  when the active plan has unfinished subjects, showing progress for up to three subjects.
+  Reminders can also be toggled in Settings.
+
 ## [0.35.0] - 2026-10-31
 
 ### Added

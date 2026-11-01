@@ -2,13 +2,18 @@
 
 ## Current Status
 
-Version 0.34.1. Everything an agent can build and check without a human ear, a
+Version 0.35.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
 Work happens on short-lived task branches from `dev`, merged into `dev`; the owner merges
 `dev` into `main` on GitHub (see "Git workflow" in CLAUDE.md). Up to v0.31.2, releases
 were committed to `main` directly.
+
+The system tray, optional login startup and three-hour study reminders are implemented
+on `dev`. The app keeps running when its window is closed; reminders require an
+unfinished subject in the active plan and can be changed in Settings. Native tray,
+notification and installer behavior still needs testing on Windows, macOS and Linux.
 
 ### Handoff for the next agent
 
@@ -67,7 +72,8 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
    answers need the Whisper check.
 6. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
-   speech; installer build and install test.
+   speech; installer build and install test; tray, login startup and native reminder
+   behavior on Windows, macOS and Linux.
 7. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
    review of each finished reply shown as a correction, or stronger prompting.
@@ -251,6 +257,11 @@ Inno Setup 6).
 - [x] Streaks and gentle milestones (no gamified noise)
 - [x] Micro-animations: screen transitions, progress filling, toast entry
 - [x] Review the whole flow for clicks saved (start a lesson straight from Today)
+- [x] System tray: closing the window hides the app; the tray menu reopens or quits it
+- [x] Optional startup at login and three-hour progress reminders, both off by default;
+      reminders only run while the app is in the tray and the active plan has unfinished
+      subjects
+- [ ] Verify native tray, notifications and startup installers on Windows, macOS and Linux
 
 ## Phase 7 — Natural voice, male and female
 
