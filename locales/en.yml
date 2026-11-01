@@ -5,6 +5,15 @@ app:
   version: "v%{version}"
   tagline: "For any exam"
 
+tray:
+  open: "Open Know Giver"
+  quit: "Quit"
+
+reminder:
+  title: "Study reminder"
+  subject_progress: "%{subject}: %{percent}%"
+  more_subjects: "+ %{count} subjects"
+
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
@@ -571,6 +580,10 @@ settings:
   discard: "Discard changes"
   data_dir: "Your data is stored in %{path}"
   quiz_size: "Questions per quiz"
+  study_reminders:
+    title: "Study reminders"
+    enabled: "Remind me every 3 hours while the app is in the system tray"
+    hint: "The notification shows up to three unfinished subjects in the active plan. Your system chooses where to display it. Quit from the tray menu to stop reminders."
   english_voice:
     title: "Voice for English passages"
     hint: "In lessons, English words and sentences are read in this voice with English pronunciation; the rest stays in the teacher's voice. Uses the Kokoro model."

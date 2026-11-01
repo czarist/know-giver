@@ -5,6 +5,15 @@ app:
   version: "v%{version}"
   tagline: "备考任何考试"
 
+tray:
+  open: "打开 Know Giver"
+  quit: "退出"
+
+reminder:
+  title: "学习提醒"
+  subject_progress: "%{subject}：%{percent}%"
+  more_subjects: "另有 %{count} 门科目"
+
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
@@ -571,6 +580,10 @@ settings:
   discard: "放弃更改"
   data_dir: "你的数据保存在 %{path}"
   quiz_size: "每次测验的题数"
+  study_reminders:
+    title: "学习提醒"
+    enabled: "应用留在系统托盘时，每 3 小时提醒一次"
+    hint: "通知会显示当前计划中最多三门尚未完成的科目及其进度。显示位置由系统决定。通过托盘菜单退出应用后，提醒会停止。"
   english_voice:
     title: "英文段落的语音"
     hint: "课堂中的英文单词和句子会用这个语音以英语发音朗读，其余部分仍是老师的声音。使用 Kokoro 模型。"

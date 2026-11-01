@@ -46,6 +46,8 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "startup"; Description: "{cm:StartOnStartup}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: unchecked
+Name: "studyreminders"; Description: "{cm:StudyReminders}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\know-giver.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -62,6 +64,9 @@ Name: "{group}\Know Giver"; Filename: "{app}\know-giver.exe"
 Name: "{group}\{cm:UninstallProgram,Know Giver}"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\Know Giver"; Filename: "{app}\know-giver.exe"; Tasks: desktopicon
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Know Giver"; ValueData: """{app}\know-giver.exe"" --background"; Tasks: startup; Flags: uninsdeletevalue
+
 [UninstallDelete]
 ; The program folder goes entirely, including a .env with an API key. Study
 ; data lives elsewhere ({localappdata}\KnowGiver) and is asked about below.
@@ -70,6 +75,14 @@ Type: filesandordirs; Name: "{app}"
 [CustomMessages]
 ptbr.DeleteStudyData=Apagar também os seus dados de estudo (planos, progresso, modelos de voz e de fala)?%n%n%1%n%nSe escolher Não, eles ficam e voltam se você instalar o Know Giver de novo.
 en.DeleteStudyData=Also delete your study data (plans, progress, voice and speech models)?%n%n%1%n%nIf you choose No, it stays and comes back if you install Know Giver again.
+ptbr.AdditionalOptions=Outras opções
+en.AdditionalOptions=Additional options
+ptbr.StartOnStartup=Iniciar o Know Giver quando você entrar no Windows
+en.StartOnStartup=Start Know Giver when you sign in to Windows
+ptbr.StudyReminders=Receber lembretes de estudo a cada 3 horas enquanto o Know Giver estiver aberto, mesmo na bandeja
+en.StudyReminders=Receive study reminders every 3 hours while Know Giver is running, including in the system tray
+ptbr.ReminderPreferenceFailed=Não foi possível salvar a escolha dos lembretes de estudo.
+en.ReminderPreferenceFailed=Could not save the study reminder preference.
 
 [Run]
 Filename: "{app}\know-giver.exe"; Description: "{cm:LaunchProgram,Know Giver}"; Flags: nowait postinstall skipifsilent
@@ -77,6 +90,18 @@ Filename: "{app}\know-giver.exe"; Description: "{cm:LaunchProgram,Know Giver}"; 
 Filename: "{app}\know-giver.exe"; Flags: nowait; Check: WizardSilent
 
 [Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  FlagFile: String;
+begin
+  if (CurStep = ssPostInstall) and WizardIsTaskSelected('studyreminders') then
+  begin
+    FlagFile := ExpandConstant('{app}\.study-reminders-enabled');
+    if not SaveStringToFile(FlagFile, '1', False) then
+      RaiseException(CustomMessage('ReminderPreferenceFailed'));
+  end;
+end;
+
 // After uninstalling, offer to delete the study data too. No is the default,
 // and silent uninstalls keep it.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

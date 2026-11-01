@@ -153,6 +153,8 @@ pub struct Settings {
     /// Ask GitHub for a newer version when the app opens (only that request
     /// is sent).
     pub check_updates: bool,
+    /// Show study-progress notifications while the app is in the system tray.
+    pub study_reminders: bool,
     /// Who teaches; `None` in settings saved before teachers existed (see
     /// [`Settings::teacher`]).
     #[serde(default, deserialize_with = "crate::teacher::lenient")]
@@ -200,6 +202,7 @@ impl Default for Settings {
             speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
             board_images: true,
             check_updates: true,
+            study_reminders: false,
             teacher: None,
             speech_rate: 0.95,
             quiz_size: 5,
@@ -343,6 +346,7 @@ mod tests {
         let settings: Settings = serde_json::from_str(old).unwrap();
         assert_eq!(settings.student_name, "Lucas");
         assert_eq!(settings.setup_version, 0);
+        assert!(!settings.study_reminders);
         assert!(settings.needs_setup());
         let done = Settings {
             setup_version: SETUP_VERSION,

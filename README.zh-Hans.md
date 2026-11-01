@@ -198,6 +198,8 @@ cargo run --release
 
 首次启动时会打开首次设置。需要 Rust 1.95 或更新版本。Windows 安装包：
 
+关闭窗口后，应用会继续留在系统托盘中；使用图标菜单可重新打开或退出。安装时可以选择是否随系统启动，以及是否每 3 小时接收学习提醒（默认均关闭）。应用运行期间（包括留在托盘时）会显示提醒。
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\package.ps1
 ```
