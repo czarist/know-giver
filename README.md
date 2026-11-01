@@ -286,7 +286,7 @@ the model from the list (**Z.ai** is recommended for value, **Claude** for accur
 with a link to create a key), or load the models your key can use. A short tour of the
 screens follows. Plans made before are kept.
 
-Closing the window keeps the app in the system tray; use the icon menu to reopen or quit. During installation, you can choose whether it starts with the system and whether to receive study reminders every 3 hours; both are off by default. Reminders appear while the app is running, including in the tray.
+Closing the window keeps the app in the system tray; use the icon menu to reopen or quit. During installation, you can choose whether it starts with the system and whether to receive study reminders every 3 hours; both are off by default. Reminders appear while the app is running in the tray and the active plan has unfinished subjects.
 
 For development, `.env` (copy `.env.example`) can still set the endpoint and models;
 `.env` overrides global variables with the same name. Download the speech models in
