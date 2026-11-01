@@ -18,6 +18,13 @@ ask() {
 }
 
 if [[ "$(uname -s)" == Darwin ]]; then
+  launch_agent="$HOME/Library/LaunchAgents/com.knowgiver.desktop.plist"
+  if launchctl print "gui/$(id -u)/com.knowgiver.desktop" >/dev/null 2>&1; then
+    if ! launchctl bootout "gui/$(id -u)" "$launch_agent"; then
+      printf 'Could not stop the Know Giver login item; remove it from Login Items.\n' >&2
+    fi
+  fi
+  rm -f -- "$launch_agent"
   rm -rf -- "$HOME/Applications/Know Giver.app"
   if [[ -L "$HOME/Desktop/Know Giver" ]]; then
     rm -f -- "$HOME/Desktop/Know Giver"
@@ -27,6 +34,7 @@ else
   rm -rf -- "$HOME/.local/opt/KnowGiver"
   rm -f -- "$HOME/.local/bin/know-giver" \
     "$HOME/.local/share/applications/know-giver.desktop" \
+    "$HOME/.config/autostart/know-giver.desktop" \
     "$HOME/.local/share/icons/hicolor/256x256/apps/know-giver.png"
   desktop="$(xdg-user-dir DESKTOP 2>/dev/null || printf '%s' "$HOME/Desktop")"
   rm -f -- "$desktop/know-giver.desktop"

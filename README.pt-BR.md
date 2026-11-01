@@ -295,6 +295,8 @@ modelo na lista (**Z.ai** é a recomendação de custo-benefício, **Claude** a 
 acerto, cada um com o link para criar a chave) ou carregue os modelos que a sua chave pode
 usar. Depois vem um tour rápido pelas telas. Planos já criados são mantidos.
 
+Fechar a janela mantém o app na bandeja do sistema: use o menu do ícone para reabrir ou sair. Na instalação, você escolhe se ele inicia com o sistema e se quer receber lembretes a cada 3 horas; as duas opções começam desativadas. Os lembretes aparecem enquanto o app estiver na bandeja e houver matérias pendentes no plano ativo.
+
 Para desenvolvimento, o `.env` (copie o `.env.example`) ainda pode definir o endereço e os
 modelos; ele tem prioridade sobre variáveis globais com o mesmo nome. Baixe os modelos de
 fala nas Configurações. Rust 1.95 ou mais novo.

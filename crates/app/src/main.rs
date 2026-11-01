@@ -24,8 +24,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     load_env();
-    kg_ui::run(kg_ui::AiConfig::from_env(|key| std::env::var(key).ok()))?;
+    let args: Vec<_> = std::env::args_os().collect();
+    let enable_study_reminders = args
+        .iter()
+        .any(|arg| arg.to_str() == Some("--enable-study-reminders"))
+        || take_study_reminder_marker();
+    kg_ui::run(
+        kg_ui::AiConfig::from_env(|key| std::env::var(key).ok()),
+        kg_ui::RunOptions {
+            start_hidden: args.iter().any(|arg| arg.to_str() == Some("--background")),
+            enable_study_reminders,
+        },
+    )?;
     Ok(())
+}
+
+fn take_study_reminder_marker() -> bool {
+    let path = match std::env::current_exe() {
+        Ok(exe) => exe.parent().map(|dir| dir.join(".study-reminders-enabled")),
+        Err(err) => {
+            tracing::warn!(%err, "could not locate the installed reminder preference");
+            None
+        }
+    };
+    let Some(path) = path else {
+        return false;
+    };
+    match std::fs::remove_file(&path) {
+        Ok(()) => true,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+        Err(err) => {
+            tracing::warn!(%err, path = %path.display(), "could not read the installed reminder preference");
+            false
+        }
+    }
 }
 
 /// The log file for this run, when the data folder can be written.
