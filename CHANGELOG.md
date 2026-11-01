@@ -4,7 +4,7 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.36.0] - 2026-11-01
 
 ### Added
 - Closing the window keeps Know Giver in the system tray, with options to reopen or quit.
