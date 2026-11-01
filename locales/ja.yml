@@ -5,6 +5,15 @@ app:
   version: "v%{version}"
   tagline: "あらゆる試験に"
 
+tray:
+  open: "Know Giver を開く"
+  quit: "終了"
+
+reminder:
+  title: "学習リマインダー"
+  subject_progress: "%{subject}: %{percent}%"
+  more_subjects: "ほか %{count} 科目"
+
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
@@ -571,6 +580,10 @@ settings:
   discard: "変更を取り消す"
   data_dir: "データの保存先：%{path}"
   quiz_size: "1回のクイズの問題数"
+  study_reminders:
+    title: "学習リマインダー"
+    enabled: "アプリをシステムトレイに置いている間、3時間ごとに通知する"
+    hint: "通知には、現在のプランで未完了の科目を最大3つ表示します。表示位置はシステムが決めます。終了するにはトレイのメニューから終了してください。"
   english_voice:
     title: "英語部分の音声"
     hint: "レッスン中の英単語や英文を、この音声で英語の発音で読みます。それ以外は先生の声のままです。Kokoro モデルを使います。"

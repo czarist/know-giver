@@ -46,15 +46,30 @@ try {
     }
 
     $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CLOSEAPPLICATIONS')
-    # The desktop shortcut is asked once, on the first install; updates keep
-    # the earlier choice. KG_DESKTOP_SHORTCUT=1 or 0 answers in advance.
+    # Optional install choices are asked once; updates keep their existing
+    # startup entry and reminder preference. Environment variables answer in advance.
     $installed = Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\KnowGiver\know-giver.exe')
     if (-not $installed) {
+        $tasks = @()
         $answer = $env:KG_DESKTOP_SHORTCUT
         if (-not $answer) {
             try { $answer = Read-Host 'Create a desktop shortcut? [y/N]' } catch { $answer = '' }
         }
-        if ($answer -match '^(1|y|s)') { $arguments += '/MERGETASKS=desktopicon' }
+        if ($answer -match '^(1|y|s)') { $tasks += 'desktopicon' }
+
+        $answer = $env:KG_STARTUP
+        if (-not $answer) {
+            try { $answer = Read-Host 'Start Know Giver when you sign in to Windows? [y/N]' } catch { $answer = '' }
+        }
+        if ($answer -match '^(1|y|s)') { $tasks += 'startup' }
+
+        $answer = $env:KG_STUDY_REMINDERS
+        if (-not $answer) {
+            try { $answer = Read-Host 'Receive study reminders every 3 hours while Know Giver is running, including in the system tray? [y/N]' } catch { $answer = '' }
+        }
+        if ($answer -match '^(1|y|s)') { $tasks += 'studyreminders' }
+
+        if ($tasks.Count -gt 0) { $arguments += "/MERGETASKS=$($tasks -join ',')" }
     }
 
     Write-Host 'Installing Know Giver'

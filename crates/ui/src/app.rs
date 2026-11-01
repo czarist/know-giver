@@ -143,6 +143,11 @@ pub struct KnowGiverApp {
     pub(crate) nav_rects: Vec<(Screen, egui::Rect)>,
     /// UI language the fonts were set for (Chinese and Japanese need their own).
     fonts_locale: String,
+    tray: Option<crate::tray::SystemTray>,
+    tray_initialized: bool,
+    window_hidden: bool,
+    quit_requested: bool,
+    reminder_schedule: crate::reminders::ReminderSchedule,
 }
 
 impl std::fmt::Debug for KnowGiverApp {
@@ -155,11 +160,28 @@ impl std::fmt::Debug for KnowGiverApp {
 
 impl KnowGiverApp {
     pub fn new(cc: &eframe::CreationContext<'_>, env_ai: AiConfig) -> Self {
-        Self::with_paths(cc, AppPaths::detect(), env_ai)
+        Self::with_paths_and_options(cc, AppPaths::detect(), env_ai, crate::RunOptions::default())
     }
 
     /// Like [`Self::new`], with an explicit data folder.
     pub fn with_paths(cc: &eframe::CreationContext<'_>, paths: AppPaths, env_ai: AiConfig) -> Self {
+        Self::with_paths_and_options(cc, paths, env_ai, crate::RunOptions::default())
+    }
+
+    pub(crate) fn with_run_options(
+        cc: &eframe::CreationContext<'_>,
+        env_ai: AiConfig,
+        run_options: crate::RunOptions,
+    ) -> Self {
+        Self::with_paths_and_options(cc, AppPaths::detect(), env_ai, run_options)
+    }
+
+    fn with_paths_and_options(
+        cc: &eframe::CreationContext<'_>,
+        paths: AppPaths,
+        env_ai: AiConfig,
+        run_options: crate::RunOptions,
+    ) -> Self {
         egui_extras::install_image_loaders(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx);
         let engine = match Engine::new(paths, env_ai) {
@@ -167,6 +189,13 @@ impl KnowGiverApp {
                 let ctx = cc.egui_ctx.clone();
                 engine.set_waker(Arc::new(move || ctx.request_repaint()));
                 i18n::set(&engine.settings().locale);
+                if run_options.enable_study_reminders && !engine.settings().study_reminders {
+                    let mut settings = engine.settings().clone();
+                    settings.study_reminders = true;
+                    if let Err(err) = engine.handle(Command::SaveSettings(settings)) {
+                        tracing::warn!(%err, "could not save the installed reminder preference");
+                    }
+                }
                 Ok(engine)
             }
             Err(err) => {
@@ -210,6 +239,11 @@ impl KnowGiverApp {
             shown_since: 0.0,
             nav_rects: Vec::new(),
             fonts_locale: String::new(),
+            tray: None,
+            tray_initialized: false,
+            window_hidden: run_options.start_hidden,
+            quit_requested: false,
+            reminder_schedule: crate::reminders::ReminderSchedule::new(Instant::now()),
         };
         if !cfg!(test) {
             app.dispatch(Command::CheckForUpdate);
@@ -285,13 +319,9 @@ impl KnowGiverApp {
                                 .color(p.muted),
                             );
                             // The source code, as the GitHub mark.
-                            let mark = egui::Button::image(Icon::GitHub.image(12.0, p.muted))
-                                .frame(false);
-                            if ui
-                                .add(mark)
-                                .on_hover_text(t!("nav.source"))
-                                .clicked()
-                            {
+                            let mark =
+                                egui::Button::image(Icon::GitHub.image(12.0, p.muted)).frame(false);
+                            if ui.add(mark).on_hover_text(t!("nav.source")).clicked() {
                                 open_url(kg_engine::REPOSITORY);
                             }
                         });
@@ -492,6 +522,107 @@ impl Badges {
 }
 
 impl eframe::App for KnowGiverApp {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !self.tray_initialized {
+            self.tray_initialized = true;
+            match crate::tray::SystemTray::new() {
+                Ok(tray) => self.tray = Some(tray),
+                Err(err) => {
+                    tracing::warn!(
+                        %err,
+                        "system tray is unavailable; closing the window will exit the app"
+                    );
+                    if self.window_hidden {
+                        self.window_hidden = false;
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    }
+                }
+            }
+        }
+
+        let locale = i18n::current();
+        let actions = self
+            .tray
+            .as_ref()
+            .map(crate::tray::SystemTray::take_actions)
+            .unwrap_or_default();
+        if let Some(tray) = self.tray.as_mut() {
+            tray.set_locale(&locale);
+        }
+        for action in actions {
+            match action {
+                crate::tray::TrayAction::Open => {
+                    self.window_hidden = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                }
+                crate::tray::TrayAction::Quit => {
+                    self.quit_requested = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
+        }
+
+        let notices = match self.engine.as_mut() {
+            Ok(engine) => {
+                engine.poll();
+                if engine.take_quit_request() {
+                    self.quit_requested = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                let notices = engine.take_notices();
+                if engine.is_busy() {
+                    ctx.request_repaint_after(Duration::from_millis(40));
+                }
+                notices
+            }
+            Err(_) => Vec::new(),
+        };
+        let mut go_to_reader = false;
+        for notice in &notices {
+            if let kg_engine::Notice::HandoutSaved(_) = notice {
+                go_to_reader = true;
+            }
+            let (text, is_error) = i18n::notice(notice);
+            self.push_toast(text, is_error);
+        }
+        if go_to_reader {
+            self.ui.screen = Screen::Reader;
+        }
+
+        let close_requested = ctx.input(|input| input.viewport().close_requested());
+        if close_requested && self.tray.is_some() && !self.quit_requested {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.window_hidden = true;
+        }
+
+        let reminder_eligible = self.window_hidden
+            && self.engine.as_ref().is_ok_and(|engine| {
+                engine.settings().study_reminders
+                    && engine.active_plan().is_some_and(|plan| {
+                        plan.subjects.iter().any(|subject| {
+                            subject
+                                .topics
+                                .iter()
+                                .any(|topic| topic.status != kg_engine::TopicStatus::Done)
+                        })
+                    })
+            });
+        if self
+            .reminder_schedule
+            .is_due(Instant::now(), reminder_eligible)
+            && let Some(plan) = self.engine.as_ref().ok().and_then(Engine::active_plan)
+            && let Err(err) = crate::reminders::show_progress(plan)
+        {
+            tracing::warn!(%err, "could not show study reminder");
+        }
+
+        if self.window_hidden {
+            ctx.request_repaint_after(Duration::from_millis(250));
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let locale = i18n::current();
         if locale != self.fonts_locale {
@@ -532,29 +663,7 @@ impl eframe::App for KnowGiverApp {
                 if study_surface {
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
-                engine.poll();
-                if engine.take_quit_request() {
-                    // The new version is installed or installing: make way.
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-                let notices = engine.take_notices();
-                let mut go_to_reader = false;
-                let busy = engine.is_busy();
                 let badges = Badges::from_engine(engine);
-                for notice in &notices {
-                    // A finished handout opens in the reader.
-                    if let kg_engine::Notice::HandoutSaved(_) = notice {
-                        go_to_reader = true;
-                    }
-                    let (text, is_error) = i18n::notice(notice);
-                    self.push_toast(text, is_error);
-                }
-                if busy {
-                    ui.ctx().request_repaint_after(Duration::from_millis(40));
-                }
-                if go_to_reader {
-                    self.ui.screen = Screen::Reader;
-                }
                 badges
             }
             Err(_) => Badges::default(),

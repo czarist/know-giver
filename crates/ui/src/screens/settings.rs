@@ -41,6 +41,14 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.add_space(12.0);
         models_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
+        section(ui, &t!("settings.study_reminders.title"), |ui| {
+            ui.checkbox(
+                &mut draft.study_reminders,
+                t!("settings.study_reminders.enabled"),
+            );
+            widgets::hint(ui, &t!("settings.study_reminders.hint"));
+        });
+        ui.add_space(12.0);
         about_section(ui, draft);
         ui.add_space(12.0);
         legal_section(ui, engine, &mut actions);
@@ -708,10 +716,7 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
 /// Version, update checks and the source code.
 fn about_section(ui: &mut egui::Ui, draft: &mut kg_engine::Settings) {
     section(ui, &t!("settings.about.title"), |ui| {
-        widgets::hint(
-            ui,
-            &t!("app.version", version = env!("CARGO_PKG_VERSION")),
-        );
+        widgets::hint(ui, &t!("app.version", version = env!("CARGO_PKG_VERSION")));
         ui.checkbox(&mut draft.check_updates, t!("settings.about.check_updates"))
             .on_hover_text(t!("settings.about.check_updates_hint"));
         let muted = crate::theme::palette(ui.ctx()).muted;

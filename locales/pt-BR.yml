@@ -5,6 +5,15 @@ app:
   version: "v%{version}"
   tagline: "Para qualquer prova"
 
+tray:
+  open: "Abrir Know Giver"
+  quit: "Sair"
+
+reminder:
+  title: "Lembrete de estudo"
+  subject_progress: "%{subject}: %{percent}%"
+  more_subjects: "+ %{count} matérias"
+
 language:
   pt-BR: "Português (Brasil)"
   en: "English"
@@ -571,6 +580,10 @@ settings:
   discard: "Descartar alterações"
   data_dir: "Seus dados ficam em %{path}"
   quiz_size: "Questões por quiz"
+  study_reminders:
+    title: "Lembretes de estudo"
+    enabled: "Receber um lembrete a cada 3 horas enquanto o app estiver na bandeja"
+    hint: "A notificação mostra até três matérias que ainda não foram concluídas no plano atual. O sistema decide onde exibi-la. Fechar o app pelo menu da bandeja interrompe os lembretes."
   english_voice:
     title: "Voz para trechos em inglês"
     hint: "Na aula, frases e palavras em inglês são lidas com esta voz e pronúncia inglesa; o resto segue na voz do professor. Usa o modelo Kokoro."
