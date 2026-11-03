@@ -170,6 +170,8 @@ Inno Setup 6).
 - [x] Include the pinned Vulkan runtime in Windows/Linux packages, prefer a detected
       compatible GPU for OCR, and retry with CPU if device discovery or GPU startup fails;
       macOS remains CPU-only.
+- [x] Start the local OCR server in the background when the app opens with the local model
+      installed, reuse it for image reading, and stop it when the app closes.
 - [x] Add offline tests for OCR transcript handling, invalid/empty model responses, model
       file installation checks, Copilot OAuth flow boundaries, Vulkan device selection and
       CPU fallback, backend selection and saved preferences.

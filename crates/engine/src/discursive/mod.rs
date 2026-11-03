@@ -751,36 +751,27 @@ impl Engine {
         self.reload_open();
         self.refresh_discursive();
         let paths = self.paths.clone();
+        let server = std::sync::Arc::clone(&self.ocr_server);
         self.spawn(move || {
             let total = pages.len();
-            let server = if local {
-                Some(crate::ocr::Server::start(&paths))
-            } else {
-                None
-            };
-            let result = server
-                .transpose()
-                .map_err(EngineError::from)
-                .and_then(|server| {
-                    pages
-                        .iter()
-                        .enumerate()
-                        .map(|(i, path)| {
-                            let jpeg =
-                                std::fs::read(path).map_err(|source| EngineError::Export {
-                                    path: path.clone(),
-                                    source,
-                                })?;
-                            let reading = if let Some(server) = &server {
-                                local_page_reading(server.transcribe(&jpeg, "image/jpeg")?)?
-                            } else {
-                                let client = client.as_ref().ok_or(AiError::NoVisionModel)?;
-                                kg_ai::read_manuscript_page(client, &jpeg, i + 1, total)?
-                            };
-                            Ok(validate::page(reading, i as u32 + 1))
-                        })
-                        .collect()
-                });
+            let result = pages
+                .iter()
+                .enumerate()
+                .map(|(i, path)| {
+                    let jpeg = std::fs::read(path).map_err(|source| EngineError::Export {
+                        path: path.clone(),
+                        source,
+                    })?;
+                    let reading = if local {
+                        let text = crate::ocr::transcribe(&paths, &server, &jpeg, "image/jpeg")?;
+                        local_page_reading(text)?
+                    } else {
+                        let client = client.as_ref().ok_or(AiError::NoVisionModel)?;
+                        kg_ai::read_manuscript_page(client, &jpeg, i + 1, total)?
+                    };
+                    Ok(validate::page(reading, i as u32 + 1))
+                })
+                .collect();
             Event::Discursive(DiscursiveEvent::Transcribed {
                 attempt,
                 run,
@@ -1121,19 +1112,18 @@ impl Engine {
         let (png, number) = images::vision_probe()?;
         let client = (!local).then(|| self.ai_client());
         let paths = self.paths.clone();
+        let server = std::sync::Arc::clone(&self.ocr_server);
         self.discursive.vision = VisionCheck::Checking;
         self.spawn(move || {
             let result = if let Some(client) = client {
                 kg_ai::check_vision(&client, &png, &number).map_err(EngineError::from)
             } else {
-                crate::ocr::Server::start(&paths)
-                    .and_then(|server| {
-                        server.transcribe(&png, "image/png").map(|text| {
-                            text.chars()
-                                .filter(char::is_ascii_digit)
-                                .collect::<String>()
-                                .contains(&number)
-                        })
+                crate::ocr::transcribe(&paths, &server, &png, "image/png")
+                    .map(|text| {
+                        text.chars()
+                            .filter(char::is_ascii_digit)
+                            .collect::<String>()
+                            .contains(&number)
                     })
                     .map_err(EngineError::from)
             };

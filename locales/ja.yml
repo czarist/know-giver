@@ -784,6 +784,7 @@ discursive:
   ocr_download: "OCRモデルをダウンロード（1.82 GB）"
   ocr_cancel_download: "ダウンロードをキャンセル"
   ocr_runtime_missing: "ローカルランタイムを利用できません。アプリを再インストールするか、KG_LLAMA_SERVER を設定してください。"
+  ocr_runtime_starting: "ローカルOCRランタイムを起動しています..."
   vision_test: "画像の読み取りをテスト"
   vision_test_hint: "数字を描いた画像を送り、モデルがその数字を読めるか確認します。"
   vision_works: "モデルはテスト画像を読み取りました。"

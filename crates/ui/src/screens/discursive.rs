@@ -149,6 +149,13 @@ fn local_ocr_controls(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions)
             });
         }
         Ok(kg_engine::OcrModelStatus::Installed { .. }) => {
+            if engine.ocr_server_starting() {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    widgets::hint(ui, &t!("discursive.ocr_runtime_starting"));
+                });
+                return;
+            }
             if !engine.ocr_runtime_available() {
                 ui.colored_label(p.warning, t!("discursive.ocr_runtime_missing"));
                 return;
