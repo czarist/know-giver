@@ -2,8 +2,8 @@
 //! shown only when a newer version exists.
 
 use egui::{Align, Layout, RichText};
-use rust_i18n::t;
 use kg_engine::{Command, UpdateStatus};
+use rust_i18n::t;
 
 use crate::app::KnowGiverApp;
 use crate::{icons, theme, widgets};
@@ -51,38 +51,36 @@ pub(crate) fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 ui.label(RichText::new(text).color(p.text));
 
                 // Right: the actions, with room between them.
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    match &status {
-                        UpdateStatus::Available(release) | UpdateStatus::Failed(release) => {
-                            let close = egui::Button::image(icons::Icon::Close.image(14.0, p.muted))
-                                .frame(false)
-                                .min_size(egui::vec2(28.0, 28.0));
-                            if ui.add(close).on_hover_text(t!("update.later")).clicked() {
-                                command = Some(Command::DismissUpdate);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| match &status {
+                    UpdateStatus::Available(release) | UpdateStatus::Failed(release) => {
+                        let close = egui::Button::image(icons::Icon::Close.image(14.0, p.muted))
+                            .frame(false)
+                            .min_size(egui::vec2(28.0, 28.0));
+                        if ui.add(close).on_hover_text(t!("update.later")).clicked() {
+                            command = Some(Command::DismissUpdate);
+                        }
+                        if release.installable() {
+                            if download_button(ui, &t!("update.install")).clicked() {
+                                command = Some(Command::InstallUpdate);
                             }
-                            if release.installable() {
-                                if download_button(ui, &t!("update.install")).clicked() {
-                                    command = Some(Command::InstallUpdate);
-                                }
-                            } else if download_button(ui, &t!("update.download")).clicked() {
-                                crate::app::open_url(&release.page);
-                            }
-                            widgets::link(ui, &t!("update.notes"), &release.page);
+                        } else if download_button(ui, &t!("update.download")).clicked() {
+                            crate::app::open_url(&release.page);
                         }
-                        UpdateStatus::Downloading { done, total, .. } => {
-                            ui.add(
-                                egui::ProgressBar::new(fraction(*done, *total))
-                                    .desired_width(180.0)
-                                    .desired_height(8.0)
-                                    .corner_radius(4.0)
-                                    .fill(UPDATE_GREEN),
-                            );
-                            ui.ctx()
-                                .request_repaint_after(std::time::Duration::from_millis(200));
-                        }
-                        UpdateStatus::Installing(_) => {
-                            ui.spinner();
-                        }
+                        widgets::link(ui, &t!("update.notes"), &release.page);
+                    }
+                    UpdateStatus::Downloading { done, total, .. } => {
+                        ui.add(
+                            egui::ProgressBar::new(fraction(*done, *total))
+                                .desired_width(180.0)
+                                .desired_height(8.0)
+                                .corner_radius(4.0)
+                                .fill(UPDATE_GREEN),
+                        );
+                        ui.ctx()
+                            .request_repaint_after(std::time::Duration::from_millis(200));
+                    }
+                    UpdateStatus::Installing(_) => {
+                        ui.spinner();
                     }
                 });
             });
@@ -112,13 +110,11 @@ fn download_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
     let label = RichText::new(text)
         .family(theme::strong_family())
         .color(egui::Color32::WHITE);
-    let button = egui::Button::image_and_text(
-        icons::Icon::Update.image(14.0, egui::Color32::WHITE),
-        label,
-    )
-    .fill(UPDATE_GREEN)
-    .corner_radius(6.0)
-    .min_size(egui::vec2(0.0, 32.0));
+    let button =
+        egui::Button::image_and_text(icons::Icon::Update.image(14.0, egui::Color32::WHITE), label)
+            .fill(UPDATE_GREEN)
+            .corner_radius(6.0)
+            .min_size(egui::vec2(0.0, 32.0));
     ui.scope(|ui| {
         ui.spacing_mut().button_padding = egui::vec2(16.0, 6.0);
         ui.add(button)
