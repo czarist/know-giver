@@ -663,8 +663,7 @@ impl eframe::App for KnowGiverApp {
                 if study_surface {
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
-                let badges = Badges::from_engine(engine);
-                badges
+                Badges::from_engine(engine)
             }
             Err(_) => Badges::default(),
         };
