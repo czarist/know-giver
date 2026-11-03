@@ -168,6 +168,34 @@ fn random_text(bytes: usize) -> Result<String, AiError> {
     Ok(URL_SAFE_NO_PAD.encode(buf))
 }
 
+/// A host ID in a form OpenAI accepts: `urn:uuid:` and a random UUIDv4.
+fn new_host_id() -> Result<String, AiError> {
+    let mut b = [0u8; 16];
+    getrandom::fill(&mut b).map_err(|err| error(format!("no random source: {err}")))?;
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    let hex: String = b.iter().map(|byte| format!("{byte:02x}")).collect();
+    Ok(format!(
+        "urn:uuid:{}-{}-{}-{}-{}",
+        &hex[..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..]
+    ))
+}
+
+/// OpenAI rejects other host ID forms; early builds saved a plain random string.
+fn valid_host_id(id: &str) -> bool {
+    [
+        "urn:uuid:",
+        "urn:ietf:params:oauth:jwk-thumbprint:",
+        "did:key:",
+    ]
+    .iter()
+    .any(|prefix| id.len() > prefix.len() && id.starts_with(prefix))
+}
+
 fn agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(Duration::from_secs(600)))
@@ -338,8 +366,10 @@ pub(crate) fn login(
     mut on_event: impl FnMut(LoginEvent<'_>),
 ) -> Result<(), AiError> {
     let mut session = current().unwrap_or_default();
-    if session.host_id.is_empty() {
-        session.host_id = random_text(24)?;
+    if !valid_host_id(&session.host_id) {
+        // A client registered under a rejected host ID cannot be reused.
+        session.client_id.clear();
+        session.host_id = new_host_id()?;
         // Saved before the browser opens, as OpenAI asks.
         update(Some(session.clone()));
     }
@@ -1145,5 +1175,18 @@ mod tests {
         };
         assert!(!session.to_string().contains("secret"));
         assert!(!format!("{session:?}").contains("secret"));
+    }
+
+    #[test]
+    fn host_ids_use_a_form_openai_accepts() {
+        let id = new_host_id().unwrap();
+        assert!(valid_host_id(&id), "{id}");
+        let uuid = id.trim_start_matches("urn:uuid:");
+        assert_eq!(uuid.len(), 36);
+        assert_eq!(&uuid[14..15], "4");
+        assert!(matches!(&uuid[19..20], "8" | "9" | "a" | "b"));
+        assert_ne!(id, new_host_id().unwrap());
+        assert!(!valid_host_id("6kebqbe6if9tZysbJ6Q8HgVuKUVYLOAu"));
+        assert!(!valid_host_id("urn:uuid:"));
     }
 }
