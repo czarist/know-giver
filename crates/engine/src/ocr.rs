@@ -876,7 +876,15 @@ fn runtime_search_dirs(executable: &Path, debug_build: bool) -> Vec<PathBuf> {
         return Vec::new();
     };
     let mut directories = vec![executable_dir.join("local-runtime")];
-    if debug_build && let Some(target_dir) = executable_dir.parent() {
+    let target_dir = if executable_dir
+        .file_name()
+        .is_some_and(|name| name == "deps")
+    {
+        executable_dir.parent().and_then(Path::parent)
+    } else {
+        executable_dir.parent()
+    };
+    if debug_build && let Some(target_dir) = target_dir {
         directories.push(target_dir.join("release").join("local-runtime"));
     }
     directories
@@ -909,6 +917,30 @@ mod tests {
     }
 
     #[test]
+    fn test_binary_runtime_lookup_reaches_the_workspace_release_runtime() {
+        let executable = Path::new("repo")
+            .join("target")
+            .join("debug")
+            .join("deps")
+            .join("kg_engine.exe");
+        let directories = runtime_search_dirs(&executable, true);
+        assert_eq!(
+            directories,
+            [
+                Path::new("repo")
+                    .join("target")
+                    .join("debug")
+                    .join("deps")
+                    .join("local-runtime"),
+                Path::new("repo")
+                    .join("target")
+                    .join("release")
+                    .join("local-runtime"),
+            ]
+        );
+    }
+
+    #[test]
     fn local_ocr_server_is_started_once_and_reused() {
         let mut server = None;
         let mut starts = 0;
@@ -921,6 +953,44 @@ mod tests {
         }
         assert_eq!(starts, 1);
         assert_eq!(server, Some(1));
+    }
+
+    #[test]
+    #[ignore = "requires the installed OCR model and bundled llama-server"]
+    fn local_ocr_server_starts_in_background_when_local_ocr_is_enabled() {
+        let paths = AppPaths::detect();
+        assert!(matches!(
+            model_status(&paths),
+            Ok(OcrModelStatus::Installed { .. })
+        ));
+
+        let mut engine = Engine::in_memory(paths, crate::AiConfig::default()).unwrap();
+        engine.set_waker(Arc::new(|| {}));
+        let mut settings = engine.settings().clone();
+        settings.manuscript_ocr = crate::ManuscriptOcr::Local;
+        engine
+            .handle(crate::Command::SaveSettings(settings))
+            .unwrap();
+
+        let deadline = Instant::now() + STARTUP_TIMEOUT + Duration::from_secs(10);
+        while engine.ocr_server_starting() && Instant::now() < deadline {
+            engine.poll();
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        engine.poll();
+
+        assert!(
+            !engine.ocr_server_starting(),
+            "OCR server startup timed out"
+        );
+        let notices = engine.take_notices();
+        assert!(
+            engine
+                .ocr_server
+                .lock()
+                .is_ok_and(|server| server.is_some()),
+            "OCR server did not remain available after startup: {notices:?}"
+        );
     }
 
     #[test]
