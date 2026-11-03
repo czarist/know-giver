@@ -25,6 +25,10 @@ All notable changes to Know Giver. Format based on
   v0.8.0 runtime and Vulkan processing, with badges for llama.cpp, Vulkan and GitHub Copilot
   OAuth. Legal version 2026-11-03.2 asks users to agree again.
 
+### Fixed
+- Development builds now also find the OCR runtime produced under `target/release` by the
+  packaging scripts.
+
 ## [0.36.0] - 2026-11-01
 
 ### Added

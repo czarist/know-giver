@@ -759,11 +759,10 @@ fn cpu_server_executable() -> Option<PathBuf> {
     {
         return Some(path);
     }
-    if let Some(path) = std::env::current_exe()
-        .ok()
-        .and_then(|path| path.parent().map(Path::to_path_buf))
-        .map(|path| path.join("local-runtime").join(name))
-        .filter(|path| path.is_file())
+    if let Some(path) = bundled_runtime_dirs()
+        .into_iter()
+        .map(|directory| directory.join(name))
+        .find(|path| path.is_file())
     {
         return Some(path);
     }
@@ -780,16 +779,57 @@ fn vulkan_server_executable() -> Option<PathBuf> {
     } else {
         "llama-server"
     };
-    std::env::current_exe()
-        .ok()
-        .and_then(|path| path.parent().map(Path::to_path_buf))
-        .map(|path| path.join("local-runtime").join("vulkan").join(name))
-        .filter(|path| path.is_file())
+    bundled_runtime_dirs()
+        .into_iter()
+        .map(|directory| directory.join("vulkan").join(name))
+        .find(|path| path.is_file())
+}
+
+fn bundled_runtime_dirs() -> Vec<PathBuf> {
+    let Ok(executable) = std::env::current_exe() else {
+        return Vec::new();
+    };
+    runtime_search_dirs(&executable, cfg!(debug_assertions))
+}
+
+fn runtime_search_dirs(executable: &Path, debug_build: bool) -> Vec<PathBuf> {
+    let Some(executable_dir) = executable.parent() else {
+        return Vec::new();
+    };
+    let mut directories = vec![executable_dir.join("local-runtime")];
+    if debug_build {
+        if let Some(target_dir) = executable_dir.parent() {
+            directories.push(target_dir.join("release").join("local-runtime"));
+        }
+    }
+    directories
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn development_runtime_lookup_falls_back_to_the_packaged_release_runtime() {
+        let executable = Path::new("repo")
+            .join("target")
+            .join("debug")
+            .join("know-giver.exe");
+        let directories = runtime_search_dirs(&executable, true);
+        assert_eq!(
+            directories,
+            [
+                Path::new("repo")
+                    .join("target")
+                    .join("debug")
+                    .join("local-runtime"),
+                Path::new("repo")
+                    .join("target")
+                    .join("release")
+                    .join("local-runtime"),
+            ]
+        );
+    }
 
     #[test]
     fn manifest_pins_the_official_model_and_runtime() {
