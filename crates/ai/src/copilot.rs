@@ -1,5 +1,6 @@
 //! GitHub Copilot SDK transport and its first-party CLI sign-in flow.
 
+use std::ffi::OsStr;
 use std::io::{self, BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, OnceLock, mpsc};
@@ -22,8 +23,7 @@ pub(crate) fn is_endpoint(base_url: &str) -> bool {
 pub fn login(mut on_output: impl FnMut(&str)) -> Result<(), AiError> {
     let cli = github_copilot_sdk::install_bundled_cli()
         .ok_or_else(|| AiError::Copilot("bundled Copilot CLI is unavailable".into()))?;
-    let mut child = Command::new(cli)
-        .args(["login", "--web-flow"])
+    let mut child = web_login_command(cli)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -90,6 +90,12 @@ pub fn login(mut on_output: impl FnMut(&str)) -> Result<(), AiError> {
                 .map_or_else(|| "unknown".to_owned(), |code| code.to_string())
         )))
     }
+}
+
+fn web_login_command(cli: impl AsRef<OsStr>) -> Command {
+    let mut command = Command::new(cli);
+    command.args(["login", "--web-flow"]);
+    command
 }
 
 fn forward_output(reader: impl io::Read, sender: mpsc::Sender<String>) -> io::Result<()> {
@@ -220,11 +226,11 @@ async fn stream_reply(
             event = events.recv(), if events_open => {
                 match event {
                     Ok(event) if event.event_type == "assistant.message_delta" => {
-                        if let Some(delta) = event.data.get("deltaContent").and_then(serde_json::Value::as_str) {
-                            if !delta.is_empty() {
-                                streamed.push_str(delta);
-                                on_delta(delta);
-                            }
+                        if let Some(delta) = event.data.get("deltaContent").and_then(serde_json::Value::as_str)
+                            && !delta.is_empty()
+                        {
+                            streamed.push_str(delta);
+                            on_delta(delta);
                         }
                     }
                     Ok(_) => {}
@@ -304,6 +310,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn only_the_copilot_api_host_uses_the_copilot_backend() {
+        assert!(is_endpoint("https://api.githubcopilot.com"));
+        assert!(is_endpoint(
+            "https://api.githubcopilot.com/chat/completions"
+        ));
+        assert!(!is_endpoint("https://githubcopilot.com"));
+        assert!(!is_endpoint("https://api.githubcopilot.com.example.org/v1"));
+        assert!(!is_endpoint("https://api.openai.com/v1"));
+    }
+
+    #[test]
+    fn login_invokes_the_cli_web_oauth_flow() {
+        let command = web_login_command("copilot");
+
+        assert_eq!(command.get_program(), OsStr::new("copilot"));
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [OsStr::new("login"), OsStr::new("--web-flow")]
+        );
+    }
+
+    #[test]
+    fn login_forwards_complete_lines_from_cli_output() {
+        let (sender, receiver) = mpsc::channel();
+
+        forward_output(
+            io::Cursor::new("Open https://github.com/login/device\nEnter code: ABCD\n"),
+            sender,
+        )
+        .unwrap();
+
+        assert_eq!(
+            receiver.into_iter().collect::<Vec<_>>(),
+            vec![
+                "Open https://github.com/login/device".to_owned(),
+                "Enter code: ABCD".to_owned()
+            ]
+        );
+    }
+
+    #[test]
     fn prompt_parts_preserve_system_and_conversation_order() {
         let messages = [
             ChatMessage {
@@ -331,5 +378,17 @@ mod tests {
             prompt,
             "User:\nExplain the topic.\n\nAssistant:\nHere is the explanation.\n\nUser:\nGive me an example."
         );
+    }
+
+    #[test]
+    fn prompt_parts_reject_requests_without_system_or_conversation_messages() {
+        assert!(matches!(
+            prompt_parts(&[ChatMessage::user("Question")]),
+            Err(AiError::InvalidResponse(_))
+        ));
+        assert!(matches!(
+            prompt_parts(&[ChatMessage::system("Instructions")]),
+            Err(AiError::InvalidResponse(_))
+        ));
     }
 }
