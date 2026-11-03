@@ -39,8 +39,9 @@ fi
 
 platform="$(uname -s)"
 if [[ "$platform" == Linux ]]; then
-  if ! command -v glslc >/dev/null 2>&1 || ! pkg-config --exists vulkan; then
-    printf 'Linux Vulkan builds require libvulkan-dev and glslc\n' >&2
+  if ! command -v glslc >/dev/null 2>&1 || ! command -v glslangValidator >/dev/null 2>&1 ||
+    ! pkg-config --exists vulkan; then
+    printf 'Linux Vulkan builds require libvulkan-dev, glslc and glslang-tools\n' >&2
     exit 1
   fi
 elif [[ "$platform" != Darwin ]]; then
