@@ -1,6 +1,6 @@
 # Know Giver 利用規約
 
-2026年11月3日版（2026-11-03.2）。日本でアプリを利用するお客様向けの版です。
+2026年11月3日版（2026-11-03.3）。日本でアプリを利用するお客様向けの版です。
 
 ## 1. 事業者
 
@@ -25,6 +25,9 @@ Know Giver は、ブラジル、アメリカ合衆国、欧州連合、イギリ
 - お客様の所在地で適法に利用できる提供元だけを使ってください。
 - キーの管理と、キーを使った利用のすべてについては、お客様が責任を負います。
 - GitHub Copilot は、Know Giver にAPIキーを入力する代わりに、公式 Copilot CLI を通じて GitHub アカウントでサインインします。CLI は通常、認証情報を OS のキーチェーンに保存します。利用できない場合は平文の設定ファイル（`~/.copilot/config.json`）に保存することがあります。Know Giver のデータベースには保存しません。利用可否と利用条件は GitHub Copilot のプランおよび規約に従います。
+- ChatGPT は、APIキーではなく OpenAI のページ（「Sign in with ChatGPT」）でサインインします。利用は ChatGPT のプランの規約と上限に従います。
+- Claude では、Know Giver は Anthropic 公式の Claude Code を改変せずに、お客様自身の Claude アカウントで、APIキーなしで実行します。利用は Anthropic の規約と Claude の契約の上限に従います。
+- Know Giver は OpenAI、Anthropic、GitHub と提携しておらず、これらの会社の推奨を受けたものでもありません。
 
 ## 6. AIは誤りを含むことがあります
 

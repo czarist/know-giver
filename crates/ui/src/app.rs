@@ -566,6 +566,10 @@ impl eframe::App for KnowGiverApp {
         let notices = match self.engine.as_mut() {
             Ok(engine) => {
                 engine.poll();
+                if let Some(url) = engine.take_account_url() {
+                    open_url(&url);
+                    crate::accounts::remember_url(ctx, url);
+                }
                 if engine.take_quit_request() {
                     self.quit_requested = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);

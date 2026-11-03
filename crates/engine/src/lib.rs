@@ -5,6 +5,7 @@
 //! model calls, speech) runs on worker threads; results come back as events
 //! that [`Engine::poll`] applies on the UI thread.
 
+mod accounts;
 mod board;
 mod child_job;
 mod discursive;
@@ -34,6 +35,7 @@ use std::time::Instant;
 
 use chrono::NaiveDate;
 
+pub use accounts::AccountAction;
 pub use board::{BoardItem, BoardJob};
 pub use discursive::{
     AttemptProblems, EvolutionGroup, EvolutionRow, ImageProblem, NOTE_INTERRUPTED, NOTE_UNREADABLE,
@@ -41,6 +43,7 @@ pub use discursive::{
 };
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
+pub use kg_ai::{AccountKind, AccountState, LoginPages};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_ai::{
     FreeData, FreeTier, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation,
@@ -153,8 +156,15 @@ pub enum Command {
     TestConnection,
     /// Tests settings not saved yet (first-run setup).
     TestAiConfig(Box<AiConfig>),
-    /// Starts the official GitHub Copilot CLI sign-in flow.
-    LoginCopilot,
+    /// Signs in with an account the student already has, through the
+    /// service's official flow; `pages` are shown in the browser at the end.
+    SignInAccount(AccountKind, LoginPages),
+    /// Installs the program a service needs (Claude Code), after consent.
+    InstallAccount(AccountKind),
+    /// Forgets the app's own sign-in (ChatGPT).
+    SignOutAccount(AccountKind),
+    /// Checks which account services are installed and signed in.
+    CheckAccounts,
     /// Asks the service which models a key can use.
     ListModels(Box<AiConfig>),
     /// Saves the first-run setup and the agreement to the terms.
@@ -346,7 +356,8 @@ pub enum Notice {
     PlanCreated,
     SettingsSaved,
     ConnectionOk,
-    CopilotConnected,
+    AccountConnected(AccountKind),
+    AccountInstalled(AccountKind),
     ModelInstalled(ModelId),
     LessonSaved,
     ReviewSaved {
@@ -409,8 +420,7 @@ pub(crate) enum Event {
         result: Result<kg_ai::PlanDraft, AiError>,
     },
     ConnectionTested(Box<AiConfig>, Result<(), AiError>),
-    CopilotLoginOutput(String),
-    CopilotLoginFinished(Result<(), AiError>),
+    Account(accounts::AccountEvent),
     ModelsListed(setup::ModelList),
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
@@ -470,9 +480,7 @@ pub struct Engine {
     last_test: Option<(AiConfig, bool)>,
     listing_models: bool,
     model_list: Option<setup::ModelList>,
-    copilot_login_in_progress: bool,
-    copilot_login_result: Option<bool>,
-    copilot_login_output: String,
+    accounts: accounts::Accounts,
 
     lesson: Option<LessonSession>,
     quiz: Option<QuizSession>,
@@ -586,9 +594,7 @@ impl Engine {
             last_test: None,
             listing_models: false,
             model_list: None,
-            copilot_login_in_progress: false,
-            copilot_login_result: None,
-            copilot_login_output: String::new(),
+            accounts: accounts::Accounts::default(),
             lesson: None,
             quiz: None,
             review: None,
@@ -619,6 +625,7 @@ impl Engine {
             waker: Arc::new(|| {}),
             next_session_id: 1,
         };
+        engine.restore_chatgpt_session();
         engine.recover_writing();
         engine.reload_plans();
         engine.refresh_activity();
@@ -893,8 +900,20 @@ impl Engine {
                 self.test_config(*config);
                 Ok(())
             }
-            Command::LoginCopilot => {
-                self.login_copilot();
+            Command::SignInAccount(kind, pages) => {
+                self.sign_in_account(kind, pages);
+                Ok(())
+            }
+            Command::InstallAccount(kind) => {
+                self.install_account(kind);
+                Ok(())
+            }
+            Command::SignOutAccount(kind) => {
+                self.sign_out_account(kind);
+                Ok(())
+            }
+            Command::CheckAccounts => {
+                self.check_accounts();
                 Ok(())
             }
             Command::ListModels(config) => {
@@ -986,6 +1005,7 @@ impl Engine {
     /// per frame.
     pub fn poll(&mut self) {
         self.tick_study_time();
+        self.save_chatgpt_session();
         while let Ok(event) = self.events_rx.try_recv() {
             let result = match event {
                 Event::EditalExtracted(result) => {
@@ -1012,15 +1032,8 @@ impl Engine {
                         .map(|()| self.notices.push(Notice::ConnectionOk))
                         .map_err(EngineError::from)
                 }
-                Event::CopilotLoginOutput(line) => {
-                    if self.copilot_login_in_progress {
-                        self.copilot_login_output.push_str(&line);
-                        self.copilot_login_output.push('\n');
-                    }
-                    Ok(())
-                }
-                Event::CopilotLoginFinished(result) => {
-                    self.on_copilot_login_finished(result);
+                Event::Account(event) => {
+                    self.on_account_event(event);
                     Ok(())
                 }
                 Event::ModelsListed(list) => {

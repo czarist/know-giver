@@ -1,6 +1,6 @@
 # Know Giver 使用条款
 
-2026年11月3日版本（2026-11-03.2）。本版本适用于在新加坡使用本应用的用户。本中文版为译本，如与英文版有任何不一致，以英文版为准。
+2026年11月3日版本（2026-11-03.3）。本版本适用于在新加坡使用本应用的用户。本中文版为译本，如与英文版有任何不一致，以英文版为准。
 
 ## 1. 关于我们
 
@@ -25,6 +25,9 @@ Know Giver 在巴西、美国、欧盟、英国、日本、台湾、香港和新
 - 请只使用在你所在地可以合法使用的服务商。
 - 你应负责保管密钥，并对使用该密钥的一切行为负责。
 - GitHub Copilot 通过官方 Copilot CLI 使用你的 GitHub 账户登录，无需在 Know Giver 中输入 API 密钥。CLI 通常将登录凭据保存在操作系统密钥链中；如果密钥链不可用，可能会改用明文配置文件（`~/.copilot/config.json`）。Know Giver 不会将凭据保存在应用数据库中。是否可用及其使用方式受你的 GitHub Copilot 套餐和条款约束。
+- ChatGPT 通过 OpenAI 的页面（“Sign in with ChatGPT”）登录，无需 API 密钥。使用受你 ChatGPT 套餐的条款和上限约束。
+- 使用 Claude 时，Know Giver 以你自己的 Claude 账号、无需 API 密钥，运行未经修改的 Anthropic 官方 Claude Code。使用受 Anthropic 的条款和你 Claude 订阅的上限约束。
+- Know Giver 与 OpenAI、Anthropic 和 GitHub 无关联，也未获得其认可。
 
 ## 6. AI 可能出错
 

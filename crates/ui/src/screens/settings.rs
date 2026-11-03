@@ -135,64 +135,24 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     section(ui, &t!("settings.ai.title"), |ui| {
         widgets::hint(ui, &t!("settings.ai.hint"));
         provider_picker(ui, draft);
-        let is_copilot = kg_engine::ai_provider(&draft.ai_provider)
-            .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url))
-            .is_some_and(|provider| provider.id == "copilot");
+        let provider = kg_engine::ai_provider(&draft.ai_provider)
+            .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url));
+        let account = provider.and_then(kg_engine::Provider::account);
+        let is_copilot = account == Some(kg_engine::AccountKind::Copilot);
         if is_copilot {
             draft.manuscript_ocr = ManuscriptOcr::Local;
+        }
+        if let Some(kind) = account {
+            ui.add_space(4.0);
+            crate::accounts::panel(ui, engine, kind, actions);
+            ui.add_space(8.0);
         }
         egui::Grid::new("ai_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
             .show(ui, |ui| {
                 let ai = &mut draft.ai;
-                if is_copilot {
-                    ui.label(t!("copilot.account"));
-                    ui.vertical(|ui| {
-                        widgets::hint(ui, &t!("copilot.instructions"));
-                        ui.horizontal(|ui| {
-                            if ui
-                                .add_enabled(
-                                    !engine.is_copilot_login_in_progress(),
-                                    egui::Button::new(t!("copilot.sign_in")),
-                                )
-                                .clicked()
-                            {
-                                actions.send(Command::LoginCopilot);
-                            }
-                            if engine.is_copilot_login_in_progress() {
-                                ui.spinner();
-                            }
-                            match engine.copilot_login_result() {
-                                Some(true) => {
-                                    ui.label(
-                                        RichText::new(t!("copilot.connected"))
-                                            .color(theme::palette(ui.ctx()).success),
-                                    );
-                                }
-                                Some(false) => {
-                                    ui.label(
-                                        RichText::new(t!("copilot.failed"))
-                                            .color(theme::palette(ui.ctx()).danger),
-                                    );
-                                }
-                                None => {}
-                            }
-                        });
-                        let output = engine.copilot_login_output();
-                        if engine.is_copilot_login_in_progress() && output.is_empty() {
-                            widgets::hint(ui, &t!("copilot.waiting"));
-                        } else if !output.is_empty() {
-                            ui.label(t!("copilot.output"));
-                            ui.add(
-                                egui::Label::new(RichText::new(output).monospace())
-                                    .selectable(true)
-                                    .wrap(),
-                            );
-                        }
-                    });
-                    ui.end_row();
-                } else {
+                if account.is_none() {
                     ui.label(t!("settings.ai.base_url"));
                     ui.add(egui::TextEdit::singleline(&mut ai.base_url).desired_width(FIELD_WIDTH));
                     ui.end_row();

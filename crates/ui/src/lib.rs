@@ -7,6 +7,7 @@
 // Embeds `locales/*.yml` and defines the lookup used by `t!`.
 rust_i18n::i18n!("../../locales", fallback = "pt-BR");
 
+mod accounts;
 mod app;
 mod art;
 mod export;

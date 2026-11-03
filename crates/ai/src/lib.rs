@@ -5,7 +5,10 @@
 //! `models.fallback` when the main model is rate limited or unavailable.
 //! Prompts live in `crates/ai/prompts/` and follow `docs/tutor-prompts.md`.
 
+mod account;
 mod board;
+pub mod chatgpt;
+mod claude_code;
 mod client;
 mod config;
 mod copilot;
@@ -17,14 +20,19 @@ mod providers;
 mod tasks;
 mod throttle;
 
+pub use account::{AccountKind, AccountState, LoginEvent, LoginPages};
+pub use account::{
+    install as install_account, login as login_account, sign_out, state as account_state,
+};
 pub use board::{
     AnswerDraft, BoardContext, BoardQuestionDraft, ExcerptDraft, RelevanceDraft, chunk_text,
     classify_board_items, extract_answer_key, extract_board_excerpts, extract_board_questions,
     reference_block,
 };
+pub use chatgpt::ChatGptSession;
+pub use claude_code::executable as claude_code_executable;
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, PromptLanguage, Task};
-pub use copilot::login as login_copilot;
 pub use culture::ExamCulture;
 pub use discursive::{
     CriterionDraft, CriterionInput, EvaluationDraft, EvaluationInput, EvidenceDraft, IssueDraft,
@@ -70,4 +78,16 @@ pub enum AiError {
     VisionRejected { status: u16 },
     #[error("GitHub Copilot request failed: {0}")]
     Copilot(String),
+    #[error("ChatGPT request failed: {0}")]
+    ChatGpt(String),
+    #[error("Claude Code request failed: {0}")]
+    ClaudeCode(String),
+    #[error("Claude Code is not installed")]
+    ClaudeCodeMissing,
+    #[error("the account's plan limit was reached")]
+    PlanLimit,
+    #[error("the ChatGPT plan does not include use in this app")]
+    PlanNotIncluded,
+    #[error("the sign-in was cancelled or timed out")]
+    SignInCancelled,
 }

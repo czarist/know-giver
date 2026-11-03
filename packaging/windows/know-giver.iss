@@ -48,6 +48,8 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "startup"; Description: "{cm:StartOnStartup}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: unchecked
 Name: "studyreminders"; Description: "{cm:StudyReminders}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: unchecked
+; Offered only when Claude Code is missing and someone is watching (never in updates).
+Name: "claudecode"; Description: "{cm:InstallClaudeCode}"; GroupDescription: "{cm:AccountServices}"; Check: ClaudeCodeMissing
 
 [Files]
 Source: "{#SourceDir}\know-giver.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -84,15 +86,32 @@ ptbr.StartOnStartup=Iniciar o Know Giver quando você entrar no Windows
 en.StartOnStartup=Start Know Giver when you sign in to Windows
 ptbr.StudyReminders=Receber lembretes de estudo a cada 3 horas enquanto o Know Giver estiver aberto, mesmo na bandeja
 en.StudyReminders=Receive study reminders every 3 hours while Know Giver is running, including in the system tray
+ptbr.AccountServices=Entrar com a sua assinatura
+en.AccountServices=Sign in with your subscription
+ptbr.InstallClaudeCode=Instalar também o Claude Code, o programa oficial da Anthropic, para usar a sua assinatura Claude nas aulas
+en.InstallClaudeCode=Also install Claude Code, Anthropic's official program, to use your Claude subscription in lessons
+ptbr.InstallingClaudeCode=Instalando o Claude Code com o instalador oficial da Anthropic…
+en.InstallingClaudeCode=Installing Claude Code with Anthropic's official installer…
 ptbr.ReminderPreferenceFailed=Não foi possível salvar a escolha dos lembretes de estudo.
 en.ReminderPreferenceFailed=Could not save the study reminder preference.
 
 [Run]
+; Anthropic's official installer, for this user only; a failure leaves Know Giver installed.
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""irm https://claude.ai/install.ps1 | iex"""; StatusMsg: "{cm:InstallingClaudeCode}"; Tasks: claudecode; Flags: runhidden waituntilterminated
 Filename: "{app}\know-giver.exe"; Description: "{cm:LaunchProgram,Know Giver}"; Flags: nowait postinstall skipifsilent
 ; Silent installs (the one-line install and in-app updates) open the new version.
 Filename: "{app}\know-giver.exe"; Flags: nowait; Check: WizardSilent
 
 [Code]
+// Claude Code on the PATH, from its native installer, or from npm.
+function ClaudeCodeMissing: Boolean;
+begin
+  Result := (not WizardSilent)
+    and (FileSearch('claude.exe', GetEnv('PATH')) = '')
+    and (not FileExists(ExpandConstant('{%USERPROFILE}\.local\bin\claude.exe')))
+    and (not FileExists(ExpandConstant('{userappdata}\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe')));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   FlagFile: String;

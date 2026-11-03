@@ -23,7 +23,7 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
-  <img alt="OAuth: GitHub Copilot" src="https://img.shields.io/badge/OAuth-GitHub%20Copilot-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
   <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
   <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
@@ -139,7 +139,13 @@ Windows インストーラーには必要な C++ ランタイムと Vulkan ロ�
 
 GitHub Copilot は公式 Copilot CLI を通じて GitHub アカウントで接続でき、APIキーは不要です。CLI は通常、認証情報を OS のキーチェーンに保存します。利用できない場合は平文の設定ファイル（`~/.copilot/config.json`）に保存することがあります。Know Giver のデータベースには保存しません。この連携はテキストのみで、画像には対応しません。
 
-**無料と有料。** AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
+**お持ちのアカウントでサインイン。** AIのステップは「アカウントでサインイン」から始まります。チャットのプランを契約していて、APIキーを作ったことがない方向けです。**ChatGPT**（OpenAI 公式の「Sign in with ChatGPT」。レッスンは ChatGPT のプランの上限に含まれます）、**Claude**（Anthropic 公式のプログラム Claude Code を通じて、Claude Pro または Max のアカウントで。Know Giver がインストールすることもできます）、**GitHub Copilot** に対応しています。サインインはそれぞれの提供元のページで行い、Know Giver がパスワードを見ることはありません。Know Giver は OpenAI、Anthropic、GitHub と提携していません。
+
+<p align="center">
+  <img src="docs/images/ja/setup-ai-account.png" alt="AIのステップの「アカウントでサインイン」タブ：ChatGPT、Claude、GitHub Copilot とそれぞれのサインインボタン" width="60%">
+</p>
+
+**無料と有料。** 「アカウントでサインイン」のほかに、AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
 
 **地域の勉強のしかた。** レッスン、クイズ、テキスト、記述・小論文は、お住まいの地域の試験の勉強のしかたに合わせます。日本では五肢択一と字数で書く小論文、中国大陸では行测と申论、台湾と香港ではそれぞれの公務員試験の形式、ブラジルでは Cebraspe の正誤問題と5択、米国と英国では標準テスト、司法試験、採点基準（mark scheme）です。試験要項と過去問が常に優先されます。
 
@@ -191,6 +197,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 インストール先は、Windows では `%LOCALAPPDATA%\Programs\KnowGiver`（スタートメニューに登録）、macOS では `~/Applications/Know Giver.app`、Linux では `~/.local/opt/KnowGiver`（`know-giver` コマンドとアプリメニューに登録）です。
+
+Claude Code が入っていない場合、初回インストールでは Anthropic 公式のインストーラーで Claude Code も一緒に入れるか尋ねます。Claude の契約を使うためのもので、あとから AIのステップでインストールすることもできます。
 
 初めてのインストールでは、**デスクトップのショートカット**を作るか確認します（アップデートでは前の選択を保ちます）。**アンインストール**は、Windows では 設定 → アプリ → Know Giver（スタートメニューの「Uninstall Know Giver」、プログラムフォルダーの `unins000.exe` でも可）、macOS では `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`、Linux では `~/.local/opt/KnowGiver/uninstall.sh` です。学習データも削除するか確認し、「はい」と答えない限り残します。
 

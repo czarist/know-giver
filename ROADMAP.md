@@ -717,6 +717,16 @@ lessons (length, number of examples, past-exam questions, final check), and swit
 mid-lesson keeps what was already covered.
 
 ## Not yet verified
+- Account sign-ins (Unreleased):
+  - ChatGPT: the whole *Sign in with ChatGPT* flow with a real account (registration,
+    consent, ID token, refresh after an hour, sign-out), which models `/v1/models` lists
+    for a plan, and which Responses features the plan route accepts (JSON-only answers,
+    images). Built from OpenAI's docs only.
+  - Claude Code: `claude auth login` started from the app on a computer that never signed
+    in, and the in-app install with the official installer on Windows, macOS and Linux.
+    Lessons through Claude Code were checked live on Windows (`cargo run -p kg-ai
+    --example account_check -- claude-code haiku`).
+  - The Inno Setup task that installs Claude Code (compiled only in CI).
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
   review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
   conventions and grading scales. Notes are in Portuguese and English only; Japanese and
@@ -798,16 +808,16 @@ mid-lesson keeps what was already covered.
 - [x] Connect GitHub Copilot through the official Copilot SDK and its supported CLI
       account sign-in. Do not reuse private CLI tokens or reverse-engineer endpoints;
       sign-in credentials remain managed by the CLI and the computer's credential store.
-- [ ] Integrate supported OAuth/account sign-in for ChatGPT/Codex. Verify the official
-      authentication flow and allowed use in third-party clients; do not reuse private
-      CLI tokens or reverse-engineer endpoints.
-- [ ] Investigate and integrate supported OAuth/account sign-in for Anthropic/Claude,
-      only if Anthropic documents a flow for third-party apps. Claude subscription sign-in
-      is documented for Claude Code, not as a general credential for other apps; otherwise
-      keep API keys or supported cloud-provider authentication as the available options.
-- [ ] Keep provider adapters separate where protocols differ, and review dependency,
-      licensing, data-flow, localization and terms implications before implementation.
-      ChatGPT and Anthropic account connections are planned and are not available today.
+- [x] ChatGPT sign-in through OpenAI's *Sign in with ChatGPT* for open-source and local
+      apps (dynamic registration as "Know Giver", not the Codex CLI's client), requests on
+      the Responses API with the student's plan.
+- [x] Claude through the unmodified Claude Code binary, signed in with the student's own
+      Claude account (Anthropic allows this; using Claude.ai credentials directly in a
+      third-party app is not allowed). The owner accepted Anthropic's Commercial Terms for
+      running Claude Code in the product. No Anthropic or Claude Code logos in the app.
+- [ ] Faster Claude Code answers: each request starts `claude -p` (about 3 s to the first
+      word in a live check); a long-lived `--input-format stream-json` session per lesson
+      would save the start-up.
 - [ ] Store the API key in the system keychain instead of the local database.
 - [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
       public release.

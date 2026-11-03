@@ -141,6 +141,12 @@ impl Provider {
         Some(FreeTier { model, data, url })
     }
 
+    /// The account service behind this provider, when it signs in instead
+    /// of taking an API key.
+    pub fn account(&self) -> Option<crate::AccountKind> {
+        crate::AccountKind::from_provider_id(self.id)
+    }
+
     pub fn default_model(&self) -> &'static str {
         self.models.first().map_or("", |m| m.id)
     }
@@ -153,7 +159,7 @@ impl Provider {
     /// Settings for this provider with `model` for every task.
     pub fn config(&self, base_url: &str, api_key: &str, model: &str) -> AiConfig {
         let model = model.trim().to_owned();
-        let vision = if self.model_sees(&model) {
+        let vision = if self.model_sees(&model) || (self.id == "chatgpt" && !model.is_empty()) {
             model.clone()
         } else {
             self.vision.to_owned()
@@ -165,7 +171,7 @@ impl Provider {
         };
         AiConfig {
             base_url: base_url.trim().trim_end_matches('/').to_owned(),
-            api_key: if self.id == "copilot" {
+            api_key: if self.account().is_some() {
                 String::new()
             } else {
                 api_key.trim().to_owned()
@@ -232,6 +238,8 @@ pub enum ProviderKind {
     Local,
     /// Any OpenAI-compatible address.
     Custom,
+    /// Signed in with an account the student already has, no API key.
+    Account,
 }
 
 macro_rules! provider {
@@ -322,7 +330,14 @@ pub const PROVIDERS: &[Provider] = &[
         key: true, None,
         [text("openai/gpt-4.1-mini"), sees("openai/gpt-4.1")],
         fallback: "openai/gpt-4.1-mini", vision: "openai/gpt-4.1"),
-    provider!("copilot", "GitHub Copilot", Platform, "https://api.githubcopilot.com",
+    provider!("chatgpt", "ChatGPT", Account, "account://chatgpt",
+        "https://chatgpt.com/#settings", "https://developers.openai.com/siwc",
+        key: false, None, [], fallback: "", vision: ""),
+    provider!("claude-code", "Claude", Account, "account://claude-code",
+        "https://claude.com/pricing", "https://code.claude.com/docs/en/setup",
+        key: false, None, [sees("sonnet"), sees("opus"), sees("haiku")],
+        fallback: "", vision: "sonnet"),
+    provider!("copilot", "GitHub Copilot", Account, "https://api.githubcopilot.com",
         "https://github.com/features/copilot/plans", "https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli",
         key: false, None, [text("gpt-5.4")], fallback: "", vision: ""),
     provider!("together", "Together AI", Platform, "https://api.together.xyz/v1",
@@ -455,7 +470,12 @@ mod tests {
         assert_eq!(ids.len(), PROVIDERS.len(), "duplicate provider id");
         for p in PROVIDERS {
             if p.id != "custom" {
-                assert!(p.base_url.starts_with("http"), "{}", p.id);
+                // Account services save a marker instead of an HTTP address.
+                assert!(
+                    p.base_url.starts_with("http") || p.base_url.starts_with("account://"),
+                    "{}",
+                    p.id
+                );
                 assert!(p.key_url.starts_with("https://"), "{}", p.id);
                 assert!(p.site.starts_with("https://"), "{}", p.id);
             }

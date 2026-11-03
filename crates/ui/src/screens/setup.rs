@@ -33,9 +33,23 @@ pub struct SetupUi {
     /// The saved AI settings when the setup only asks for the region and
     /// terms again; kept as they are unless the AI step is changed.
     pub original_ai: Option<AiConfig>,
-    /// The AI step shows services with a free plan instead of paid ones.
-    pub free_tab: bool,
-    pub copilot_connected: bool,
+    /// Which group of services the AI step shows.
+    pub tab: AiTab,
+    /// The chosen account service is signed in (refreshed every frame).
+    pub account_connected: bool,
+    /// The account service already saved in the settings, trusted as
+    /// signed in when the setup only asks for the region and terms again.
+    pub restored_account: Option<kg_engine::AccountKind>,
+}
+
+/// The AI step's tabs: an account the student already has first, since that
+/// is what most people pay for; then API keys; then free plans.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AiTab {
+    #[default]
+    Account,
+    Paid,
+    Free,
 }
 
 impl SetupUi {
@@ -49,10 +63,12 @@ impl SetupUi {
         let Some(provider) = self.provider else {
             return false;
         };
+        if provider.account().is_some() {
+            return !self.model.trim().is_empty() && self.account_connected;
+        }
         !self.model.trim().is_empty()
             && self.base_url.trim().starts_with("http")
             && (!provider.needs_key || !self.api_key.trim().is_empty())
-            && (provider.id != "copilot" || self.copilot_connected)
     }
 
     fn step_done(&self, step: usize) -> bool {
@@ -84,7 +100,7 @@ impl SetupUi {
         self.model = provider.default_model().to_owned();
         self.typing_model = false;
         self.base_url = provider.base_url.to_owned();
-        self.copilot_connected = provider.id != "copilot";
+        self.account_connected = false;
     }
 
     /// Picks a service for its free plan, with the model the plan covers.
@@ -105,8 +121,28 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     if setup.draft.is_none() {
         start(setup, engine.settings());
     }
-    if let Some(connected) = engine.copilot_login_result() {
-        setup.copilot_connected = connected;
+    if let Some(kind) = setup.provider.and_then(kg_engine::Provider::account) {
+        setup.account_connected =
+            crate::accounts::connected(engine, kind) || setup.restored_account == Some(kind);
+        // A ChatGPT plan offers its own models: list them once signed in.
+        if setup.account_connected
+            && kind == kg_engine::AccountKind::ChatGpt
+            && !engine.is_listing_models()
+            && let Some(config) = setup.ai_config()
+            && !engine.model_list().is_some_and(|list| list.is_for(&config))
+        {
+            actions.send(Command::ListModels(Box::new(config)));
+        }
+        if setup.model.trim().is_empty()
+            && let Some(config) = setup.ai_config()
+            && let Some(Ok(models)) = engine
+                .model_list()
+                .filter(|list| list.is_for(&config))
+                .map(|list| list.result.as_ref())
+            && let Some(first) = models.first()
+        {
+            setup.model = first.clone();
+        }
     }
 
     egui::ScrollArea::vertical().show(ui, |ui| {
@@ -253,17 +289,36 @@ fn teacher_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi) {
 fn ai_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mut Actions) {
     step_title(ui, &t!("setup.ai.title"), &t!("setup.ai.hint"));
 
-    // Paid services or services with a free plan.
     ui.horizontal(|ui| {
-        ui.selectable_value(&mut setup.free_tab, false, t!("setup.ai.tab_paid"));
-        ui.selectable_value(&mut setup.free_tab, true, t!("setup.ai.tab_free"));
+        ui.selectable_value(&mut setup.tab, AiTab::Account, t!("setup.ai.tab_account"));
+        ui.selectable_value(&mut setup.tab, AiTab::Paid, t!("setup.ai.tab_paid"));
+        ui.selectable_value(&mut setup.tab, AiTab::Free, t!("setup.ai.tab_free"));
     });
     ui.add_space(10.0);
-    if setup.free_tab {
-        free_plans(ui, setup);
-        ui.add_space(16.0);
-    } else {
-        paid_recommendations(ui, setup);
+    match setup.tab {
+        AiTab::Account => {
+            let mainland = setup.mainland();
+            let selected = setup.provider.map(|p| p.id);
+            if let Some(provider) = crate::accounts::cards(ui, engine, selected, mainland, actions)
+            {
+                setup.pick_provider(provider);
+            }
+            // Only the model is left to choose once an account is picked.
+            if setup
+                .provider
+                .and_then(kg_engine::Provider::account)
+                .is_some()
+            {
+                ui.add_space(8.0);
+                ai_fields(ui, engine, setup, actions);
+            }
+            return;
+        }
+        AiTab::Free => {
+            free_plans(ui, setup);
+            ui.add_space(16.0);
+        }
+        AiTab::Paid => paid_recommendations(ui, setup),
     }
 
     field(ui, &t!("setup.ai.provider"), |ui| {
@@ -288,29 +343,6 @@ fn paid_recommendations(ui: &mut egui::Ui, setup: &mut SetupUi) {
         });
     });
     ui.add_space(16.0);
-
-    // Services the student signs in to with an account instead of a key.
-    let accounts: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
-        .iter()
-        .filter(|p| p.offered(mainland) && p.id == "copilot")
-        .collect();
-    if !accounts.is_empty() {
-        ui.label(RichText::new(t!("setup.ai.account_title")).strong());
-        ui.add_space(4.0);
-        for provider in accounts {
-            let selected = setup.provider.map(|x| x.id) == Some(provider.id);
-            if crate::provider_logo::row(ui, provider, &provider_name(provider), None, selected)
-                .clicked()
-            {
-                setup.pick_provider(provider);
-            }
-            ui.horizontal(|ui| {
-                ui.add_space(40.0);
-                widgets::hint(ui, &t!("setup.ai.account_note"));
-            });
-        }
-        ui.add_space(16.0);
-    }
 }
 
 /// Services with a free plan where the app is used: the model the plan
@@ -411,52 +443,24 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
     let Some(provider) = setup.provider else {
         return;
     };
-    let is_copilot = provider.id == "copilot";
-    if !is_copilot && (provider.base_url.is_empty() || !provider.needs_key) {
-        field(ui, &t!("setup.ai.address"), |ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut setup.base_url)
-                    .hint_text("http://localhost:8000/v1")
-                    .desired_width(FIELD_WIDTH),
-            );
-        });
-    }
-    if is_copilot {
-        field(ui, &t!("copilot.account"), |ui| {
-            widgets::hint(ui, &t!("copilot.instructions"));
-            ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(
-                        !engine.is_copilot_login_in_progress(),
-                        egui::Button::new(t!("copilot.sign_in")),
-                    )
-                    .clicked()
-                {
-                    actions.send(Command::LoginCopilot);
-                }
-                if engine.is_copilot_login_in_progress() {
-                    ui.spinner();
-                }
-                if setup.copilot_connected {
-                    ui.label(RichText::new(t!("copilot.connected")).color(p.success));
-                } else if engine.copilot_login_result() == Some(false) {
-                    ui.label(RichText::new(t!("copilot.failed")).color(p.danger));
-                }
+    let account = provider.account();
+    if let Some(kind) = account {
+        // In the account tab the card already holds the sign-in.
+        if setup.tab != AiTab::Account {
+            field(ui, &t!("account.title"), |ui| {
+                crate::accounts::panel(ui, engine, kind, actions);
             });
-            let output = engine.copilot_login_output();
-            if engine.is_copilot_login_in_progress() && output.is_empty() {
-                widgets::hint(ui, &t!("copilot.waiting"));
-            } else if !output.is_empty() {
-                ui.label(t!("copilot.output"));
-                ui.add(
-                    egui::Label::new(RichText::new(output).monospace())
-                        .selectable(true)
-                        .wrap(),
-                );
-            }
-            links(ui, provider);
-        });
+        }
     } else {
+        if provider.base_url.is_empty() || !provider.needs_key {
+            field(ui, &t!("setup.ai.address"), |ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut setup.base_url)
+                        .hint_text("http://localhost:8000/v1")
+                        .desired_width(FIELD_WIDTH),
+                );
+            });
+        }
         field(ui, &t!("setup.ai.key"), |ui| {
             ui.add(
                 egui::TextEdit::singleline(&mut setup.api_key)
@@ -490,9 +494,12 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
     }
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        let can_list = setup.base_url.trim().starts_with("http")
-            && (!provider.needs_key || !setup.api_key.trim().is_empty())
-            && (provider.id != "copilot" || setup.copilot_connected);
+        let can_list = if account.is_some() {
+            setup.account_connected
+        } else {
+            setup.base_url.trim().starts_with("http")
+                && (!provider.needs_key || !setup.api_key.trim().is_empty())
+        };
         if ui
             .add_enabled(
                 can_list && !engine.is_listing_models(),
@@ -602,6 +609,10 @@ pub(crate) fn provider_list(
     ui.set_min_width(FIELD_WIDTH);
     let groups = [
         (t!("setup.ai.group_recommended"), None),
+        (
+            t!("setup.ai.tab_account"),
+            Some(kg_engine::ProviderKind::Account),
+        ),
         (
             t!("setup.ai.group_labs"),
             Some(kg_engine::ProviderKind::Lab),
@@ -813,7 +824,10 @@ fn start(setup: &mut SetupUi, settings: &Settings) {
         setup.provider = kg_engine::ai_provider(&settings.ai_provider)
             .or_else(|| kg_engine::provider_for_url(&settings.ai.base_url))
             .or_else(|| kg_engine::ai_provider("custom"));
-        setup.copilot_connected = setup.provider.is_some_and(|p| p.id == "copilot");
+        setup.restored_account = setup.provider.and_then(kg_engine::Provider::account);
+        if setup.restored_account.is_none() && setup.provider.is_some() {
+            setup.tab = AiTab::Paid;
+        }
         setup.model = settings.ai.models.tutor.clone();
         setup.api_key = settings.ai.api_key.clone();
         setup.base_url = settings.ai.base_url.clone();
@@ -1098,13 +1112,21 @@ mod tests {
     }
 
     #[test]
-    fn copilot_setup_requires_account_sign_in() {
-        let mut setup = SetupUi::default();
-        setup.pick_provider(kg_engine::ai_provider("copilot").unwrap());
+    fn account_services_need_a_sign_in_not_a_key() {
+        for id in ["copilot", "chatgpt", "claude-code"] {
+            let mut setup = SetupUi::default();
+            setup.pick_provider(kg_engine::ai_provider(id).unwrap());
+            setup.model = "some-model".into();
+            assert!(!setup.ai_ready(), "{id}");
+            setup.account_connected = true;
+            assert!(setup.ai_ready(), "{id}");
+            assert!(setup.api_key.is_empty());
+        }
+    }
 
-        assert!(!setup.ai_ready());
-        setup.copilot_connected = true;
-        assert!(setup.ai_ready());
+    #[test]
+    fn the_account_tab_comes_first() {
+        assert_eq!(SetupUi::default().tab, AiTab::Account);
     }
 
     #[test]

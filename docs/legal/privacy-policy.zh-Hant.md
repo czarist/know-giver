@@ -1,6 +1,6 @@
 # Know Giver 隱私權政策
 
-2026年11月3日版本（2026-11-03.2）。本版本適用於在臺灣（個人資料保護法）及香港（《個人資料（私隱）條例》）使用本程式的使用者。
+2026年11月3日版本（2026-11-03.3）。本版本適用於在臺灣（個人資料保護法）及香港（《個人資料（私隱）條例》）使用本程式的使用者。
 
 ## 1. 摘要
 
@@ -19,6 +19,8 @@
 - 你的名字（老師對你的稱呼）、語言、國家或地區、老師及其他偏好設定；
 - API 金鑰（在程式中輸入時，以未加密方式儲存在本機資料庫）；
 - 使用 GitHub Copilot 時，登入憑證由官方 Copilot CLI 管理。CLI 通常使用作業系統鑰匙圈；如果鑰匙圈無法使用，可能改為將憑證儲存在明文設定檔（`~/.copilot/config.json`）中。Know Giver 不會將其儲存在程式資料庫中；
+- 使用 ChatGPT 時，「Sign in with ChatGPT」的權杖（存取權杖和更新權杖）以及程式在 OpenAI 的註冊資訊，會像 API 金鑰一樣以未加密方式儲存在本機資料庫；登出時會請求 OpenAI 撤銷更新權杖；
+- 使用 Claude 時，Anthropic 官方的 Claude Code 在其資料夾（`~/.claude`）或作業系統鑰匙圈中管理你的 Claude 帳號登入。Know Giver 不會查看或儲存這些憑證；
 - 你上傳的考試簡章、考古題、答案及資料，以及計畫、進度、測驗、複習、講義、標記和筆記；
 - 課堂對話及錯題本；
 - 申論題作答的照片、轉寫及評分；
@@ -44,6 +46,8 @@ Windows/Linux 套件包含支援 Vulkan 的 llama.cpp 執行環境。偵測到�
 
 選擇 GitHub Copilot 時，AI 服務商一列所述內容會傳送給 GitHub。登入透過 Copilot CLI 完成。CLI 通常將憑證儲存在作業系統鑰匙圈；如果鑰匙圈無法使用，可能改為儲存在明文設定檔（`~/.copilot/config.json`）中。Know Giver 不會將這些憑證儲存在程式資料庫中。
 
+選擇 ChatGPT 時，同樣的內容透過 Responses API 傳送給 OpenAI，並計入你 ChatGPT 方案的用量上限；Know Giver 以自己的名稱在 OpenAI 註冊，不會取得你在 ChatGPT 中的對話。選擇 Claude 時，內容透過安裝在你電腦上的 Claude Code 傳送給 Anthropic；Know Giver 執行 Claude Code 時不使用工具、MCP 伺服器或你的設定，用量計入你 Claude 訂閱的上限。如果你讓 Know Giver 安裝 Claude Code，官方安裝程式會從 claude.ai 下載，這會揭露你的 IP 位址。
+
 許多 AI 服務商位於其他國家或地區，選擇服務商可能使資料傳送到境外。保護措施由服務商提供。選擇前請先閱讀其隱私權政策。
 
 ## 5. 目的
@@ -52,7 +56,7 @@ Windows/Linux 套件包含支援 Vulkan 的 llama.cpp 執行環境。偵測到�
 
 ## 6. 安全
 
-資料儲存在你的電腦上，受你的使用者帳號存取權限保護；請為電腦設定密碼。在程式中輸入的 API 金鑰以未加密方式儲存在本機資料庫；GitHub Copilot 登入憑證由 CLI 管理，通常儲存在作業系統鑰匙圈；鑰匙圈無法使用時，CLI 可能改用明文設定檔。Know Giver 不會將憑證儲存在程式資料庫中。安全問題可依專案的 SECURITY.md 回報。
+資料儲存在你的電腦上，受你的使用者帳號存取權限保護；請為電腦設定密碼。在程式中輸入的 API 金鑰以未加密方式儲存在本機資料庫；GitHub Copilot 登入憑證由 CLI 管理，通常儲存在作業系統鑰匙圈；鑰匙圈無法使用時，CLI 可能改用明文設定檔。Know Giver 不會將憑證儲存在程式資料庫中。ChatGPT 權杖像 API 金鑰一樣以未加密方式儲存在本機資料庫；Claude 的憑證由 Claude Code 管理。安全問題可依專案的 SECURITY.md 回報。
 
 ## 7. 保存期間
 

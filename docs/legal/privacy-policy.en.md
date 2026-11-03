@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of November 3, 2026 (2026-11-03.2). This international version applies in every
+Version of November 3, 2026 (2026-11-03.3). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -38,6 +38,12 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
   normally uses the operating system keychain; if unavailable, it may store credentials
   in a plain-text config file (`~/.copilot/config.json`). Know Giver does not save them
   in its database;
+- for ChatGPT, the "Sign in with ChatGPT" tokens (access and refresh) and the app's
+  registration with OpenAI, stored unencrypted in the local database like an API key.
+  Signing out asks OpenAI to revoke the refresh token;
+- for Claude, Anthropic's official Claude Code manages your Claude account sign-in, in its
+  own folder (`~/.claude`) or the system keychain. Know Giver neither sees nor stores
+  those credentials;
 - the notices, past exams, answer keys and materials you upload, plus your plans,
   progress, quizzes, reviews, handouts, highlights and notes;
 - lesson conversations and the mistakes notebook;
@@ -72,6 +78,14 @@ Sign-in runs through Copilot CLI. It normally stores credentials in the operatin
 keychain, but may fall back to a plain-text config file (`~/.copilot/config.json`) if the
 keychain is unavailable. Know Giver does not save these credentials in its database.
 
+If you choose ChatGPT, the same content goes to OpenAI through its Responses API and
+counts toward your ChatGPT plan's limits; Know Giver registers with OpenAI under its own
+name and does not receive your ChatGPT conversations. If you choose Claude, the content
+goes to Anthropic through the Claude Code program installed on your computer, which Know
+Giver runs with no tools, no MCP servers and none of your settings; usage counts toward
+your Claude subscription's limits. If you ask Know Giver to install Claude Code, the
+official installer is downloaded from claude.ai, which shows your IP address.
+
 Many AI providers are in other countries, so choosing one may transfer data
 internationally, including to countries whose data protection laws differ from yours. The
 safeguards are those the provider offers you. Read its privacy policy before you choose
@@ -88,7 +102,8 @@ Your data stays on your computer, protected by access to your user account; keep
 password-protected. API keys typed in the app are stored unencrypted in the local
 database; GitHub Copilot sign-in credentials are managed by the CLI, normally in the
 operating system keychain, with a possible plain-text config-file fallback if the keychain
-is unavailable. They are not saved in the Know Giver database. Security issues can be
+is unavailable. They are not saved in the Know Giver database. ChatGPT tokens are stored unencrypted in the
+local database, like API keys; Claude credentials stay with Claude Code. Security issues can be
 reported as described in the project's SECURITY.md file.
 
 ## 7. Retention

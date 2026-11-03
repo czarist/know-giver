@@ -239,7 +239,20 @@ fn setup_snapshots() {
             &format!("{locale}-setup-teacher"),
         );
 
+        // The account tab, first: ChatGPT picked, not signed in yet.
         let setup = &mut harness.state_mut().ui.setup;
+        setup.step = 3;
+        setup.tab = crate::screens::setup::AiTab::Account;
+        setup.provider = kg_engine::ai_provider("chatgpt");
+        setup.base_url = "account://chatgpt".into();
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-ai-account"),
+        );
+
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.tab = crate::screens::setup::AiTab::Paid;
         let zai = kg_engine::ai_provider("zai").unwrap();
         setup.provider = Some(zai);
         setup.model = zai.default_model().into();
@@ -249,7 +262,7 @@ fn setup_snapshots() {
         render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai"));
         // The free plans, with one picked.
         let setup = &mut harness.state_mut().ui.setup;
-        setup.free_tab = true;
+        setup.tab = crate::screens::setup::AiTab::Free;
         setup.provider = kg_engine::ai_provider("groq");
         setup.model = setup
             .provider
@@ -262,7 +275,7 @@ fn setup_snapshots() {
             &format!("{locale}-setup-ai-free"),
         );
         let setup = &mut harness.state_mut().ui.setup;
-        setup.free_tab = false;
+        setup.tab = crate::screens::setup::AiTab::Paid;
         setup.provider = Some(zai);
 
         let setup = &mut harness.state_mut().ui.setup;

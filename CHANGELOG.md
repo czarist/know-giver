@@ -7,6 +7,24 @@ All notable changes to Know Giver. Format based on
 ## [Unreleased]
 
 ### Added
+- **Sign in with an account you already have.** The first run's AI step opens on a new
+  *Sign in with an account* tab, for students who pay for a chat plan and have never made
+  an API key:
+  - **ChatGPT** through OpenAI's official *Sign in with ChatGPT* for open-source apps
+    (`kg_ai::chatgpt`): Know Giver registers under its own name, PKCE with a loopback page
+    on `127.0.0.1`, the ID token checked against OpenAI's published keys, rotating refresh
+    tokens refreshed one at a time, revocation on sign-out. Requests go to the Responses
+    API and count toward the student's ChatGPT plan; images are supported.
+  - **Claude** through Anthropic's official Claude Code program, unmodified, signed in
+    with the student's own Claude Pro or Max account (`kg_ai::claude_code`). Each answer
+    runs `claude -p` with no tools, no MCP servers, none of the user's Claude Code
+    settings and no saved session, from an empty folder; API-key variables are removed so
+    the subscription is used. When Claude Code is missing, the app installs it with
+    Anthropic's official installer after the student asks.
+  - **GitHub Copilot**, now in the same place and with the same sign-in panel.
+  Settings → AI shows the same panel for the chosen account service.
+- The Windows installer offers to install Claude Code when it is missing (never during
+  updates), and the one-line installs ask the same on a first install (`KG_CLAUDE_CODE`).
 - GitHub Copilot account sign-in through its supported CLI, with model listing and chat
   through the official SDK; the app does not store Copilot credentials.
 - Local handwritten-answer OCR using the pinned PaddleOCR-VL 1.5 (0.9B) model and bundled
@@ -17,8 +35,11 @@ All notable changes to Know Giver. Format based on
   state, backend enforcement, saved OCR preferences, Vulkan device selection and CPU fallback.
 
 ### Changed
-- The first run's Paid tab shows GitHub Copilot under "Or sign in with an account", with
-  the GitHub logo, instead of only inside the full provider list.
+- The AI step has three tabs: *Sign in with an account* (first), *Paid (API key)* and
+  *Free*. Its intro mentions both ways in. Copilot shows the GitHub logo.
+- Terms of use and privacy policies (all regions and languages) describe the ChatGPT and
+  Claude sign-ins and where their credentials live. Legal version 2026-11-03.3 asks users
+  to agree again.
 - Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
 - When the local OCR model is installed and selected, `llama-server` now starts in the
   background with the app and stays available for image reading until the app closes.
