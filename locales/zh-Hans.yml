@@ -398,6 +398,8 @@ setup:
     hint: "之后可以更改。"
   ai:
     title: "连接你的 AI"
+    account_title: "或使用账号登录"
+    account_note: "使用你的 GitHub 账号登录，无需 API 密钥"
     tab_paid: "付费"
     tab_free: "免费"
     free_hint: "提供免费套餐的服务。有使用上限，适合入门；模型通常比付费的小，课堂质量也会受此影响。"

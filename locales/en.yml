@@ -398,6 +398,8 @@ setup:
     hint: "The voice follows the teacher. You can change it later."
   ai:
     title: "Connect your AI"
+    account_title: "Or sign in with an account"
+    account_note: "Sign in with your GitHub account, no API key"
     tab_paid: "Paid"
     tab_free: "Free"
     free_hint: "Services with a free plan. They have usage limits and are good for getting started; their models are usually smaller than paid ones, and the lessons' quality depends on that."
