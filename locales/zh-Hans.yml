@@ -42,6 +42,18 @@ common:
   cancel: "取消"
   back: "返回"
 
+copilot:
+  account: "GitHub Copilot 账户"
+  instructions: "请使用 GitHub 账户登录。Copilot CLI 会打开浏览器；如果无法自动打开，请按此处显示的说明操作。"
+  no_vision: "此集成中的 GitHub Copilot 仅支持文本，无法读取扫描页面或答卷照片。"
+  sign_in: "使用 GitHub 登录"
+  sign_in_docs: "登录说明"
+  plans: "Copilot 套餐"
+  connected: "账户已连接。"
+  failed: "无法完成登录，请重试。"
+  waiting: "正在等待浏览器授权…"
+  output: "Copilot CLI 输出："
+
 fatal:
   title: "无法启动"
   subtitle: "Know Giver 无法打开你的数据。"
@@ -734,6 +746,7 @@ notice:
   plan_created: "学习计划已创建。"
   settings_saved: "设置已保存。"
   connection_ok: "AI 连接正常。"
+  copilot_connected: "GitHub Copilot 账户已连接。"
   model_installed: "%{model} 已安装。"
   lesson_saved: "课程已记录，这个知识点进入复习。"
   review_saved: "复习已记录。下次在 %{date}。"
@@ -970,6 +983,7 @@ error:
     vision_rejected: "AI 服务器拒绝了图片（HTTP %{status}）。请确认图片模型支持图片。"
     connection: "无法连接到 %{url} 的 AI 服务器。"
     auth: "AI 服务器拒绝了密钥。请在设置中检查 API 密钥。"
+    copilot: "GitHub Copilot 登录或请求失败。请检查账户登录状态和套餐。"
     rate_limited: "已达到 AI 使用上限。请稍等片刻后重试。"
     http: "AI 服务器返回了错误（HTTP %{status}）。"
     invalid_response: "模型的回答格式不符合预期。请重试。"

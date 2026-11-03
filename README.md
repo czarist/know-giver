@@ -22,7 +22,7 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -197,10 +197,16 @@ is not lost to long reasoning.
 ## First run
 
 Five short steps before anything else: language, your name, a teacher, your AI service and
-key, and the terms. Pick from 21 providers with their logos: **Z.ai** is recommended for
-value and **Claude** for accuracy, each with a link to create a key. Load the models your
-key can use, or type any model name. A short tour of the screens follows. Plans made
-before are kept.
+its API key or account sign-in, and the terms. Pick from 22 providers with their logos:
+**Z.ai** is recommended for value and **Claude** for accuracy, each with a link to create
+a key. Load the models your key can use, or type any model name. A short tour of the
+screens follows. Plans made before are kept.
+
+GitHub Copilot can be connected with your GitHub account through the official Copilot CLI,
+without an API key. The CLI normally stores sign-in credentials in the operating system
+keychain; if it is unavailable, the CLI may use a plain-text config file
+(`~/.copilot/config.json`). Know Giver does not save the credentials in its database.
+Copilot in this integration accepts text, not images.
 
 **Free or paid.** The AI step has two tabs. *Paid* shows the recommended services (Z.ai for
 value, Claude for accuracy). *Free* lists services with a free plan (Gemini, Mistral,
@@ -221,7 +227,7 @@ bar and mark schemes. The exam notice and past exams always come first.
 
 <table>
   <tr>
-    <td><img src="docs/images/setup-ai.png" alt="First run, AI step: the two recommended providers, then provider, API key and model"></td>
+    <td><img src="docs/images/setup-ai.png" alt="First run, AI step: the two recommended providers, then provider, API key or account sign-in and model"></td>
     <td><img src="docs/images/setup-terms.png" alt="First run, terms step: the main points, the full terms of use and the agreement box"></td>
   </tr>
 </table>
@@ -309,7 +315,7 @@ crates/
   ui/       # egui interface (screens, theme, translations)
   engine/   # app state, commands, background work, voice loop
   study/    # plans, reviews (SM-2), quizzes, SQLite storage
-  ai/       # OpenAI-compatible client + prompts (crates/ai/prompts/{pt,en})
+  ai/       # OpenAI-compatible client, Copilot SDK adapter + prompts
   audio/    # mic capture, Parakeet/Whisper STT, Piper/Kokoro TTS, playback, downloads
   pdf/      # edital text extraction, roles
   handout/  # study handouts rendered to PDF with Typst

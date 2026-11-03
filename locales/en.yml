@@ -42,6 +42,18 @@ common:
   cancel: "Cancel"
   back: "Back"
 
+copilot:
+  account: "GitHub Copilot account"
+  instructions: "Sign in with your GitHub account. Copilot CLI opens your browser; follow any instructions shown here if it cannot open the browser automatically."
+  no_vision: "GitHub Copilot in this integration is text-only; it cannot read scanned pages or answer-sheet photos."
+  sign_in: "Sign in with GitHub"
+  sign_in_docs: "Sign-in instructions"
+  plans: "Copilot plans"
+  connected: "Account connected."
+  failed: "Could not complete sign-in. Try again."
+  waiting: "Waiting for browser authorization…"
+  output: "Copilot CLI output:"
+
 fatal:
   title: "Could not start"
   subtitle: "Know Giver could not open your data."
@@ -734,6 +746,7 @@ notice:
   plan_created: "Study plan created."
   settings_saved: "Settings saved."
   connection_ok: "AI connection is working."
+  copilot_connected: "GitHub Copilot account connected."
   model_installed: "%{model} installed."
   lesson_saved: "Lesson recorded. The topic is now in review."
   review_saved: "Review recorded. Next one on %{date}."
@@ -970,6 +983,7 @@ error:
     vision_rejected: "The AI server refused the images (HTTP %{status}). Check that the vision model takes images."
     connection: "Could not connect to the AI server at %{url}."
     auth: "The AI server rejected the key. Check the API key in Settings."
+    copilot: "GitHub Copilot sign-in or request failed. Check your account sign-in and plan."
     rate_limited: "AI usage limit reached. Wait a little and try again."
     http: "The AI server returned an error (HTTP %{status})."
     invalid_response: "The model answered in an unexpected format. Try again."

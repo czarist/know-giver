@@ -185,6 +185,7 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         Notice::PlanCreated => t!("notice.plan_created"),
         Notice::SettingsSaved => t!("notice.settings_saved"),
         Notice::ConnectionOk => t!("notice.connection_ok"),
+        Notice::CopilotConnected => t!("notice.copilot_connected"),
         Notice::ModelInstalled(id) => t!("notice.model_installed", model = model_name(*id)),
         Notice::LessonSaved => t!("notice.lesson_saved"),
         Notice::ReviewSaved {
@@ -247,6 +248,7 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Store(_) => t!("error.store.generic"),
         EngineError::Ai(AiError::Connection { url, .. }) => t!("error.ai.connection", url = url),
         EngineError::Ai(AiError::Auth { .. }) => t!("error.ai.auth"),
+        EngineError::Ai(AiError::Copilot(_)) => t!("error.ai.copilot"),
         EngineError::Ai(AiError::RateLimited) => t!("error.ai.rate_limited"),
         EngineError::Ai(AiError::Http { status, .. }) => t!("error.ai.http", status = status),
         EngineError::Ai(AiError::InvalidResponse(_)) => t!("error.ai.invalid_response"),

@@ -1,6 +1,6 @@
 # Termos de Acesso de Parceiros do Know Giver
 
-Versão de 31 de outubro de 2026 (2026-10-31). Estes termos valem para todos os países e
+Versão de 3 de novembro de 2026 (2026-11-03). Estes termos valem para todos os países e
 regiões onde o Know Giver não é oferecido ao público.
 
 ## 1. Não oferecido ao público
@@ -47,9 +47,13 @@ resultado.
 
 O aplicativo roda nos computadores do parceiro. A Trentin não tem servidores para o
 aplicativo e não recebe, guarda nem acessa os dados usados nele. O conteúdo necessário a
-cada tarefa vai para o fornecedor de IA escolhido pelo parceiro, com a chave do parceiro,
-e esse fornecedor o trata conforme seus próprios termos, possivelmente em outro país. O
-parceiro é responsável por esses dados e por qualquer transferência deles.
+cada tarefa vai para o fornecedor de IA escolhido pelo parceiro, usando a chave ou o
+login oficial exigido pelo fornecedor, e esse fornecedor o trata conforme seus próprios
+termos, possivelmente em outro país. No GitHub Copilot, o login é feito pelo Copilot CLI.
+Ele normalmente usa o chaveiro do sistema operacional; se estiver indisponível, pode
+recorrer a um arquivo de configuração sem criptografia (`~/.copilot/config.json`). O Know
+Giver não guarda as credenciais no banco. O parceiro é responsável por esses dados e por
+qualquer transferência deles.
 
 ## 6. Sem garantia e responsabilidade limitada
 

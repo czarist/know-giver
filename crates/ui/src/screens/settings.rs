@@ -135,45 +135,111 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     section(ui, &t!("settings.ai.title"), |ui| {
         widgets::hint(ui, &t!("settings.ai.hint"));
         provider_picker(ui, draft);
+        let is_copilot = kg_engine::ai_provider(&draft.ai_provider)
+            .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url))
+            .is_some_and(|provider| provider.id == "copilot");
         egui::Grid::new("ai_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
             .show(ui, |ui| {
                 let ai = &mut draft.ai;
-                ui.label(t!("settings.ai.base_url"));
-                ui.add(egui::TextEdit::singleline(&mut ai.base_url).desired_width(FIELD_WIDTH));
-                ui.end_row();
+                if is_copilot {
+                    ui.label(t!("copilot.account"));
+                    ui.vertical(|ui| {
+                        widgets::hint(ui, &t!("copilot.instructions"));
+                        ui.horizontal(|ui| {
+                            if ui
+                                .add_enabled(
+                                    !engine.is_copilot_login_in_progress(),
+                                    egui::Button::new(t!("copilot.sign_in")),
+                                )
+                                .clicked()
+                            {
+                                actions.send(Command::LoginCopilot);
+                            }
+                            if engine.is_copilot_login_in_progress() {
+                                ui.spinner();
+                            }
+                            match engine.copilot_login_result() {
+                                Some(true) => {
+                                    ui.label(
+                                        RichText::new(t!("copilot.connected"))
+                                            .color(theme::palette(ui.ctx()).success),
+                                    );
+                                }
+                                Some(false) => {
+                                    ui.label(
+                                        RichText::new(t!("copilot.failed"))
+                                            .color(theme::palette(ui.ctx()).danger),
+                                    );
+                                }
+                                None => {}
+                            }
+                        });
+                        let output = engine.copilot_login_output();
+                        if engine.is_copilot_login_in_progress() && output.is_empty() {
+                            widgets::hint(ui, &t!("copilot.waiting"));
+                        } else if !output.is_empty() {
+                            ui.label(t!("copilot.output"));
+                            ui.add(
+                                egui::Label::new(RichText::new(output).monospace())
+                                    .selectable(true)
+                                    .wrap(),
+                            );
+                        }
+                    });
+                    ui.end_row();
+                } else {
+                    ui.label(t!("settings.ai.base_url"));
+                    ui.add(egui::TextEdit::singleline(&mut ai.base_url).desired_width(FIELD_WIDTH));
+                    ui.end_row();
 
-                ui.label(t!("settings.ai.api_key"));
-                ui.vertical(|ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut ai.api_key)
-                            .password(true)
-                            .desired_width(FIELD_WIDTH),
-                    );
-                    if engine.api_key_from_env() && ai.api_key == engine.settings().ai.api_key {
-                        ui.label(RichText::new(t!("settings.ai.key_from_env")).small());
-                    }
-                });
-                ui.end_row();
+                    ui.label(t!("settings.ai.api_key"));
+                    ui.vertical(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut ai.api_key)
+                                .password(true)
+                                .desired_width(FIELD_WIDTH),
+                        );
+                        if engine.api_key_from_env() && ai.api_key == engine.settings().ai.api_key {
+                            ui.label(RichText::new(t!("settings.ai.key_from_env")).small());
+                        }
+                    });
+                    ui.end_row();
+                }
 
                 let models = &mut ai.models;
-                for (label, value) in [
-                    (t!("settings.ai.model_plan"), &mut models.study_plan),
-                    (t!("settings.ai.model_tutor"), &mut models.tutor),
-                    (t!("settings.ai.model_quiz"), &mut models.quiz),
-                    (t!("settings.ai.model_correction"), &mut models.correction),
-                    (t!("settings.ai.model_handout"), &mut models.handout),
-                    (t!("settings.ai.model_verifier"), &mut models.verifier),
-                    (t!("settings.ai.model_vision"), &mut models.vision),
-                    (t!("settings.ai.model_fallback"), &mut models.fallback),
+                for (label, value, show) in [
+                    (t!("settings.ai.model_plan"), &mut models.study_plan, true),
+                    (t!("settings.ai.model_tutor"), &mut models.tutor, true),
+                    (t!("settings.ai.model_quiz"), &mut models.quiz, true),
+                    (
+                        t!("settings.ai.model_correction"),
+                        &mut models.correction,
+                        true,
+                    ),
+                    (t!("settings.ai.model_handout"), &mut models.handout, true),
+                    (t!("settings.ai.model_verifier"), &mut models.verifier, true),
+                    (
+                        t!("settings.ai.model_vision"),
+                        &mut models.vision,
+                        !is_copilot,
+                    ),
+                    (t!("settings.ai.model_fallback"), &mut models.fallback, true),
                 ] {
+                    if !show {
+                        continue;
+                    }
                     ui.label(label);
                     ui.add(egui::TextEdit::singleline(value).desired_width(FIELD_WIDTH));
                     ui.end_row();
                 }
             });
-        widgets::hint(ui, &t!("settings.ai.vision_notice"));
+        if is_copilot {
+            widgets::hint(ui, &t!("copilot.no_vision"));
+        } else {
+            widgets::hint(ui, &t!("settings.ai.vision_notice"));
+        }
         ui.checkbox(&mut draft.ai.fast_responses, t!("settings.ai.fast"));
         ui.horizontal(|ui| {
             let testing = engine.is_testing_connection();
@@ -700,11 +766,16 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
                 }
             });
         if let Some(provider) = current {
-            if !provider.key_url.is_empty() {
-                widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
-            }
-            if !provider.site.is_empty() {
-                widgets::link(ui, &t!("setup.ai.prices"), provider.site);
+            if provider.id == "copilot" {
+                widgets::link(ui, &t!("copilot.sign_in_docs"), provider.site);
+                widgets::link(ui, &t!("copilot.plans"), provider.key_url);
+            } else {
+                if !provider.key_url.is_empty() {
+                    widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
+                }
+                if !provider.site.is_empty() {
+                    widgets::link(ui, &t!("setup.ai.prices"), provider.site);
+                }
             }
         }
     });

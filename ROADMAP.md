@@ -760,14 +760,15 @@ mid-lesson keeps what was already covered.
 - [ ] Native Anthropic Messages API client for Claude: Anthropic calls its
       OpenAI-compatible endpoint a testing aid, not a production path (`response_format`
       and `reasoning_effort` are ignored there; no prompt caching).
-- [ ] Investigate first-party account connections for ChatGPT/Codex, GitHub Copilot
-      and Claude. Codex app-server documents deep client integration including
-      authentication; GitHub documents user OAuth through the Copilot SDK. Claude
-      subscription sign-in is documented for Claude Code, not as a general credential
-      for other apps, so offer Anthropic API keys or supported cloud-provider auth unless
-      Anthropic documents another flow. Use only supported interfaces; never reuse
-      private CLI tokens or reverse-engineer endpoints. Keep provider adapters separate
-      where their protocols differ, store credentials in the OS keychain, and review
+- [x] Connect GitHub Copilot through the official Copilot SDK and its supported CLI
+      account sign-in. Do not reuse private CLI tokens or reverse-engineer endpoints;
+      sign-in credentials remain managed by the CLI and the computer's credential store.
+- [ ] Investigate first-party account connections for ChatGPT/Codex and Claude.
+      Codex app-server documents deep client integration including authentication.
+      Claude subscription sign-in is documented for Claude Code, not as a general
+      credential for other apps, so offer Anthropic API keys or supported cloud-provider
+      auth unless Anthropic documents another flow. Use only supported interfaces.
+      Keep provider adapters separate where their protocols differ, and review
       dependency, licensing, data-flow, localization and terms implications before
       implementation. These connections are planned and are not available today.
 - [ ] Store the API key in the system keychain instead of the local database.

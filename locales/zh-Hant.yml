@@ -42,6 +42,18 @@ common:
   cancel: "取消"
   back: "返回"
 
+copilot:
+  account: "GitHub Copilot 帳戶"
+  instructions: "請使用 GitHub 帳戶登入。Copilot CLI 會開啟瀏覽器；若無法自動開啟，請依照此處顯示的指示操作。"
+  no_vision: "此整合中的 GitHub Copilot 僅支援文字，無法讀取掃描頁面或答案照片。"
+  sign_in: "使用 GitHub 登入"
+  sign_in_docs: "登入說明"
+  plans: "Copilot 方案"
+  connected: "帳戶已連線。"
+  failed: "無法完成登入，請重試。"
+  waiting: "正在等待瀏覽器授權…"
+  output: "Copilot CLI 輸出："
+
 fatal:
   title: "無法啟動"
   subtitle: "Know Giver 無法開啟你的資料。"
@@ -734,6 +746,7 @@ notice:
   plan_created: "學習計劃已建立。"
   settings_saved: "設定已儲存。"
   connection_ok: "AI 連線正常。"
+  copilot_connected: "GitHub Copilot 帳戶已連線。"
   model_installed: "%{model} 已安裝。"
   lesson_saved: "課程已記錄，這個知識點進入複習。"
   review_saved: "複習已記錄。下次在 %{date}。"
@@ -970,6 +983,7 @@ error:
     vision_rejected: "AI 伺服器拒絕了圖片（HTTP %{status}）。請確認圖片模型支援圖片。"
     connection: "無法連線到 %{url} 的 AI 伺服器。"
     auth: "AI 伺服器拒絕了金鑰。請在設定中檢查 API 金鑰。"
+    copilot: "GitHub Copilot 登入或請求失敗。請檢查帳戶登入狀態和方案。"
     rate_limited: "已達到 AI 使用上限。請稍等片刻後重試。"
     http: "AI 伺服器返回了錯誤（HTTP %{status}）。"
     invalid_response: "模型的回答格式不符合預期。請重試。"

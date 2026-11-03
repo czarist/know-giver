@@ -22,7 +22,7 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -203,11 +203,17 @@ raciocínio longo.
 
 ## Primeiro acesso
 
-Cinco passos curtos antes de tudo: idioma, seu nome, um professor, o serviço de IA com a sua
-chave e os termos. Escolha entre 21 fornecedores com seus logos: **Z.ai** é a recomendação
-de custo-benefício e **Claude** a de maior acerto, cada um com o link para criar a chave.
-Carregue os modelos que a sua chave pode usar ou digite qualquer nome de modelo. Depois vem
-um tour rápido pelas telas. Planos já criados são mantidos.
+Cinco passos curtos antes de tudo: idioma, seu nome, um professor, o serviço de IA com sua
+chave de API ou login da conta e os termos. Escolha entre 22 fornecedores com seus logos:
+**Z.ai** é a recomendação de custo-benefício e **Claude** a de maior acerto, cada um com o
+link para criar a chave. Carregue os modelos que a sua chave pode usar ou digite qualquer
+nome de modelo. Depois vem um tour rápido pelas telas. Planos já criados são mantidos.
+
+O GitHub Copilot pode ser conectado com sua conta GitHub pelo Copilot CLI oficial, sem
+chave de API. O CLI normalmente guarda as credenciais no chaveiro do sistema operacional;
+se ele estiver indisponível, pode recorrer a um arquivo de configuração sem criptografia
+(`~/.copilot/config.json`). O Know Giver não guarda as credenciais no banco. Esta
+integração aceita texto, não imagens.
 
 **Grátis ou pago.** O passo da IA tem duas abas. *Pagos* mostra os serviços recomendados
 (Z.ai pelo custo-benefício, Claude pela precisão). *Gratuitos* lista serviços com plano
@@ -229,7 +235,7 @@ primeiro.
 
 <table>
   <tr>
-    <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: os dois fornecedores recomendados, depois fornecedor, chave de API e modelo"></td>
+    <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: fornecedores recomendados, escolha do serviço, chave de API ou login da conta e modelo"></td>
     <td><img src="docs/images/pt-BR/setup-terms.png" alt="Primeiro acesso, passo dos termos: os pontos principais, os termos de uso completos e a caixa de aceite"></td>
   </tr>
 </table>

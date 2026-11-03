@@ -8,6 +8,7 @@
 mod board;
 mod client;
 mod config;
+mod copilot;
 mod culture;
 mod discursive;
 mod handout_review;
@@ -23,6 +24,7 @@ pub use board::{
 };
 pub use client::{ChatMessage, Client, Role};
 pub use config::{AiConfig, ModelSet, PromptLanguage, Task};
+pub use copilot::login as login_copilot;
 pub use culture::ExamCulture;
 pub use discursive::{
     CriterionDraft, CriterionInput, EvaluationDraft, EvaluationInput, EvidenceDraft, IssueDraft,
@@ -35,8 +37,7 @@ pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use prompts::{Prompts, get as prompts_in};
 pub use providers::{
     FreeData, FreeTier, Market, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation,
-    provider,
-    provider_for_url,
+    provider, provider_for_url,
 };
 pub use tasks::{
     HandoutDraft, LessonLength, PlanDraft, PlanPrefs, QuestionDraft, ReviewFeedback, SectionDraft,
@@ -67,4 +68,6 @@ pub enum AiError {
     NoVisionModel,
     #[error("the vision request was rejected (HTTP {status}); the model may not accept images")]
     VisionRejected { status: u16 },
+    #[error("GitHub Copilot request failed: {0}")]
+    Copilot(String),
 }

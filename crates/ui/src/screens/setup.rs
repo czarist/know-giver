@@ -35,6 +35,7 @@ pub struct SetupUi {
     pub original_ai: Option<AiConfig>,
     /// The AI step shows services with a free plan instead of paid ones.
     pub free_tab: bool,
+    pub copilot_connected: bool,
 }
 
 impl SetupUi {
@@ -51,6 +52,7 @@ impl SetupUi {
         !self.model.trim().is_empty()
             && self.base_url.trim().starts_with("http")
             && (!provider.needs_key || !self.api_key.trim().is_empty())
+            && (provider.id != "copilot" || self.copilot_connected)
     }
 
     fn step_done(&self, step: usize) -> bool {
@@ -82,6 +84,7 @@ impl SetupUi {
         self.model = provider.default_model().to_owned();
         self.typing_model = false;
         self.base_url = provider.base_url.to_owned();
+        self.copilot_connected = provider.id != "copilot";
     }
 
     /// Picks a service for its free plan, with the model the plan covers.
@@ -101,6 +104,9 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let setup = &mut app.ui.setup;
     if setup.draft.is_none() {
         start(setup, engine.settings());
+    }
+    if let Some(connected) = engine.copilot_login_result() {
+        setup.copilot_connected = connected;
     }
 
     egui::ScrollArea::vertical().show(ui, |ui| {
@@ -382,7 +388,8 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
     let Some(provider) = setup.provider else {
         return;
     };
-    if provider.base_url.is_empty() || !provider.needs_key {
+    let is_copilot = provider.id == "copilot";
+    if !is_copilot && (provider.base_url.is_empty() || !provider.needs_key) {
         field(ui, &t!("setup.ai.address"), |ui| {
             ui.add(
                 egui::TextEdit::singleline(&mut setup.base_url)
@@ -391,19 +398,56 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
             );
         });
     }
-    field(ui, &t!("setup.ai.key"), |ui| {
-        ui.add(
-            egui::TextEdit::singleline(&mut setup.api_key)
-                .password(true)
-                .hint_text(if provider.needs_key {
-                    t!("setup.ai.key_placeholder")
-                } else {
-                    t!("setup.ai.key_optional")
-                })
-                .desired_width(FIELD_WIDTH),
-        );
-        links(ui, provider);
-    });
+    if is_copilot {
+        field(ui, &t!("copilot.account"), |ui| {
+            widgets::hint(ui, &t!("copilot.instructions"));
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        !engine.is_copilot_login_in_progress(),
+                        egui::Button::new(t!("copilot.sign_in")),
+                    )
+                    .clicked()
+                {
+                    actions.send(Command::LoginCopilot);
+                }
+                if engine.is_copilot_login_in_progress() {
+                    ui.spinner();
+                }
+                if setup.copilot_connected {
+                    ui.label(RichText::new(t!("copilot.connected")).color(p.success));
+                } else if engine.copilot_login_result() == Some(false) {
+                    ui.label(RichText::new(t!("copilot.failed")).color(p.danger));
+                }
+            });
+            let output = engine.copilot_login_output();
+            if engine.is_copilot_login_in_progress() && output.is_empty() {
+                widgets::hint(ui, &t!("copilot.waiting"));
+            } else if !output.is_empty() {
+                ui.label(t!("copilot.output"));
+                ui.add(
+                    egui::Label::new(RichText::new(output).monospace())
+                        .selectable(true)
+                        .wrap(),
+                );
+            }
+            links(ui, provider);
+        });
+    } else {
+        field(ui, &t!("setup.ai.key"), |ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut setup.api_key)
+                    .password(true)
+                    .hint_text(if provider.needs_key {
+                        t!("setup.ai.key_placeholder")
+                    } else {
+                        t!("setup.ai.key_optional")
+                    })
+                    .desired_width(FIELD_WIDTH),
+            );
+            links(ui, provider);
+        });
+    }
     field(ui, &t!("setup.ai.model"), |ui| {
         model_select(ui, engine, setup);
     });
@@ -411,7 +455,9 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
     let Some(config) = setup.ai_config() else {
         return;
     };
-    if config.models.vision.is_empty() {
+    if provider.id == "copilot" {
+        widgets::hint(ui, &t!("copilot.no_vision"));
+    } else if config.models.vision.is_empty() {
         widgets::hint(ui, &t!("setup.ai.no_vision"));
     } else {
         widgets::hint(
@@ -422,7 +468,8 @@ fn ai_fields(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         let can_list = setup.base_url.trim().starts_with("http")
-            && (!provider.needs_key || !setup.api_key.trim().is_empty());
+            && (!provider.needs_key || !setup.api_key.trim().is_empty())
+            && (provider.id != "copilot" || setup.copilot_connected);
         if ui
             .add_enabled(
                 can_list && !engine.is_listing_models(),
@@ -480,6 +527,12 @@ fn links(ui: &mut egui::Ui, provider: &kg_engine::Provider) {
         return;
     }
     ui.horizontal(|ui| {
+        if provider.id == "copilot" {
+            widgets::link(ui, &t!("copilot.sign_in_docs"), provider.site);
+            ui.label(RichText::new("·").color(p.muted));
+            widgets::link(ui, &t!("copilot.plans"), provider.key_url);
+            return;
+        }
         if !provider.key_url.is_empty() {
             widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
         }
@@ -562,7 +615,11 @@ pub(crate) fn provider_list(
             let note = provider
                 .recommendation(mainland)
                 .map(recommendation)
-                .or_else(|| provider.free_tier().map(|_| t!("setup.ai.free_badge").into_owned()));
+                .or_else(|| {
+                    provider
+                        .free_tier()
+                        .map(|_| t!("setup.ai.free_badge").into_owned())
+                });
             let selected = current == Some(provider.id);
             if crate::provider_logo::row(
                 ui,
@@ -733,6 +790,7 @@ fn start(setup: &mut SetupUi, settings: &Settings) {
         setup.provider = kg_engine::ai_provider(&settings.ai_provider)
             .or_else(|| kg_engine::provider_for_url(&settings.ai.base_url))
             .or_else(|| kg_engine::ai_provider("custom"));
+        setup.copilot_connected = setup.provider.is_some_and(|p| p.id == "copilot");
         setup.model = settings.ai.models.tutor.clone();
         setup.api_key = settings.ai.api_key.clone();
         setup.base_url = settings.ai.base_url.clone();
@@ -1014,6 +1072,16 @@ mod tests {
             d.teacher = None;
         }
         assert!(finished(&no_teacher).is_none());
+    }
+
+    #[test]
+    fn copilot_setup_requires_account_sign_in() {
+        let mut setup = SetupUi::default();
+        setup.pick_provider(kg_engine::ai_provider("copilot").unwrap());
+
+        assert!(!setup.ai_ready());
+        setup.copilot_connected = true;
+        assert!(setup.ai_ready());
     }
 
     #[test]

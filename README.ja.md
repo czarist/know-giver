@@ -22,7 +22,7 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -131,7 +131,9 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 
 ## 初回設定
 
-最初に5つの短いステップがあります：言語、名前、先生、AIとキー、国・地域と規約への同意。21のAI提供元から選べ（**Z.ai** はコスパ、**Claude** は正確さでおすすめ）、キーの作成ページへのリンクがあります。その後、画面を案内する短いツアーがあります。
+最初に5つの短いステップがあります：言語、名前、先生、AIとAPIキーまたはアカウントログイン、国・地域と規約への同意。22のAI提供元から選べ（**Z.ai** はコスパ、**Claude** は正確さでおすすめ）、キーの作成ページへのリンクがあります。その後、画面を案内する短いツアーがあります。
+
+GitHub Copilot は公式 Copilot CLI を通じて GitHub アカウントで接続でき、APIキーは不要です。CLI は通常、認証情報を OS のキーチェーンに保存します。利用できない場合は平文の設定ファイル（`~/.copilot/config.json`）に保存することがあります。Know Giver のデータベースには保存しません。この連携はテキストのみで、画像には対応しません。
 
 **無料と有料。** AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
 

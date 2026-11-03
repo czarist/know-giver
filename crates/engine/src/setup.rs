@@ -50,6 +50,54 @@ impl Engine {
             .map(|(_, ok)| *ok)
     }
 
+    pub fn is_copilot_login_in_progress(&self) -> bool {
+        self.copilot_login_in_progress
+    }
+
+    pub fn copilot_login_result(&self) -> Option<bool> {
+        self.copilot_login_result
+    }
+
+    pub fn copilot_login_output(&self) -> &str {
+        &self.copilot_login_output
+    }
+
+    pub(crate) fn login_copilot(&mut self) {
+        if self.copilot_login_in_progress {
+            return;
+        }
+        self.copilot_login_in_progress = true;
+        self.copilot_login_result = None;
+        self.copilot_login_output.clear();
+        let (sender, waker) = self.sender();
+        let started = self.spawn(move || {
+            let result = kg_ai::login_copilot(|line| {
+                if sender
+                    .send(Event::CopilotLoginOutput(line.to_owned()))
+                    .is_ok()
+                {
+                    waker();
+                }
+            });
+            Event::CopilotLoginFinished(result)
+        });
+        if !started {
+            self.on_copilot_login_finished(Err(AiError::Copilot(
+                "could not start Copilot sign-in worker".into(),
+            )));
+        }
+    }
+
+    pub(crate) fn on_copilot_login_finished(&mut self, result: Result<(), AiError>) {
+        self.copilot_login_in_progress = false;
+        self.copilot_login_result = Some(result.is_ok());
+        self.copilot_login_output.clear();
+        match result {
+            Ok(()) => self.notices.push(crate::Notice::CopilotConnected),
+            Err(error) => self.notices.push(crate::Notice::Error(error.into())),
+        }
+    }
+
     /// Saves the choices of the setup and the agreement to the terms.
     pub(crate) fn complete_setup(&mut self, mut settings: Settings) -> Result<(), EngineError> {
         let ai = &settings.ai;

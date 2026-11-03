@@ -42,6 +42,18 @@ common:
   cancel: "Cancelar"
   back: "Voltar"
 
+copilot:
+  account: "Conta GitHub Copilot"
+  instructions: "Entre com sua conta GitHub. O Copilot CLI abrirá o navegador; siga aqui as instruções exibidas se ele não conseguir abri-lo automaticamente."
+  no_vision: "Nesta integração, o GitHub Copilot aceita apenas texto; não lê páginas digitalizadas nem fotos de respostas."
+  sign_in: "Entrar com GitHub"
+  sign_in_docs: "Instruções de login"
+  plans: "Planos do Copilot"
+  connected: "Conta conectada."
+  failed: "Não foi possível concluir o login. Tente novamente."
+  waiting: "Aguardando autorização no navegador…"
+  output: "Saída do Copilot CLI:"
+
 fatal:
   title: "Não foi possível iniciar"
   subtitle: "O Know Giver não conseguiu abrir seus dados."
@@ -734,6 +746,7 @@ notice:
   plan_created: "Plano de estudo criado."
   settings_saved: "Configurações salvas."
   connection_ok: "Conexão com a IA funcionando."
+  copilot_connected: "Conta GitHub Copilot conectada."
   model_installed: "%{model} instalado."
   lesson_saved: "Aula registrada. O tópico entrou em revisão."
   review_saved: "Revisão registrada. Próxima em %{date}."
@@ -970,6 +983,7 @@ error:
     vision_rejected: "O servidor de IA recusou as imagens (HTTP %{status}). Confira se o modelo de visão aceita imagens."
     connection: "Não foi possível conectar ao servidor de IA em %{url}."
     auth: "O servidor de IA recusou a chave. Confira a chave da API em Configurações."
+    copilot: "Falha na autenticação ou na solicitação ao GitHub Copilot. Confira o login e o plano da sua conta."
     rate_limited: "Limite de uso da IA atingido. Aguarde um pouco e tente de novo."
     http: "O servidor de IA respondeu com erro (HTTP %{status})."
     invalid_response: "O modelo respondeu em um formato inesperado. Tente de novo."
