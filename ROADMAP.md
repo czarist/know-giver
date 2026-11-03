@@ -20,8 +20,9 @@ notification and installer behavior still needs testing on Windows, macOS and Li
 **Before building:** the owner's PC powers off under long full-CPU builds (five
 unexpected shutdowns on 2026-10-29, no bug check and no hardware errors logged: a power or
 thermal cut). Build and test with `-j 2` to `-j 4` and matching `--test-threads`; a
-power loss mid-build corrupted `target/debug` and the git index once. The release
-executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is safe.
+power loss mid-build corrupted `target/debug` and the git index once. The Windows release
+app and CPU/Vulkan OCR runtimes were rebuilt and the portable package was verified on
+2026-11-03. Do not start another full release build unless needed.
 
 **Next up, in order:**
 000. English prompts (v0.30.0): run `KG_PROMPT_LANG=en cargo run -p kg-ai --example
@@ -107,8 +108,10 @@ tests (workspace lints).
   `cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pdf`
 - Voice: `cargo run --release -p kg-audio --example voice_check -- %LOCALAPPDATA%/KnowGiver/models small out.wav`
 
-**Not verified by an agent:** live microphone loop end to end, installer build (needs
-Inno Setup 6).
+**Not verified by an agent:** live microphone loop end to end and Windows installer build
+and installation (Inno Setup 6 is not installed here). The Windows portable ZIP was built;
+its required app/runtime DLLs were checked in the archive and both bundled `llama-server`
+binaries passed `--version`. Vulkan still relies on the computer's compatible GPU driver.
 
 ## Phase 1 — Foundation
 - [x] Cargo workspace setup
@@ -170,6 +173,13 @@ Inno Setup 6).
 - [x] Include the pinned Vulkan runtime in Windows/Linux packages, prefer a detected
       compatible GPU for OCR, and retry with CPU if device discovery or GPU startup fails;
       macOS remains CPU-only.
+- [x] Bundle Windows app and `llama-server` Visual C++ CRT/OpenMP dependencies and the
+      Vulkan loader with the package; validate the required files during packaging and
+      include the Vulkan SDK license registry. End users do not need the Visual C++
+      redistributable or Vulkan SDK; Vulkan acceleration still needs a compatible GPU driver.
+- [x] Build the Windows portable package and verify its archive contains the app/runtime
+      dependencies; smoke-test the CPU and Vulkan `llama-server` binaries. The Inno Setup
+      installer build/install remains unverified because Inno Setup 6 is unavailable here.
 - [x] Start the local OCR server in the background when the app opens with the local model
       installed, reuse it for image reading, and stop it when the app closes.
 - [x] Add offline tests for OCR transcript handling, invalid/empty model responses, model
