@@ -6,5 +6,5 @@ each AI service. Providers without a Simple Icons logo get a monogram drawn by t
 
 `chatgpt.svg` is the white ChatGPT logo OpenAI publishes for the *Sign in with ChatGPT*
 button (<https://developers.openai.com/siwc/website>), used unchanged on that button and
-next to the ChatGPT sign-in. Claude Code gets a monogram: Anthropic asks for written
-permission before its names or logos are used for a feature.
+next to the ChatGPT sign-in. The Claude logo also marks the Claude Code sign-in; the owner
+decided to show it and takes responsibility for that use of Anthropic's trademark.

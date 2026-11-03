@@ -8,7 +8,7 @@ use crate::theme;
 
 fn source(id: &str) -> Option<ImageSource<'static>> {
     Some(match id {
-        "anthropic" => include_image!("../assets/providers/claude.svg"),
+        "anthropic" | "claude-code" => include_image!("../assets/providers/claude.svg"),
         "gemini" => include_image!("../assets/providers/googlegemini.svg"),
         "deepseek" => include_image!("../assets/providers/deepseek.svg"),
         "mistral" => include_image!("../assets/providers/mistralai.svg"),

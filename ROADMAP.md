@@ -814,7 +814,7 @@ mid-lesson keeps what was already covered.
 - [x] Claude through the unmodified Claude Code binary, signed in with the student's own
       Claude account (Anthropic allows this; using Claude.ai credentials directly in a
       third-party app is not allowed). The owner accepted Anthropic's Commercial Terms for
-      running Claude Code in the product. No Anthropic or Claude Code logos in the app.
+      running Claude Code in the product and chose to show the Claude logo on its sign-in.
 - [ ] Faster Claude Code answers: each request starts `claude -p` (about 3 s to the first
       word in a live check); a long-lived `--input-format stream-json` session per lesson
       would save the start-up.
