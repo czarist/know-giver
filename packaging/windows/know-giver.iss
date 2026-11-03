@@ -52,6 +52,8 @@ Name: "studyreminders"; Description: "{cm:StudyReminders}"; GroupDescription: "{
 [Files]
 Source: "{#SourceDir}\know-giver.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\.env.example"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\local-runtime\*"; DestDir: "{app}\local-runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Read-me files in the five app languages.
 Source: "{#SourceDir}\README.*.txt"; DestDir: "{app}"; Flags: ignoreversion

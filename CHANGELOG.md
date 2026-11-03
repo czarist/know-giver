@@ -22,7 +22,9 @@ All notable changes to Know Giver. Format based on
   background with the app and stays available for image reading until the app closes.
 - Native packages build and include pinned CPU runtimes everywhere and Vulkan runtimes on
   Windows/Linux. OCR uses the Vulkan device when available and retries on CPU if GPU startup
-  fails; macOS remains CPU-only.
+  fails; macOS remains CPU-only. Windows packages also bundle the app's Visual C++ runtime,
+  llama.cpp's CRT/OpenMP dependencies and the Vulkan loader; a GPU vendor driver is still
+  required to use Vulkan.
 - All five READMEs and regional terms/privacy documents now identify the bundled llama.cpp
   v0.8.0 runtime and Vulkan processing, with badges for llama.cpp, Vulkan and GitHub Copilot
   OAuth. Legal version 2026-11-03.2 asks users to agree again.

@@ -84,6 +84,60 @@ try {
     Copy-Item -LiteralPath $cpuServer.FullName -Destination (Join-Path $runtime 'llama-server.exe') -Force
     Copy-Item -LiteralPath $vulkanServer.FullName -Destination (Join-Path $runtime 'vulkan\llama-server.exe') -Force
     Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $runtime 'llama.cpp-LICENSE') -Force
+
+    $vswhere = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswhere)) {
+        throw 'Could not find vswhere.exe to locate the Visual C++ runtime redistributables'
+    }
+    $vsInstall = (& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $vsInstall) {
+        throw 'Could not locate the Visual Studio C++ build tools installation'
+    }
+    $redistRoot = Join-Path $vsInstall 'VC\Redist\MSVC'
+    $redistVersion = Get-ChildItem -LiteralPath $redistRoot -Directory |
+        Where-Object { $_.Name -match '^\d+(\.\d+)*$' } |
+        Sort-Object { [version]$_.Name } -Descending |
+        Where-Object {
+            (Test-Path -LiteralPath (Join-Path $_.FullName 'x64\Microsoft.VC143.CRT')) -and
+            (Test-Path -LiteralPath (Join-Path $_.FullName 'x64\Microsoft.VC143.OpenMP'))
+        } |
+        Select-Object -First 1
+    if (-not $redistVersion) {
+        throw 'Could not find the x64 Visual C++ CRT and OpenMP redistributables'
+    }
+    $crt = Join-Path $redistVersion.FullName 'x64\Microsoft.VC143.CRT'
+    $openMp = Join-Path $redistVersion.FullName 'x64\Microsoft.VC143.OpenMP'
+    $runtimeDlls = @{
+        'msvcp140.dll' = Join-Path $crt 'msvcp140.dll'
+        'vcruntime140.dll' = Join-Path $crt 'vcruntime140.dll'
+        'vcruntime140_1.dll' = Join-Path $crt 'vcruntime140_1.dll'
+        'vcomp140.dll' = Join-Path $openMp 'vcomp140.dll'
+    }
+    foreach ($dll in $runtimeDlls.Keys) {
+        $sourceDll = $runtimeDlls[$dll]
+        if (-not (Test-Path -LiteralPath $sourceDll)) {
+            throw "Required Visual C++ runtime dependency is missing: $sourceDll"
+        }
+        Copy-Item -LiteralPath $sourceDll -Destination $runtime -Force
+        Copy-Item -LiteralPath $sourceDll -Destination (Join-Path $runtime 'vulkan') -Force
+    }
+
+    $vulkanLoaderCandidates = @(
+        (Join-Path $env:VULKAN_SDK 'Bin\vulkan-1.dll'),
+        (Join-Path $env:windir 'System32\vulkan-1.dll')
+    )
+    $vulkanLoader = $vulkanLoaderCandidates |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if (-not $vulkanLoader) {
+        throw 'Could not find vulkan-1.dll to bundle with the Vulkan llama-server'
+    }
+    $vulkanLicense = Join-Path $env:VULKAN_SDK 'Licenses\LICENSE.txt'
+    if (-not (Test-Path -LiteralPath $vulkanLicense)) {
+        throw 'Could not find the Vulkan SDK license registry'
+    }
+    Copy-Item -LiteralPath $vulkanLoader -Destination (Join-Path $runtime 'vulkan\vulkan-1.dll') -Force
+    Copy-Item -LiteralPath $vulkanLicense -Destination (Join-Path $runtime 'Vulkan-SDK-LICENSE.txt') -Force
 }
 finally {
     Pop-Location

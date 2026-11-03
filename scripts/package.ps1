@@ -17,7 +17,7 @@ try {
 
     & (Join-Path $PSScriptRoot 'build-llama.ps1')
     if ($LASTEXITCODE -ne 0) { throw "llama.cpp build failed" }
-    cargo build --release -p know-giver
+    cargo build --release -p know-giver -j 2
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
 
     $dist = Join-Path $root 'dist'
@@ -30,10 +30,31 @@ try {
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item 'target\release\know-giver.exe' $stage
     Copy-Item 'target\release\local-runtime' $stage -Recurse
+    foreach ($dll in @('vcruntime140.dll', 'vcruntime140_1.dll')) {
+        $runtimeDll = Join-Path 'target\release\local-runtime' $dll
+        if (-not (Test-Path -LiteralPath $runtimeDll)) {
+            throw "The packaged Windows build is missing the app runtime dependency $dll"
+        }
+        Copy-Item -LiteralPath $runtimeDll -Destination $stage -Force
+    }
     Copy-Item '.env.example' (Join-Path $stage '.env.example')
     Copy-Item 'packaging\windows\README.*.txt' $stage
     if (-not (Test-Path -LiteralPath (Join-Path $stage 'local-runtime\vulkan\llama-server.exe'))) {
         throw 'The packaged Windows build is missing the Vulkan llama-server'
+    }
+    foreach ($dll in @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'vcomp140.dll')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $stage "local-runtime\$dll"))) {
+            throw "The packaged Windows build is missing the CPU runtime dependency $dll"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $stage "local-runtime\vulkan\$dll"))) {
+            throw "The packaged Windows build is missing the Vulkan runtime dependency $dll"
+        }
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $stage 'local-runtime\vulkan\vulkan-1.dll'))) {
+        throw 'The packaged Windows build is missing the Vulkan loader'
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $stage 'local-runtime\Vulkan-SDK-LICENSE.txt'))) {
+        throw 'The packaged Windows build is missing the Vulkan SDK license registry'
     }
 
     $zip = Join-Path $dist "KnowGiver-$version-windows-x64.zip"

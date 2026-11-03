@@ -188,6 +188,8 @@ side. Minimum hardware and handwriting accuracy have not yet been benchmarked; r
 every transcript before grading. Windows and Linux builds include a 🔺 [Vulkan](https://www.vulkan.org/)
 runtime and use a detected supported GPU when available, falling back to CPU if no device is found or
 GPU startup fails. macOS builds use CPU.
+The Windows installer bundles the required C++ runtime and Vulkan loader; a compatible GPU
+driver is still needed for Vulkan.
 With a reasoning API model, keep **Fast responses** on so a dense page is not lost to long
 reasoning.
 
