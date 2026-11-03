@@ -24,6 +24,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: choco install vulkan-sdk --version=1.4.363 -y --no-progress
+      - name: Format and lints
+        shell: bash
+        run: |
+          rustup component add rustfmt clippy
+          cargo fmt --all -- --check
+          cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Verify
         run: cargo test --locked --workspace
       - name: Inno Setup
