@@ -83,8 +83,8 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
 Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
 LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
 Then proxy mode (Phase 9): several keys and models, including free plans, in a fallback
-order through the same LiteLLM proxy. The separately bundled CPU `llama-server` currently
-serves only written-answer OCR; general local AI is not available.
+order through the same LiteLLM proxy. The separately bundled CPU/Vulkan `llama-server`
+currently serves only written-answer OCR; general local AI is not available.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
 Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
@@ -167,9 +167,12 @@ Inno Setup 6).
 - [x] Offer an explicitly selected external vision API for non-Copilot providers; Copilot
       always uses local OCR and never sends handwritten photos to a text-only model.
 - [x] Build and bundle the pinned CPU `llama-server` runtime with native packages.
+- [x] Include the pinned Vulkan runtime in Windows/Linux packages, prefer a detected
+      compatible GPU for OCR, and retry with CPU if device discovery or GPU startup fails;
+      macOS remains CPU-only.
 - [x] Add offline tests for OCR transcript handling, invalid/empty model responses, model
-      file installation checks, Copilot OAuth flow boundaries, backend selection and saved
-      preferences.
+      file installation checks, Copilot OAuth flow boundaries, Vulkan device selection and
+      CPU fallback, backend selection and saved preferences.
 - [ ] Validate handwritten Portuguese quality and benchmark memory, CPU use and latency on
       real devices before publishing minimum hardware requirements.
 - [ ] Run [docs/validation-discursive.md](docs/validation-discursive.md) with local OCR and
@@ -783,14 +786,16 @@ mid-lesson keeps what was already covered.
 - [x] Connect GitHub Copilot through the official Copilot SDK and its supported CLI
       account sign-in. Do not reuse private CLI tokens or reverse-engineer endpoints;
       sign-in credentials remain managed by the CLI and the computer's credential store.
-- [ ] Investigate first-party account connections for ChatGPT/Codex and Claude.
-      Codex app-server documents deep client integration including authentication.
-      Claude subscription sign-in is documented for Claude Code, not as a general
-      credential for other apps, so offer Anthropic API keys or supported cloud-provider
-      auth unless Anthropic documents another flow. Use only supported interfaces.
-      Keep provider adapters separate where their protocols differ, and review
-      dependency, licensing, data-flow, localization and terms implications before
-      implementation. These connections are planned and are not available today.
+- [ ] Integrate supported OAuth/account sign-in for ChatGPT/Codex. Verify the official
+      authentication flow and allowed use in third-party clients; do not reuse private
+      CLI tokens or reverse-engineer endpoints.
+- [ ] Investigate and integrate supported OAuth/account sign-in for Anthropic/Claude,
+      only if Anthropic documents a flow for third-party apps. Claude subscription sign-in
+      is documented for Claude Code, not as a general credential for other apps; otherwise
+      keep API keys or supported cloud-provider authentication as the available options.
+- [ ] Keep provider adapters separate where protocols differ, and review dependency,
+      licensing, data-flow, localization and terms implications before implementation.
+      ChatGPT and Anthropic account connections are planned and are not available today.
 - [ ] Store the API key in the system keychain instead of the local database.
 - [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
       public release.

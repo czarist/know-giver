@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.1), de acordo com a Lei Geral de Proteção de
+Versão de 3 de novembro de 2026 (2026-11-03.2), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -51,12 +51,18 @@ gravações temporárias de diagnóstico ficam só na pasta de dados.
 | Para onde | O quê | Quando |
 |---|---|---|
 | Fornecedor de IA escolhido por você | Trechos do edital e dos materiais, tópicos, suas mensagens e respostas transcritas, seu nome (para o tutor chamar você), textos das apostilas | Em cada tarefa de IA |
-| PaddleOCR-VL rodando no seu computador | Fotos das respostas discursivas | Por padrão; as fotos não são enviadas a um fornecedor |
+| PaddleOCR-VL rodando localmente pelo `llama-server` v0.8.0 do llama.cpp | Fotos das respostas discursivas | Por padrão; processadas no computador, não enviadas a um fornecedor |
 | Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Fotos de respostas só se você escolher explicitamente o OCR externo; páginas de PDFs escaneados só quando você pedir a leitura e tiver configurado um modelo de visão |
 | Wikipédia | O termo de busca de uma imagem do quadro | Se a opção de imagens estiver ligada |
 | Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz, fala ou OCR |
 | GitHub | Um pedido da versão mais recente, que mostra o seu endereço IP e a versão do app; o pacote da nova versão, se você escolher atualizar | Cada vez que o app abre, se a busca de atualizações estiver ligada (Configurações → Sobre e atualizações) |
 | Serviço de voz na nuvem | O texto que o tutor vai falar | Só se você ativar a voz na nuvem |
+
+Os pacotes para Windows e Linux incluem um runtime do llama.cpp com Vulkan. Quando há uma
+GPU compatível, o app usa o driver Vulkan já instalado no computador; se não encontrar
+dispositivo ou a inicialização da GPU falhar, o OCR volta para CPU. No macOS, usa CPU. O
+runtime e o driver processam o OCR localmente: o backend Vulkan não é um destinatário e
+não transmite as fotos à Trentin ou a fornecedores.
 
 Ao escolher o GitHub Copilot, o conteúdo descrito na linha do fornecedor de IA é enviado
 ao GitHub. O login é feito pelo Copilot CLI, que normalmente guarda as credenciais no

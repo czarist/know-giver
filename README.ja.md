@@ -23,6 +23,9 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Authentication: GitHub Copilot OAuth" src="https://img.shields.io/badge/auth-GitHub%20Copilot%20OAuth-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -113,7 +116,7 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 - **読み取りを確認**：写真と書き起こしを並べて表示。あなたの書き間違いはそのまま残り、不確かな語で減点されることはありません。
 - **形成的な採点**：基準ごとの目安の点数、本文から確認された引用、よい点、課題と改善案、優先すべき3点。
 
-既定では PaddleOCR-VL 1.5（0.9B）が写真をローカルで読み取ります。初回に Hugging Face から約1.82 GBをダウンロードします。設定 → AI で外部の画像対応APIを明示的に選ぶと、写真はその提供元に送信されます。Copilot はテキスト専用のため、常にローカルOCRを使います。**画像読み取りをテスト**で選択中の方法を確認できます。最低ハードウェア要件と手書きの認識精度は未検証です。採点前に必ず書き起こしを確認してください。Windows/Linux では Vulkan 対応 GPU が検出されると使用し、利用できない場合は CPU にフォールバックします。macOS は CPU を使用します。字数で評価する日本の小論文では、課題の指示に字数が示されます。
+既定では PaddleOCR-VL 1.5（0.9B）が写真をローカルで読み取ります。[🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) の `llama-server` v0.8.0 を使用し、初回に Hugging Face からモデル約1.82 GBをダウンロードします。設定 → AI で外部の画像対応APIを明示的に選ぶと、写真はその提供元に送信されます。Copilot はテキスト専用のため、常にローカルOCRを使います。**画像読み取りをテスト**で選択中の方法を確認できます。最低ハードウェア要件と手書きの認識精度は未検証です。採点前に必ず書き起こしを確認してください。Windows/Linux では 🔺 [Vulkan](https://www.vulkan.org/) ランタイムを同梱し、対応 GPU が検出されると使用します。デバイスがない場合や GPU の起動に失敗した場合は CPU にフォールバックします。macOS は CPU を使用します。字数で評価する日本の小論文では、課題の指示に字数が示されます。
 
 <table>
   <tr>

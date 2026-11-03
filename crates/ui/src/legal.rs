@@ -254,6 +254,17 @@ mod tests {
     }
 
     #[test]
+    fn terms_and_privacy_disclose_the_local_ocr_runtime_and_vulkan_backend() {
+        for (doc, locale, region, text) in all_shown() {
+            if matches!(doc, LegalDoc::Terms | LegalDoc::Privacy) {
+                let at = format!("{doc:?} {locale} {region:?}");
+                assert!(text.contains("llama.cpp"), "{at} omits llama.cpp");
+                assert!(text.contains("Vulkan"), "{at} omits Vulkan");
+            }
+        }
+    }
+
+    #[test]
     fn law_follows_the_region() {
         // A Japanese UI in Japan reads the Japanese version; in Brazil, the
         // English one, which covers every public region.

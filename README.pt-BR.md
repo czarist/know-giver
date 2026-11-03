@@ -23,6 +23,9 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Authentication: GitHub Copilot OAuth" src="https://img.shields.io/badge/auth-GitHub%20Copilot%20OAuth-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -181,14 +184,16 @@ aparece para um edital sem essa prova. Um plano criado antes pode ter o edital l
   de leitura da foto separados dos de escrita e de conteúdo, e dificuldades recorrentes com
   exemplos das suas próprias tentativas.
 
-Por padrão, as fotos são lidas localmente pelo PaddleOCR-VL 1.5 (0,9B); o primeiro download
-é de cerca de 1,82 GB pelo Hugging Face. Em Configurações → IA, você pode escolher
-explicitamente a API externa do modelo de visão configurado, que receberá as fotos. O
-Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de imagem**
-confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware nem a
-precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode ter uma
-página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o app usa uma
-GPU Vulkan detectada quando disponível e volta para CPU se não houver uma; no macOS, usa CPU.
+Por padrão, as fotos são lidas localmente pelo PaddleOCR-VL 1.5 (0,9B), usando o runtime
+`llama-server` v0.8.0 do [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp); o primeiro
+download do modelo é de cerca de 1,82 GB pelo Hugging Face. Em Configurações → IA, você
+pode escolher explicitamente a API externa do modelo de visão configurado, que receberá
+as fotos. O Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de
+imagem** confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware
+nem a precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode
+ter uma página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o
+pacote inclui 🔺 [Vulkan](https://www.vulkan.org/) e usa uma GPU compatível detectada quando disponível; volta para CPU
+se não houver dispositivo ou se a inicialização da GPU falhar. No macOS, usa CPU.
 
 <table>
   <tr>

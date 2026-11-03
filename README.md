@@ -23,6 +23,9 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Authentication: GitHub Copilot OAuth" src="https://img.shields.io/badge/auth-GitHub%20Copilot%20OAuth-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -175,14 +178,16 @@ notice read again (**Re-read notice**) without losing topics, progress or handou
   reading problems apart from writing and content ones, and recurring difficulties with
   examples from your own attempts.
 
-By default, PaddleOCR-VL 1.5 (0.9B) reads photos locally; its first download is about
-1.82 GB from Hugging Face. In Settings → AI, you can explicitly choose the configured
-vision API instead, which sends the photos to that provider. Copilot is text-only, so it
-always uses local OCR. **Test image reading** checks the selected backend. One photo can
-hold one page or an open notebook with two pages side by side. Minimum hardware and
-handwriting accuracy have not yet been benchmarked; review every transcript before grading.
-Windows and Linux builds use a detected Vulkan GPU when available and fall back to CPU;
-macOS builds use CPU.
+By default, PaddleOCR-VL 1.5 (0.9B) reads photos locally through the bundled
+[🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 runtime; its
+first model download is about 1.82 GB from Hugging Face. In Settings → AI, you can explicitly
+choose the configured vision API instead, which sends the photos to that provider.
+Copilot is text-only, so it always uses local OCR. **Test image reading** checks the
+selected backend. One photo can hold one page or an open notebook with two pages side by
+side. Minimum hardware and handwriting accuracy have not yet been benchmarked; review
+every transcript before grading. Windows and Linux builds include a 🔺 [Vulkan](https://www.vulkan.org/)
+runtime and use a detected supported GPU when available, falling back to CPU if no device is found or
+GPU startup fails. macOS builds use CPU.
 With a reasoning API model, keep **Fast responses** on so a dense page is not lost to long
 reasoning.
 

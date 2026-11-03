@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of November 3, 2026 (2026-11-03.1). This international version applies in every
+Version of November 3, 2026 (2026-11-03.2). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -86,6 +86,13 @@ The app may reach these third-party services:
 Third-party voices, fonts and images have their own licenses. The Dii voice, for example,
 is for personal, non-commercial use only. Trentin does not control those services and is
 not responsible for them.
+
+Local OCR runs PaddleOCR-VL through the bundled `llama-server` runtime from
+[llama.cpp](https://github.com/ggml-org/llama.cpp) v0.8.0, which is licensed under MIT.
+Windows and Linux packages include a Vulkan-enabled runtime; the app uses a compatible
+GPU when available and falls back to CPU if no device is found or GPU startup fails.
+macOS uses CPU. Vulkan uses the GPU driver installed on your computer; neither the runtime
+nor the Vulkan backend sends OCR photos to Trentin or a provider.
 
 ## 10. Software license
 

@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of November 3, 2026 (2026-11-03.1). This international version applies in every
+Version of November 3, 2026 (2026-11-03.2). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -54,12 +54,18 @@ diagnostic recordings stay in the data folder.
 | Recipient | What | When |
 |---|---|---|
 | The AI provider you chose | Excerpts of the notice and materials, topics, your messages and transcribed answers, your name (so the tutor can address you), handout text | For each AI task |
-| PaddleOCR-VL running on your computer | Photos of written answers | By default; the photos are not sent to a provider |
+| PaddleOCR-VL running locally through llama.cpp v0.8.0 `llama-server` | Photos of written answers | By default; processed on your computer, not sent to a provider |
 | The provider's vision model | Photos of written answers and pages of scanned PDFs | Written-answer photos only if you explicitly select external OCR; scanned-PDF pages only when you request OCR and have configured a vision model |
 | Wikipedia | The search term for a whiteboard picture | If whiteboard pictures are on |
 | Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice, speech or OCR models |
 | GitHub | A request for the latest version, which shows your IP address and the app's version; the new version's package, if you choose to update | Each time the app opens, if update checks are on (Settings → About and updates) |
 | A cloud voice service | The text the tutor will speak | Only if you turn on cloud voices |
+
+Windows and Linux packages include a Vulkan-enabled llama.cpp runtime. When a compatible
+GPU is available, the app uses its locally installed Vulkan driver; if no device is found
+or GPU startup fails, OCR falls back to CPU. macOS uses CPU. The runtime and GPU driver
+process the OCR locally; the Vulkan backend is not a recipient and does not transmit
+photos to Trentin or a provider.
 
 If you choose GitHub Copilot, the content described in the AI-provider row goes to GitHub.
 Sign-in runs through Copilot CLI. It normally stores credentials in the operating system
