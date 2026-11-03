@@ -6,6 +6,7 @@
 //! that [`Engine::poll`] applies on the UI thread.
 
 mod board;
+mod child_job;
 mod discursive;
 mod documents;
 mod handouts;
