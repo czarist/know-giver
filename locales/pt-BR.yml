@@ -398,6 +398,8 @@ setup:
     hint: "A voz acompanha o professor. Dá para trocar depois."
   ai:
     title: "Conecte a sua IA"
+    account_title: "Ou entre com uma conta"
+    account_note: "Entra com a sua conta do GitHub, sem chave de API"
     tab_paid: "Pagos"
     tab_free: "Gratuitos"
     free_hint: "Serviços com plano gratuito. Têm limites de uso e servem bem para começar; os modelos costumam ser menores que os pagos, e a qualidade das aulas depende disso."

@@ -17,6 +17,8 @@ All notable changes to Know Giver. Format based on
   state, backend enforcement, saved OCR preferences, Vulkan device selection and CPU fallback.
 
 ### Changed
+- The first run's Paid tab shows GitHub Copilot under "Or sign in with an account", with
+  the GitHub logo, instead of only inside the full provider list.
 - Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
 - When the local OCR model is installed and selected, `llama-server` now starts in the
   background with the app and stays available for image reading until the app closes.

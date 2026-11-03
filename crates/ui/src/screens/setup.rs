@@ -288,6 +288,29 @@ fn paid_recommendations(ui: &mut egui::Ui, setup: &mut SetupUi) {
         });
     });
     ui.add_space(16.0);
+
+    // Services the student signs in to with an account instead of a key.
+    let accounts: Vec<&'static kg_engine::Provider> = kg_engine::PROVIDERS
+        .iter()
+        .filter(|p| p.offered(mainland) && p.id == "copilot")
+        .collect();
+    if !accounts.is_empty() {
+        ui.label(RichText::new(t!("setup.ai.account_title")).strong());
+        ui.add_space(4.0);
+        for provider in accounts {
+            let selected = setup.provider.map(|x| x.id) == Some(provider.id);
+            if crate::provider_logo::row(ui, provider, &provider_name(provider), None, selected)
+                .clicked()
+            {
+                setup.pick_provider(provider);
+            }
+            ui.horizontal(|ui| {
+                ui.add_space(40.0);
+                widgets::hint(ui, &t!("setup.ai.account_note"));
+            });
+        }
+        ui.add_space(16.0);
+    }
 }
 
 /// Services with a free plan where the app is used: the model the plan
