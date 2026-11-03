@@ -257,6 +257,20 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Ai(AiError::VisionRejected { status }) => {
             t!("error.ai.vision_rejected", status = status)
         }
+        EngineError::Ocr(kg_engine::OcrError::ModelMissing) => t!("error.ocr.model_missing"),
+        EngineError::Ocr(kg_engine::OcrError::RuntimeMissing) => {
+            t!("error.ocr.runtime_missing")
+        }
+        EngineError::Ocr(kg_engine::OcrError::Cancelled) => t!("error.cancelled"),
+        EngineError::Ocr(
+            kg_engine::OcrError::Download(_)
+            | kg_engine::OcrError::Checksum { .. }
+            | kg_engine::OcrError::Io { .. }
+            | kg_engine::OcrError::Runtime(_)
+            | kg_engine::OcrError::EmptyResponse
+            | kg_engine::OcrError::InvalidResponse(_)
+            | kg_engine::OcrError::Manifest(_),
+        ) => t!("error.ocr.failed"),
         EngineError::Audio(AudioError::NoInputDevice) => t!("error.audio.no_input_device"),
         EngineError::Audio(AudioError::NoOutputDevice(_)) => t!("error.audio.no_output_device"),
         EngineError::Audio(AudioError::Device(_)) => t!("error.audio.device"),

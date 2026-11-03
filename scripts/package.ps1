@@ -15,6 +15,8 @@ try {
     $versionLine = Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1
     $version = $versionLine.Matches[0].Groups[1].Value
 
+    & (Join-Path $PSScriptRoot 'build-llama.ps1')
+    if ($LASTEXITCODE -ne 0) { throw "llama.cpp build failed" }
     cargo build --release -p know-giver
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
 
@@ -27,6 +29,7 @@ try {
     if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
     New-Item -ItemType Directory -Force $stage | Out-Null
     Copy-Item 'target\release\know-giver.exe' $stage
+    Copy-Item 'target\release\local-runtime' $stage -Recurse
     Copy-Item '.env.example' (Join-Path $stage '.env.example')
     Copy-Item 'packaging\windows\README.*.txt' $stage
 

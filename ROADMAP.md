@@ -83,7 +83,8 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
 Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
 LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
 Then proxy mode (Phase 9): several keys and models, including free plans, in a fallback
-order through the same LiteLLM proxy, with llama.cpp as the local link.
+order through the same LiteLLM proxy. The separately bundled CPU `llama-server` currently
+serves only written-answer OCR; general local AI is not available.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
 Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
@@ -159,6 +160,22 @@ Inno Setup 6).
 - [x] Tutor, quiz, review and handout prompts use the board material on the topic
 - [x] Show the board's emphasis per topic (how often it is asked) on the Plan screen
 - [x] Scanned PDFs: opt-in OCR fallback with the vision model (`MODEL_VISION`)
+
+### Local OCR for written answers
+- [x] PaddleOCR-VL 1.5 (0.9B) is the default backend; model files download from the pinned
+      Hugging Face revision and are checksum-verified before installation.
+- [x] Offer an explicitly selected external vision API for non-Copilot providers; Copilot
+      always uses local OCR and never sends handwritten photos to a text-only model.
+- [x] Build and bundle the pinned CPU `llama-server` runtime with native packages.
+- [x] Add offline tests for OCR transcript handling, invalid/empty model responses, model
+      file installation checks, Copilot OAuth flow boundaries, backend selection and saved
+      preferences.
+- [ ] Validate handwritten Portuguese quality and benchmark memory, CPU use and latency on
+      real devices before publishing minimum hardware requirements.
+- [ ] Run [docs/validation-discursive.md](docs/validation-discursive.md) with local OCR and
+      compare its transcript with a human reading.
+- [ ] Investigate Hugging Face's `PAIT-GGUF-100` scan notice for the pinned model before
+      release; checksums verify the downloaded bytes, not whether model weights are safe.
 
 ### Written study material as PDF (apostilas)
 - [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers

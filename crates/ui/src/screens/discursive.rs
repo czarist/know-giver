@@ -106,43 +106,88 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     actions.run(app);
 }
 
-/// Where photos go and whether the vision model reads them.
+/// Shows the selected photo-reading backend and its privacy boundary.
 fn vision_card(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     let p = theme::palette(ui.ctx());
-    match engine.vision_target() {
-        None => widgets::callout(ui, p.warning, |ui| {
-            ui.label(RichText::new(t!("discursive.vision_missing")).strong());
-            widgets::hint(ui, &t!("discursive.vision_howto"));
-            if ui.button(t!("discursive.open_settings")).clicked() {
-                actions.go_to(Screen::Settings);
-            }
+    match engine.manuscript_ocr() {
+        kg_engine::ManuscriptOcr::Local => widgets::callout(ui, p.accent, |ui| {
+            ui.label(RichText::new(t!("discursive.ocr_local")).strong());
+            widgets::hint(ui, &t!("discursive.ocr_local_privacy"));
+            local_ocr_controls(ui, engine, actions);
         }),
-        Some((model, host)) => widgets::callout(ui, p.accent, |ui| {
-            ui.label(t!("discursive.vision_privacy", model = model, host = host));
-            ui.horizontal(|ui| {
-                let checking = engine.vision_check() == VisionCheck::Checking;
-                if ui
-                    .add_enabled(!checking, egui::Button::new(t!("discursive.vision_test")))
-                    .on_hover_text(t!("discursive.vision_test_hint"))
-                    .clicked()
-                {
-                    actions.send(Command::CheckVision);
+        kg_engine::ManuscriptOcr::ExternalVision => match engine.vision_target() {
+            None => widgets::callout(ui, p.warning, |ui| {
+                ui.label(RichText::new(t!("discursive.vision_missing")).strong());
+                widgets::hint(ui, &t!("discursive.vision_howto"));
+                if ui.button(t!("discursive.open_settings")).clicked() {
+                    actions.go_to(Screen::Settings);
                 }
-                match engine.vision_check() {
-                    VisionCheck::Checking => {
-                        ui.spinner();
-                    }
-                    VisionCheck::Works => {
-                        ui.colored_label(p.success, t!("discursive.vision_works"));
-                    }
-                    VisionCheck::NotReading => {
-                        ui.colored_label(p.danger, t!("discursive.vision_not_reading"));
-                    }
-                    VisionCheck::Unknown => {}
+            }),
+            Some((model, host)) => widgets::callout(ui, p.accent, |ui| {
+                ui.label(t!("discursive.vision_privacy", model = model, host = host));
+                vision_test(ui, engine, actions);
+            }),
+        },
+    }
+}
+
+fn local_ocr_controls(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
+    let p = theme::palette(ui.ctx());
+    match engine.ocr_model_status() {
+        Ok(kg_engine::OcrModelStatus::Missing) => {
+            widgets::hint(ui, &t!("discursive.ocr_download_hint"));
+            if ui.button(t!("discursive.ocr_download")).clicked() {
+                actions.send(Command::InstallOcrModel);
+            }
+        }
+        Ok(kg_engine::OcrModelStatus::Downloading(progress)) => {
+            ui.horizontal(|ui| {
+                ui.add(egui::ProgressBar::new(progress).show_percentage());
+                if ui.button(t!("discursive.ocr_cancel_download")).clicked() {
+                    actions.send(Command::CancelOcrModelDownload);
                 }
             });
-        }),
+        }
+        Ok(kg_engine::OcrModelStatus::Installed { .. }) => {
+            if !engine.ocr_runtime_available() {
+                ui.colored_label(p.warning, t!("discursive.ocr_runtime_missing"));
+                return;
+            }
+            vision_test(ui, engine, actions);
+        }
+        Err(error) => {
+            widgets::hint(
+                ui,
+                &i18n::error_message(&kg_engine::EngineError::Ocr(error)),
+            );
+        }
     }
+}
+
+fn vision_test(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
+    let p = theme::palette(ui.ctx());
+    ui.horizontal(|ui| {
+        let checking = engine.vision_check() == VisionCheck::Checking;
+        if ui
+            .add_enabled(!checking, egui::Button::new(t!("discursive.vision_test")))
+            .on_hover_text(t!("discursive.vision_test_hint"))
+            .clicked()
+        {
+            actions.send(Command::CheckVision);
+        }
+        match engine.vision_check() {
+            VisionCheck::Checking => {
+                ui.spinner();
+            }
+            VisionCheck::Works => {
+                ui.colored_label(p.success, t!("discursive.vision_works"));
+            }
+            VisionCheck::NotReading => {
+                ui.colored_label(p.danger, t!("discursive.vision_not_reading"));
+            }
+            VisionCheck::Unknown => {}
+        }
+    });
 }
 
 fn new_proposal(
@@ -688,6 +733,23 @@ fn pages_editor(
             widgets::hint(ui, &t!("discursive.pages_loading"));
         });
     }
+    match engine.manuscript_ocr() {
+        kg_engine::ManuscriptOcr::Local => {
+            local_ocr_controls(ui, engine, actions);
+        }
+        kg_engine::ManuscriptOcr::ExternalVision => match engine.vision_target() {
+            Some((model, host)) => widgets::hint(
+                ui,
+                &t!("discursive.send_privacy", model = model, host = host),
+            ),
+            None => {
+                ui.colored_label(p.warning, t!("discursive.vision_missing"));
+                if ui.button(t!("discursive.open_settings")).clicked() {
+                    actions.go_to(Screen::Settings);
+                }
+            }
+        },
+    }
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         if ui
@@ -706,10 +768,17 @@ fn pages_editor(
             .pages
             .iter()
             .any(|p| p.issues.iter().any(|i| i.blocks()));
-        let ready = count > 0
-            && !blocked
-            && engine.pages_in_progress() == 0
-            && engine.vision_target().is_some();
+        let ocr_ready = match engine.manuscript_ocr_available() {
+            Ok(ready) => ready,
+            Err(error) => {
+                widgets::hint(
+                    ui,
+                    &i18n::error_message(&kg_engine::EngineError::Ocr(error)),
+                );
+                false
+            }
+        };
+        let ready = count > 0 && !blocked && engine.pages_in_progress() == 0 && ocr_ready;
         if ui
             .add_enabled(
                 ready,
@@ -721,17 +790,6 @@ fn pages_editor(
             actions.send(Command::SubmitPages);
         }
     });
-    match engine.vision_target() {
-        Some((model, host)) => {
-            widgets::hint(
-                ui,
-                &t!("discursive.send_privacy", model = model, host = host),
-            );
-        }
-        None => {
-            ui.colored_label(p.warning, t!("discursive.vision_missing"));
-        }
-    }
 }
 
 fn pick_photos(many: bool) -> Vec<std::path::PathBuf> {

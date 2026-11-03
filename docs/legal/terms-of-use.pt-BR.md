@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03). Esta é a versão para quem usa o
+Versão de 3 de novembro de 2026 (2026-11-03.1). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos

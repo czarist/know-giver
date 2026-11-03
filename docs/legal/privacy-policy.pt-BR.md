@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03), de acordo com a Lei Geral de Proteção de
+Versão de 3 de novembro de 2026 (2026-11-03.1), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -39,6 +39,7 @@ definida em `KG_DATA_DIR`):
   quizzes, das revisões, das apostilas, dos destaques e das notas;
 - conversas das aulas e o caderno de erros;
 - fotos das respostas discursivas, suas transcrições e avaliações;
+- arquivos do modelo PaddleOCR-VL, baixados para a pasta local de modelos se você instalar o OCR local;
 - a data e a hora do seu aceite destes documentos;
 - um arquivo de registro técnico (log), que não guarda imagens, respostas nem chaves.
 
@@ -50,9 +51,10 @@ gravações temporárias de diagnóstico ficam só na pasta de dados.
 | Para onde | O quê | Quando |
 |---|---|---|
 | Fornecedor de IA escolhido por você | Trechos do edital e dos materiais, tópicos, suas mensagens e respostas transcritas, seu nome (para o tutor chamar você), textos das apostilas | Em cada tarefa de IA |
-| Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Só se você configurar um modelo de visão e enviar fotos |
+| PaddleOCR-VL rodando no seu computador | Fotos das respostas discursivas | Por padrão; as fotos não são enviadas a um fornecedor |
+| Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Fotos de respostas só se você escolher explicitamente o OCR externo; páginas de PDFs escaneados só quando você pedir a leitura e tiver configurado um modelo de visão |
 | Wikipédia | O termo de busca de uma imagem do quadro | Se a opção de imagens estiver ligada |
-| Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz ou de fala |
+| Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz, fala ou OCR |
 | GitHub | Um pedido da versão mais recente, que mostra o seu endereço IP e a versão do app; o pacote da nova versão, se você escolher atualizar | Cada vez que o app abre, se a busca de atualizações estiver ligada (Configurações → Sobre e atualizações) |
 | Serviço de voz na nuvem | O texto que o tutor vai falar | Só se você ativar a voz na nuvem |
 

@@ -646,6 +646,13 @@ settings:
     fast: "Fast answers (less reasoning in lessons and quizzes)"
     test: "Test connection"
     test_hint: "Uses the saved settings."
+  manuscript_ocr:
+    title: "Read essay photos"
+    local: "Local — PaddleOCR-VL 1.5 (0.9B)"
+    external: "External API — configured vision model"
+    local_hint: "Default. Downloads about 1.82 GB once. Runs on the CPU; speed depends on your computer, and minimum hardware has not been benchmarked."
+    external_hint: "Photos are sent to your configured AI provider. Costs and retention follow its terms."
+    copilot: "Copilot sign-in handles text only; essay photos are always read locally."
   voice:
     title: "Voice"
     backend: "Speech synthesis"
@@ -767,10 +774,16 @@ discursive:
   no_test: "This plan's exam notice describes no essay or discursive test. This area appears when it does."
   tab_proposals: "Prompts"
   tab_history: "Progress"
-  vision_missing: "Set a vision model to read the photos of your pages."
-  vision_howto: "In Settings > AI, fill in \"Vision model\" with a model that takes images at your AI address (a multimodal model). Without it, photos are not sent and no text-only model is used instead."
+  vision_missing: "To use the external API, configure a vision model."
+  vision_howto: "In Settings > AI, choose the external API and set \"Vision model\" to a model that accepts images. PaddleOCR-VL on this computer is the default."
   open_settings: "Open settings"
-  vision_privacy: "Photos of your pages will be sent to the model %{model} at %{host} to be transcribed. They are kept only on your computer."
+  vision_privacy: "Because you selected the external API, photos will be sent to the model %{model} at %{host} for transcription."
+  ocr_local: "Local OCR — PaddleOCR-VL 1.5 (0.9B)"
+  ocr_local_privacy: "Photos stay on this computer. You can review the transcript before grading."
+  ocr_download_hint: "The model download is about 1.82 GB. Its files are verified before installation."
+  ocr_download: "Download OCR model (1.82 GB)"
+  ocr_cancel_download: "Cancel download"
+  ocr_runtime_missing: "The local runtime is unavailable. Reinstall the app or set KG_LLAMA_SERVER."
   vision_test: "Test image reading"
   vision_test_hint: "Sends an image with a drawn number and checks the model reads that number."
   vision_works: "The model read the test image."
@@ -946,6 +959,10 @@ discursive:
 
 error:
   setup_incomplete: "Something is still missing in the first-run setup."
+  ocr:
+    model_missing: "Install PaddleOCR-VL in Written answers before sending photos."
+    runtime_missing: "The local OCR runtime is unavailable. Reinstall the app."
+    failed: "Local OCR could not be installed or run. Check your connection and try again."
   image:
     too_large: "The photo is over 25 MB. Use a smaller one."
     unsupported: "The file is not a JPEG or PNG image."
