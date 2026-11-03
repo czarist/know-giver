@@ -219,7 +219,9 @@ pub(crate) fn panel(ui: &mut egui::Ui, engine: &Engine, kind: AccountKind, actio
                     }
                 });
             } else {
-                sign_in(ui, t!("account.chatgpt.sign_in").into_owned(), actions);
+                if ui.add_enabled_ui(!busy, chatgpt_button).inner.clicked() {
+                    actions.send(Command::SignInAccount(kind, pages()));
+                }
                 widgets::hint(ui, &t!("account.chatgpt.how"));
             }
         }
@@ -274,6 +276,24 @@ pub(crate) fn panel(ui: &mut egui::Ui, engine: &Engine, kind: AccountKind, actio
     if engine.account_result(kind) == Some(false) {
         ui.label(RichText::new(t!("account.failed")).color(p.danger));
     }
+}
+
+/// OpenAI's approved sign-in button: black, white ChatGPT logo,
+/// "Continue with ChatGPT".
+fn chatgpt_button(ui: &mut egui::Ui) -> egui::Response {
+    let label = RichText::new(t!("account.chatgpt.sign_in"))
+        .color(egui::Color32::WHITE)
+        .strong();
+    let button = egui::Button::image_and_text(crate::provider_logo::chatgpt_white(16.0), label)
+        .fill(egui::Color32::BLACK)
+        .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(90)))
+        .corner_radius(18.0)
+        .min_size(egui::vec2(0.0, 34.0));
+    ui.scope(|ui| {
+        ui.spacing_mut().button_padding = egui::vec2(16.0, 6.0);
+        ui.add(button)
+    })
+    .inner
 }
 
 fn connected_line(ui: &mut egui::Ui, text: &str) {
