@@ -13,9 +13,11 @@ case "$platform" in
 esac
 version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
 test -n "$version"
+bash scripts/build-llama-unix.sh
 cargo build --locked --release -p know-giver
 target_dir="${CARGO_TARGET_DIR:-$repo_root/target}"
 test -f "$target_dir/release/know-giver"
+test -f "$target_dir/release/local-runtime/llama-server"
 mkdir -p "$repo_root/dist"
 stage="$(mktemp -d "$repo_root/dist/.package.XXXXXX")"
 trap 'rm -rf -- "$stage"' EXIT
@@ -24,6 +26,7 @@ if [[ "$platform" == Darwin ]]; then
   bundle="$stage/Know Giver.app/Contents"
   mkdir -p "$bundle/MacOS" "$bundle/Resources"
   cp "$target_dir/release/know-giver" "$bundle/MacOS/"
+  cp -R "$target_dir/release/local-runtime" "$bundle/MacOS/"
   cp .env.example "$bundle/MacOS/"
   cp scripts/uninstall.sh "$bundle/Resources/uninstall.sh"
   chmod +x "$bundle/Resources/uninstall.sh"
@@ -46,6 +49,7 @@ EOF
 else
   mkdir -p "$stage/KnowGiver"
   cp "$target_dir/release/know-giver" .env.example packaging/unix/README.*.txt scripts/uninstall.sh "$stage/KnowGiver/"
+  cp -R "$target_dir/release/local-runtime" "$stage/KnowGiver/"
   chmod +x "$stage/KnowGiver/uninstall.sh"
   cp crates/ui/assets/icon.png "$stage/KnowGiver/know-giver.png"
   cat > "$stage/KnowGiver/know-giver.desktop" <<EOF

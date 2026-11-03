@@ -646,6 +646,13 @@ settings:
     fast: "Respostas rápidas (menos raciocínio nas aulas e quizzes)"
     test: "Testar conexão"
     test_hint: "Usa as configurações salvas."
+  manuscript_ocr:
+    title: "Leitura das fotos de redação"
+    local: "Local — PaddleOCR-VL 1.5 (0,9B)"
+    external: "API externa — modelo de visão configurado"
+    local_hint: "Padrão. Baixa cerca de 1,82 GB uma vez. Roda na CPU; a velocidade depende do computador e ainda não há requisitos mínimos medidos."
+    external_hint: "As fotos serão enviadas ao provedor de IA configurado. Custos e retenção seguem os termos dele."
+    copilot: "O login Copilot aceita apenas texto; a leitura das fotos sempre fica local."
   voice:
     title: "Voz"
     backend: "Síntese de voz"
@@ -767,10 +774,16 @@ discursive:
   no_test: "O edital deste plano não descreve redação nem prova discursiva. Esta área aparece quando o edital tiver uma."
   tab_proposals: "Propostas"
   tab_history: "Evolução"
-  vision_missing: "Configure um modelo de visão para ler as fotos das páginas."
-  vision_howto: "Em Configurações > IA, preencha \"Modelo de visão\" com um modelo que aceite imagens no seu endereço de IA (por exemplo, um modelo multimodal). Sem ele, as fotos não são enviadas e nenhum modelo só de texto é usado no lugar."
+  vision_missing: "Para usar a API externa, configure um modelo de visão."
+  vision_howto: "Em Configurações > IA, escolha a API externa e preencha \"Modelo de visão\" com um modelo que aceite imagens. A alternativa padrão é o PaddleOCR-VL local."
   open_settings: "Abrir configurações"
-  vision_privacy: "As fotos das páginas serão enviadas ao modelo %{model} em %{host} para transcrição. Elas ficam guardadas só no seu computador."
+  vision_privacy: "Como você escolheu a API externa, as fotos serão enviadas ao modelo %{model} em %{host} para transcrição."
+  ocr_local: "OCR local — PaddleOCR-VL 1.5 (0,9B)"
+  ocr_local_privacy: "As fotos não saem deste computador. A transcrição poderá ser revisada antes da correção."
+  ocr_download_hint: "O modelo ocupa cerca de 1,82 GB para baixar. O arquivo é verificado antes da instalação."
+  ocr_download: "Baixar modelo OCR (1,82 GB)"
+  ocr_cancel_download: "Cancelar download"
+  ocr_runtime_missing: "Runtime local indisponível. Reinstale o aplicativo ou configure KG_LLAMA_SERVER."
   vision_test: "Testar leitura de imagem"
   vision_test_hint: "Envia uma imagem com um número desenhado e confere se o modelo lê esse número."
   vision_works: "O modelo leu a imagem de teste."
@@ -946,6 +959,10 @@ discursive:
 
 error:
   setup_incomplete: "Falta escolher algo no primeiro acesso."
+  ocr:
+    model_missing: "Instale o PaddleOCR-VL em Discursivas antes de enviar as fotos."
+    runtime_missing: "O runtime local de OCR não está disponível. Reinstale o aplicativo."
+    failed: "Não foi possível instalar ou executar o OCR local. Verifique a conexão e tente novamente."
   image:
     too_large: "A foto passa de 25 MB. Use uma foto menor."
     unsupported: "O arquivo não é uma imagem JPEG ou PNG."

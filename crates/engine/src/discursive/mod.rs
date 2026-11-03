@@ -152,11 +152,31 @@ pub(crate) enum DiscursiveEvent {
         model: String,
         result: Result<Vec<kg_ai::IssueDraft>, AiError>,
     },
-    VisionChecked(Result<bool, AiError>),
+    VisionChecked(Result<bool, EngineError>),
 }
 
 fn now() -> NaiveDateTime {
     chrono::Local::now().naive_local()
+}
+
+fn local_page_reading(text: String) -> Result<kg_ai::PageReading, EngineError> {
+    let lines: Vec<String> = text
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect();
+    if lines.is_empty() {
+        return Err(crate::OcrError::EmptyResponse.into());
+    }
+    Ok(kg_ai::PageReading {
+        lines,
+        uncertain: Vec::new(),
+        legibility: "regular".into(),
+        cropped: false,
+        retake: String::new(),
+        warnings: Vec::new(),
+    })
 }
 
 impl Engine {
@@ -216,6 +236,9 @@ impl Engine {
 
     /// The vision model and the server photos go to, when one is set.
     pub fn vision_target(&self) -> Option<(String, String)> {
+        if self.manuscript_ocr() != crate::ManuscriptOcr::ExternalVision {
+            return None;
+        }
         let model = self.settings.ai.models.vision.trim();
         (!model.is_empty()).then(|| (model.to_owned(), host(&self.settings.ai.base_url)))
     }
@@ -683,12 +706,27 @@ impl Engine {
     }
 
     fn start_transcription(&mut self, attempt: AttemptId) -> Result<(), EngineError> {
-        // Images go only to a vision model: no fallback to a text model.
-        let client = self.ai_client();
-        let model = client.config().models.vision.trim().to_owned();
-        if model.is_empty() {
-            return Err(AiError::NoVisionModel.into());
-        }
+        let local = self.manuscript_ocr() == crate::ManuscriptOcr::Local;
+        let client = (!local).then(|| self.ai_client());
+        let model = if local {
+            if !matches!(
+                self.ocr_model_status()?,
+                crate::OcrModelStatus::Installed { .. }
+            ) {
+                return Err(crate::OcrError::ModelMissing.into());
+            }
+            if !self.ocr_runtime_available() {
+                return Err(crate::OcrError::RuntimeMissing.into());
+            }
+            "PaddleOCR-VL-1.5 0.9B (local)".to_owned()
+        } else {
+            let client = client.as_ref().ok_or(AiError::NoVisionModel)?;
+            let model = client.config().models.vision.trim().to_owned();
+            if model.is_empty() {
+                return Err(AiError::NoVisionModel.into());
+            }
+            model
+        };
         let pages: Vec<PathBuf> = self
             .store
             .pages(attempt)?
@@ -712,20 +750,37 @@ impl Engine {
         );
         self.reload_open();
         self.refresh_discursive();
+        let paths = self.paths.clone();
         self.spawn(move || {
             let total = pages.len();
-            let result = pages
-                .iter()
-                .enumerate()
-                .map(|(i, path)| {
-                    let jpeg = std::fs::read(path).map_err(|source| EngineError::Export {
-                        path: path.clone(),
-                        source,
-                    })?;
-                    let reading = kg_ai::read_manuscript_page(&client, &jpeg, i + 1, total)?;
-                    Ok(validate::page(reading, i as u32 + 1))
-                })
-                .collect();
+            let server = if local {
+                Some(crate::ocr::Server::start(&paths))
+            } else {
+                None
+            };
+            let result = server
+                .transpose()
+                .map_err(EngineError::from)
+                .and_then(|server| {
+                    pages
+                        .iter()
+                        .enumerate()
+                        .map(|(i, path)| {
+                            let jpeg =
+                                std::fs::read(path).map_err(|source| EngineError::Export {
+                                    path: path.clone(),
+                                    source,
+                                })?;
+                            let reading = if let Some(server) = &server {
+                                local_page_reading(server.transcribe(&jpeg, "image/jpeg")?)?
+                            } else {
+                                let client = client.as_ref().ok_or(AiError::NoVisionModel)?;
+                                kg_ai::read_manuscript_page(client, &jpeg, i + 1, total)?
+                            };
+                            Ok(validate::page(reading, i as u32 + 1))
+                        })
+                        .collect()
+                });
             Event::Discursive(DiscursiveEvent::Transcribed {
                 attempt,
                 run,
@@ -1049,16 +1104,40 @@ impl Engine {
         if self.discursive.vision == VisionCheck::Checking {
             return Ok(());
         }
-        if self.vision_target().is_none() {
+        let local = self.manuscript_ocr() == crate::ManuscriptOcr::Local;
+        if local {
+            if !matches!(
+                self.ocr_model_status()?,
+                crate::OcrModelStatus::Installed { .. }
+            ) {
+                return Err(crate::OcrError::ModelMissing.into());
+            }
+            if !self.ocr_runtime_available() {
+                return Err(crate::OcrError::RuntimeMissing.into());
+            }
+        } else if self.vision_target().is_none() {
             return Err(AiError::NoVisionModel.into());
         }
         let (png, number) = images::vision_probe()?;
-        let client = self.ai_client();
+        let client = (!local).then(|| self.ai_client());
+        let paths = self.paths.clone();
         self.discursive.vision = VisionCheck::Checking;
         self.spawn(move || {
-            Event::Discursive(DiscursiveEvent::VisionChecked(kg_ai::check_vision(
-                &client, &png, &number,
-            )))
+            let result = if let Some(client) = client {
+                kg_ai::check_vision(&client, &png, &number).map_err(EngineError::from)
+            } else {
+                crate::ocr::Server::start(&paths)
+                    .and_then(|server| {
+                        server.transcribe(&png, "image/png").map(|text| {
+                            text.chars()
+                                .filter(char::is_ascii_digit)
+                                .collect::<String>()
+                                .contains(&number)
+                        })
+                    })
+                    .map_err(EngineError::from)
+            };
+            Event::Discursive(DiscursiveEvent::VisionChecked(result))
         });
         Ok(())
     }
@@ -1307,7 +1386,7 @@ impl Engine {
                 }
                 Err(err) => {
                     self.discursive.vision = VisionCheck::Unknown;
-                    Err(err.into())
+                    Err(err)
                 }
             },
         }

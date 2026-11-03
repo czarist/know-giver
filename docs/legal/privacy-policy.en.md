@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of November 3, 2026 (2026-11-03). This international version applies in every
+Version of November 3, 2026 (2026-11-03.1). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -42,6 +42,7 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
   progress, quizzes, reviews, handouts, highlights and notes;
 - lesson conversations and the mistakes notebook;
 - photos of written answers, their transcripts and grades;
+- PaddleOCR-VL model files, downloaded into the local models folder if you install local OCR;
 - the date and time you agreed to these documents;
 - a technical log, which never holds images, answers or keys.
 
@@ -53,9 +54,10 @@ diagnostic recordings stay in the data folder.
 | Recipient | What | When |
 |---|---|---|
 | The AI provider you chose | Excerpts of the notice and materials, topics, your messages and transcribed answers, your name (so the tutor can address you), handout text | For each AI task |
-| The provider's vision model | Photos of written answers and pages of scanned PDFs | Only if you set a vision model and send photos |
+| PaddleOCR-VL running on your computer | Photos of written answers | By default; the photos are not sent to a provider |
+| The provider's vision model | Photos of written answers and pages of scanned PDFs | Written-answer photos only if you explicitly select external OCR; scanned-PDF pages only when you request OCR and have configured a vision model |
 | Wikipedia | The search term for a whiteboard picture | If whiteboard pictures are on |
-| Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice or speech models |
+| Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice, speech or OCR models |
 | GitHub | A request for the latest version, which shows your IP address and the app's version; the new version's package, if you choose to update | Each time the app opens, if update checks are on (Settings → About and updates) |
 | A cloud voice service | The text the tutor will speak | Only if you turn on cloud voices |
 

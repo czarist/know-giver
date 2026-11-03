@@ -5,6 +5,9 @@ between operating systems. `scripts/package.ps1` builds Windows portable/install
 packages; `bash scripts/package-unix.sh` builds Linux tarballs and macOS app bundles.
 `.github/workflows/packages.yml` runs native builds for version tags or a manual run.
 It uploads workflow artifacts; it does not publish a GitHub release or sign packages.
+Packaging also builds the pinned CPU-only llama.cpp server and places it beside the app;
+it needs Git, CMake and a native C/C++ toolchain. The build is limited to two jobs.
+The PaddleOCR-VL weights are downloaded by the app on demand, not included in packages.
 
 Linux builds need the platform audio/window development libraries, for example
 `libasound2-dev`, `libudev-dev`, `libxkbcommon-dev`, `libwayland-dev` and

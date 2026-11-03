@@ -12,6 +12,7 @@ mod handouts;
 mod illustrations;
 mod lesson;
 mod models;
+mod ocr;
 mod paths;
 mod plans;
 mod practice;
@@ -73,14 +74,15 @@ pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use kg_study::{LessonRecap, Mistake, MistakeId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
+pub use ocr::{OcrError, OcrModelStatus};
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, REVIEW_ROUNDS, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{
-    DEFAULT_TURN_PAUSE, Region, SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE,
-    TermsAcceptance,
+    DEFAULT_TURN_PAUSE, ManuscriptOcr, Region, SETUP_VERSION, Settings, TERMS_VERSION,
+    TURN_PAUSE_RANGE, TermsAcceptance,
 };
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
@@ -237,6 +239,10 @@ pub enum Command {
 
     /// Asks for a written-answer proposal on the active plan.
     GenerateProposal(ProposalRequest),
+    /// Downloads the pinned local handwriting OCR model.
+    InstallOcrModel,
+    /// Cancels an in-progress OCR model download.
+    CancelOcrModelDownload,
     DeleteProposal(ProposalId),
     /// A new attempt on a proposal, opened to add its pages.
     StartAttempt(ProposalId),
@@ -293,6 +299,8 @@ pub enum EngineError {
     Pdf(#[from] PdfError),
     #[error(transparent)]
     Handout(#[from] HandoutError),
+    #[error(transparent)]
+    Ocr(#[from] OcrError),
     #[error("cancelled")]
     Cancelled,
     #[error("could not write {path}: {source}")]
@@ -407,6 +415,7 @@ pub(crate) enum Event {
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
     DownloadFinished(ModelId, Result<(), AudioError>),
+    OcrModelDownloaded(Result<(), OcrError>),
     HandoutTopic {
         topic: TopicId,
         json: String,
@@ -471,6 +480,7 @@ pub struct Engine {
     stt: stt::Recognizers,
     illustrations: illustrations::Illustrations,
     downloads: HashMap<ModelId, models::Download>,
+    ocr_download: Option<ocr::Download>,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
     readings: Vec<Reading>,
@@ -583,6 +593,7 @@ impl Engine {
             stt: stt::Recognizers::default(),
             illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
+            ocr_download: None,
             handout_job: None,
             readings: Vec::new(),
             reader: None,
@@ -711,6 +722,7 @@ impl Engine {
         self.generating_since.is_some()
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
+            || self.ocr_download.is_some()
             || self.handout_job.is_some()
             || self.prepare_job.is_some()
             || self.board_job.is_some()
@@ -850,6 +862,11 @@ impl Engine {
             }
 
             Command::SaveSettings(settings) => self.save_settings(settings),
+            Command::InstallOcrModel => self.install_ocr_model(),
+            Command::CancelOcrModelDownload => {
+                self.cancel_ocr_model_download();
+                Ok(())
+            }
             Command::TestConnection => {
                 self.test_connection();
                 Ok(())
@@ -1006,6 +1023,13 @@ impl Engine {
                 Event::Lesson(event) => self.on_lesson_event(event),
                 Event::Practice(event) => self.on_practice_event(event),
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
+                Event::OcrModelDownloaded(result) => {
+                    self.ocr_download = None;
+                    match result {
+                        Ok(()) | Err(OcrError::Cancelled) => Ok(()),
+                        Err(error) => Err(error.into()),
+                    }
+                }
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
                 Event::Reader(event) => self.on_reader_event(event),

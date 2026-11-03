@@ -1,0 +1,17 @@
+[llama_cpp]
+repository = "https://github.com/ggml-org/llama.cpp"
+version = "v0.8.0"
+commit = "8642541b255bfb5dc39cd351a178be09013a55d6"
+license = "MIT"
+
+[ocr.paddleocr_vl_1_5]
+repository = "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5-GGUF"
+revision = "5682def29d4f89117a9a82894725f0a428d10da4"
+license = "Apache-2.0"
+parameters = "0.9B"
+model_file = "PaddleOCR-VL-1.5.gguf"
+model_bytes = 935768992
+model_sha256 = "299051d54faa065abc505cc39b8383ea338fd3020c775ea3e0ba514a7022328c"
+mmproj_file = "PaddleOCR-VL-1.5-mmproj.gguf"
+mmproj_bytes = 881770496
+mmproj_sha256 = "e7f1a72400fba517046f90d964e2fa0f4dac7781ee3b1bc5d2022f5f8cecbd87"

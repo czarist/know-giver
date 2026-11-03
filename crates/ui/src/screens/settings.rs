@@ -2,8 +2,8 @@
 
 use egui::RichText;
 use kg_engine::{
-    Command, Engine, EnglishVoice, ModelId, ModelStatus, Settings, SttEngine, Teacher, TtsBackend,
-    Voice, VoiceGender, WhisperModel,
+    Command, Engine, EnglishVoice, ManuscriptOcr, ModelId, ModelStatus, Settings, SttEngine,
+    Teacher, TtsBackend, Voice, VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -138,6 +138,9 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
         let is_copilot = kg_engine::ai_provider(&draft.ai_provider)
             .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url))
             .is_some_and(|provider| provider.id == "copilot");
+        if is_copilot {
+            draft.manuscript_ocr = ManuscriptOcr::Local;
+        }
         egui::Grid::new("ai_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
@@ -240,6 +243,28 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
         } else {
             widgets::hint(ui, &t!("settings.ai.vision_notice"));
         }
+        ui.separator();
+        ui.label(t!("settings.manuscript_ocr.title"));
+        ui.add_enabled_ui(!is_copilot, |ui| {
+            ui.radio_value(
+                &mut draft.manuscript_ocr,
+                ManuscriptOcr::Local,
+                t!("settings.manuscript_ocr.local"),
+            );
+            ui.radio_value(
+                &mut draft.manuscript_ocr,
+                ManuscriptOcr::ExternalVision,
+                t!("settings.manuscript_ocr.external"),
+            );
+        });
+        let ocr_hint = if is_copilot {
+            t!("settings.manuscript_ocr.copilot")
+        } else if draft.manuscript_ocr == ManuscriptOcr::Local {
+            t!("settings.manuscript_ocr.local_hint")
+        } else {
+            t!("settings.manuscript_ocr.external_hint")
+        };
+        widgets::hint(ui, &ocr_hint);
         ui.checkbox(&mut draft.ai.fast_responses, t!("settings.ai.fast"));
         ui.horizontal(|ui| {
             let testing = engine.is_testing_connection();

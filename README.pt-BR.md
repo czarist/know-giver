@@ -181,11 +181,13 @@ aparece para um edital sem essa prova. Um plano criado antes pode ter o edital l
   de leitura da foto separados dos de escrita e de conteúdo, e dificuldades recorrentes com
   exemplos das suas próprias tentativas.
 
-As fotos são lidas pelo **modelo de visão** definido em Configurações → IA (um modelo que
-aceita imagens; **Testar leitura de imagem** confere isso). Uma foto pode ter uma página ou
-um caderno aberto com duas páginas lado a lado. Com um modelo que raciocina antes de
-responder, deixe **Respostas rápidas** ligado para que uma página densa não se perca num
-raciocínio longo.
+Por padrão, as fotos são lidas localmente pelo PaddleOCR-VL 1.5 (0,9B); o primeiro download
+é de cerca de 1,82 GB pelo Hugging Face. Em Configurações → IA, você pode escolher
+explicitamente a API externa do modelo de visão configurado, que receberá as fotos. O
+Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de imagem**
+confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware nem a
+precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode ter uma
+página ou um caderno aberto com duas páginas lado a lado.
 
 <table>
   <tr>
@@ -250,11 +252,13 @@ primeiro.
   dele.
 - Seus dados (banco SQLite, modelos, log) ficam em `%LOCALAPPDATA%\KnowGiver`, ou em
   `KG_DATA_DIR` quando definido.
-- Só texto vai para o serviço de IA que você configura, e só o que a tarefa precisa. A
-  exceção é opcional: com um modelo de visão definido, fotos de páginas manuscritas (e
-  páginas de PDFs escaneados) são enviadas a ele para leitura. O app diz para onde antes de
-  enviar; as fotos ficam na sua pasta de dados e são apagadas junto com a tentativa. Os logs
-  nunca guardam imagens, respostas ou chaves.
+- Por padrão, as fotos manuscritas são lidas localmente e não saem deste computador. Se
+  você escolher explicitamente a API externa de visão em Configurações → IA, as fotos serão
+  enviadas ao fornecedor; no Copilot, o OCR é sempre local. Antes do envio, o app informa
+  o destino. As fotos ficam na pasta de dados e são apagadas junto com a tentativa. Os logs
+  nunca guardam imagens, respostas ou chaves. Páginas de PDFs escaneados só são enviadas ao
+  modelo de visão configurado quando você pede a leitura. A instalação do OCR local baixa
+  cerca de 1,82 GB do Hugging Face.
 - Ao abrir, o app pergunta ao GitHub qual é a versão mais recente; só esse pedido sai, e
   Configurações → Sobre e atualizações desliga a busca.
 - Sem conta, telemetria ou anúncios. Leia os [Termos de Uso](docs/legal/terms-of-use.pt-BR.md)

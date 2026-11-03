@@ -175,10 +175,14 @@ notice read again (**Re-read notice**) without losing topics, progress or handou
   reading problems apart from writing and content ones, and recurring difficulties with
   examples from your own attempts.
 
-Photos are read by the **vision model** set in Settings → AI (a model that takes images;
-**Test image reading** checks it). One photo can hold one page or an open notebook with
-two pages side by side. With a reasoning model, keep **Fast responses** on so a dense page
-is not lost to long reasoning.
+By default, PaddleOCR-VL 1.5 (0.9B) reads photos locally; its first download is about
+1.82 GB from Hugging Face. In Settings → AI, you can explicitly choose the configured
+vision API instead, which sends the photos to that provider. Copilot is text-only, so it
+always uses local OCR. **Test image reading** checks the selected backend. One photo can
+hold one page or an open notebook with two pages side by side. Minimum hardware and
+handwriting accuracy have not yet been benchmarked; review every transcript before grading.
+With a reasoning API model, keep **Fast responses** on so a dense page is not lost to long
+reasoning.
 
 <table>
   <tr>
@@ -241,11 +245,12 @@ bar and mark schemes. The exam notice and past exams always come first.
 - Speech recognition and the voices run on your machine. Recordings never leave it.
 - Your data (SQLite database, models, log) lives in `%LOCALAPPDATA%\KnowGiver`, or in
   `KG_DATA_DIR` when set.
-- Only text goes to the AI service you configure, and only what the task needs. The
-  exception is opt-in: with a vision model set, photos of handwritten pages (and pages of
-  scanned PDFs) are sent to it to be read. The app says where before sending; the photos
-  stay in your data folder and are deleted with their attempt. Logs never hold images,
-  answers or keys.
+- Handwritten photos are read locally by default and stay on this computer. If you
+  explicitly choose the external vision API in Settings → AI, photos are sent to that
+  provider; Copilot always uses local OCR. The app says where before sending; photos stay
+  in your data folder and are deleted with their attempt. Logs never hold images, answers
+  or keys. Scanned-PDF pages are sent to the configured vision model only when you request
+  their OCR. Installing local OCR downloads about 1.82 GB from Hugging Face.
 - When it opens, the app asks GitHub for the latest version; only that request is sent,
   and Settings → About and updates turns it off.
 - No account, telemetry or ads. Read the [Terms of Use](docs/legal/terms-of-use.en.md) and

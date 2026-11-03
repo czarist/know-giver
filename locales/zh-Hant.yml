@@ -646,6 +646,13 @@ settings:
     fast: "快速回答（課堂和測驗中減少推理）"
     test: "測試連線"
     test_hint: "使用已儲存的設定。"
+  manuscript_ocr:
+    title: "讀取作文照片"
+    local: "本機 — PaddleOCR-VL 1.5（0.9B）"
+    external: "外部 API — 已設定的圖片模型"
+    local_hint: "預設選項。首次下載約 1.82 GB。使用 CPU 執行，速度依電腦而異；最低硬體需求尚未測試。"
+    external_hint: "照片會傳送到你設定的 AI 服務；費用和保留期限依該服務條款。"
+    copilot: "Copilot 登入僅處理文字，因此作文照片一律在本機辨識。"
   voice:
     title: "語音"
     backend: "語音合成"
@@ -767,10 +774,16 @@ discursive:
   no_test: "這個計劃的考試公告中沒有作文或主觀題考試。有的時候才會顯示這個區域。"
   tab_proposals: "題目"
   tab_history: "進步"
-  vision_missing: "請設定圖片模型，用來讀取你答卷的照片。"
-  vision_howto: "在設定 > AI 中，把「圖片模型」填為你的 AI 地址上能接收圖片的模型（多模態模型）。不設定的話，照片不會傳送，也不會改用只讀文字的模型。"
+  vision_missing: "如要使用外部 API，請設定圖片模型。"
+  vision_howto: "在設定 > AI 中選擇外部 API，並將「圖片模型」設為支援圖片的模型。預設選項是在本機執行 PaddleOCR-VL。"
   open_settings: "開啟設定"
-  vision_privacy: "你答卷的照片會傳送到 %{host} 的模型 %{model} 進行轉寫，只儲存在你的電腦上。"
+  vision_privacy: "因為你選擇了外部 API，答卷照片將傳送到 %{host} 的模型 %{model} 進行轉寫。"
+  ocr_local: "本機 OCR — PaddleOCR-VL 1.5（0.9B）"
+  ocr_local_privacy: "照片不會離開這台電腦。批改前可以檢查及修改轉寫文字。"
+  ocr_download_hint: "模型下載約 1.82 GB。安裝前會驗證檔案。"
+  ocr_download: "下載 OCR 模型（1.82 GB）"
+  ocr_cancel_download: "取消下載"
+  ocr_runtime_missing: "本機執行環境無法使用。請重新安裝應用程式，或設定 KG_LLAMA_SERVER。"
   vision_test: "測試圖片識別"
   vision_test_hint: "傳送一張畫有數字的圖片，檢查模型能否讀出這個數字。"
   vision_works: "模型讀出了測試圖片。"
@@ -946,6 +959,10 @@ discursive:
 
 error:
   setup_incomplete: "首次設定中還有未選擇的專案。"
+  ocr:
+    model_missing: "傳送照片前，請在「主觀題與作文」中安裝 PaddleOCR-VL。"
+    runtime_missing: "本機 OCR 執行環境無法使用。請重新安裝應用程式。"
+    failed: "無法安裝或執行本機 OCR。請檢查網路連線後再試。"
   image:
     too_large: "照片超過 25 MB，請使用較小的照片。"
     unsupported: "檔案不是 JPEG 或 PNG 圖片。"

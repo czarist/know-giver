@@ -152,3 +152,87 @@ impl Engine {
         self.model_list = Some(list);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn engine() -> (Engine, tempfile::TempDir) {
+        let directory = tempfile::tempdir().unwrap();
+        let engine = Engine::in_memory(
+            crate::AppPaths::new(directory.path()),
+            crate::tests::silent_ai(),
+        )
+        .unwrap();
+        (engine, directory)
+    }
+
+    #[test]
+    fn copilot_login_streams_device_instructions_and_clears_them_on_success() {
+        let (mut engine, _directory) = engine();
+        engine.copilot_login_in_progress = true;
+        engine
+            .events_tx
+            .send(Event::CopilotLoginOutput(
+                "Open https://github.com/login/device".into(),
+            ))
+            .unwrap();
+        engine
+            .events_tx
+            .send(Event::CopilotLoginOutput("Enter code: ABCD".into()))
+            .unwrap();
+
+        engine.poll();
+
+        assert_eq!(
+            engine.copilot_login_output(),
+            "Open https://github.com/login/device\nEnter code: ABCD\n"
+        );
+        engine
+            .events_tx
+            .send(Event::CopilotLoginFinished(Ok(())))
+            .unwrap();
+        engine.poll();
+
+        assert!(!engine.is_copilot_login_in_progress());
+        assert_eq!(engine.copilot_login_result(), Some(true));
+        assert!(engine.copilot_login_output().is_empty());
+        assert!(matches!(
+            engine.take_notices().as_slice(),
+            [crate::Notice::CopilotConnected]
+        ));
+        engine
+            .events_tx
+            .send(Event::CopilotLoginOutput("late output".into()))
+            .unwrap();
+        engine.poll();
+        assert!(engine.copilot_login_output().is_empty());
+    }
+
+    #[test]
+    fn copilot_login_failure_clears_transient_output_and_reports_failure() {
+        let (mut engine, _directory) = engine();
+        engine.copilot_login_in_progress = true;
+        engine
+            .events_tx
+            .send(Event::CopilotLoginOutput("Enter code: ABCD".into()))
+            .unwrap();
+        engine.poll();
+
+        engine
+            .events_tx
+            .send(Event::CopilotLoginFinished(Err(AiError::Copilot(
+                "sign-in failed".into(),
+            ))))
+            .unwrap();
+        engine.poll();
+
+        assert!(!engine.is_copilot_login_in_progress());
+        assert_eq!(engine.copilot_login_result(), Some(false));
+        assert!(engine.copilot_login_output().is_empty());
+        assert!(matches!(
+            engine.take_notices().as_slice(),
+            [crate::Notice::Error(_)]
+        ));
+    }
+}
