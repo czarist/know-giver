@@ -23,6 +23,9 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Authentication: GitHub Copilot OAuth" src="https://img.shields.io/badge/auth-GitHub%20Copilot%20OAuth-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -113,7 +116,7 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 - **核对读取结果**：照片和转写并排显示。你的书写错误会保留，不确定的字词不会扣分。
 - **形成性评分**：按标准估计的分数、经过核对的原文引用、优点、问题和建议、三个优先事项。
 
-默认情况下，PaddleOCR-VL 1.5（0.9B）会在本地读取照片；首次安装需从 Hugging Face 下载约 1.82 GB。在设置 → AI 中明确选择外部图片 API 后，照片才会发送给该服务商。Copilot 只接受文本，因此始终使用本地 OCR。可通过**测试图片读取**检查所选方式。最低硬件要求和手写识别准确率尚未测试；评分前请务必核对转写。Windows/Linux 检测到支持 Vulkan 的 GPU 时会优先使用；不可用时回退到 CPU。macOS 使用 CPU。按字数要求的中文作文，字数要求会写在题目说明中。
+默认情况下，PaddleOCR-VL 1.5（0.9B）通过随应用提供的 [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 在本地读取照片；首次需从 Hugging Face 下载约 1.82 GB 的模型。在设置 → AI 中明确选择外部图片 API 后，照片才会发送给该服务商。Copilot 只接受文本，因此始终使用本地 OCR。可通过**测试图片读取**检查所选方式。最低硬件要求和手写识别准确率尚未测试；评分前请务必核对转写。Windows/Linux 包含 🔺 [Vulkan](https://www.vulkan.org/) 运行时，检测到兼容 GPU 时会优先使用；没有设备或 GPU 启动失败时回退到 CPU。macOS 使用 CPU。按字数要求的中文作文，字数要求会写在题目说明中。
 
 <table>
   <tr>

@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.1). Esta é a versão para quem usa o
+Versão de 3 de novembro de 2026 (2026-11-03.2). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -81,6 +81,13 @@ O aplicativo pode acessar serviços de terceiros: o fornecedor de IA escolhido, 
 serviço de voz na nuvem, se você ativar. Vozes, fontes e imagens de terceiros têm licenças
 próprias. A voz Dii, por exemplo, é só para uso pessoal e não comercial. A Trentin não
 controla esses serviços e não responde por eles.
+
+O OCR local usa o PaddleOCR-VL pelo runtime `llama-server` do [llama.cpp](https://github.com/ggml-org/llama.cpp),
+versão 0.8.0, licenciado sob MIT e incluído no pacote do aplicativo. Os pacotes para
+Windows e Linux incluem uma versão com Vulkan: o app usa uma GPU compatível quando
+disponível e volta para CPU se não encontrar um dispositivo ou se a inicialização da GPU
+falhar. No macOS, usa CPU. O Vulkan usa o driver da GPU instalado no computador; o runtime
+e o backend Vulkan não enviam fotos de OCR à Trentin nem a fornecedores.
 
 ## 10. Licença do software
 
