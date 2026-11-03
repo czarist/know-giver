@@ -78,9 +78,10 @@ Shipping today:
   Anthropic's official installer (`claude.ai/install.ps1` / `install.sh`), run unmodified
   as `claude -p` for the Claude account provider (`crates/ai/src/claude_code.rs`). Each
   student signs in with their own Claude account through Claude Code's flow; the app
-  never handles those credentials, never removes Claude Code's own sign-in options, and
-  shows no Anthropic or Claude Code logo. The owner accepted Anthropic's Commercial Terms
-  for this. Never sign out of Claude Code or the Copilot CLI from the app.
+  never handles those credentials and never removes Claude Code's own sign-in options.
+  The owner accepted Anthropic's Commercial Terms for this, and chose to show the Claude
+  logo on that sign-in, taking responsibility for it; never present Know Giver as built,
+  endorsed or partnered by Anthropic. Never sign out of Claude Code or the Copilot CLI from the app.
 
 Account sign-ins (`crates/ai/src/account.rs`) follow each owner's documented flow: ChatGPT
 uses OpenAI's *Sign in with ChatGPT* registration under the app's own name, never another
