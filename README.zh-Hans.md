@@ -117,6 +117,7 @@ AI 可以使用任何兼容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 - **形成性评分**：按标准估计的分数、经过核对的原文引用、优点、问题和建议、三个优先事项。
 
 默认情况下，PaddleOCR-VL 1.5（0.9B）通过随应用提供的 [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 在本地读取照片；首次需从 Hugging Face 下载约 1.82 GB 的模型。在设置 → AI 中明确选择外部图片 API 后，照片才会发送给该服务商。Copilot 只接受文本，因此始终使用本地 OCR。可通过**测试图片读取**检查所选方式。最低硬件要求和手写识别准确率尚未测试；评分前请务必核对转写。Windows/Linux 包含 🔺 [Vulkan](https://www.vulkan.org/) 运行时，检测到兼容 GPU 时会优先使用；没有设备或 GPU 启动失败时回退到 CPU。macOS 使用 CPU。按字数要求的中文作文，字数要求会写在题目说明中。
+Windows 安装包包含所需的 C++ 运行库和 Vulkan 加载器；使用 Vulkan 仍需安装兼容的显卡驱动。
 
 <table>
   <tr>

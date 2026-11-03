@@ -194,6 +194,8 @@ nem a precisão em manuscritos; confira toda transcrição antes da correção. 
 ter uma página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o
 pacote inclui 🔺 [Vulkan](https://www.vulkan.org/) e usa uma GPU compatível detectada quando disponível; volta para CPU
 se não houver dispositivo ou se a inicialização da GPU falhar. No macOS, usa CPU.
+O instalador do Windows inclui as bibliotecas C++ e o carregador Vulkan; para usar a GPU,
+é necessário ter o driver compatível instalado.
 
 <table>
   <tr>
