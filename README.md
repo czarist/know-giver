@@ -181,6 +181,8 @@ vision API instead, which sends the photos to that provider. Copilot is text-onl
 always uses local OCR. **Test image reading** checks the selected backend. One photo can
 hold one page or an open notebook with two pages side by side. Minimum hardware and
 handwriting accuracy have not yet been benchmarked; review every transcript before grading.
+Windows and Linux builds use a detected Vulkan GPU when available and fall back to CPU;
+macOS builds use CPU.
 With a reasoning API model, keep **Fast responses** on so a dense page is not lost to long
 reasoning.
 

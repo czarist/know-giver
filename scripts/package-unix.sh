@@ -18,6 +18,9 @@ cargo build --locked --release -p know-giver
 target_dir="${CARGO_TARGET_DIR:-$repo_root/target}"
 test -f "$target_dir/release/know-giver"
 test -f "$target_dir/release/local-runtime/llama-server"
+if [[ "$platform" == Linux ]]; then
+  test -f "$target_dir/release/local-runtime/vulkan/llama-server"
+fi
 mkdir -p "$repo_root/dist"
 stage="$(mktemp -d "$repo_root/dist/.package.XXXXXX")"
 trap 'rm -rf -- "$stage"' EXIT

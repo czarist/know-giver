@@ -338,6 +338,19 @@ pub(crate) struct Server {
     api_key: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RuntimeBackend {
+    Vulkan,
+    Cpu,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RuntimeCandidate {
+    executable: PathBuf,
+    backend: RuntimeBackend,
+    device: Option<String>,
+}
+
 impl std::fmt::Debug for Server {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -358,19 +371,33 @@ impl Server {
     pub(crate) fn start(paths: &AppPaths) -> Result<Self, OcrError> {
         let manifest = manifest()?;
         let model = &manifest.ocr.paddleocr_vl_1_5;
+        if model_status(paths)? == OcrModelStatus::Missing {
+            return Err(OcrError::ModelMissing);
+        }
+        let candidates = runtime_candidates();
+        start_with_fallback(&candidates, |candidate| {
+            Self::start_with_runtime(paths, model, manifest, candidate)
+        })
+    }
+
+    fn start_with_runtime(
+        paths: &AppPaths,
+        model: &ModelManifest,
+        manifest: &Manifest,
+        candidate: &RuntimeCandidate,
+    ) -> Result<Self, OcrError> {
         tracing::info!(
             runtime = %manifest.llama_cpp.version,
             commit = %manifest.llama_cpp.commit,
             repository = %manifest.llama_cpp.repository,
             runtime_license = %manifest.llama_cpp.license,
+            backend = ?candidate.backend,
+            device = candidate.device.as_deref(),
             model = %model.parameters,
             model_license = %model.license,
             "starting local manuscript OCR"
         );
-        if model_status(paths)? == OcrModelStatus::Missing {
-            return Err(OcrError::ModelMissing);
-        }
-        let executable = server_executable().ok_or(OcrError::RuntimeMissing)?;
+        let executable = &candidate.executable;
         let model_path = model_dir(paths).join(&model.model_file);
         let mmproj_path = model_dir(paths).join(&model.mmproj_file);
         let listener = TcpListener::bind(("127.0.0.1", 0)).map_err(|source| OcrError::Io {
@@ -393,7 +420,7 @@ impl Server {
                 .map(|duration| duration.as_nanos())
                 .unwrap_or_default()
         );
-        let mut command = Command::new(&executable);
+        let mut command = Command::new(executable);
         command
             .arg("--model")
             .arg(model_path)
@@ -410,7 +437,16 @@ impl Server {
             .arg("--ctx-size")
             .arg("4096")
             .arg("--n-gpu-layers")
-            .arg("0")
+            .arg(match candidate.backend {
+                RuntimeBackend::Vulkan => "99",
+                RuntimeBackend::Cpu => "0",
+            });
+        if let Some(device) = &candidate.device {
+            command.arg("--device").arg(device);
+        } else {
+            command.arg("--device").arg("none");
+        }
+        command
             .arg("--threads")
             .arg(
                 std::thread::available_parallelism()
@@ -556,7 +592,7 @@ impl Engine {
 
     /// Whether this installation includes or can find `llama-server`.
     pub fn ocr_runtime_available(&self) -> bool {
-        server_executable().is_some()
+        cpu_server_executable().is_some() || vulkan_server_executable().is_some()
     }
 
     /// Whether the selected OCR backend is ready to read handwritten pages.
@@ -606,7 +642,113 @@ impl Engine {
     }
 }
 
-fn server_executable() -> Option<PathBuf> {
+fn runtime_candidates() -> Vec<RuntimeCandidate> {
+    let has_runtime_override = std::env::var_os("KG_LLAMA_SERVER")
+        .map(PathBuf::from)
+        .is_some_and(|path| path.is_file());
+    let vulkan = (!has_runtime_override)
+        .then(vulkan_server_executable)
+        .flatten()
+        .and_then(|executable| match detect_vulkan_device(&executable) {
+            Ok(Some(device)) => Some((executable, device)),
+            Ok(None) => {
+                tracing::debug!(path = %executable.display(), "no hardware Vulkan device found");
+                None
+            }
+            Err(error) => {
+                tracing::warn!(
+                    path = %executable.display(),
+                    %error,
+                    "could not probe the Vulkan OCR runtime; using CPU if available"
+                );
+                None
+            }
+        });
+    ordered_candidates(vulkan, cpu_server_executable())
+}
+
+fn ordered_candidates(
+    vulkan: Option<(PathBuf, String)>,
+    cpu: Option<PathBuf>,
+) -> Vec<RuntimeCandidate> {
+    let mut candidates = Vec::with_capacity(2);
+    if let Some((executable, device)) = vulkan {
+        candidates.push(RuntimeCandidate {
+            executable,
+            backend: RuntimeBackend::Vulkan,
+            device: Some(device),
+        });
+    }
+    if let Some(executable) = cpu {
+        candidates.push(RuntimeCandidate {
+            executable,
+            backend: RuntimeBackend::Cpu,
+            device: None,
+        });
+    }
+    candidates
+}
+
+fn start_with_fallback<T>(
+    candidates: &[RuntimeCandidate],
+    mut start: impl FnMut(&RuntimeCandidate) -> Result<T, OcrError>,
+) -> Result<T, OcrError> {
+    let mut vulkan_error = None;
+    for candidate in candidates {
+        match start(candidate) {
+            Ok(server) => return Ok(server),
+            Err(error) if candidate.backend == RuntimeBackend::Vulkan => {
+                tracing::warn!(%error, "Vulkan OCR startup failed; trying the CPU runtime");
+                vulkan_error = Some(error);
+            }
+            Err(cpu_error) => {
+                return Err(match vulkan_error {
+                    Some(vulkan_error) => OcrError::Runtime(format!(
+                        "Vulkan startup failed ({vulkan_error}); CPU fallback failed: {cpu_error}"
+                    )),
+                    None => cpu_error,
+                });
+            }
+        }
+    }
+    match vulkan_error {
+        Some(error) => Err(OcrError::Runtime(format!(
+            "Vulkan startup failed and no CPU runtime is available: {error}"
+        ))),
+        None => Err(OcrError::RuntimeMissing),
+    }
+}
+
+fn detect_vulkan_device(executable: &Path) -> Result<Option<String>, String> {
+    let output = Command::new(executable)
+        .arg("--list-devices")
+        .output()
+        .map_err(|error| format!("could not run device probe: {error}"))?;
+    if !output.status.success() {
+        return Err(format!("device probe exited with {}", output.status));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Ok(parse_vulkan_device(&format!("{stdout}\n{stderr}")))
+}
+
+fn parse_vulkan_device(output: &str) -> Option<String> {
+    output.lines().find_map(|line| {
+        let (device, name) = line.trim().split_once(':')?;
+        let index = device.strip_prefix("Vulkan")?;
+        if index.is_empty() || !index.chars().all(|character| character.is_ascii_digit()) {
+            return None;
+        }
+        let name = name.trim();
+        let normalized_name = name.to_ascii_lowercase();
+        let is_software_device = ["llvmpipe", "lavapipe", "swiftshader", "software rasterizer"]
+            .iter()
+            .any(|marker| normalized_name.contains(marker));
+        (!name.is_empty() && !is_software_device).then(|| device.to_owned())
+    })
+}
+
+fn cpu_server_executable() -> Option<PathBuf> {
     let name = if cfg!(windows) {
         "llama-server.exe"
     } else {
@@ -630,6 +772,19 @@ fn server_executable() -> Option<PathBuf> {
             .map(|path| path.join(name))
             .find(|path| path.is_file())
     })
+}
+
+fn vulkan_server_executable() -> Option<PathBuf> {
+    let name = if cfg!(windows) {
+        "llama-server.exe"
+    } else {
+        "llama-server"
+    };
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .map(|path| path.join("local-runtime").join("vulkan").join(name))
+        .filter(|path| path.is_file())
 }
 
 #[cfg(test)]
@@ -737,6 +892,126 @@ mod tests {
         assert!(matches!(
             response_text("not json"),
             Err(OcrError::InvalidResponse(_))
+        ));
+    }
+
+    #[test]
+    fn device_probe_selects_hardware_vulkan_devices_and_ignores_software_renderers() {
+        let cases = [
+            (
+                "NVIDIA",
+                "Available devices:\n  Vulkan0: NVIDIA GeForce RTX 4090\n  CPU: x86\n",
+                Some("Vulkan0"),
+            ),
+            (
+                "AMD",
+                "Available devices:\n  Vulkan0: AMD Radeon RX 7900 XTX\n",
+                Some("Vulkan0"),
+            ),
+            (
+                "Intel",
+                "Available devices:\n  Vulkan1: Intel Arc A770\n",
+                Some("Vulkan1"),
+            ),
+            ("CPU only", "Available devices:\n  CPU: x86\n", None),
+            (
+                "software renderer",
+                "Available devices:\n  Vulkan0: llvmpipe (LLVM 17.0.6, 256 bits)\n",
+                None,
+            ),
+            (
+                "backend mention without device entry",
+                "Vulkan backend is unavailable\n  CPU: x86\n",
+                None,
+            ),
+        ];
+
+        for (case, output, expected) in cases {
+            assert_eq!(
+                parse_vulkan_device(output).as_deref(),
+                expected,
+                "case: {case}"
+            );
+        }
+    }
+
+    #[test]
+    fn runtime_candidates_prefer_detected_vulkan_and_keep_cpu_fallback() {
+        let vulkan_path = PathBuf::from("vulkan/llama-server");
+        let cpu_path = PathBuf::from("cpu/llama-server");
+        let candidates = ordered_candidates(
+            Some((vulkan_path.clone(), "Vulkan0".to_owned())),
+            Some(cpu_path.clone()),
+        );
+
+        assert_eq!(
+            candidates,
+            [
+                RuntimeCandidate {
+                    executable: vulkan_path,
+                    backend: RuntimeBackend::Vulkan,
+                    device: Some("Vulkan0".to_owned()),
+                },
+                RuntimeCandidate {
+                    executable: cpu_path,
+                    backend: RuntimeBackend::Cpu,
+                    device: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn runtime_candidates_use_cpu_when_no_vulkan_device_is_detected() {
+        let cpu_path = PathBuf::from("cpu/llama-server");
+        let candidates = ordered_candidates(None, Some(cpu_path.clone()));
+
+        assert_eq!(
+            candidates,
+            [RuntimeCandidate {
+                executable: cpu_path,
+                backend: RuntimeBackend::Cpu,
+                device: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn failed_vulkan_startup_retries_with_cpu_runtime() {
+        let candidates = ordered_candidates(
+            Some((PathBuf::from("vulkan/llama-server"), "Vulkan0".to_owned())),
+            Some(PathBuf::from("cpu/llama-server")),
+        );
+        let mut attempted = Vec::new();
+        let result: Result<&str, OcrError> = start_with_fallback(&candidates, |candidate| {
+            attempted.push(candidate.backend);
+            match candidate.backend {
+                RuntimeBackend::Vulkan => Err(OcrError::Runtime("driver unavailable".into())),
+                RuntimeBackend::Cpu => Ok("cpu server"),
+            }
+        });
+
+        assert_eq!(result.unwrap(), "cpu server");
+        assert_eq!(attempted, [RuntimeBackend::Vulkan, RuntimeBackend::Cpu]);
+    }
+
+    #[test]
+    fn failed_cpu_fallback_reports_both_backend_errors() {
+        let candidates = ordered_candidates(
+            Some((PathBuf::from("vulkan/llama-server"), "Vulkan0".to_owned())),
+            Some(PathBuf::from("cpu/llama-server")),
+        );
+        let result: Result<(), OcrError> = start_with_fallback(&candidates, |candidate| {
+            Err(OcrError::Runtime(match candidate.backend {
+                RuntimeBackend::Vulkan => "Vulkan failed".into(),
+                RuntimeBackend::Cpu => "CPU failed".into(),
+            }))
+        });
+
+        assert!(matches!(
+            result,
+            Err(OcrError::Runtime(message))
+                if message.contains("Vulkan failed") && message.contains("CPU failed")
         ));
     }
 }
