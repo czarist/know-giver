@@ -1,0 +1,28 @@
+name: Checks
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        run: |
+          rustup update stable --no-self-update && rustup default stable
+          rustup component add rustfmt clippy
+      - name: Linux system libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev libvulkan-dev glslc pkg-config
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Lints
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked --workspace

@@ -13,7 +13,8 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - **STT**: Whisper on candle (pure Rust) + cpal
 - **TTS**: Piper binary as a child process (pt-BR voices), playback via rodio
 - **PDF**: pdf-extract / oxidize-pdf
-- **AI**: OpenAI-compatible client (Ollama / LiteLLM / GLM)
+- **AI**: OpenAI-compatible client (Ollama / LiteLLM / GLM) and the GitHub Copilot SDK
+- **Local OCR**: llama.cpp `llama-server` with PaddleOCR-VL (`local-ai.toml`)
 - **Storage**: SQLite
 
 ## Organization
@@ -52,7 +53,7 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Teaching prompts follow the student's exam culture (`crates/ai/src/culture.rs`, from `Region::exam_culture`): exams, question formats, written-test conventions and the teacher's manner. A new region gets its note in Portuguese and English; extraction tasks never get it
 - Free plans (`Provider::free_tier`) state what they do with the data; recheck them when providers change their terms
 - First run is required (`Settings::needs_setup`, `SETUP_VERSION`): language, name, teacher, AI provider and key, terms. It never touches plans or progress. The provider list is `crates/ai/src/providers.rs`; model names there are suggestions, the app also lists the account's models
-- The owner's PC shuts down under long full-CPU builds: run cargo with `-j 2` to `-j 4` and `--test-threads` to match
+- Before committing: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings` and `cargo test --workspace`; CI runs the same checks on every push to `dev` and before a release
 
 ## Git workflow
 - `main` holds released code; `dev` collects finished work. The owner merges `dev` into `main` on GitHub.
@@ -62,19 +63,30 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - A release still gets its CHANGELOG entry and version bump on the task branch. The annotated tag `vX.Y.Z` goes on `main` after the owner merges `dev` into `main`.
 - Pushing the tag runs `.github/workflows/packages.yml`: it tests and packages on Windows, macOS and Linux, then publishes a GitHub release with fixed asset names (`KnowGiver-setup.exe`, `KnowGiver-windows-x64.zip`, `KnowGiver-linux-x86_64.tar.gz`, `KnowGiver-macos-arm64.tar.gz`, `SHA256SUMS.txt`). The README one-line installs (`scripts/install.ps1`, `scripts/install.sh`) and the in-app updater (engine `update.rs`) depend on those names; change them together. Binaries are never committed to the repository.
 
-## Planned exceptions (not implemented)
-Managed local AI (ROADMAP Phase 8) is planned, not built. The owner authorized these external
-projects for it, integrated as published and run outside the app process, with all
-orchestration in Rust:
+## External programs
+The owner authorized these external projects, integrated as published and run outside the
+app process, with all orchestration in Rust. This is not a general permission for other
+non-Rust dependencies.
+
+Shipping today:
+- llama.cpp (<https://github.com/ggml-org/llama.cpp>): `llama-server` as a child process for
+  local handwritten-answer OCR (engine `ocr.rs`), CPU builds everywhere and Vulkan on
+  Windows and Linux, with CPU fallback. Its version and the OCR model (PaddleOCR-VL 1.5) are
+  pinned with checksums in `local-ai.toml`, which the packaging scripts read and the app
+  embeds; change them only there.
+- GitHub Copilot CLI, bundled by the official `github-copilot-sdk` crate
+  (<https://github.com/github/copilot-sdk>): sign-in and chat for the Copilot account
+  provider (`crates/ai/src/copilot.rs`). The app never stores Copilot credentials.
+
+Planned for managed local AI (ROADMAP Phase 8), not built; do not describe them as available
+until they ship:
 - LiteLLM (<https://github.com/BerriAI/litellm>): local proxy, embedded in the installer
-- llama.cpp (<https://github.com/ggml-org/llama.cpp>): inference engine, `llama-server` as a child process
+- llama.cpp for text models, beyond OCR
 - gpu-unlock (<https://github.com/Zagitta/gpu-unlock>, Linux) and Windows-GPU-UNLOCK
   (<https://github.com/impacifist/Windows-GPU-UNLOCK>): optional GPU preparation at boot, only
   on explicit user action through the administrator prompt
 
-This is not a general permission for other non-Rust dependencies. Pinned versions and
-checksums go in one manifest (`local-ai.toml`, planned). Do not describe these components as
-available until they ship.
+New pinned components go in `local-ai.toml`.
 
 ## Do not
 - Unnecessary C/C++ dependencies
