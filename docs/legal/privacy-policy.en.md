@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of October 31, 2026 (2026-10-31). This international version applies in every
+Version of November 3, 2026 (2026-11-03). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -12,7 +12,8 @@ Brazil (LGPD), Japan (APPI), Taiwan, Hong Kong and Singapore.
   receive, store or access your data**.
 - There is no Trentin account, no telemetry, no usage analytics, no advertising, and no
   sale or sharing of personal information.
-- The content each task needs goes to **the AI provider you chose**, with your key. That
+- The content each task needs goes to **the AI provider you chose**, using the
+  authentication method it requires (an API key or an official account sign-in). That
   provider handles it under its own terms.
 
 ## 2. Who is responsible
@@ -33,6 +34,10 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
 
 - your name (what the tutor calls you), language, region, teacher and other preferences;
 - your API key, stored unencrypted in the local database when typed in the app;
+- for GitHub Copilot, sign-in credentials managed by the official Copilot CLI. It
+  normally uses the operating system keychain; if unavailable, it may store credentials
+  in a plain-text config file (`~/.copilot/config.json`). Know Giver does not save them
+  in its database;
 - the notices, past exams, answer keys and materials you upload, plus your plans,
   progress, quizzes, reviews, handouts, highlights and notes;
 - lesson conversations and the mistakes notebook;
@@ -54,6 +59,11 @@ diagnostic recordings stay in the data folder.
 | GitHub | A request for the latest version, which shows your IP address and the app's version; the new version's package, if you choose to update | Each time the app opens, if update checks are on (Settings → About and updates) |
 | A cloud voice service | The text the tutor will speak | Only if you turn on cloud voices |
 
+If you choose GitHub Copilot, the content described in the AI-provider row goes to GitHub.
+Sign-in runs through Copilot CLI. It normally stores credentials in the operating system
+keychain, but may fall back to a plain-text config file (`~/.copilot/config.json`) if the
+keychain is unavailable. Know Giver does not save these credentials in its database.
+
 Many AI providers are in other countries, so choosing one may transfer data
 internationally, including to countries whose data protection laws differ from yours. The
 safeguards are those the provider offers you. Read its privacy policy before you choose
@@ -67,8 +77,11 @@ questions and handouts, grading answers and showing your progress.
 ## 6. Security
 
 Your data stays on your computer, protected by access to your user account; keep it
-password-protected. The API key is stored unencrypted in the local database. Security
-issues can be reported as described in the project's SECURITY.md file.
+password-protected. API keys typed in the app are stored unencrypted in the local
+database; GitHub Copilot sign-in credentials are managed by the CLI, normally in the
+operating system keychain, with a possible plain-text config-file fallback if the keychain
+is unavailable. They are not saved in the Know Giver database. Security issues can be
+reported as described in the project's SECURITY.md file.
 
 ## 7. Retention
 

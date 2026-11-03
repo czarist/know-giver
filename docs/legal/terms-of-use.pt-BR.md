@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 31 de outubro de 2026 (2026-10-31). Esta é a versão para quem usa o
+Versão de 3 de novembro de 2026 (2026-11-03). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -38,6 +38,11 @@ aplicativo pedirá um novo aceite.
   uso e o tratamento de dados seguem os termos dele. Os custos de uso da chave são cobrados
   pelo fornecedor, não pela Trentin.
 - Você é responsável por guardar a sua chave e pelo uso feito com ela.
+- No GitHub Copilot, o login é feito pela conta GitHub no Copilot CLI oficial, sem chave
+  de API no Know Giver. O CLI normalmente guarda as credenciais no chaveiro do sistema
+  operacional; se ele estiver indisponível, pode recorrer a um arquivo de configuração
+  sem criptografia (`~/.copilot/config.json`). O Know Giver não as guarda no banco. A
+  disponibilidade e o uso dependem dos termos e do plano da sua conta GitHub Copilot.
 
 ## 6. A inteligência artificial pode errar
 

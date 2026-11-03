@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of October 31, 2026 (2026-10-31). This international version applies in every
+Version of November 3, 2026 (2026-11-03). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -39,6 +39,11 @@ asks for your agreement again.
   by its terms. Usage costs are charged by the provider, not by Trentin.
 - Use only providers that are lawfully available where you are.
 - You are responsible for keeping your key safe and for all use made with it.
+- GitHub Copilot uses your GitHub account through the official Copilot CLI instead of an
+  API key in Know Giver. The CLI normally stores sign-in credentials in the operating
+  system keychain; if unavailable, it may use a plain-text config file
+  (`~/.copilot/config.json`). Know Giver does not save them in its database. Availability
+  and use are subject to your GitHub Copilot plan and terms.
 
 ## 6. AI can make mistakes
 

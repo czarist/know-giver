@@ -151,6 +151,8 @@ pub enum Command {
     TestConnection,
     /// Tests settings not saved yet (first-run setup).
     TestAiConfig(Box<AiConfig>),
+    /// Starts the official GitHub Copilot CLI sign-in flow.
+    LoginCopilot,
     /// Asks the service which models a key can use.
     ListModels(Box<AiConfig>),
     /// Saves the first-run setup and the agreement to the terms.
@@ -336,6 +338,7 @@ pub enum Notice {
     PlanCreated,
     SettingsSaved,
     ConnectionOk,
+    CopilotConnected,
     ModelInstalled(ModelId),
     LessonSaved,
     ReviewSaved {
@@ -398,6 +401,8 @@ pub(crate) enum Event {
         result: Result<kg_ai::PlanDraft, AiError>,
     },
     ConnectionTested(Box<AiConfig>, Result<(), AiError>),
+    CopilotLoginOutput(String),
+    CopilotLoginFinished(Result<(), AiError>),
     ModelsListed(setup::ModelList),
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
@@ -455,6 +460,9 @@ pub struct Engine {
     last_test: Option<(AiConfig, bool)>,
     listing_models: bool,
     model_list: Option<setup::ModelList>,
+    copilot_login_in_progress: bool,
+    copilot_login_result: Option<bool>,
+    copilot_login_output: String,
 
     lesson: Option<LessonSession>,
     quiz: Option<QuizSession>,
@@ -565,6 +573,9 @@ impl Engine {
             last_test: None,
             listing_models: false,
             model_list: None,
+            copilot_login_in_progress: false,
+            copilot_login_result: None,
+            copilot_login_output: String::new(),
             lesson: None,
             quiz: None,
             review: None,
@@ -858,6 +869,10 @@ impl Engine {
                 self.test_config(*config);
                 Ok(())
             }
+            Command::LoginCopilot => {
+                self.login_copilot();
+                Ok(())
+            }
             Command::ListModels(config) => {
                 self.list_models(*config);
                 Ok(())
@@ -973,6 +988,17 @@ impl Engine {
                         .map(|()| self.notices.push(Notice::ConnectionOk))
                         .map_err(EngineError::from)
                 }
+                Event::CopilotLoginOutput(line) => {
+                    if self.copilot_login_in_progress {
+                        self.copilot_login_output.push_str(&line);
+                        self.copilot_login_output.push('\n');
+                    }
+                    Ok(())
+                }
+                Event::CopilotLoginFinished(result) => {
+                    self.on_copilot_login_finished(result);
+                    Ok(())
+                }
                 Event::ModelsListed(list) => {
                     self.on_models_listed(list);
                     Ok(())
@@ -1041,7 +1067,7 @@ impl Engine {
     }
 
     /// Runs `job` on a worker thread and delivers its event.
-    pub(crate) fn spawn(&self, job: impl FnOnce() -> Event + Send + 'static) {
+    pub(crate) fn spawn(&self, job: impl FnOnce() -> Event + Send + 'static) -> bool {
         let tx = self.events_tx.clone();
         let waker = Arc::clone(&self.waker);
         let spawned = std::thread::Builder::new()
@@ -1050,8 +1076,12 @@ impl Engine {
                 let _ = tx.send(job());
                 waker();
             });
-        if let Err(err) = spawned {
-            tracing::error!(%err, "could not spawn worker thread");
+        match spawned {
+            Ok(_) => true,
+            Err(err) => {
+                tracing::error!(%err, "could not spawn worker thread");
+                false
+            }
         }
     }
 

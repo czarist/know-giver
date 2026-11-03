@@ -8,9 +8,11 @@ publish.workspace = true
 
 [dependencies]
 base64.workspace = true
+github-copilot-sdk = "1.0.28"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 ureq.workspace = true
 

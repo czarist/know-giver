@@ -62,9 +62,7 @@ impl Provider {
         match self.id {
             "deepseek" | "ollama" | "lmstudio" | "custom" => Market::Both,
             "zhipu" | "bailian" | "moonshot-cn" | "qianfan" | "hunyuan" | "doubao"
-            | "siliconflow" => {
-                Market::Mainland
-            }
+            | "siliconflow" => Market::Mainland,
             _ => Market::Global,
         }
     }
@@ -167,7 +165,11 @@ impl Provider {
         };
         AiConfig {
             base_url: base_url.trim().trim_end_matches('/').to_owned(),
-            api_key: api_key.trim().to_owned(),
+            api_key: if self.id == "copilot" {
+                String::new()
+            } else {
+                api_key.trim().to_owned()
+            },
             models: ModelSet {
                 study_plan: model.clone(),
                 tutor: model.clone(),
@@ -320,6 +322,9 @@ pub const PROVIDERS: &[Provider] = &[
         key: true, None,
         [text("openai/gpt-4.1-mini"), sees("openai/gpt-4.1")],
         fallback: "openai/gpt-4.1-mini", vision: "openai/gpt-4.1"),
+    provider!("copilot", "GitHub Copilot", Platform, "https://api.githubcopilot.com",
+        "https://github.com/features/copilot/plans", "https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli",
+        key: false, None, [text("gpt-5.4")], fallback: "", vision: ""),
     provider!("together", "Together AI", Platform, "https://api.together.xyz/v1",
         "https://api.together.ai/settings/api-keys", "https://www.together.ai/",
         key: true, None, [], fallback: "", vision: ""),
@@ -381,7 +386,7 @@ pub fn provider_for_url(base_url: &str) -> Option<&'static Provider> {
         .find(|p| !p.base_url.is_empty() && host_of(p.base_url) == Some(host))
 }
 
-fn host_of(url: &str) -> Option<&str> {
+pub(crate) fn host_of(url: &str) -> Option<&str> {
     let rest = url.trim().split_once("://")?.1;
     let host = rest.split(['/', '?', '#']).next()?;
     let host = host.rsplit_once('@').map_or(host, |(_, h)| h);
@@ -474,7 +479,10 @@ mod tests {
 
     #[test]
     fn free_plans_name_a_model_and_their_rules() {
-        let free: Vec<&Provider> = PROVIDERS.iter().filter(|p| p.free_tier().is_some()).collect();
+        let free: Vec<&Provider> = PROVIDERS
+            .iter()
+            .filter(|p| p.free_tier().is_some())
+            .collect();
         for p in &free {
             let tier = p.free_tier().unwrap();
             assert!(tier.url.starts_with("http"), "{}", p.id);
@@ -492,7 +500,10 @@ mod tests {
             assert!(ids.len() >= 3, "{ids:?}");
             assert!(ids.contains(&"ollama"));
         }
-        assert_eq!(provider("gemini").unwrap().free_tier().unwrap().data, FreeData::MayTrain);
+        assert_eq!(
+            provider("gemini").unwrap().free_tier().unwrap().data,
+            FreeData::MayTrain
+        );
         assert!(provider("anthropic").unwrap().free_tier().is_none());
     }
 
@@ -567,6 +578,16 @@ mod tests {
         let config = deepseek.config(deepseek.base_url, "k", "something-new");
         assert!(config.models.vision.is_empty());
         assert_eq!(config.models.fallback, "deepseek-v4-flash");
+    }
+
+    #[test]
+    fn copilot_config_uses_account_auth_without_api_key_or_vision() {
+        let copilot = provider("copilot").unwrap();
+        let config = copilot.config(copilot.base_url, "stale-key", copilot.default_model());
+
+        assert!(!copilot.needs_key);
+        assert!(config.api_key.is_empty());
+        assert!(config.models.vision.is_empty());
     }
 
     #[test]
