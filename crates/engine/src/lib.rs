@@ -28,8 +28,7 @@ mod update;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Instant;
 
 use chrono::NaiveDate;
@@ -416,6 +415,7 @@ pub(crate) enum Event {
     Practice(practice::PracticeEvent),
     DownloadFinished(ModelId, Result<(), AudioError>),
     OcrModelDownloaded(Result<(), OcrError>),
+    OcrServerStarted(Result<(), OcrError>),
     HandoutTopic {
         topic: TopicId,
         json: String,
@@ -481,6 +481,8 @@ pub struct Engine {
     illustrations: illustrations::Illustrations,
     downloads: HashMap<ModelId, models::Download>,
     ocr_download: Option<ocr::Download>,
+    ocr_server: Arc<Mutex<Option<ocr::Server>>>,
+    ocr_server_starting: bool,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
     readings: Vec<Reading>,
@@ -594,6 +596,8 @@ impl Engine {
             illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
             ocr_download: None,
+            ocr_server: Arc::new(Mutex::new(None)),
+            ocr_server_starting: false,
             handout_job: None,
             readings: Vec::new(),
             reader: None,
@@ -624,6 +628,7 @@ impl Engine {
     /// Sets the callback workers use to wake the UI.
     pub fn set_waker(&mut self, waker: Waker) {
         self.waker = waker;
+        self.start_local_ocr_server();
     }
 
     pub fn today() -> NaiveDate {
@@ -723,6 +728,7 @@ impl Engine {
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
             || self.ocr_download.is_some()
+            || self.ocr_server_starting
             || self.handout_job.is_some()
             || self.prepare_job.is_some()
             || self.board_job.is_some()
@@ -1026,9 +1032,17 @@ impl Engine {
                 Event::OcrModelDownloaded(result) => {
                     self.ocr_download = None;
                     match result {
-                        Ok(()) | Err(OcrError::Cancelled) => Ok(()),
+                        Ok(()) => {
+                            self.start_local_ocr_server();
+                            Ok(())
+                        }
+                        Err(OcrError::Cancelled) => Ok(()),
                         Err(error) => Err(error.into()),
                     }
+                }
+                Event::OcrServerStarted(result) => {
+                    self.ocr_server_starting = false;
+                    result.map_err(EngineError::from)
                 }
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
@@ -1069,6 +1083,7 @@ impl Engine {
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;
+        self.start_local_ocr_server();
         if voice_changed {
             self.stop_audio();
             self.voice.reset_tts();

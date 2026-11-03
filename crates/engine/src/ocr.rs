@@ -6,6 +6,7 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::Engine as _;
@@ -572,6 +573,42 @@ fn response_text(body: &str) -> Result<String, OcrError> {
     Ok(text)
 }
 
+pub(crate) fn ensure_server(
+    paths: &AppPaths,
+    server: &Mutex<Option<Server>>,
+) -> Result<(), OcrError> {
+    let mut server = server
+        .lock()
+        .map_err(|_| OcrError::Runtime("local OCR server state was poisoned".into()))?;
+    ensure_server_slot(&mut server, || Server::start(paths))
+}
+
+pub(crate) fn transcribe(
+    paths: &AppPaths,
+    server: &Mutex<Option<Server>>,
+    image: &[u8],
+    mime: &str,
+) -> Result<String, OcrError> {
+    let mut server = server
+        .lock()
+        .map_err(|_| OcrError::Runtime("local OCR server state was poisoned".into()))?;
+    ensure_server_slot(&mut server, || Server::start(paths))?;
+    server
+        .as_ref()
+        .ok_or(OcrError::RuntimeMissing)?
+        .transcribe(image, mime)
+}
+
+fn ensure_server_slot<T>(
+    server: &mut Option<T>,
+    start: impl FnOnce() -> Result<T, OcrError>,
+) -> Result<(), OcrError> {
+    if server.is_none() {
+        *server = Some(start()?);
+    }
+    Ok(())
+}
+
 impl Engine {
     /// The effective OCR backend; Copilot always uses local OCR.
     pub fn manuscript_ocr(&self) -> crate::ManuscriptOcr {
@@ -593,6 +630,48 @@ impl Engine {
     /// Whether this installation includes or can find `llama-server`.
     pub fn ocr_runtime_available(&self) -> bool {
         cpu_server_executable().is_some() || vulkan_server_executable().is_some()
+    }
+
+    /// Whether the local OCR model server is starting in the background.
+    pub fn ocr_server_starting(&self) -> bool {
+        self.ocr_server_starting
+    }
+
+    pub(crate) fn start_local_ocr_server(&mut self) {
+        if self.manuscript_ocr() != crate::ManuscriptOcr::Local
+            || self.ocr_server_starting
+            || !self.ocr_runtime_available()
+        {
+            return;
+        }
+        match self.ocr_model_status() {
+            Ok(OcrModelStatus::Installed { .. }) => {}
+            Ok(OcrModelStatus::Missing | OcrModelStatus::Downloading(_)) => return,
+            Err(error) => {
+                self.notices.push(crate::Notice::Error(error.into()));
+                return;
+            }
+        }
+        match self.ocr_server.lock() {
+            Ok(server) if server.is_some() => return,
+            Ok(_) => {}
+            Err(_) => {
+                self.notices.push(crate::Notice::Error(
+                    OcrError::Runtime("local OCR server state was poisoned".into()).into(),
+                ));
+                return;
+            }
+        }
+
+        self.ocr_server_starting = true;
+        let paths = self.paths.clone();
+        let server = Arc::clone(&self.ocr_server);
+        if !self.spawn(move || Event::OcrServerStarted(ensure_server(&paths, &server))) {
+            self.ocr_server_starting = false;
+            self.notices.push(crate::Notice::Error(
+                OcrError::Runtime("could not start the local OCR worker".into()).into(),
+            ));
+        }
     }
 
     /// Whether the selected OCR backend is ready to read handwritten pages.
@@ -797,10 +876,8 @@ fn runtime_search_dirs(executable: &Path, debug_build: bool) -> Vec<PathBuf> {
         return Vec::new();
     };
     let mut directories = vec![executable_dir.join("local-runtime")];
-    if debug_build {
-        if let Some(target_dir) = executable_dir.parent() {
-            directories.push(target_dir.join("release").join("local-runtime"));
-        }
+    if debug_build && let Some(target_dir) = executable_dir.parent() {
+        directories.push(target_dir.join("release").join("local-runtime"));
     }
     directories
 }
@@ -829,6 +906,21 @@ mod tests {
                     .join("local-runtime"),
             ]
         );
+    }
+
+    #[test]
+    fn local_ocr_server_is_started_once_and_reused() {
+        let mut server = None;
+        let mut starts = 0;
+        for _ in 0..2 {
+            ensure_server_slot(&mut server, || {
+                starts += 1;
+                Ok::<_, OcrError>(starts)
+            })
+            .unwrap();
+        }
+        assert_eq!(starts, 1);
+        assert_eq!(server, Some(1));
     }
 
     #[test]

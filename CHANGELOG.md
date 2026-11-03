@@ -18,6 +18,8 @@ All notable changes to Know Giver. Format based on
 
 ### Changed
 - Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
+- When the local OCR model is installed and selected, `llama-server` now starts in the
+  background with the app and stays available for image reading until the app closes.
 - Native packages build and include pinned CPU runtimes everywhere and Vulkan runtimes on
   Windows/Linux. OCR uses the Vulkan device when available and retries on CPU if GPU startup
   fails; macOS remains CPU-only.

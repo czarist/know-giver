@@ -784,6 +784,7 @@ discursive:
   ocr_download: "下载 OCR 模型（1.82 GB）"
   ocr_cancel_download: "取消下载"
   ocr_runtime_missing: "本地运行时不可用。请重新安装应用，或设置 KG_LLAMA_SERVER。"
+  ocr_runtime_starting: "正在启动本地 OCR 运行时..."
   vision_test: "测试图片识别"
   vision_test_hint: "发送一张画有数字的图片，检查模型能否读出这个数字。"
   vision_works: "模型读出了测试图片。"

@@ -784,6 +784,7 @@ discursive:
   ocr_download: "Baixar modelo OCR (1,82 GB)"
   ocr_cancel_download: "Cancelar download"
   ocr_runtime_missing: "Runtime local indisponível. Reinstale o aplicativo ou configure KG_LLAMA_SERVER."
+  ocr_runtime_starting: "Iniciando o runtime local de OCR..."
   vision_test: "Testar leitura de imagem"
   vision_test_hint: "Envia uma imagem com um número desenhado e confere se o modelo lê esse número."
   vision_works: "O modelo leu a imagem de teste."
