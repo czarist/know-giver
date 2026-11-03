@@ -33,6 +33,11 @@ All notable changes to Know Giver. Format based on
   OAuth. Legal version 2026-11-03.2 asks users to agree again.
 
 ### Fixed
+- The local OCR server (`llama-server`) could keep running after Know Giver closed, holding
+  about 800 MB of memory: when the app closed while the server was still starting, the
+  worker stored it after the engine was gone. Closing now waits for that start and stops
+  the server. On Windows the server also joins a job object, so Windows ends it whenever
+  the app ends, even after a crash or a forced close.
 - Development builds now also find the OCR runtime produced under `target/release` by the
   packaging scripts.
 

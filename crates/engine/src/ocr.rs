@@ -467,6 +467,7 @@ impl Server {
         let child = command.spawn().map_err(|error| {
             OcrError::Runtime(format!("could not start {}: {error}", executable.display()))
         })?;
+        crate::child_job::tie_to_app(&child);
         let agent = ureq::Agent::config_builder()
             .timeout_connect(Some(Duration::from_secs(2)))
             .timeout_recv_body(Some(Duration::from_secs(600)))
@@ -635,6 +636,17 @@ impl Engine {
     /// Whether the local OCR model server is starting in the background.
     pub fn ocr_server_starting(&self) -> bool {
         self.ocr_server_starting
+    }
+
+    /// Stops the local OCR server on exit. A worker still starting it holds
+    /// the lock, so this waits for it and stops what it started; otherwise the
+    /// worker would store a running server after the app is gone.
+    pub(crate) fn stop_ocr_server(&mut self) {
+        let server = match self.ocr_server.lock() {
+            Ok(mut server) => server.take(),
+            Err(poisoned) => poisoned.into_inner().take(),
+        };
+        drop(server);
     }
 
     pub(crate) fn start_local_ocr_server(&mut self) {
