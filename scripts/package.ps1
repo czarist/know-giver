@@ -32,6 +32,9 @@ try {
     Copy-Item 'target\release\local-runtime' $stage -Recurse
     Copy-Item '.env.example' (Join-Path $stage '.env.example')
     Copy-Item 'packaging\windows\README.*.txt' $stage
+    if (-not (Test-Path -LiteralPath (Join-Path $stage 'local-runtime\vulkan\llama-server.exe'))) {
+        throw 'The packaged Windows build is missing the Vulkan llama-server'
+    }
 
     $zip = Join-Path $dist "KnowGiver-$version-windows-x64.zip"
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force

@@ -10,14 +10,17 @@ All notable changes to Know Giver. Format based on
 - GitHub Copilot account sign-in through its supported CLI, with model listing and chat
   through the official SDK; the app does not store Copilot credentials.
 - Local handwritten-answer OCR using the pinned PaddleOCR-VL 1.5 (0.9B) model and bundled
-  CPU `llama-server`; non-Copilot providers can instead explicitly use their vision API.
+  CPU `llama-server`; Windows/Linux packages also include a Vulkan runtime for supported
+  GPUs, with CPU fallback. Non-Copilot providers can instead explicitly use their vision API.
 - Offline tests for OCR transcript normalization, empty/invalid model responses, model
   installation integrity checks, Copilot OAuth CLI invocation/output and transient login
-  state, backend enforcement and saved OCR preferences.
+  state, backend enforcement, saved OCR preferences, Vulkan device selection and CPU fallback.
 
 ### Changed
 - Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
-- Native packages build and include the pinned `llama-server` runtime.
+- Native packages build and include pinned CPU runtimes everywhere and Vulkan runtimes on
+  Windows/Linux. OCR uses the Vulkan device when available and retries on CPU if GPU startup
+  fails; macOS remains CPU-only.
 
 ## [0.36.0] - 2026-11-01
 

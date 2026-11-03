@@ -408,6 +408,9 @@ recorded decision.
 - [ ] Detect which inference backends really work (CUDA, Vulkan, ROCm/HIP, SYCL, Metal,
       CPU) by asking the chosen engine to list and initialize devices, not by guessing from
       the GPU name.
+- [x] For local manuscript OCR, probe llama.cpp's Vulkan device list on Windows/Linux,
+      select supported hardware devices and retry with the CPU runtime if GPU startup fails.
+      Physical-device compatibility and performance still need validation on each vendor.
 - [ ] Check free disk space for download, unpacking and running (download and installed
       size counted separately).
 - [ ] Subtract the app's own use (8.1) and a safety margin from available memory.

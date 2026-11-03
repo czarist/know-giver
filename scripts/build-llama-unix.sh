@@ -37,25 +37,62 @@ if [[ "$actual_commit" != "$commit" ]]; then
   exit 1
 fi
 
-cmake -S "$source" -B "$build" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=OFF \
-  -DGGML_NATIVE=OFF \
-  -DLLAMA_BUILD_TESTS=OFF \
-  -DLLAMA_BUILD_EXAMPLES=OFF \
-  -DLLAMA_BUILD_APP=OFF \
-  -DLLAMA_BUILD_TOOLS=ON \
-  -DLLAMA_BUILD_SERVER=ON \
-  -DLLAMA_BUILD_UI=OFF \
-  -DLLAMA_USE_PREBUILT_UI=OFF \
-  -DLLAMA_OPENSSL=OFF
-cmake --build "$build" --config Release --target llama-server --parallel 2
+platform="$(uname -s)"
+if [[ "$platform" == Linux ]]; then
+  if ! command -v glslc >/dev/null 2>&1 || ! pkg-config --exists vulkan; then
+    printf 'Linux Vulkan builds require libvulkan-dev and glslc\n' >&2
+    exit 1
+  fi
+elif [[ "$platform" != Darwin ]]; then
+  printf 'Unsupported build platform: %s\n' "$platform" >&2
+  exit 1
+fi
 
-server="$build/bin/llama-server"
-if [[ ! -f "$server" ]]; then
-  printf 'The llama.cpp build produced no llama-server binary at %s\n' "$server" >&2
+common_options=(
+  -DCMAKE_BUILD_TYPE=Release
+  -DBUILD_SHARED_LIBS=OFF
+  -DGGML_NATIVE=OFF
+  -DLLAMA_BUILD_TESTS=OFF
+  -DLLAMA_BUILD_EXAMPLES=OFF
+  -DLLAMA_BUILD_APP=OFF
+  -DLLAMA_BUILD_TOOLS=ON
+  -DLLAMA_BUILD_SERVER=ON
+  -DLLAMA_BUILD_UI=OFF
+  -DLLAMA_USE_PREBUILT_UI=OFF
+  -DLLAMA_OPENSSL=OFF
+)
+cpu_build="$build/cpu"
+cmake -S "$source" -B "$cpu_build" \
+  "${common_options[@]}" \
+  -DGGML_VULKAN=OFF
+cmake --build "$cpu_build" --config Release --target llama-server --parallel 2
+
+cpu_server="$cpu_build/bin/llama-server"
+if [[ ! -f "$cpu_server" ]]; then
+  printf 'The CPU llama.cpp build produced no llama-server binary at %s\n' "$cpu_server" >&2
   exit 1
 fi
 mkdir -p "$runtime"
-install -m 755 "$server" "$runtime/llama-server"
+install -m 755 "$cpu_server" "$runtime/llama-server"
+
+if [[ "$platform" == Linux ]]; then
+  vulkan_build="$build/vulkan"
+  cmake -S "$source" -B "$vulkan_build" \
+    "${common_options[@]}" \
+    -DGGML_VULKAN=ON
+  cmake --build "$vulkan_build" --config Release --target llama-server --parallel 2
+
+  vulkan_server="$vulkan_build/bin/llama-server"
+  if [[ ! -f "$vulkan_server" ]]; then
+    printf 'The Vulkan llama.cpp build produced no llama-server binary at %s\n' "$vulkan_server" >&2
+    exit 1
+  fi
+  mkdir -p "$runtime/vulkan"
+  install -m 755 "$vulkan_server" "$runtime/vulkan/llama-server"
+fi
+
+if [[ ! -f "$source/LICENSE" ]]; then
+  printf 'The pinned llama.cpp checkout has no LICENSE file\n' >&2
+  exit 1
+fi
 install -m 644 "$source/LICENSE" "$runtime/llama.cpp-LICENSE"

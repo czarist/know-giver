@@ -21,6 +21,8 @@ try {
     $source = Join-Path $target 'local-ai-src\llama.cpp'
     $build = Join-Path $target 'local-ai-build'
     $runtime = Join-Path $target 'release\local-runtime'
+    $cpuBuild = Join-Path $build 'cpu'
+    $vulkanBuild = Join-Path $build 'vulkan'
     New-Item -ItemType Directory -Force (Split-Path $source -Parent) | Out-Null
 
     if (-not (Test-Path -LiteralPath (Join-Path $source '.git'))) {
@@ -33,27 +35,54 @@ try {
         throw "llama.cpp checkout does not match local-ai.toml: expected $($llama.commit), got $actualCommit"
     }
 
-    cmake -S $source -B $build `
-        -DBUILD_SHARED_LIBS=OFF `
-        -DGGML_NATIVE=OFF `
-        -DLLAMA_BUILD_TESTS=OFF `
-        -DLLAMA_BUILD_EXAMPLES=OFF `
-        -DLLAMA_BUILD_APP=OFF `
-        -DLLAMA_BUILD_TOOLS=ON `
-        -DLLAMA_BUILD_SERVER=ON `
-        -DLLAMA_BUILD_UI=OFF `
-        -DLLAMA_USE_PREBUILT_UI=OFF `
-        -DLLAMA_OPENSSL=OFF
-    if ($LASTEXITCODE -ne 0) { throw 'Could not configure llama.cpp' }
-    cmake --build $build --config Release --target llama-server --parallel 2
-    if ($LASTEXITCODE -ne 0) { throw 'Could not build llama-server' }
+    if (-not $env:VULKAN_SDK -or -not (Test-Path -LiteralPath (Join-Path $env:VULKAN_SDK 'Bin\glslc.exe'))) {
+        $sdkRoots = @('C:\VulkanSDK', (Join-Path $env:ProgramFiles 'VulkanSDK'))
+        $sdk = $sdkRoots |
+            Where-Object { Test-Path -LiteralPath $_ } |
+            ForEach-Object { Get-ChildItem -LiteralPath $_ -Directory } |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'Bin\glslc.exe') } |
+            Sort-Object { [version]$_.Name } -Descending |
+            Select-Object -First 1
+        if ($sdk) { $env:VULKAN_SDK = $sdk.FullName }
+    }
+    if (-not $env:VULKAN_SDK -or -not (Test-Path -LiteralPath (Join-Path $env:VULKAN_SDK 'Bin\glslc.exe'))) {
+        throw 'Install the Vulkan SDK and set VULKAN_SDK before building the Windows OCR runtimes'
+    }
 
-    $server = Get-ChildItem -LiteralPath (Join-Path $build 'bin') -Filter 'llama-server.exe' -Recurse -File |
+    $commonOptions = @(
+        '-DBUILD_SHARED_LIBS=OFF',
+        '-DGGML_NATIVE=OFF',
+        '-DLLAMA_BUILD_TESTS=OFF',
+        '-DLLAMA_BUILD_EXAMPLES=OFF',
+        '-DLLAMA_BUILD_APP=OFF',
+        '-DLLAMA_BUILD_TOOLS=ON',
+        '-DLLAMA_BUILD_SERVER=ON',
+        '-DLLAMA_BUILD_UI=OFF',
+        '-DLLAMA_USE_PREBUILT_UI=OFF',
+        '-DLLAMA_OPENSSL=OFF'
+    )
+    cmake -S $source -B $cpuBuild @commonOptions -DGGML_VULKAN=OFF
+    if ($LASTEXITCODE -ne 0) { throw 'Could not configure the CPU llama.cpp runtime' }
+    cmake --build $cpuBuild --config Release --target llama-server --parallel 2
+    if ($LASTEXITCODE -ne 0) { throw 'Could not build the CPU llama-server' }
+
+    cmake -S $source -B $vulkanBuild @commonOptions -DGGML_VULKAN=ON
+    if ($LASTEXITCODE -ne 0) { throw 'Could not configure the Vulkan llama.cpp runtime' }
+    cmake --build $vulkanBuild --config Release --target llama-server --parallel 2
+    if ($LASTEXITCODE -ne 0) { throw 'Could not build the Vulkan llama-server' }
+
+    $cpuServer = Get-ChildItem -LiteralPath (Join-Path $cpuBuild 'bin') -Filter 'llama-server.exe' -Recurse -File |
         Where-Object { $_.FullName -match '\\Release\\llama-server\.exe$' } |
         Select-Object -First 1
-    if (-not $server) { throw 'The llama.cpp build produced no Release llama-server.exe' }
+    if (-not $cpuServer) { throw 'The CPU llama.cpp build produced no Release llama-server.exe' }
+    $vulkanServer = Get-ChildItem -LiteralPath (Join-Path $vulkanBuild 'bin') -Filter 'llama-server.exe' -Recurse -File |
+        Where-Object { $_.FullName -match '\\Release\\llama-server\.exe$' } |
+        Select-Object -First 1
+    if (-not $vulkanServer) { throw 'The Vulkan llama.cpp build produced no Release llama-server.exe' }
     New-Item -ItemType Directory -Force $runtime | Out-Null
-    Copy-Item -LiteralPath $server.FullName -Destination (Join-Path $runtime 'llama-server.exe') -Force
+    New-Item -ItemType Directory -Force (Join-Path $runtime 'vulkan') | Out-Null
+    Copy-Item -LiteralPath $cpuServer.FullName -Destination (Join-Path $runtime 'llama-server.exe') -Force
+    Copy-Item -LiteralPath $vulkanServer.FullName -Destination (Join-Path $runtime 'vulkan\llama-server.exe') -Force
     Copy-Item -LiteralPath (Join-Path $source 'LICENSE') -Destination (Join-Path $runtime 'llama.cpp-LICENSE') -Force
 }
 finally {

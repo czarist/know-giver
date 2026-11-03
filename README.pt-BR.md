@@ -187,7 +187,8 @@ explicitamente a API externa do modelo de visão configurado, que receberá as f
 Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de imagem**
 confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware nem a
 precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode ter uma
-página ou um caderno aberto com duas páginas lado a lado.
+página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o app usa uma
+GPU Vulkan detectada quando disponível e volta para CPU se não houver uma; no macOS, usa CPU.
 
 <table>
   <tr>
