@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of November 3, 2026 (2026-11-03.2). This international version applies in every
+Version of November 3, 2026 (2026-11-03.3). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -44,6 +44,12 @@ asks for your agreement again.
   system keychain; if unavailable, it may use a plain-text config file
   (`~/.copilot/config.json`). Know Giver does not save them in its database. Availability
   and use are subject to your GitHub Copilot plan and terms.
+- ChatGPT signs in on OpenAI's page ("Sign in with ChatGPT"), with no API key. Use is
+  subject to your ChatGPT plan's terms and limits.
+- For Claude, Know Giver runs Anthropic's official Claude Code, unmodified, with your own
+  Claude account and no API key. Use is subject to Anthropic's terms and your Claude
+  subscription's limits.
+- Know Giver is not affiliated with or endorsed by OpenAI, Anthropic or GitHub.
 
 ## 6. AI can make mistakes
 

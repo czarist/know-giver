@@ -23,7 +23,7 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
-  <img alt="OAuth: GitHub Copilot" src="https://img.shields.io/badge/OAuth-GitHub%20Copilot-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
   <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
   <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
@@ -225,7 +225,13 @@ se ele estiver indisponível, pode recorrer a um arquivo de configuração sem c
 (`~/.copilot/config.json`). O Know Giver não guarda as credenciais no banco. Esta
 integração aceita texto, não imagens.
 
-**Grátis ou pago.** O passo da IA tem duas abas. *Pagos* mostra os serviços recomendados
+**Entre com uma conta que você já tem.** O passo da IA abre em *Entrar com conta*, para quem paga um plano de chat e nunca criou uma chave de API: **ChatGPT** (o *Sign in with ChatGPT* oficial da OpenAI: as aulas entram no limite do seu plano), **Claude** (pelo Claude Code, o programa oficial da Anthropic, com a sua conta Claude Pro ou Max; o Know Giver pode instalá-lo para você) e **GitHub Copilot**. Cada um faz o login na página do próprio dono; o Know Giver nunca vê a sua senha. O Know Giver não é afiliado à OpenAI, à Anthropic nem ao GitHub.
+
+<p align="center">
+  <img src="docs/images/pt-BR/setup-ai-account.png" alt="Aba Entrar com conta do passo da IA: ChatGPT, Claude e GitHub Copilot, cada um com o seu botão de login" width="60%">
+</p>
+
+**Grátis ou pago.** Além de *Entrar com conta*, o passo da IA tem mais duas abas. *Pagos* mostra os serviços recomendados
 (Z.ai pelo custo-benefício, Claude pela precisão). *Gratuitos* lista serviços com plano
 grátis (Gemini, Mistral, OpenRouter, Groq, NVIDIA, GitHub Models, e Ollama ou LM Studio no
 seu computador), cada um com o modelo coberto, o que faz com o que você envia (alguns planos
@@ -296,6 +302,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 No Windows, vai para `%LOCALAPPDATA%\Programs\KnowGiver`, com atalho no menu Iniciar; no macOS, para `~/Applications/Know Giver.app`; no Linux, para `~/.local/opt/KnowGiver`, com o comando `know-giver` e um atalho no menu de aplicativos.
+
+Se o Claude Code não estiver instalado, a primeira instalação também oferece instalá-lo com o instalador oficial da Anthropic, para você usar uma assinatura Claude. O Know Giver também pode instalá-lo depois, pelo passo da IA.
 
 Na primeira instalação, o instalador pergunta se você quer um **atalho na área de trabalho**; as atualizações mantêm a escolha. **Para desinstalar**: no Windows, Configurações → Aplicativos → Know Giver (ou *Desinstalar Know Giver* no menu Iniciar, e também `unins000.exe` na pasta do programa); no macOS, `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`; no Linux, `~/.local/opt/KnowGiver/uninstall.sh`. O desinstalador pergunta se deve apagar também os seus dados de estudo e os mantém, a menos que você diga sim.
 

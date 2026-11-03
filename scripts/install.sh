@@ -86,13 +86,28 @@ desktop_escape() {
   printf '%s' "$value"
 }
 
+# Claude through the student's own subscription needs Claude Code.
+claude_code_missing() {
+  ! command -v claude >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/claude" ]]
+}
+
+want_claude_code() {
+  case "${KG_CLAUDE_CODE:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  ask "Also install Claude Code (Anthropic's official program) to use your Claude subscription in Know Giver?"
+}
+
 collect_install_choices() {
   startup_choice=0
   reminder_choice=0
+  claude_choice=0
   if [[ "$first_install" == 1 ]]; then
     if want_shortcut; then shortcut_choice=1; else shortcut_choice=0; fi
     if want_startup; then startup_choice=1; fi
     if want_study_reminders; then reminder_choice=1; fi
+    if claude_code_missing && want_claude_code; then claude_choice=1; fi
   else
     shortcut_choice=0
   fi
@@ -225,6 +240,11 @@ X-GNOME-Autostart-enabled=true
 EOF
   fi
   printf 'Installed: %s (command: know-giver)\n' "$dest"
+  if [[ "${claude_choice:-0}" == 1 ]]; then
+    printf "Installing Claude Code with Anthropic's official installer\n"
+    curl -fsSL https://claude.ai/install.sh | bash ||
+      printf 'Claude Code was not installed; Know Giver can install it later from the AI step.\n'
+  fi
   printf 'To uninstall: %s/uninstall.sh\n' "$dest"
   case ":$PATH:" in
     *":$bin:"*) ;;

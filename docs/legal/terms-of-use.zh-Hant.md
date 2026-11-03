@@ -1,6 +1,6 @@
 # Know Giver 使用條款
 
-2026年11月3日版本（2026-11-03.2）。本版本適用於在臺灣及香港使用本程式的使用者；第 15 條列出各地區的規定。
+2026年11月3日版本（2026-11-03.3）。本版本適用於在臺灣及香港使用本程式的使用者；第 15 條列出各地區的規定。
 
 ## 1. 關於我們
 
@@ -25,6 +25,9 @@ Know Giver 在巴西、美國、歐盟、英國、日本、臺灣、香港及新
 - 請只使用在你所在地可合法使用的服務商。
 - 你應負責保管金鑰，並對使用該金鑰的一切行為負責。
 - GitHub Copilot 透過官方 Copilot CLI 使用你的 GitHub 帳戶登入，不必在 Know Giver 輸入 API 金鑰。CLI 通常將登入憑證儲存在作業系統鑰匙圈；如果鑰匙圈無法使用，可能改用明文設定檔（`~/.copilot/config.json`）。Know Giver 不會將憑證儲存在程式資料庫中。是否可用及其使用方式受你的 GitHub Copilot 方案和條款約束。
+- ChatGPT 透過 OpenAI 的頁面（「Sign in with ChatGPT」）登入，不需要 API 金鑰。使用受你 ChatGPT 方案的條款和上限約束。
+- 使用 Claude 時，Know Giver 以你自己的 Claude 帳號、不需要 API 金鑰，執行未經修改的 Anthropic 官方 Claude Code。使用受 Anthropic 的條款和你 Claude 訂閱的上限約束。
+- Know Giver 與 OpenAI、Anthropic 和 GitHub 沒有關聯，也未獲得其認可。
 
 ## 6. AI 可能出錯
 

@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.2), de acordo com a Lei Geral de Proteção de
+Versão de 3 de novembro de 2026 (2026-11-03.3), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -35,6 +35,12 @@ definida em `KG_DATA_DIR`):
   usar o chaveiro do sistema operacional; se ele não estiver disponível, pode guardar as
   credenciais em um arquivo de configuração sem criptografia (`~/.copilot/config.json`).
   O Know Giver não as guarda no banco;
+- no ChatGPT, os tokens do login "Sign in with ChatGPT" (acesso e renovação) e o registro
+  do aplicativo na OpenAI, guardados sem criptografia no banco de dados local, como a
+  chave de API. Sair da conta pede à OpenAI que revogue a renovação;
+- no Claude, o Claude Code oficial da Anthropic gerencia o login da sua conta Claude, na
+  pasta dele (`~/.claude`) ou no chaveiro do sistema. O Know Giver não vê nem guarda essas
+  credenciais;
 - editais, provas, gabaritos e materiais enviados, além dos planos, do progresso, dos
   quizzes, das revisões, das apostilas, dos destaques e das notas;
 - conversas das aulas e o caderno de erros;
@@ -70,6 +76,14 @@ chaveiro do sistema operacional. Se ele não estiver disponível, o CLI pode rec
 arquivo de configuração sem criptografia (`~/.copilot/config.json`). O Know Giver não
 guarda essas credenciais no banco.
 
+Ao escolher o ChatGPT, o mesmo conteúdo vai para a OpenAI, pela API Responses, e usa o
+limite do seu plano do ChatGPT; o Know Giver se registra na OpenAI com o próprio nome e
+não recebe as suas conversas do ChatGPT. Ao escolher o Claude, o conteúdo vai para a
+Anthropic pelo Claude Code instalado no seu computador, que o Know Giver executa sem
+ferramentas, sem servidores MCP e sem as suas configurações; o uso entra no limite da sua
+assinatura Claude. Se você pedir a instalação do Claude Code, o instalador oficial é
+baixado de claude.ai, o que mostra o seu endereço IP.
+
 Muitos fornecedores de IA ficam fora do Brasil. Ao escolher um deles, os dados enviados
 podem ser transferidos para outro país (art. 33 da LGPD), conforme as garantias que esse
 fornecedor oferece. Leia a política de privacidade dele antes de escolher.
@@ -85,7 +99,8 @@ Os dados ficam no seu computador, protegidos pelo acesso à sua conta de usuári
 computador com senha. Chaves de API digitadas ficam sem criptografia no banco local; as
 credenciais do GitHub Copilot são gerenciadas pelo CLI, normalmente no chaveiro do sistema
 operacional, com possível fallback para arquivo sem criptografia se ele não estiver
-disponível. Elas não são salvas no banco do Know Giver. Problemas de segurança podem ser
+disponível. Elas não são salvas no banco do Know Giver. Os tokens do ChatGPT ficam sem criptografia no banco local, como as chaves; as
+credenciais do Claude ficam com o Claude Code. Problemas de segurança podem ser
 relatados conforme o arquivo SECURITY.md do projeto.
 
 ## 7. Por quanto tempo

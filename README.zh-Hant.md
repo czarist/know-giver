@@ -23,7 +23,7 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
-  <img alt="OAuth: GitHub Copilot" src="https://img.shields.io/badge/OAuth-GitHub%20Copilot-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
   <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
   <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
@@ -139,7 +139,13 @@ Windows 安裝程式包含所需的 C++ 執行階段和 Vulkan 載入器；使�
 
 GitHub Copilot 可透過官方 Copilot CLI 使用 GitHub 帳戶登入，不需要 API 金鑰。CLI 通常將登入憑證儲存在作業系統鑰匙圈；如果鑰匙圈無法使用，可能改用明文設定檔（`~/.copilot/config.json`）。Know Giver 不會將憑證儲存在程式資料庫中。此整合僅支援文字，不支援圖片。
 
-**免費或付費。** AI 步驟有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
+**使用你已有的帳號登入。** AI 步驟首先顯示「使用帳號登入」，適合已訂閱聊天方案但從未建立過 API 金鑰的人：**ChatGPT**（OpenAI 官方的「Sign in with ChatGPT」，課堂計入你的 ChatGPT 方案上限）、**Claude**（透過 Anthropic 官方程式 Claude Code，使用你的 Claude Pro 或 Max 帳號；Know Giver 可以幫你安裝）以及 **GitHub Copilot**。每項都在其所屬公司的頁面上登入，Know Giver 不會看到你的密碼。Know Giver 與 OpenAI、Anthropic 和 GitHub 沒有關聯。
+
+<p align="center">
+  <img src="docs/images/zh-Hant/setup-ai-account.png" alt="AI 步驟的「使用帳號登入」分頁：ChatGPT、Claude 和 GitHub Copilot，各有登入按鈕" width="60%">
+</p>
+
+**免費或付費。** 除了「使用帳號登入」，AI 步驟還有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
 
 **你所在地區的備考方式。** 課堂、測驗、講義與申論題會依照你所在地區的備考方式進行：臺灣是國家考試的測驗題與申論題；香港是 HKDSE 與公務員考試的形式；中國大陸是行测與申论；日本是五選一與按字數寫的小論文；巴西、美國與英國也各有其題型。考試簡章與歷屆試題始終優先。
 
@@ -191,6 +197,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 Windows 安裝到 `%LOCALAPPDATA%\Programs\KnowGiver`，並加入開始功能表；macOS 安裝到 `~/Applications/Know Giver.app`；Linux 安裝到 `~/.local/opt/KnowGiver`，並提供 `know-giver` 指令與應用程式選單項目。
+
+如果尚未安裝 Claude Code，首次安裝時還會詢問是否用 Anthropic 官方安裝程式一併安裝，以便使用 Claude 訂閱。之後也可以在 AI 步驟中安裝。
 
 首次安裝時會詢問是否建立**桌面捷徑**，更新時保留先前的選擇。**解除安裝**：Windows 在 設定 → 應用程式 → Know Giver（也可用開始功能表中的「Uninstall Know Giver」，或程式資料夾中的 `unins000.exe`）；macOS 執行 `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`；Linux 執行 `~/.local/opt/KnowGiver/uninstall.sh`。解除安裝程式會詢問是否一併刪除學習資料，除非你選擇「是」，否則會保留。
 

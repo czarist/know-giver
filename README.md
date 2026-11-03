@@ -23,7 +23,7 @@
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
-  <img alt="OAuth: GitHub Copilot" src="https://img.shields.io/badge/OAuth-GitHub%20Copilot-2c6b5c?style=flat-square&logo=github&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
   <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square&logo=github&logoColor=white"></a>
   <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
@@ -221,7 +221,13 @@ keychain; if it is unavailable, the CLI may use a plain-text config file
 (`~/.copilot/config.json`). Know Giver does not save the credentials in its database.
 Copilot in this integration accepts text, not images.
 
-**Free or paid.** The AI step has two tabs. *Paid* shows the recommended services (Z.ai for
+**Sign in with an account you already have.** The AI step opens on *Sign in with an account*, for people who pay for a chat plan and have never made an API key: **ChatGPT** (OpenAI's official *Sign in with ChatGPT*: lessons count toward your ChatGPT plan), **Claude** (through Claude Code, Anthropic's official program, signed in with your Claude Pro or Max account; Know Giver can install it for you) and **GitHub Copilot**. Each one signs in on its owner's page; Know Giver never sees your password. Know Giver is not affiliated with OpenAI, Anthropic or GitHub.
+
+<p align="center">
+  <img src="docs/images/setup-ai-account.png" alt="The AI step's Sign in with an account tab: ChatGPT, Claude and GitHub Copilot, each with its sign-in button" width="60%">
+</p>
+
+**Free or paid.** Besides *Sign in with an account*, the AI step has two more tabs. *Paid* shows the recommended services (Z.ai for
 value, Claude for accuracy). *Free* lists services with a free plan (Gemini, Mistral,
 OpenRouter, Groq, NVIDIA, GitHub Models, and Ollama or LM Studio on your own computer), each
 with the model the plan covers, what it does with what you send (some free plans train on
@@ -289,6 +295,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 Windows installs to `%LOCALAPPDATA%\Programs\KnowGiver` with a Start menu entry; macOS to `~/Applications/Know Giver.app`; Linux to `~/.local/opt/KnowGiver`, with the `know-giver` command and an applications menu entry.
+
+If Claude Code is not installed, the first install also offers to install it with Anthropic's official installer, so you can use a Claude subscription. Know Giver can also install it later from the AI step.
 
 A first install asks whether to add a **desktop shortcut**; updates keep your choice. **To uninstall**: on Windows, Settings → Apps → Know Giver (or *Uninstall Know Giver* in the Start menu, also `unins000.exe` in the program folder); on macOS, `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`; on Linux, `~/.local/opt/KnowGiver/uninstall.sh`. The uninstaller asks whether to delete your study data too, and keeps it unless you say yes.
 

@@ -74,6 +74,18 @@ Shipping today:
 - GitHub Copilot CLI, bundled by the official `github-copilot-sdk` crate
   (<https://github.com/github/copilot-sdk>): sign-in and chat for the Copilot account
   provider (`crates/ai/src/copilot.rs`). The app never stores Copilot credentials.
+- Claude Code (<https://code.claude.com>), installed by the student or by the app with
+  Anthropic's official installer (`claude.ai/install.ps1` / `install.sh`), run unmodified
+  as `claude -p` for the Claude account provider (`crates/ai/src/claude_code.rs`). Each
+  student signs in with their own Claude account through Claude Code's flow; the app
+  never handles those credentials, never removes Claude Code's own sign-in options, and
+  shows no Anthropic or Claude Code logo. The owner accepted Anthropic's Commercial Terms
+  for this. Never sign out of Claude Code or the Copilot CLI from the app.
+
+Account sign-ins (`crates/ai/src/account.rs`) follow each owner's documented flow: ChatGPT
+uses OpenAI's *Sign in with ChatGPT* registration under the app's own name, never another
+client's ID or private tokens. Live check: `cargo run -p kg-ai --example account_check --
+<chatgpt|claude-code|copilot> [model]`.
 
 Planned for managed local AI (ROADMAP Phase 8), not built; do not describe them as available
 until they ship:

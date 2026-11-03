@@ -1,6 +1,6 @@
 # Know Giver 隐私政策
 
-2026年11月3日版本（2026-11-03.2）。本版本适用于在新加坡使用本应用的用户，依据新加坡《个人数据保护法》（Personal Data Protection Act 2012，PDPA）编写。本中文版为译本，如与英文版有任何不一致，以英文版为准。
+2026年11月3日版本（2026-11-03.3）。本版本适用于在新加坡使用本应用的用户，依据新加坡《个人数据保护法》（Personal Data Protection Act 2012，PDPA）编写。本中文版为译本，如与英文版有任何不一致，以英文版为准。
 
 ## 1. 摘要
 
@@ -19,6 +19,8 @@
 - 你的名字（老师对你的称呼）、语言、国家或地区、老师和其他偏好设置；
 - API 密钥（在应用中输入时，以未加密方式保存在本地数据库）；
 - 使用 GitHub Copilot 时，登录凭据由官方 Copilot CLI 管理。CLI 通常使用操作系统密钥链；如果密钥链不可用，可能会改为将凭据保存在明文配置文件（`~/.copilot/config.json`）中。Know Giver 不会将其保存在应用数据库中；
+- 使用 ChatGPT 时，“Sign in with ChatGPT”的令牌（访问令牌和刷新令牌）以及应用在 OpenAI 的注册信息，会像 API 密钥一样以未加密方式保存在本地数据库；退出登录时会请求 OpenAI 撤销刷新令牌；
+- 使用 Claude 时，Anthropic 官方的 Claude Code 在其文件夹（`~/.claude`）或操作系统密钥链中管理你的 Claude 账号登录。Know Giver 不会查看或保存这些凭据；
 - 你上传的考试公告、历年真题、答案和资料，以及计划、进度、测验、复习、讲义、标记和笔记；
 - 课堂对话和错题本；
 - 主观题作答的照片、转写和评分；
@@ -44,6 +46,8 @@ Windows/Linux 软件包包含带 Vulkan 支持的 llama.cpp 运行时。检测�
 
 选择 GitHub Copilot 时，AI 服务商一行所述内容会发送给 GitHub。登录通过 Copilot CLI 完成。CLI 通常将凭据保存在操作系统密钥链中；如果密钥链不可用，可能会改为保存到明文配置文件（`~/.copilot/config.json`）。Know Giver 不会将这些凭据保存在应用数据库中。
 
+选择 ChatGPT 时，同样的内容通过 Responses API 发送给 OpenAI，并计入你 ChatGPT 套餐的用量上限；Know Giver 以自己的名称在 OpenAI 注册，不会获得你在 ChatGPT 中的对话。选择 Claude 时，内容通过安装在你电脑上的 Claude Code 发送给 Anthropic；Know Giver 运行 Claude Code 时不使用工具、MCP 服务器或你的设置，用量计入你 Claude 订阅的上限。如果你让 Know Giver 安装 Claude Code，官方安装程序会从 claude.ai 下载，这会暴露你的 IP 地址。
+
 许多 AI 服务商位于其他国家或地区，选择服务商可能使数据传输到境外。保护措施由服务商提供。选择前请先阅读其隐私政策。
 
 ## 5. 目的
@@ -52,7 +56,7 @@ Windows/Linux 软件包包含带 Vulkan 支持的 llama.cpp 运行时。检测�
 
 ## 6. 安全
 
-数据保存在你的电脑上，受你的用户账户访问权限保护；请为电脑设置密码。在应用中输入的 API 密钥以未加密方式保存在本地数据库；GitHub Copilot 登录凭据由 CLI 管理，通常保存在操作系统密钥链中；密钥链不可用时，CLI 可能改用明文配置文件。Know Giver 不会将凭据保存在应用数据库中。安全问题可按项目的 SECURITY.md 报告。
+数据保存在你的电脑上，受你的用户账户访问权限保护；请为电脑设置密码。在应用中输入的 API 密钥以未加密方式保存在本地数据库；GitHub Copilot 登录凭据由 CLI 管理，通常保存在操作系统密钥链中；密钥链不可用时，CLI 可能改用明文配置文件。Know Giver 不会将凭据保存在应用数据库中。ChatGPT 令牌像 API 密钥一样以未加密方式保存在本地数据库；Claude 的凭据由 Claude Code 管理。安全问题可按项目的 SECURITY.md 报告。
 
 ## 7. 保存期限
 

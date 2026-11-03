@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.2). Esta é a versão para quem usa o
+Versão de 3 de novembro de 2026 (2026-11-03.3). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -43,6 +43,13 @@ aplicativo pedirá um novo aceite.
   operacional; se ele estiver indisponível, pode recorrer a um arquivo de configuração
   sem criptografia (`~/.copilot/config.json`). O Know Giver não as guarda no banco. A
   disponibilidade e o uso dependem dos termos e do plano da sua conta GitHub Copilot.
+- No ChatGPT, você entra pela página da OpenAI ("Sign in with ChatGPT"), sem chave de
+  API. O uso segue os termos e os limites do seu plano do ChatGPT.
+- No Claude, o Know Giver executa o Claude Code oficial da Anthropic, sem modificações,
+  com a sua própria conta Claude e sem chave de API. O uso segue os termos da Anthropic e
+  os limites da sua assinatura Claude.
+- O Know Giver não é afiliado à OpenAI, à Anthropic nem ao GitHub, nem é endossado por
+  eles.
 
 ## 6. A inteligência artificial pode errar
 

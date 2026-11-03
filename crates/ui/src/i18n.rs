@@ -185,7 +185,10 @@ pub fn notice(notice: &Notice) -> (String, bool) {
         Notice::PlanCreated => t!("notice.plan_created"),
         Notice::SettingsSaved => t!("notice.settings_saved"),
         Notice::ConnectionOk => t!("notice.connection_ok"),
-        Notice::CopilotConnected => t!("notice.copilot_connected"),
+        Notice::AccountConnected(kind) => {
+            t!("notice.account_connected", service = account_name(*kind))
+        }
+        Notice::AccountInstalled(_) => t!("notice.claude_code_installed"),
         Notice::ModelInstalled(id) => t!("notice.model_installed", model = model_name(*id)),
         Notice::LessonSaved => t!("notice.lesson_saved"),
         Notice::ReviewSaved {
@@ -233,6 +236,16 @@ pub fn notice(notice: &Notice) -> (String, bool) {
     (text.into_owned(), false)
 }
 
+/// The name of an account service, as the UI shows it.
+pub fn account_name(kind: kg_engine::AccountKind) -> String {
+    match kind {
+        kg_engine::AccountKind::ChatGpt => t!("account.chatgpt.name"),
+        kg_engine::AccountKind::ClaudeCode => t!("account.claude.name"),
+        kg_engine::AccountKind::Copilot => t!("account.copilot.name"),
+    }
+    .into_owned()
+}
+
 /// User-facing text for an engine error, in the current locale.
 /// Technical details stay in the error's `Display`, which goes to the log.
 pub fn error_message(err: &EngineError) -> String {
@@ -249,6 +262,12 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Ai(AiError::Connection { url, .. }) => t!("error.ai.connection", url = url),
         EngineError::Ai(AiError::Auth { .. }) => t!("error.ai.auth"),
         EngineError::Ai(AiError::Copilot(_)) => t!("error.ai.copilot"),
+        EngineError::Ai(AiError::ChatGpt(_)) => t!("error.ai.chatgpt"),
+        EngineError::Ai(AiError::ClaudeCode(_)) => t!("error.ai.claude_code"),
+        EngineError::Ai(AiError::ClaudeCodeMissing) => t!("error.ai.claude_code_missing"),
+        EngineError::Ai(AiError::PlanLimit) => t!("error.ai.plan_limit"),
+        EngineError::Ai(AiError::PlanNotIncluded) => t!("error.ai.plan_not_included"),
+        EngineError::Ai(AiError::SignInCancelled) => t!("error.ai.sign_in_cancelled"),
         EngineError::Ai(AiError::RateLimited) => t!("error.ai.rate_limited"),
         EngineError::Ai(AiError::Http { status, .. }) => t!("error.ai.http", status = status),
         EngineError::Ai(AiError::InvalidResponse(_)) => t!("error.ai.invalid_response"),
