@@ -35,6 +35,9 @@ All notable changes to Know Giver. Format based on
   state, backend enforcement, saved OCR preferences, Vulkan device selection and CPU fallback.
 
 ### Changed
+- Settings → AI picks each task's model from a menu: the service's suggestions and the
+  models its account lists (loaded on their own once an account is signed in), with
+  *Other model…* to type any name.
 - The AI step has three tabs: *Sign in with an account* (first), *Paid (API key)* and
   *Free*. Its intro mentions both ways in. Copilot shows the GitHub logo.
 - Terms of use and privacy policies (all regions and languages) describe the ChatGPT and
