@@ -239,7 +239,20 @@ fn setup_snapshots() {
             &format!("{locale}-setup-teacher"),
         );
 
+        // The account tab, first: ChatGPT picked, not signed in yet.
         let setup = &mut harness.state_mut().ui.setup;
+        setup.step = 3;
+        setup.tab = crate::screens::setup::AiTab::Account;
+        setup.provider = kg_engine::ai_provider("chatgpt");
+        setup.base_url = "account://chatgpt".into();
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-ai-account"),
+        );
+
+        let setup = &mut harness.state_mut().ui.setup;
+        setup.tab = crate::screens::setup::AiTab::Paid;
         let zai = kg_engine::ai_provider("zai").unwrap();
         setup.provider = Some(zai);
         setup.model = zai.default_model().into();
@@ -249,16 +262,20 @@ fn setup_snapshots() {
         render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai"));
         // The free plans, with one picked.
         let setup = &mut harness.state_mut().ui.setup;
-        setup.free_tab = true;
+        setup.tab = crate::screens::setup::AiTab::Free;
         setup.provider = kg_engine::ai_provider("groq");
         setup.model = setup
             .provider
             .and_then(|p| p.free_tier())
             .map(|t| t.model.to_owned())
             .unwrap_or_default();
-        render(&mut harness, out.as_deref(), &format!("{locale}-setup-ai-free"));
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-setup-ai-free"),
+        );
         let setup = &mut harness.state_mut().ui.setup;
-        setup.free_tab = false;
+        setup.tab = crate::screens::setup::AiTab::Paid;
         setup.provider = Some(zai);
 
         let setup = &mut harness.state_mut().ui.setup;
@@ -924,7 +941,10 @@ fn page_jpeg() -> Vec<u8> {
 
 /// A proposal with a graded attempt and one waiting for its transcript to
 /// be checked. Returns (graded, in review).
-fn seed_writing(paths: &AppPaths, locale: &'static str) -> (kg_engine::AttemptId, kg_engine::AttemptId) {
+fn seed_writing(
+    paths: &AppPaths,
+    locale: &'static str,
+) -> (kg_engine::AttemptId, kg_engine::AttemptId) {
     use kg_engine::{AttemptOrigin, AttemptStatus, ProblemCategory};
     use kg_study::discursive::{edits, parse_manual_rubric};
     use kg_study::{
@@ -1181,38 +1201,143 @@ const ROLES_EN: &str = "2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – S
 /// text it replaces: (English, ja, zh-Hans, zh-Hant). English example
 /// sentences stay in English, as the demo plan studies English grammar.
 const ASIAN_DEMO: &[(&str, &str, &str, &str)] = &[
-    ("State Court – Court Clerk", "裁判所事務官 – 一般職", "法院书记员 – 公务员考试", "法院書記官 – 司法特考"),
-    ("Ceará State Court – Court Clerk – Judicial Area", "裁判所職員採用試験 – 裁判所事務官 – 一般職", "省级法院 – 书记员 – 审判辅助岗位", "司法人員特考 – 法院書記官 – 三等"),
+    (
+        "State Court – Court Clerk",
+        "裁判所事務官 – 一般職",
+        "法院书记员 – 公务员考试",
+        "法院書記官 – 司法特考",
+    ),
+    (
+        "Ceará State Court – Court Clerk – Judicial Area",
+        "裁判所職員採用試験 – 裁判所事務官 – 一般職",
+        "省级法院 – 书记员 – 审判辅助岗位",
+        "司法人員特考 – 法院書記官 – 三等",
+    ),
     ("Language and Writing", "英語", "英语", "英文"),
     ("Reading comprehension", "長文読解", "阅读理解", "閱讀測驗"),
-    ("Subject–verb agreement", "主語と動詞の一致", "主谓一致", "主詞與動詞一致"),
-    ("Verbs and prepositions", "動詞と前置詞", "动词与介词", "動詞與介系詞"),
+    (
+        "Subject–verb agreement",
+        "主語と動詞の一致",
+        "主谓一致",
+        "主詞與動詞一致",
+    ),
+    (
+        "Verbs and prepositions",
+        "動詞と前置詞",
+        "动词与介词",
+        "動詞與介系詞",
+    ),
     ("Punctuation", "句読法", "标点符号", "標點符號"),
     ("Constitutional Law", "憲法", "宪法", "憲法"),
     ("Fundamental principles", "基本原理", "基本原则", "基本原則"),
-    ("Fundamental rights", "基本的人権", "公民的基本权利", "基本權利"),
+    (
+        "Fundamental rights",
+        "基本的人権",
+        "公民的基本权利",
+        "基本權利",
+    ),
     ("The Judiciary", "司法", "审判机关", "司法"),
-    ("exam-notice.pdf", "受験案内.pdf", "招考公告.pdf", "考試簡章.pdf"),
-    ("Which is right: \"The list of names is\" or \"are\"?", "“The list of names is” と “are”、正しいのはどちら？", "“The list of names is” 和 “are”，哪个正确？", "“The list of names is” 和 “are”，哪個正確？"),
+    (
+        "exam-notice.pdf",
+        "受験案内.pdf",
+        "招考公告.pdf",
+        "考試簡章.pdf",
+    ),
+    (
+        "Which is right: \"The list of names is\" or \"are\"?",
+        "“The list of names is” と “are”、正しいのはどちら？",
+        "“The list of names is” 和 “are”，哪个正确？",
+        "“The list of names is” 和 “are”，哪個正確？",
+    ),
     ("is", "is", "is", "is"),
     ("are", "are", "are", "are"),
-    ("The verb agrees with \"list\", the head noun.", "動詞は中心の名詞 “list” に一致する。", "动词与中心词 “list” 保持一致。", "動詞與中心詞 “list” 一致。"),
+    (
+        "The verb agrees with \"list\", the head noun.",
+        "動詞は中心の名詞 “list” に一致する。",
+        "动词与中心词 “list” 保持一致。",
+        "動詞與中心詞 “list” 一致。",
+    ),
     ("True", "正", "正确", "正確"),
     ("False", "誤", "错误", "錯誤"),
-    ("past-exam-2024.pdf", "過去問-2024.pdf", "2024真题.pdf", "2024考古題.pdf"),
-    ("In “The list of candidates were published”, the verb agrees correctly with its subject.", "“The list of candidates were published” では、動詞は主語に正しく一致している。", "在 “The list of candidates were published” 中，动词与主语的一致是正确的。", "在 “The list of candidates were published” 中，動詞與主詞的一致是正確的。"),
-    ("In “Neither the judge nor the clerks was present”, the verb should agree with “clerks”.", "“Neither the judge nor the clerks was present” では、動詞は “clerks” に一致させるべきである。", "在 “Neither the judge nor the clerks was present” 中，动词应与 “clerks” 保持一致。", "在 “Neither the judge nor the clerks was present” 中，動詞應與 “clerks” 一致。"),
-    ("Under the civil service statute, a public servant may not act as an agent before public offices.", "国家公務員法上、公務員は官公署に対して他人の代理人となってはならない。", "根据《公务员法》，公务员不得在国家机关担任他人的代理人。", "依公務員服務法，公務員不得擔任他人在公務機關的代理人。"),
-    ("The civil service statute is not in the exam notice", "国家公務員法は受験案内の範囲外", "《公务员法》不在招考公告范围内", "公務員服務法不在考試簡章範圍內"),
+    (
+        "past-exam-2024.pdf",
+        "過去問-2024.pdf",
+        "2024真题.pdf",
+        "2024考古題.pdf",
+    ),
+    (
+        "In “The list of candidates were published”, the verb agrees correctly with its subject.",
+        "“The list of candidates were published” では、動詞は主語に正しく一致している。",
+        "在 “The list of candidates were published” 中，动词与主语的一致是正确的。",
+        "在 “The list of candidates were published” 中，動詞與主詞的一致是正確的。",
+    ),
+    (
+        "In “Neither the judge nor the clerks was present”, the verb should agree with “clerks”.",
+        "“Neither the judge nor the clerks was present” では、動詞は “clerks” に一致させるべきである。",
+        "在 “Neither the judge nor the clerks was present” 中，动词应与 “clerks” 保持一致。",
+        "在 “Neither the judge nor the clerks was present” 中，動詞應與 “clerks” 一致。",
+    ),
+    (
+        "Under the civil service statute, a public servant may not act as an agent before public offices.",
+        "国家公務員法上、公務員は官公署に対して他人の代理人となってはならない。",
+        "根据《公务员法》，公务员不得在国家机关担任他人的代理人。",
+        "依公務員服務法，公務員不得擔任他人在公務機關的代理人。",
+    ),
+    (
+        "The civil service statute is not in the exam notice",
+        "国家公務員法は受験案内の範囲外",
+        "《公务员法》不在招考公告范围内",
+        "公務員服務法不在考試簡章範圍內",
+    ),
     ("Anna", "さくら", "林晓", "林曉"),
-    ("Hi! Today we look at subject–verb agreement. The verb follows the head of the subject, not the nearest noun. Which is right: “The list of names is” or “are”?", "こんにちは！今日は主語と動詞の一致を学びます。動詞は、すぐ前の名詞ではなく主語の中心となる名詞に合わせます。“The list of names is” と “are”、正しいのはどちら？", "你好！今天我们学习主谓一致。动词要和主语的中心词保持一致，而不是和离它最近的名词。“The list of names is” 和 “are”，哪个正确？", "你好！今天我們學習主詞與動詞一致。動詞要和主詞的中心詞一致，而不是和離它最近的名詞。“The list of names is” 和 “are”，哪個正確？"),
-    ("The verb agrees with the head noun", "動詞は主語の中心の名詞に一致", "动词与主语中心词保持一致", "動詞與主詞中心詞一致"),
-    ("Test: drop the “of …” phrase", "コツ：“of …” を外して考える", "技巧：先去掉 “of …” 短语", "技巧：先拿掉 “of …” 片語"),
-    ("ROTEIRO: Find the head noun | Tricky subjects | Collective nouns | Exam traps\nETAPA: 2", "ROTEIRO: 中心の名詞を探す | まぎらわしい主語 | 集合名詞 | 試験のひっかけ\nETAPA: 2", "ROTEIRO: 找出中心词 | 容易混淆的主语 | 集体名词 | 考试陷阱\nETAPA: 2", "ROTEIRO: 找出中心詞 | 容易混淆的主詞 | 集合名詞 | 考試陷阱\nETAPA: 2"),
-    ("Well done, you closed the topic!\nFIM", "よくできました。このトピックは完了です！\nFIM", "做得好，这个知识点学完了！\nFIM", "做得好，這個單元完成了！\nFIM"),
-    ("2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: AUDIT\n\n2.1.2 CARGO 2: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – DATA SCIENCE\n\n2.1.3 CARGO 3: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – IT INFRASTRUCTURE\n", "2.1.1 CARGO 1: 財務監査官 – 専門：監査\n\n2.1.2 CARGO 2: 財務監査官 – 専門：情報技術・データサイエンス\n\n2.1.3 CARGO 3: 財務監査官 – 専門：情報技術・ITインフラ\n\n", "2.1.1 CARGO 1: 审计署审计员 – 专业：审计\n\n2.1.2 CARGO 2: 审计署审计员 – 专业：信息技术 – 数据科学\n\n2.1.3 CARGO 3: 审计署审计员 – 专业：信息技术 – IT 基础设施\n\n", "2.1.1 CARGO 1: 審計部審計員 – 專業：審計\n\n2.1.2 CARGO 2: 審計部審計員 – 專業：資訊科技 – 資料科學\n\n2.1.3 CARGO 3: 審計部審計員 – 專業：資訊科技 – IT 基礎設施\n\n"),
-    ("exam-notice-cgu.pdf", "受験案内-財務監査官.pdf", "招考公告-审计署.pdf", "考試簡章-審計部.pdf"),
-    ("Federal Finance and Control Auditor – Specialty: Information Technology – Data Science", "財務監査官 – 専門：情報技術・データサイエンス", "审计署审计员 – 专业：信息技术 – 数据科学", "審計部審計員 – 專業：資訊科技 – 資料科學"),
+    (
+        "Hi! Today we look at subject–verb agreement. The verb follows the head of the subject, not the nearest noun. Which is right: “The list of names is” or “are”?",
+        "こんにちは！今日は主語と動詞の一致を学びます。動詞は、すぐ前の名詞ではなく主語の中心となる名詞に合わせます。“The list of names is” と “are”、正しいのはどちら？",
+        "你好！今天我们学习主谓一致。动词要和主语的中心词保持一致，而不是和离它最近的名词。“The list of names is” 和 “are”，哪个正确？",
+        "你好！今天我們學習主詞與動詞一致。動詞要和主詞的中心詞一致，而不是和離它最近的名詞。“The list of names is” 和 “are”，哪個正確？",
+    ),
+    (
+        "The verb agrees with the head noun",
+        "動詞は主語の中心の名詞に一致",
+        "动词与主语中心词保持一致",
+        "動詞與主詞中心詞一致",
+    ),
+    (
+        "Test: drop the “of …” phrase",
+        "コツ：“of …” を外して考える",
+        "技巧：先去掉 “of …” 短语",
+        "技巧：先拿掉 “of …” 片語",
+    ),
+    (
+        "ROTEIRO: Find the head noun | Tricky subjects | Collective nouns | Exam traps\nETAPA: 2",
+        "ROTEIRO: 中心の名詞を探す | まぎらわしい主語 | 集合名詞 | 試験のひっかけ\nETAPA: 2",
+        "ROTEIRO: 找出中心词 | 容易混淆的主语 | 集体名词 | 考试陷阱\nETAPA: 2",
+        "ROTEIRO: 找出中心詞 | 容易混淆的主詞 | 集合名詞 | 考試陷阱\nETAPA: 2",
+    ),
+    (
+        "Well done, you closed the topic!\nFIM",
+        "よくできました。このトピックは完了です！\nFIM",
+        "做得好，这个知识点学完了！\nFIM",
+        "做得好，這個單元完成了！\nFIM",
+    ),
+    (
+        "2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: AUDIT\n\n2.1.2 CARGO 2: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – DATA SCIENCE\n\n2.1.3 CARGO 3: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – IT INFRASTRUCTURE\n",
+        "2.1.1 CARGO 1: 財務監査官 – 専門：監査\n\n2.1.2 CARGO 2: 財務監査官 – 専門：情報技術・データサイエンス\n\n2.1.3 CARGO 3: 財務監査官 – 専門：情報技術・ITインフラ\n\n",
+        "2.1.1 CARGO 1: 审计署审计员 – 专业：审计\n\n2.1.2 CARGO 2: 审计署审计员 – 专业：信息技术 – 数据科学\n\n2.1.3 CARGO 3: 审计署审计员 – 专业：信息技术 – IT 基础设施\n\n",
+        "2.1.1 CARGO 1: 審計部審計員 – 專業：審計\n\n2.1.2 CARGO 2: 審計部審計員 – 專業：資訊科技 – 資料科學\n\n2.1.3 CARGO 3: 審計部審計員 – 專業：資訊科技 – IT 基礎設施\n\n",
+    ),
+    (
+        "exam-notice-cgu.pdf",
+        "受験案内-財務監査官.pdf",
+        "招考公告-审计署.pdf",
+        "考試簡章-審計部.pdf",
+    ),
+    (
+        "Federal Finance and Control Auditor – Specialty: Information Technology – Data Science",
+        "財務監査官 – 専門：情報技術・データサイエンス",
+        "审计署审计员 – 专业：信息技术 – 数据科学",
+        "審計部審計員 – 專業：資訊科技 – 資料科學",
+    ),
     ("Study handout", "テキスト", "讲义", "講義"),
     ("Contents", "目次", "目录", "目錄"),
     ("Key points", "要点", "要点", "重點"),
@@ -1221,42 +1346,202 @@ const ASIAN_DEMO: &[(&str, &str, &str, &str)] = &[
     ("Summary", "まとめ", "小结", "摘要"),
     ("Exercises", "練習問題", "练习", "練習題"),
     ("Answer key", "解答と解説", "答案解析", "解答與解析"),
-    ("Picture: Wikipedia", "画像：Wikipedia", "图片：Wikipedia", "圖片：Wikipedia"),
+    (
+        "Picture: Wikipedia",
+        "画像：Wikipedia",
+        "图片：Wikipedia",
+        "圖片：Wikipedia",
+    ),
     ("Quick answers", "解答一覧", "速查答案", "答案速查"),
-    ("Generated on Oct 28, 2026", "2026年10月28日作成", "生成于 2026年10月28日", "產生於 2026年10月28日"),
-    ("A verb agrees with the head of its subject, not with the noun closest to it. Exams test this with long subjects whose last noun has the other number.", "動詞は、すぐ近くの名詞ではなく、主語の中心となる名詞に一致します。試験では、最後の名詞の数が中心の名詞と違う長い主語でよく問われます。", "动词与主语的中心词保持一致，而不是与离它最近的名词一致。考试常用很长的主语来考查，其最后一个名词的单复数与中心词不同。", "動詞與主詞的中心詞一致，而不是與離它最近的名詞一致。考試常用很長的主詞來考，其最後一個名詞的單複數與中心詞不同。"),
-    ("Find the head noun", "中心の名詞を探す", "找出中心词", "找出中心詞"),
-    ("Strip the phrases that start with of, with or in. What is left is the head noun, and the verb follows it: the list of names is long, the boxes on the shelf are heavy.", "まず of、with、in で始まる句を外してみましょう。残ったものが中心の名詞で、動詞はそれに合わせます。the list of names is long、the boxes on the shelf are heavy のように。", "先去掉以 of、with 或 in 开头的短语，剩下的就是中心词，动词跟着它变：the list of names is long，the boxes on the shelf are heavy。", "先拿掉以 of、with 或 in 開頭的片語，剩下的就是中心詞，動詞跟著它變：the list of names is long，the boxes on the shelf are heavy。"),
+    (
+        "Generated on Oct 28, 2026",
+        "2026年10月28日作成",
+        "生成于 2026年10月28日",
+        "產生於 2026年10月28日",
+    ),
+    (
+        "A verb agrees with the head of its subject, not with the noun closest to it. Exams test this with long subjects whose last noun has the other number.",
+        "動詞は、すぐ近くの名詞ではなく、主語の中心となる名詞に一致します。試験では、最後の名詞の数が中心の名詞と違う長い主語でよく問われます。",
+        "动词与主语的中心词保持一致，而不是与离它最近的名词一致。考试常用很长的主语来考查，其最后一个名词的单复数与中心词不同。",
+        "動詞與主詞的中心詞一致，而不是與離它最近的名詞一致。考試常用很長的主詞來考，其最後一個名詞的單複數與中心詞不同。",
+    ),
+    (
+        "Find the head noun",
+        "中心の名詞を探す",
+        "找出中心词",
+        "找出中心詞",
+    ),
+    (
+        "Strip the phrases that start with of, with or in. What is left is the head noun, and the verb follows it: the list of names is long, the boxes on the shelf are heavy.",
+        "まず of、with、in で始まる句を外してみましょう。残ったものが中心の名詞で、動詞はそれに合わせます。the list of names is long、the boxes on the shelf are heavy のように。",
+        "先去掉以 of、with 或 in 开头的短语，剩下的就是中心词，动词跟着它变：the list of names is long，the boxes on the shelf are heavy。",
+        "先拿掉以 of、with 或 in 開頭的片語，剩下的就是中心詞，動詞跟著它變：the list of names is long，the boxes on the shelf are heavy。",
+    ),
     ("Strip the", "まず", "先去掉", "先拿掉"),
-    ("Drop the of-phrase to find the head.", "of の句を外すと中心の名詞が見える。", "去掉 of 短语，就能找到中心词。", "拿掉 of 片語，就能找到中心詞。"),
-    ("Tricky subjects", "まぎらわしい主語", "容易混淆的主语", "容易混淆的主詞"),
-    ("Each and every take a singular verb. Neither ... nor and either ... or agree with the nearer part of the subject.", "each と every は単数の動詞をとります。neither ... nor と either ... or は、動詞に近いほうの主語に一致します。", "each 和 every 后接单数动词。neither ... nor 和 either ... or 与离动词较近的主语保持一致。", "each 和 every 後接單數動詞。neither ... nor 與 either ... or 和離動詞較近的主詞一致。"),
-    ("A number of takes a plural verb; the number of takes a singular one.", "a number of は複数扱い、the number of は単数扱い。", "a number of 接复数动词，the number of 接单数动词。", "a number of 接複數動詞，the number of 接單數動詞。"),
-    ("Choose the correct sentence.", "正しい文を選びなさい。", "选出正确的句子。", "選出正確的句子。"),
-    ("The list of names are long.", "The list of names are long.", "The list of names are long.", "The list of names are long."),
-    ("The list of names is long.", "The list of names is long.", "The list of names is long.", "The list of names is long."),
-    ("The head noun is list, singular.", "中心の名詞は list で、単数。", "中心词是 list，为单数。", "中心詞是 list，為單數。"),
-    ("Shows up in every exam.", "毎回の試験に出る。", "每次考试都会考。", "每次考試都會考。"),
-    ("Presentation and text structure: 5\nDevelopment of the theme: 15", "構成と表現: 5\nテーマの展開: 15", "结构与表达: 5\n主题展开: 15", "結構與表達: 5\n主題發揮: 15"),
-    ("Civic participation and fundamental rights", "市民参加と基本的人権", "公民参与与基本权利", "公民參與與基本權利"),
-    ("Write an argumentative essay on how civic participation helps secure fundamental rights, with a thesis, two arguments and a conclusion.", "市民参加が基本的人権の保障にどう役立つかについて、主張、二つの根拠、結論を示して論述しなさい。", "请以公民参与如何保障基本权利为题，写一篇议论文，包括论点、两个论据和结论。", "請以公民參與如何保障基本權利為題，寫一篇論說文，包含論點、兩個論據與結論。"),
-    ("Use standard written language and do not copy the prompt.", "常体で書き、問題文をそのまま写さないこと。", "使用规范书面语，不要照抄题目。", "使用標準書面語，不要照抄題目。"),
-    ("Define civic participation and its channels (councils, hearings, voting).", "市民参加とその手段（審議会、公聴会、選挙）を定義する。", "界定公民参与及其渠道（议事会、听证会、选举）。", "界定公民參與及其管道（審議會、公聽會、選舉）。"),
-    ("Link participation to rights being honoured in practice.", "参加と権利の実際の保障を結びつける。", "把参与和权利的切实保障联系起来。", "將參與和權利的實際保障連結起來。"),
-    ("Civic participation is what takes fundamental rights\noff the page. When citizens follows public\npolicy, ask for results and report abuse,\nthe State answers better.", "市民参加は、基本的人権を紙の上から\n現実のものにする条件である。市民を政策を\n見守り、成果を求め、不正を告発すれば、\n国はよりよく応えるようになる。", "公民参与是让基本权利\n真正落到实处得条件。当公民关注\n公共政策、要求结果、举报滥用时，\n国家就会作出更好的回应。", "公民參與是讓基本權利\n真正落到實處得條件。當公民關注\n公共政策、要求結果、檢舉濫用時，\n國家就會做出更好的回應。"),
+    (
+        "Drop the of-phrase to find the head.",
+        "of の句を外すと中心の名詞が見える。",
+        "去掉 of 短语，就能找到中心词。",
+        "拿掉 of 片語，就能找到中心詞。",
+    ),
+    (
+        "Tricky subjects",
+        "まぎらわしい主語",
+        "容易混淆的主语",
+        "容易混淆的主詞",
+    ),
+    (
+        "Each and every take a singular verb. Neither ... nor and either ... or agree with the nearer part of the subject.",
+        "each と every は単数の動詞をとります。neither ... nor と either ... or は、動詞に近いほうの主語に一致します。",
+        "each 和 every 后接单数动词。neither ... nor 和 either ... or 与离动词较近的主语保持一致。",
+        "each 和 every 後接單數動詞。neither ... nor 與 either ... or 和離動詞較近的主詞一致。",
+    ),
+    (
+        "A number of takes a plural verb; the number of takes a singular one.",
+        "a number of は複数扱い、the number of は単数扱い。",
+        "a number of 接复数动词，the number of 接单数动词。",
+        "a number of 接複數動詞，the number of 接單數動詞。",
+    ),
+    (
+        "Choose the correct sentence.",
+        "正しい文を選びなさい。",
+        "选出正确的句子。",
+        "選出正確的句子。",
+    ),
+    (
+        "The list of names are long.",
+        "The list of names are long.",
+        "The list of names are long.",
+        "The list of names are long.",
+    ),
+    (
+        "The list of names is long.",
+        "The list of names is long.",
+        "The list of names is long.",
+        "The list of names is long.",
+    ),
+    (
+        "The head noun is list, singular.",
+        "中心の名詞は list で、単数。",
+        "中心词是 list，为单数。",
+        "中心詞是 list，為單數。",
+    ),
+    (
+        "Shows up in every exam.",
+        "毎回の試験に出る。",
+        "每次考试都会考。",
+        "每次考試都會考。",
+    ),
+    (
+        "Presentation and text structure: 5\nDevelopment of the theme: 15",
+        "構成と表現: 5\nテーマの展開: 15",
+        "结构与表达: 5\n主题展开: 15",
+        "結構與表達: 5\n主題發揮: 15",
+    ),
+    (
+        "Civic participation and fundamental rights",
+        "市民参加と基本的人権",
+        "公民参与与基本权利",
+        "公民參與與基本權利",
+    ),
+    (
+        "Write an argumentative essay on how civic participation helps secure fundamental rights, with a thesis, two arguments and a conclusion.",
+        "市民参加が基本的人権の保障にどう役立つかについて、主張、二つの根拠、結論を示して論述しなさい。",
+        "请以公民参与如何保障基本权利为题，写一篇议论文，包括论点、两个论据和结论。",
+        "請以公民參與如何保障基本權利為題，寫一篇論說文，包含論點、兩個論據與結論。",
+    ),
+    (
+        "Use standard written language and do not copy the prompt.",
+        "常体で書き、問題文をそのまま写さないこと。",
+        "使用规范书面语，不要照抄题目。",
+        "使用標準書面語，不要照抄題目。",
+    ),
+    (
+        "Define civic participation and its channels (councils, hearings, voting).",
+        "市民参加とその手段（審議会、公聴会、選挙）を定義する。",
+        "界定公民参与及其渠道（议事会、听证会、选举）。",
+        "界定公民參與及其管道（審議會、公聽會、選舉）。",
+    ),
+    (
+        "Link participation to rights being honoured in practice.",
+        "参加と権利の実際の保障を結びつける。",
+        "把参与和权利的切实保障联系起来。",
+        "將參與和權利的實際保障連結起來。",
+    ),
+    (
+        "Civic participation is what takes fundamental rights\noff the page. When citizens follows public\npolicy, ask for results and report abuse,\nthe State answers better.",
+        "市民参加は、基本的人権を紙の上から\n現実のものにする条件である。市民を政策を\n見守り、成果を求め、不正を告発すれば、\n国はよりよく応えるようになる。",
+        "公民参与是让基本权利\n真正落到实处得条件。当公民关注\n公共政策、要求结果、举报滥用时，\n国家就会作出更好的回应。",
+        "公民參與是讓基本權利\n真正落到實處得條件。當公民關注\n公共政策、要求結果、檢舉濫用時，\n國家就會做出更好的回應。",
+    ),
     ("ask", "求め", "要求", "要求"),
     ("smudged", "にじんでいる", "字迹模糊", "字跡模糊"),
-    ("The right margin is shaded.", "右の余白に影がある。", "右侧页边有阴影。", "右側邊界有陰影。"),
-    ("One single paragraph: introduction, body and conclusion are not separated.", "一段落のみで、序論・本論・結論が分かれていない。", "全文只有一段，开头、主体和结尾没有分开。", "全文只有一段，開頭、主體與結尾沒有分開。"),
-    ("Clear, relevant thesis; the second argument is only announced.", "主張は明確で適切。二つ目の根拠は示されただけで展開されていない。", "论点清晰切题；第二个论据只提出而未展开。", "論點清楚切題；第二個論據只提出而未展開。"),
-    ("Civic participation is what takes fundamental rights", "市民参加は、基本的人権を紙の上から", "公民参与是让基本权利", "公民參與是讓基本權利"),
-    ("Thesis stated in the first sentence.", "最初の文で主張を示している。", "第一句就亮明论点。", "第一句就點出論點。"),
-    ("Subject–verb agreement.", "助詞の誤り。", "“的”“得”误用。", "「的」「得」誤用。"),
-    ("Write \"citizens follow\".", "「市民が政策を」と書く。", "应写作“实处的条件”。", "應寫作「實處的條件」。"),
-    ("citizens follows", "市民を政策を", "实处得条件", "實處得條件"),
-    ("Split the text into paragraphs.", "段落に分ける。", "分段写作。", "分段書寫。"),
-    ("Develop the second argument with an example.", "二つ目の根拠を例で展開する。", "用例子展开第二个论据。", "用例子展開第二個論據。"),
-    ("Check agreement.", "助詞を見直す。", "检查“的”“地”“得”的用法。", "檢查「的」「地」「得」的用法。"),
+    (
+        "The right margin is shaded.",
+        "右の余白に影がある。",
+        "右侧页边有阴影。",
+        "右側邊界有陰影。",
+    ),
+    (
+        "One single paragraph: introduction, body and conclusion are not separated.",
+        "一段落のみで、序論・本論・結論が分かれていない。",
+        "全文只有一段，开头、主体和结尾没有分开。",
+        "全文只有一段，開頭、主體與結尾沒有分開。",
+    ),
+    (
+        "Clear, relevant thesis; the second argument is only announced.",
+        "主張は明確で適切。二つ目の根拠は示されただけで展開されていない。",
+        "论点清晰切题；第二个论据只提出而未展开。",
+        "論點清楚切題；第二個論據只提出而未展開。",
+    ),
+    (
+        "Civic participation is what takes fundamental rights",
+        "市民参加は、基本的人権を紙の上から",
+        "公民参与是让基本权利",
+        "公民參與是讓基本權利",
+    ),
+    (
+        "Thesis stated in the first sentence.",
+        "最初の文で主張を示している。",
+        "第一句就亮明论点。",
+        "第一句就點出論點。",
+    ),
+    (
+        "Subject–verb agreement.",
+        "助詞の誤り。",
+        "“的”“得”误用。",
+        "「的」「得」誤用。",
+    ),
+    (
+        "Write \"citizens follow\".",
+        "「市民が政策を」と書く。",
+        "应写作“实处的条件”。",
+        "應寫作「實處的條件」。",
+    ),
+    (
+        "citizens follows",
+        "市民を政策を",
+        "实处得条件",
+        "實處得條件",
+    ),
+    (
+        "Split the text into paragraphs.",
+        "段落に分ける。",
+        "分段写作。",
+        "分段書寫。",
+    ),
+    (
+        "Develop the second argument with an example.",
+        "二つ目の根拠を例で展開する。",
+        "用例子展开第二个论据。",
+        "用例子展開第二個論據。",
+    ),
+    (
+        "Check agreement.",
+        "助詞を見直す。",
+        "检查“的”“地”“得”的用法。",
+        "檢查「的」「地」「得」的用法。",
+    ),
 ];
 
 /// One entry of each whiteboard kind in a language: formula, diagram,
@@ -1328,8 +1613,10 @@ fn whiteboard_snapshots() {
                 for pair in entries.chunks(2) {
                     ui.horizontal(|ui| {
                         for text in pair {
-                            let (area, _) = ui
-                                .allocate_exact_size(egui::vec2(485.0, 200.0), egui::Sense::hover());
+                            let (area, _) = ui.allocate_exact_size(
+                                egui::vec2(485.0, 200.0),
+                                egui::Sense::hover(),
+                            );
                             crate::whiteboard::paint(
                                 ui,
                                 &ui.painter_at(area),
@@ -1345,7 +1632,9 @@ fn whiteboard_snapshots() {
         harness.run_steps(8);
         let image = harness.render().unwrap();
         if let Some(dir) = &out {
-            image.save(dir.join(format!("{locale}-whiteboard.png"))).unwrap();
+            image
+                .save(dir.join(format!("{locale}-whiteboard.png")))
+                .unwrap();
         }
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
@@ -1371,7 +1660,11 @@ fn update_bar_snapshots() {
         harness.state_mut().ui.screen = Screen::Today;
         render(&mut harness, out.as_deref(), &format!("{locale}-update"));
         harness.state_mut().ui.screen = Screen::Settings;
-        render(&mut harness, out.as_deref(), &format!("{locale}-settings-about"));
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-settings-about"),
+        );
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }

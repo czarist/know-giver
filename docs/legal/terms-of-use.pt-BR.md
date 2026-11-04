@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 31 de outubro de 2026 (2026-10-31). Esta é a versão para quem usa o
+Versão de 3 de novembro de 2026 (2026-11-03.4). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -38,6 +38,18 @@ aplicativo pedirá um novo aceite.
   uso e o tratamento de dados seguem os termos dele. Os custos de uso da chave são cobrados
   pelo fornecedor, não pela Trentin.
 - Você é responsável por guardar a sua chave e pelo uso feito com ela.
+- No GitHub Copilot, o login é feito pela conta GitHub no Copilot CLI oficial, sem chave
+  de API no Know Giver. O CLI normalmente guarda as credenciais no chaveiro do sistema
+  operacional; se ele estiver indisponível, pode recorrer a um arquivo de configuração
+  sem criptografia (`~/.copilot/config.json`). O Know Giver não as guarda no banco. A
+  disponibilidade e o uso dependem dos termos e do plano da sua conta GitHub Copilot.
+- No ChatGPT, você entra pela página da OpenAI ("Sign in with ChatGPT"), sem chave de
+  API. O uso segue os termos e os limites do seu plano do ChatGPT.
+- No Claude, o Know Giver executa o Claude Code oficial da Anthropic, sem modificações,
+  com a sua própria conta Claude e sem chave de API. O uso segue os termos da Anthropic e
+  os limites da sua assinatura Claude.
+- O Know Giver não é afiliado à OpenAI, à Anthropic nem ao GitHub, nem é endossado por
+  eles.
 
 ## 6. A inteligência artificial pode errar
 
@@ -76,6 +88,13 @@ O aplicativo pode acessar serviços de terceiros: o fornecedor de IA escolhido, 
 serviço de voz na nuvem, se você ativar. Vozes, fontes e imagens de terceiros têm licenças
 próprias. A voz Dii, por exemplo, é só para uso pessoal e não comercial. A Trentin não
 controla esses serviços e não responde por eles.
+
+O OCR local usa o PaddleOCR-VL pelo runtime `llama-server` do [llama.cpp](https://github.com/ggml-org/llama.cpp),
+versão 0.8.0, licenciado sob MIT e incluído no pacote do aplicativo. Os pacotes para
+Windows e Linux incluem uma versão com Vulkan: o app usa uma GPU compatível quando
+disponível e volta para CPU se não encontrar um dispositivo ou se a inicialização da GPU
+falhar. No macOS, usa CPU. O Vulkan usa o driver da GPU instalado no computador; o runtime
+e o backend Vulkan não enviam fotos de OCR à Trentin nem a fornecedores.
 
 ## 10. Licença do software
 

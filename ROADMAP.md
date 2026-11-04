@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.36.0. Everything an agent can build and check without a human ear, a
+Version 0.37.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -20,8 +20,9 @@ notification and installer behavior still needs testing on Windows, macOS and Li
 **Before building:** the owner's PC powers off under long full-CPU builds (five
 unexpected shutdowns on 2026-10-29, no bug check and no hardware errors logged: a power or
 thermal cut). Build and test with `-j 2` to `-j 4` and matching `--test-threads`; a
-power loss mid-build corrupted `target/debug` and the git index once. The release
-executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is safe.
+power loss mid-build corrupted `target/debug` and the git index once. The Windows release
+app and CPU/Vulkan OCR runtimes were rebuilt and the portable package was verified on
+2026-11-03. Do not start another full release build unless needed.
 
 **Next up, in order:**
 000. English prompts (v0.30.0): run `KG_PROMPT_LANG=en cargo run -p kg-ai --example
@@ -83,7 +84,8 @@ executable on disk is still v0.30.0: run `cargo build --release -j 4` when it is
 Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
 LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
 Then proxy mode (Phase 9): several keys and models, including free plans, in a fallback
-order through the same LiteLLM proxy, with llama.cpp as the local link.
+order through the same LiteLLM proxy. The separately bundled CPU/Vulkan `llama-server`
+currently serves only written-answer OCR; general local AI is not available.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
 Dii Piper voice (CC BY-NC-ND, personal use). The teacher picked in Settings picks the
@@ -106,8 +108,10 @@ tests (workspace lints).
   `cargo run -p kg-engine --example board_check -- edital.pdf prova.pdf gabarito.pdf`
 - Voice: `cargo run --release -p kg-audio --example voice_check -- %LOCALAPPDATA%/KnowGiver/models small out.wav`
 
-**Not verified by an agent:** live microphone loop end to end, installer build (needs
-Inno Setup 6).
+**Not verified by an agent:** live microphone loop end to end and Windows installer build
+and installation (Inno Setup 6 is not installed here). The Windows portable ZIP was built;
+its required app/runtime DLLs were checked in the archive and both bundled `llama-server`
+binaries passed `--version`. Vulkan still relies on the computer's compatible GPU driver.
 
 ## Phase 1 — Foundation
 - [x] Cargo workspace setup
@@ -159,6 +163,34 @@ Inno Setup 6).
 - [x] Tutor, quiz, review and handout prompts use the board material on the topic
 - [x] Show the board's emphasis per topic (how often it is asked) on the Plan screen
 - [x] Scanned PDFs: opt-in OCR fallback with the vision model (`MODEL_VISION`)
+
+### Local OCR for written answers
+- [x] PaddleOCR-VL 1.5 (0.9B) is the default backend; model files download from the pinned
+      Hugging Face revision and are checksum-verified before installation.
+- [x] Offer an explicitly selected external vision API for non-Copilot providers; Copilot
+      always uses local OCR and never sends handwritten photos to a text-only model.
+- [x] Build and bundle the pinned CPU `llama-server` runtime with native packages.
+- [x] Include the pinned Vulkan runtime in Windows/Linux packages, prefer a detected
+      compatible GPU for OCR, and retry with CPU if device discovery or GPU startup fails;
+      macOS remains CPU-only.
+- [x] Bundle Windows app and `llama-server` Visual C++ CRT/OpenMP dependencies and the
+      Vulkan loader with the package; validate the required files during packaging and
+      include the Vulkan SDK license registry. End users do not need the Visual C++
+      redistributable or Vulkan SDK; Vulkan acceleration still needs a compatible GPU driver.
+- [x] Build the Windows portable package and verify its archive contains the app/runtime
+      dependencies; smoke-test the CPU and Vulkan `llama-server` binaries. The Inno Setup
+      installer build/install remains unverified because Inno Setup 6 is unavailable here.
+- [x] Start the local OCR server in the background when the app opens with the local model
+      installed, reuse it for image reading, and stop it when the app closes.
+- [x] Add offline tests for OCR transcript handling, invalid/empty model responses, model
+      file installation checks, Copilot OAuth flow boundaries, Vulkan device selection and
+      CPU fallback, backend selection and saved preferences.
+- [ ] Validate handwritten Portuguese quality and benchmark memory, CPU use and latency on
+      real devices before publishing minimum hardware requirements.
+- [ ] Run [docs/validation-discursive.md](docs/validation-discursive.md) with local OCR and
+      compare its transcript with a human reading.
+- [ ] Investigate Hugging Face's `PAIT-GGUF-100` scan notice for the pinned model before
+      release; checksums verify the downloaded bytes, not whether model weights are safe.
 
 ### Written study material as PDF (apostilas)
 - [x] Generate a written lesson per topic with the LLM: explanation, examples, common pitfalls, summary, practice questions with answers
@@ -391,6 +423,9 @@ recorded decision.
 - [ ] Detect which inference backends really work (CUDA, Vulkan, ROCm/HIP, SYCL, Metal,
       CPU) by asking the chosen engine to list and initialize devices, not by guessing from
       the GPU name.
+- [x] For local manuscript OCR, probe llama.cpp's Vulkan device list on Windows/Linux,
+      select supported hardware devices and retry with the CPU runtime if GPU startup fails.
+      Physical-device compatibility and performance still need validation on each vendor.
 - [ ] Check free disk space for download, unpacking and running (download and installed
       size counted separately).
 - [ ] Subtract the app's own use (8.1) and a safety margin from available memory.
@@ -682,6 +717,17 @@ lessons (length, number of examples, past-exam questions, final check), and swit
 mid-lesson keeps what was already covered.
 
 ## Not yet verified
+- Account sign-ins (Unreleased):
+  - Checked live on Windows on 2026-11-03 (`cargo run -p kg-engine --example
+    accounts_live -- page.jpg`): ChatGPT sign-in, model list, lessons and a handwritten
+    page read as JSON; Claude Code lessons and the same page; Copilot lessons.
+  - ChatGPT: a token refresh after an hour, and sign-out with revocation.
+  - Claude Code: `claude auth login` started from the app on a computer that never signed
+    in, and the in-app install with the official installer on Windows, macOS and Linux.
+  - Copilot: the bundled CLI returns an empty model list (and auth info the SDK cannot
+    read) although lessons work, so Settings only offers the suggested models. Recheck
+    after the next `github-copilot-sdk` update.
+  - The Inno Setup task that installs Claude Code (compiled in CI, not run).
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
   review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
   conventions and grading scales. Notes are in Portuguese and English only; Japanese and
@@ -760,16 +806,36 @@ mid-lesson keeps what was already covered.
 - [ ] Native Anthropic Messages API client for Claude: Anthropic calls its
       OpenAI-compatible endpoint a testing aid, not a production path (`response_format`
       and `reasoning_effort` are ignored there; no prompt caching).
-- [ ] Investigate first-party account connections for ChatGPT/Codex, GitHub Copilot
-      and Claude. Codex app-server documents deep client integration including
-      authentication; GitHub documents user OAuth through the Copilot SDK. Claude
-      subscription sign-in is documented for Claude Code, not as a general credential
-      for other apps, so offer Anthropic API keys or supported cloud-provider auth unless
-      Anthropic documents another flow. Use only supported interfaces; never reuse
-      private CLI tokens or reverse-engineer endpoints. Keep provider adapters separate
-      where their protocols differ, store credentials in the OS keychain, and review
-      dependency, licensing, data-flow, localization and terms implications before
-      implementation. These connections are planned and are not available today.
+- [x] Connect GitHub Copilot through the official Copilot SDK and its supported CLI
+      account sign-in. Do not reuse private CLI tokens or reverse-engineer endpoints;
+      sign-in credentials remain managed by the CLI and the computer's credential store.
+- [x] ChatGPT sign-in through OpenAI's *Sign in with ChatGPT* for open-source and local
+      apps (dynamic registration as "Know Giver", not the Codex CLI's client), requests on
+      the Responses API with the student's plan.
+- [x] Claude through the unmodified Claude Code binary, signed in with the student's own
+      Claude account (Anthropic allows this; using Claude.ai credentials directly in a
+      third-party app is not allowed). The owner accepted Anthropic's Commercial Terms for
+      running Claude Code in the product and chose to show the Claude logo on its sign-in.
+- [ ] Faster Claude Code answers: each request starts `claude -p` (about 3 s to the first
+      word in a live check); a long-lived `--input-format stream-json` session per lesson
+      would save the start-up.
+- [ ] Periodic checks that the account sign-ins still work; today only offline tests run
+      in CI, and the three breaks found on 2026-11-03 (host ID format, Copilot SDK's
+      sign-in folder, `GITHUB_TOKEN` overriding the sign-in) were caught by hand:
+  - weekly GitHub Actions job without credentials: the ChatGPT authorize URL with our
+    real parameters does not answer `invalid_authorize_request`, OpenAI's keys and
+    sign-in metadata load, every flag we pass still appears in the latest `claude
+    --help`, and the workspace builds and tests against the latest `github-copilot-sdk`;
+    a failure opens an issue;
+  - optional weekly run on a signed-in computer (scheduled task) of `cargo run -p
+    kg-engine --example accounts_live -- page.jpg`, with a short lesson per account and a
+    handwritten page through each vision service and the local OCR, saving a report. It
+    uses a little of each plan; credentials never go to CI.
+- [ ] DeepSeek account sign-in in the *Sign in with an account* tab, like ChatGPT, Claude
+      and Copilot, so a student with a DeepSeek account needs no API key. First check that
+      DeepSeek documents a sign-in flow third-party apps may use, and its terms for it;
+      never reuse the web app's private tokens. Until then DeepSeek stays an API-key
+      provider.
 - [ ] Store the API key in the system keychain instead of the local database.
 - [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
       public release.

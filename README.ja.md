@@ -22,7 +22,10 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -113,7 +116,8 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 - **読み取りを確認**：写真と書き起こしを並べて表示。あなたの書き間違いはそのまま残り、不確かな語で減点されることはありません。
 - **形成的な採点**：基準ごとの目安の点数、本文から確認された引用、よい点、課題と改善案、優先すべき3点。
 
-写真は設定 → AI の**画像対応モデル**が読み取ります。字数で評価する日本の小論文では、課題の指示に字数が示されます。
+既定では PaddleOCR-VL 1.5（0.9B）が写真をローカルで読み取ります。[🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) の `llama-server` v0.8.0 を使用し、初回に Hugging Face からモデル約1.82 GBをダウンロードします。設定 → AI で外部の画像対応APIを明示的に選ぶと、写真はその提供元に送信されます。Copilot はテキスト専用のため、常にローカルOCRを使います。**画像読み取りをテスト**で選択中の方法を確認できます。最低ハードウェア要件と手書きの認識精度は未検証です。採点前に必ず書き起こしを確認してください。Windows/Linux では 🔺 [Vulkan](https://www.vulkan.org/) ランタイムを同梱し、対応 GPU が検出されると使用します。デバイスがない場合や GPU の起動に失敗した場合は CPU にフォールバックします。macOS は CPU を使用します。字数で評価する日本の小論文では、課題の指示に字数が示されます。
+Windows インストーラーには必要な C++ ランタイムと Vulkan ローダーが含まれます。Vulkan を使うには、対応する GPU ドライバーが別途必要です。
 
 <table>
   <tr>
@@ -131,9 +135,17 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 
 ## 初回設定
 
-最初に5つの短いステップがあります：言語、名前、先生、AIとキー、国・地域と規約への同意。21のAI提供元から選べ（**Z.ai** はコスパ、**Claude** は正確さでおすすめ）、キーの作成ページへのリンクがあります。その後、画面を案内する短いツアーがあります。
+最初に5つの短いステップがあります：言語、名前、先生、AIとAPIキーまたはアカウントログイン、国・地域と規約への同意。22のAI提供元から選べ（**Z.ai** はコスパ、**Claude** は正確さでおすすめ）、キーの作成ページへのリンクがあります。その後、画面を案内する短いツアーがあります。
 
-**無料と有料。** AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
+GitHub Copilot は公式 Copilot CLI を通じて GitHub アカウントで接続でき、APIキーは不要です。CLI は通常、認証情報を OS のキーチェーンに保存します。利用できない場合は平文の設定ファイル（`~/.copilot/config.json`）に保存することがあります。Know Giver のデータベースには保存しません。この連携はテキストのみで、画像には対応しません。
+
+**お持ちのアカウントでサインイン。** AIのステップは「アカウントでサインイン」から始まります。チャットのプランを契約していて、APIキーを作ったことがない方向けです。**ChatGPT**（OpenAI 公式の「Sign in with ChatGPT」。レッスンは ChatGPT のプランの上限に含まれます）、**Claude**（Anthropic 公式のプログラム Claude Code を通じて、Claude Pro または Max のアカウントで。Know Giver がインストールすることもできます）、**GitHub Copilot** に対応しています。サインインはそれぞれの提供元のページで行い、Know Giver がパスワードを見ることはありません。Know Giver は OpenAI、Anthropic、GitHub と提携していません。
+
+<p align="center">
+  <img src="docs/images/ja/setup-ai-account.png" alt="AIのステップの「アカウントでサインイン」タブ：ChatGPT、Claude、GitHub Copilot とそれぞれのサインインボタン" width="60%">
+</p>
+
+**無料と有料。** 「アカウントでサインイン」のほかに、AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
 
 **地域の勉強のしかた。** レッスン、クイズ、テキスト、記述・小論文は、お住まいの地域の試験の勉強のしかたに合わせます。日本では五肢択一と字数で書く小論文、中国大陸では行测と申论、台湾と香港ではそれぞれの公務員試験の形式、ブラジルでは Cebraspe の正誤問題と5択、米国と英国では標準テスト、司法試験、採点基準（mark scheme）です。試験要項と過去問が常に優先されます。
 
@@ -156,7 +168,7 @@ AIは OpenAI 互換のモデルならどれでも使え（Z.ai、Anthropic、Ope
 
 - 音声認識と読み上げはお使いのコンピューターで動作し、録音は外に出ません。
 - データ（SQLiteのデータベース、モデル、ログ）は `%LOCALAPPDATA%\KnowGiver` に保存されます。
-- AIサービスには、作業に必要な文章だけが送られます。画像対応モデルを設定した場合に限り、答案の写真もそのモデルに送られます。
+- 手書き写真は既定ではローカルで読み取られ、このコンピューターから出ません。設定 → AI で外部の画像対応APIを明示的に選んだ場合のみ、写真が提供元に送られます。Copilot では常にローカルOCRを使います。送信前にアプリが送信先を表示します。写真はデータフォルダーに保存され、答案を削除すると一緒に削除されます。スキャンPDFのページは、OCRを依頼した場合に設定済みの画像対応モデルへ送信されます。ローカルOCRの初回インストールでは Hugging Face から約1.82 GBをダウンロードします。
 - 起動時に、最新のバージョンを GitHub に問い合わせます。送られるのはこの問い合わせだけで、設定 → アプリについて・アップデート でオフにできます。
 - アカウント、テレメトリー、広告はありません。[利用規約](docs/legal/terms-of-use.ja.md)と[プライバシーポリシー](docs/legal/privacy-policy.ja.md)（日本法）をお読みください。アプリ内でも表示されます。
 
@@ -185,6 +197,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 インストール先は、Windows では `%LOCALAPPDATA%\Programs\KnowGiver`（スタートメニューに登録）、macOS では `~/Applications/Know Giver.app`、Linux では `~/.local/opt/KnowGiver`（`know-giver` コマンドとアプリメニューに登録）です。
+
+Claude Code が入っていない場合、初回インストールでは Anthropic 公式のインストーラーで Claude Code も一緒に入れるか尋ねます。Claude の契約を使うためのもので、あとから AIのステップでインストールすることもできます。
 
 初めてのインストールでは、**デスクトップのショートカット**を作るか確認します（アップデートでは前の選択を保ちます）。**アンインストール**は、Windows では 設定 → アプリ → Know Giver（スタートメニューの「Uninstall Know Giver」、プログラムフォルダーの `unins000.exe` でも可）、macOS では `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`、Linux では `~/.local/opt/KnowGiver/uninstall.sh` です。学習データも削除するか確認し、「はい」と答えない限り残します。
 

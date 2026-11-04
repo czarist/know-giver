@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 31 de outubro de 2026 (2026-10-31), de acordo com a Lei Geral de Proteção de
+Versão de 3 de novembro de 2026 (2026-11-03.4), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -9,7 +9,8 @@ Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo 
   **não recebe, não guarda e não acessa os seus dados**.
 - Não há cadastro na Trentin, telemetria, estatísticas de uso, anúncios ou venda de dados.
 - O conteúdo necessário para cada tarefa vai para o **fornecedor de IA que você escolheu**,
-  com a sua chave. Esse fornecedor trata os dados conforme as regras dele.
+  com o método de autenticação exigido por ele (chave ou login oficial). Esse fornecedor
+  trata os dados conforme as regras dele.
 
 ## 2. Quem é responsável
 
@@ -30,10 +31,23 @@ definida em `KG_DATA_DIR`):
 - seu nome (como o tutor chama você), idioma, professor e demais preferências;
 - a chave de API, guardada sem criptografia no banco de dados local quando digitada no
   aplicativo;
+- no GitHub Copilot, o Copilot CLI oficial gerencia as credenciais de login. Ele costuma
+  usar o chaveiro do sistema operacional; se ele não estiver disponível, pode guardar as
+  credenciais em um arquivo de configuração sem criptografia (`~/.copilot/config.json`).
+  O Know Giver não as guarda no banco;
+- no ChatGPT, os tokens do login "Sign in with ChatGPT" (acesso e renovação), o e-mail da
+  conta, o registro do aplicativo na OpenAI e um identificador aleatório deste computador,
+  que é enviado à OpenAI a cada login para separar os seus computadores e não identifica
+  você. Ficam sem criptografia no banco de dados local, como a chave de API. Sair da conta
+  pede à OpenAI que revogue a renovação;
+- no Claude, o Claude Code oficial da Anthropic gerencia o login da sua conta Claude, na
+  pasta dele (`~/.claude`) ou no chaveiro do sistema. O Know Giver não vê nem guarda essas
+  credenciais;
 - editais, provas, gabaritos e materiais enviados, além dos planos, do progresso, dos
   quizzes, das revisões, das apostilas, dos destaques e das notas;
 - conversas das aulas e o caderno de erros;
 - fotos das respostas discursivas, suas transcrições e avaliações;
+- arquivos do modelo PaddleOCR-VL, baixados para a pasta local de modelos se você instalar o OCR local;
 - a data e a hora do seu aceite destes documentos;
 - um arquivo de registro técnico (log), que não guarda imagens, respostas nem chaves.
 
@@ -45,11 +59,32 @@ gravações temporárias de diagnóstico ficam só na pasta de dados.
 | Para onde | O quê | Quando |
 |---|---|---|
 | Fornecedor de IA escolhido por você | Trechos do edital e dos materiais, tópicos, suas mensagens e respostas transcritas, seu nome (para o tutor chamar você), textos das apostilas | Em cada tarefa de IA |
-| Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Só se você configurar um modelo de visão e enviar fotos |
+| PaddleOCR-VL rodando localmente pelo `llama-server` v0.8.0 do llama.cpp | Fotos das respostas discursivas | Por padrão; processadas no computador, não enviadas a um fornecedor |
+| Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Fotos de respostas só se você escolher explicitamente o OCR externo; páginas de PDFs escaneados só quando você pedir a leitura e tiver configurado um modelo de visão |
 | Wikipédia | O termo de busca de uma imagem do quadro | Se a opção de imagens estiver ligada |
-| Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz ou de fala |
+| Hugging Face, GitHub e sites das vozes | Pedidos de download, que mostram o seu endereço IP | Quando você baixa modelos de voz, fala ou OCR |
 | GitHub | Um pedido da versão mais recente, que mostra o seu endereço IP e a versão do app; o pacote da nova versão, se você escolher atualizar | Cada vez que o app abre, se a busca de atualizações estiver ligada (Configurações → Sobre e atualizações) |
 | Serviço de voz na nuvem | O texto que o tutor vai falar | Só se você ativar a voz na nuvem |
+
+Os pacotes para Windows e Linux incluem um runtime do llama.cpp com Vulkan. Quando há uma
+GPU compatível, o app usa o driver Vulkan já instalado no computador; se não encontrar
+dispositivo ou a inicialização da GPU falhar, o OCR volta para CPU. No macOS, usa CPU. O
+runtime e o driver processam o OCR localmente: o backend Vulkan não é um destinatário e
+não transmite as fotos à Trentin ou a fornecedores.
+
+Ao escolher o GitHub Copilot, o conteúdo descrito na linha do fornecedor de IA é enviado
+ao GitHub. O login é feito pelo Copilot CLI, que normalmente guarda as credenciais no
+chaveiro do sistema operacional. Se ele não estiver disponível, o CLI pode recorrer a um
+arquivo de configuração sem criptografia (`~/.copilot/config.json`). O Know Giver não
+guarda essas credenciais no banco.
+
+Ao escolher o ChatGPT, o mesmo conteúdo vai para a OpenAI, pela API Responses, e usa o
+limite do seu plano do ChatGPT; o Know Giver se registra na OpenAI com o próprio nome e
+não recebe as suas conversas do ChatGPT. Ao escolher o Claude, o conteúdo vai para a
+Anthropic pelo Claude Code instalado no seu computador, que o Know Giver executa sem
+ferramentas, sem servidores MCP e sem as suas configurações; o uso entra no limite da sua
+assinatura Claude. Se você pedir a instalação do Claude Code, o instalador oficial é
+baixado de claude.ai, o que mostra o seu endereço IP.
 
 Muitos fornecedores de IA ficam fora do Brasil. Ao escolher um deles, os dados enviados
 podem ser transferidos para outro país (art. 33 da LGPD), conforme as garantias que esse
@@ -63,8 +98,12 @@ gerar questões e apostilas, avaliar respostas e mostrar o seu progresso.
 ## 6. Segurança
 
 Os dados ficam no seu computador, protegidos pelo acesso à sua conta de usuário. Proteja o
-computador com senha. A chave de API fica sem criptografia no banco local. Problemas de
-segurança podem ser relatados conforme o arquivo SECURITY.md do projeto.
+computador com senha. Chaves de API digitadas ficam sem criptografia no banco local; as
+credenciais do GitHub Copilot são gerenciadas pelo CLI, normalmente no chaveiro do sistema
+operacional, com possível fallback para arquivo sem criptografia se ele não estiver
+disponível. Elas não são salvas no banco do Know Giver. Os tokens do ChatGPT ficam sem criptografia no banco local, como as chaves; as
+credenciais do Claude ficam com o Claude Code. Problemas de segurança podem ser
+relatados conforme o arquivo SECURITY.md do projeto.
 
 ## 7. Por quanto tempo
 

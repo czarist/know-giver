@@ -16,7 +16,7 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-10-31";
+pub const TERMS_VERSION: &str = "2026-11-03.4";
 
 /// Where the student uses the app; the terms follow its law. The app is
 /// offered to the public only in the listed regions; elsewhere ("other"),
@@ -109,6 +109,17 @@ pub const TURN_PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
 
 use crate::Teacher;
 
+/// How photos of handwritten answers are transcribed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ManuscriptOcr {
+    /// Run PaddleOCR-VL on this computer; photos remain local.
+    #[default]
+    Local,
+    /// Send photos to the configured vision model (never available with Copilot).
+    ExternalVision,
+}
+
 /// Everything the user can change in Settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -116,6 +127,8 @@ pub struct Settings {
     /// How the tutor calls the student; empty when not given.
     pub student_name: String,
     pub ai: AiConfig,
+    /// Transcription backend for photographed handwritten answers.
+    pub manuscript_ocr: ManuscriptOcr,
     /// Read tutor answers aloud.
     pub voice_enabled: bool,
     /// Start listening again after the tutor finishes speaking.
@@ -185,6 +198,7 @@ impl Default for Settings {
         Self {
             student_name: String::new(),
             ai: AiConfig::default(),
+            manuscript_ocr: ManuscriptOcr::default(),
             voice_enabled: true,
             hands_free: true,
             auto_stop: true,
@@ -377,6 +391,29 @@ mod tests {
         let settings = Settings::load(&store, &env_ai()).unwrap();
         assert_eq!(settings.ai, env_ai());
         assert!(settings.voice_enabled);
+    }
+
+    #[test]
+    fn manuscript_ocr_defaults_to_local_for_new_and_existing_settings() {
+        let current = Settings::default();
+        let existing: Settings =
+            serde_json::from_str(r#"{"student_name":"Lucas","onboarding_done":true}"#).unwrap();
+
+        assert_eq!(current.manuscript_ocr, ManuscriptOcr::Local);
+        assert_eq!(existing.manuscript_ocr, ManuscriptOcr::Local);
+    }
+
+    #[test]
+    fn external_vision_choice_survives_settings_serialization() {
+        let settings = Settings {
+            manuscript_ocr: ManuscriptOcr::ExternalVision,
+            ..Settings::default()
+        };
+
+        let serialized = serde_json::to_string(&settings).unwrap();
+        let restored: Settings = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(restored.manuscript_ocr, ManuscriptOcr::ExternalVision);
     }
 
     #[test]

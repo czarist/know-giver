@@ -1,6 +1,6 @@
 # Know Giver 使用条款
 
-2026年10月31日版本（2026-10-31）。本版本适用于在新加坡使用本应用的用户。本中文版为译本，如与英文版有任何不一致，以英文版为准。
+2026年11月3日版本（2026-11-03.4）。本版本适用于在新加坡使用本应用的用户。本中文版为译本，如与英文版有任何不一致，以英文版为准。
 
 ## 1. 关于我们
 
@@ -24,6 +24,10 @@ Know Giver 在巴西、美国、欧盟、英国、日本、台湾、香港和新
 - 你与该服务商之间的关系由双方直接建立。其价格、使用限制、使用政策、提供地区和数据处理，均依该服务商的条款。密钥的使用费用由服务商收取，而非 Trentin。
 - 请只使用在你所在地可以合法使用的服务商。
 - 你应负责保管密钥，并对使用该密钥的一切行为负责。
+- GitHub Copilot 通过官方 Copilot CLI 使用你的 GitHub 账户登录，无需在 Know Giver 中输入 API 密钥。CLI 通常将登录凭据保存在操作系统密钥链中；如果密钥链不可用，可能会改用明文配置文件（`~/.copilot/config.json`）。Know Giver 不会将凭据保存在应用数据库中。是否可用及其使用方式受你的 GitHub Copilot 套餐和条款约束。
+- ChatGPT 通过 OpenAI 的页面（“Sign in with ChatGPT”）登录，无需 API 密钥。使用受你 ChatGPT 套餐的条款和上限约束。
+- 使用 Claude 时，Know Giver 以你自己的 Claude 账号、无需 API 密钥，运行未经修改的 Anthropic 官方 Claude Code。使用受 Anthropic 的条款和你 Claude 订阅的上限约束。
+- Know Giver 与 OpenAI、Anthropic 和 GitHub 无关联，也未获得其认可。
 
 ## 6. AI 可能出错
 
@@ -45,6 +49,8 @@ Know Giver 在巴西、美国、欧盟、英国、日本、台湾、香港和新
 ## 9. 第三方服务和内容
 
 本应用可能会连接下列第三方服务：你选择的 AI 服务商、提供板书图片的 Wikipedia、检查和下载新版本的 GitHub、下载语音和语音识别模型的网站，以及你开启时的云端语音服务。第三方的语音、字体和图片各有其许可（例如 Dii 语音仅限个人非商业使用）。Trentin 不控制这些服务，也不对其负责。
+
+本地 OCR 通过随应用提供的 [llama.cpp](https://github.com/ggml-org/llama.cpp) v0.8.0 `llama-server` 运行 PaddleOCR-VL；llama.cpp 使用 MIT 许可证。Windows/Linux 软件包包含 Vulkan 运行时：检测到兼容 GPU 时会使用；找不到设备或 GPU 启动失败时回退到 CPU。macOS 使用 CPU。Vulkan 使用电脑上已安装的 GPU 驱动。运行时和 Vulkan 后端不会将 OCR 照片发送给 Trentin 或服务商。
 
 ## 10. 软件许可
 

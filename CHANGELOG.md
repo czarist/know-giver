@@ -4,6 +4,77 @@ All notable changes to Know Giver. Format based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.37.0] - 2026-11-03
+
+### Added
+- **Sign in with an account you already have.** The first run's AI step opens on a new
+  *Sign in with an account* tab, for students who pay for a chat plan and have never made
+  an API key:
+  - **ChatGPT** through OpenAI's official *Sign in with ChatGPT* for open-source apps
+    (`kg_ai::chatgpt`): Know Giver registers under its own name, PKCE with a loopback page
+    on `127.0.0.1`, the ID token checked against OpenAI's published keys, rotating refresh
+    tokens refreshed one at a time, revocation on sign-out. Requests go to the Responses
+    API and count toward the student's ChatGPT plan; images are supported.
+  - **Claude** through Anthropic's official Claude Code program, unmodified, signed in
+    with the student's own Claude Pro or Max account (`kg_ai::claude_code`). Each answer
+    runs `claude -p` with no tools, no MCP servers, none of the user's Claude Code
+    settings and no saved session, from an empty folder; API-key variables are removed so
+    the subscription is used. When Claude Code is missing, the app installs it with
+    Anthropic's official installer after the student asks.
+  - **GitHub Copilot**, now in the same place and with the same sign-in panel.
+  Settings → AI shows the same panel for the chosen account service.
+- The Windows installer offers to install Claude Code when it is missing (never during
+  updates), and the one-line installs ask the same on a first install (`KG_CLAUDE_CODE`).
+- GitHub Copilot account sign-in through its supported CLI, with model listing and chat
+  through the official SDK; the app does not store Copilot credentials.
+- Local handwritten-answer OCR using the pinned PaddleOCR-VL 1.5 (0.9B) model and bundled
+  CPU `llama-server`; Windows/Linux packages also include a Vulkan runtime for supported
+  GPUs, with CPU fallback. Non-Copilot providers can instead explicitly use their vision API.
+- Offline tests for OCR transcript normalization, empty/invalid model responses, model
+  installation integrity checks, Copilot OAuth CLI invocation/output and transient login
+  state, backend enforcement, saved OCR preferences, Vulkan device selection and CPU fallback.
+
+### Changed
+- Settings → AI picks each task's model from a menu: the service's suggestions and the
+  models its account lists (loaded on their own once an account is signed in), with
+  *Other model…* to type any name.
+- The AI step has three tabs: *Sign in with an account* (first), *Paid (API key)* and
+  *Free*. Its intro mentions both ways in. Copilot shows the GitHub logo.
+- Terms of use and privacy policies (all regions and languages) describe the ChatGPT and
+  Claude sign-ins, where their credentials live, the account email kept for ChatGPT and
+  the random computer identifier sent to OpenAI. Legal version 2026-11-03.4 asks users to
+  agree again.
+- Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
+- When the local OCR model is installed and selected, `llama-server` now starts in the
+  background with the app and stays available for image reading until the app closes.
+- Native packages build and include pinned CPU runtimes everywhere and Vulkan runtimes on
+  Windows/Linux. OCR uses the Vulkan device when available and retries on CPU if GPU startup
+  fails; macOS remains CPU-only. Windows packages also bundle the app's Visual C++ runtime,
+  llama.cpp's CRT/OpenMP dependencies and the Vulkan loader, so no separate Visual C++
+  redistributable or Vulkan SDK installation is needed; a compatible GPU vendor driver is
+  still required to use Vulkan.
+- All five READMEs and regional terms/privacy documents now identify the bundled llama.cpp
+  v0.8.0 runtime and Vulkan processing, with badges for llama.cpp, Vulkan and the account
+  sign-ins.
+
+### Fixed
+- Copilot lessons work with `github-copilot-sdk` 1.0.28, which needs the CLI's sign-in folder named
+  (`COPILOT_HOME` or `~/.copilot`), and a general `GH_TOKEN`/`GITHUB_TOKEN` in the
+  environment no longer takes the place of the student's Copilot sign-in.
+- Local handwriting OCR waited for `llama-server` to answer `/health` at all, so the first
+  page after a start reached a model still loading and failed; it now waits for the model
+  and shows the runtime's own error message.
+- Sign in with ChatGPT sends the host ID as `urn:uuid:…`, the form OpenAI accepts.
+- The local OCR server (`llama-server`) could keep running after Know Giver closed, holding
+  about 800 MB of memory: when the app closed while the server was still starting, the
+  worker stored it after the engine was gone. Closing now waits for that start and stops
+  the server. On Windows the server also joins a job object, so Windows ends it whenever
+  the app ends, even after a crash or a forced close.
+- Development builds now also find the OCR runtime produced under `target/release` by the
+  packaging scripts.
+
 ## [0.36.0] - 2026-11-01
 
 ### Added

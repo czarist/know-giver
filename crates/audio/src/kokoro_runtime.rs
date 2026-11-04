@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 
 use crate::AudioError;
 
+// Used by the Windows launcher; the tests run everywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 const ACTIVE_CODE_PAGE: &str = "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>";
 
 /// Returns the executable that should receive Kokoro text.
@@ -32,6 +34,8 @@ pub fn prepare_kokoro_executable(exe: &Path) -> Result<PathBuf, AudioError> {
 }
 
 /// Inserts a UTF-8 active code page into an application manifest.
+// Used by the Windows launcher; the tests run everywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub(crate) fn with_utf8_code_page(manifest: &str) -> Result<String, AudioError> {
     if has_utf8_code_page(manifest) {
         return Ok(manifest.to_owned());
@@ -58,6 +62,8 @@ pub(crate) fn with_utf8_code_page(manifest: &str) -> Result<String, AudioError> 
     Ok(updated)
 }
 
+// Used by the Windows launcher; the tests run everywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn has_utf8_code_page(manifest: &str) -> bool {
     let folded = manifest.to_ascii_lowercase();
     let Some(start) = folded.find("<activecodepage") else {
@@ -69,6 +75,8 @@ fn has_utf8_code_page(manifest: &str) -> bool {
     folded[start..start + end].contains("utf-8")
 }
 
+// Used by the Windows launcher; the tests run everywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
 fn decode_manifest(bytes: &[u8]) -> Result<String, AudioError> {
     let text = if bytes.starts_with(&[0xFF, 0xFE]) {
         if !bytes[2..].len().is_multiple_of(2) {

@@ -22,7 +22,10 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -181,11 +184,18 @@ aparece para um edital sem essa prova. Um plano criado antes pode ter o edital l
   de leitura da foto separados dos de escrita e de conteúdo, e dificuldades recorrentes com
   exemplos das suas próprias tentativas.
 
-As fotos são lidas pelo **modelo de visão** definido em Configurações → IA (um modelo que
-aceita imagens; **Testar leitura de imagem** confere isso). Uma foto pode ter uma página ou
-um caderno aberto com duas páginas lado a lado. Com um modelo que raciocina antes de
-responder, deixe **Respostas rápidas** ligado para que uma página densa não se perca num
-raciocínio longo.
+Por padrão, as fotos são lidas localmente pelo PaddleOCR-VL 1.5 (0,9B), usando o runtime
+`llama-server` v0.8.0 do [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp); o primeiro
+download do modelo é de cerca de 1,82 GB pelo Hugging Face. Em Configurações → IA, você
+pode escolher explicitamente a API externa do modelo de visão configurado, que receberá
+as fotos. O Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de
+imagem** confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware
+nem a precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode
+ter uma página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o
+pacote inclui 🔺 [Vulkan](https://www.vulkan.org/) e usa uma GPU compatível detectada quando disponível; volta para CPU
+se não houver dispositivo ou se a inicialização da GPU falhar. No macOS, usa CPU.
+O instalador do Windows inclui as bibliotecas C++ e o carregador Vulkan; para usar a GPU,
+é necessário ter o driver compatível instalado.
 
 <table>
   <tr>
@@ -203,13 +213,25 @@ raciocínio longo.
 
 ## Primeiro acesso
 
-Cinco passos curtos antes de tudo: idioma, seu nome, um professor, o serviço de IA com a sua
-chave e os termos. Escolha entre 21 fornecedores com seus logos: **Z.ai** é a recomendação
-de custo-benefício e **Claude** a de maior acerto, cada um com o link para criar a chave.
-Carregue os modelos que a sua chave pode usar ou digite qualquer nome de modelo. Depois vem
-um tour rápido pelas telas. Planos já criados são mantidos.
+Cinco passos curtos antes de tudo: idioma, seu nome, um professor, o serviço de IA com sua
+chave de API ou login da conta e os termos. Escolha entre 22 fornecedores com seus logos:
+**Z.ai** é a recomendação de custo-benefício e **Claude** a de maior acerto, cada um com o
+link para criar a chave. Carregue os modelos que a sua chave pode usar ou digite qualquer
+nome de modelo. Depois vem um tour rápido pelas telas. Planos já criados são mantidos.
 
-**Grátis ou pago.** O passo da IA tem duas abas. *Pagos* mostra os serviços recomendados
+O GitHub Copilot pode ser conectado com sua conta GitHub pelo Copilot CLI oficial, sem
+chave de API. O CLI normalmente guarda as credenciais no chaveiro do sistema operacional;
+se ele estiver indisponível, pode recorrer a um arquivo de configuração sem criptografia
+(`~/.copilot/config.json`). O Know Giver não guarda as credenciais no banco. Esta
+integração aceita texto, não imagens.
+
+**Entre com uma conta que você já tem.** O passo da IA abre em *Entrar com conta*, para quem paga um plano de chat e nunca criou uma chave de API: **ChatGPT** (o *Sign in with ChatGPT* oficial da OpenAI: as aulas entram no limite do seu plano), **Claude** (pelo Claude Code, o programa oficial da Anthropic, com a sua conta Claude Pro ou Max; o Know Giver pode instalá-lo para você) e **GitHub Copilot**. Cada um faz o login na página do próprio dono; o Know Giver nunca vê a sua senha. O Know Giver não é afiliado à OpenAI, à Anthropic nem ao GitHub.
+
+<p align="center">
+  <img src="docs/images/pt-BR/setup-ai-account.png" alt="Aba Entrar com conta do passo da IA: ChatGPT, Claude e GitHub Copilot, cada um com o seu botão de login" width="60%">
+</p>
+
+**Grátis ou pago.** Além de *Entrar com conta*, o passo da IA tem mais duas abas. *Pagos* mostra os serviços recomendados
 (Z.ai pelo custo-benefício, Claude pela precisão). *Gratuitos* lista serviços com plano
 grátis (Gemini, Mistral, OpenRouter, Groq, NVIDIA, GitHub Models, e Ollama ou LM Studio no
 seu computador), cada um com o modelo coberto, o que faz com o que você envia (alguns planos
@@ -229,7 +251,7 @@ primeiro.
 
 <table>
   <tr>
-    <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: os dois fornecedores recomendados, depois fornecedor, chave de API e modelo"></td>
+    <td><img src="docs/images/pt-BR/setup-ai.png" alt="Primeiro acesso, passo da IA: fornecedores recomendados, escolha do serviço, chave de API ou login da conta e modelo"></td>
     <td><img src="docs/images/pt-BR/setup-terms.png" alt="Primeiro acesso, passo dos termos: os pontos principais, os termos de uso completos e a caixa de aceite"></td>
   </tr>
 </table>
@@ -244,11 +266,13 @@ primeiro.
   dele.
 - Seus dados (banco SQLite, modelos, log) ficam em `%LOCALAPPDATA%\KnowGiver`, ou em
   `KG_DATA_DIR` quando definido.
-- Só texto vai para o serviço de IA que você configura, e só o que a tarefa precisa. A
-  exceção é opcional: com um modelo de visão definido, fotos de páginas manuscritas (e
-  páginas de PDFs escaneados) são enviadas a ele para leitura. O app diz para onde antes de
-  enviar; as fotos ficam na sua pasta de dados e são apagadas junto com a tentativa. Os logs
-  nunca guardam imagens, respostas ou chaves.
+- Por padrão, as fotos manuscritas são lidas localmente e não saem deste computador. Se
+  você escolher explicitamente a API externa de visão em Configurações → IA, as fotos serão
+  enviadas ao fornecedor; no Copilot, o OCR é sempre local. Antes do envio, o app informa
+  o destino. As fotos ficam na pasta de dados e são apagadas junto com a tentativa. Os logs
+  nunca guardam imagens, respostas ou chaves. Páginas de PDFs escaneados só são enviadas ao
+  modelo de visão configurado quando você pede a leitura. A instalação do OCR local baixa
+  cerca de 1,82 GB do Hugging Face.
 - Ao abrir, o app pergunta ao GitHub qual é a versão mais recente; só esse pedido sai, e
   Configurações → Sobre e atualizações desliga a busca.
 - Sem conta, telemetria ou anúncios. Leia os [Termos de Uso](docs/legal/terms-of-use.pt-BR.md)
@@ -278,6 +302,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 No Windows, vai para `%LOCALAPPDATA%\Programs\KnowGiver`, com atalho no menu Iniciar; no macOS, para `~/Applications/Know Giver.app`; no Linux, para `~/.local/opt/KnowGiver`, com o comando `know-giver` e um atalho no menu de aplicativos.
+
+Se o Claude Code não estiver instalado, a primeira instalação também oferece instalá-lo com o instalador oficial da Anthropic, para você usar uma assinatura Claude. O Know Giver também pode instalá-lo depois, pelo passo da IA.
 
 Na primeira instalação, o instalador pergunta se você quer um **atalho na área de trabalho**; as atualizações mantêm a escolha. **Para desinstalar**: no Windows, Configurações → Aplicativos → Know Giver (ou *Desinstalar Know Giver* no menu Iniciar, e também `unins000.exe` na pasta do programa); no macOS, `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`; no Linux, `~/.local/opt/KnowGiver/uninstall.sh`. O desinstalador pergunta se deve apagar também os seus dados de estudo e os mantém, a menos que você diga sim.
 

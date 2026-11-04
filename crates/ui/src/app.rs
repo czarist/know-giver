@@ -566,6 +566,10 @@ impl eframe::App for KnowGiverApp {
         let notices = match self.engine.as_mut() {
             Ok(engine) => {
                 engine.poll();
+                if let Some(url) = engine.take_account_url() {
+                    open_url(&url);
+                    crate::accounts::remember_url(ctx, url);
+                }
                 if engine.take_quit_request() {
                     self.quit_requested = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -663,8 +667,7 @@ impl eframe::App for KnowGiverApp {
                 if study_surface {
                     ui.ctx().request_repaint_after(Duration::from_secs(1));
                 }
-                let badges = Badges::from_engine(engine);
-                badges
+                Badges::from_engine(engine)
             }
             Err(_) => Badges::default(),
         };

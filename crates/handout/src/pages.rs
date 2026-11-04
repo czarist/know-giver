@@ -211,12 +211,19 @@ mod tests {
     fn line_breaks_become_spaces_except_in_chinese_and_japanese() {
         let latin = [("The list of", 10.0), ("names is long.", 24.0)];
         assert_eq!(join_boxes(latin.into_iter()), "The list of names is long.");
-        let chinese = [("先去掉以 of 开头的短语", 10.0), ("，剩下的就是中心词", 24.0)];
+        let chinese = [
+            ("先去掉以 of 开头的短语", 10.0),
+            ("，剩下的就是中心词", 24.0),
+        ];
         assert_eq!(
             join_boxes(chinese.into_iter()),
             "先去掉以 of 开头的短语，剩下的就是中心词"
         );
-        let japanese = [("動詞は主語に", 10.0), ("一致します。", 24.0), ("the list", 38.0)];
+        let japanese = [
+            ("動詞は主語に", 10.0),
+            ("一致します。", 24.0),
+            ("the list", 38.0),
+        ];
         assert_eq!(
             join_boxes(japanese.into_iter()),
             "動詞は主語に一致します。the list"

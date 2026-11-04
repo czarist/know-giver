@@ -2,8 +2,8 @@
 
 use egui::RichText;
 use kg_engine::{
-    Command, Engine, EnglishVoice, ModelId, ModelStatus, Settings, SttEngine, Teacher, TtsBackend,
-    Voice, VoiceGender, WhisperModel,
+    Command, Engine, EnglishVoice, ManuscriptOcr, ModelId, ModelStatus, Settings, SttEngine,
+    Teacher, TtsBackend, Voice, VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -135,45 +135,178 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     section(ui, &t!("settings.ai.title"), |ui| {
         widgets::hint(ui, &t!("settings.ai.hint"));
         provider_picker(ui, draft);
+        let provider = kg_engine::ai_provider(&draft.ai_provider)
+            .or_else(|| kg_engine::provider_for_url(&draft.ai.base_url));
+        let account = provider.and_then(kg_engine::Provider::account);
+        let is_copilot = account == Some(kg_engine::AccountKind::Copilot);
+        if is_copilot {
+            draft.manuscript_ocr = ManuscriptOcr::Local;
+        }
+        if let Some(kind) = account {
+            ui.add_space(4.0);
+            crate::accounts::panel(ui, engine, kind, actions);
+            ui.add_space(8.0);
+        }
+        let options = model_options(engine, provider, &draft.ai);
+        let can_list = match account {
+            Some(kind) => crate::accounts::connected(engine, kind),
+            None => {
+                draft.ai.base_url.trim().starts_with("http")
+                    && (!provider.is_some_and(|p| p.needs_key)
+                        || !draft.ai.api_key.trim().is_empty())
+            }
+        };
+        let listed = engine.model_list().filter(|list| list.is_for(&draft.ai));
+        // A signed-in account offers its own models: list them once.
+        if account.is_some() && can_list && listed.is_none() && !engine.is_listing_models() {
+            actions.send(Command::ListModels(Box::new(draft.ai.clone())));
+        }
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(
+                    can_list && !engine.is_listing_models(),
+                    egui::Button::new(t!("setup.ai.load_models")),
+                )
+                .on_hover_text(t!("setup.ai.load_models_hint"))
+                .clicked()
+            {
+                actions.send(Command::ListModels(Box::new(draft.ai.clone())));
+            }
+            if engine.is_listing_models() {
+                ui.spinner();
+            } else if let Some(list) = listed {
+                let text = match &list.result {
+                    Ok(models) => t!("setup.ai.models_loaded", count = models.len()),
+                    Err(_) => t!("setup.ai.models_failed"),
+                };
+                ui.label(
+                    RichText::new(text)
+                        .small()
+                        .color(theme::palette(ui.ctx()).muted),
+                );
+            }
+        });
+        ui.add_space(6.0);
         egui::Grid::new("ai_settings")
             .num_columns(2)
             .spacing([16.0, 10.0])
             .show(ui, |ui| {
                 let ai = &mut draft.ai;
-                ui.label(t!("settings.ai.base_url"));
-                ui.add(egui::TextEdit::singleline(&mut ai.base_url).desired_width(FIELD_WIDTH));
-                ui.end_row();
+                if account.is_none() {
+                    ui.label(t!("settings.ai.base_url"));
+                    ui.add(egui::TextEdit::singleline(&mut ai.base_url).desired_width(FIELD_WIDTH));
+                    ui.end_row();
 
-                ui.label(t!("settings.ai.api_key"));
-                ui.vertical(|ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut ai.api_key)
-                            .password(true)
-                            .desired_width(FIELD_WIDTH),
-                    );
-                    if engine.api_key_from_env() && ai.api_key == engine.settings().ai.api_key {
-                        ui.label(RichText::new(t!("settings.ai.key_from_env")).small());
-                    }
-                });
-                ui.end_row();
+                    ui.label(t!("settings.ai.api_key"));
+                    ui.vertical(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut ai.api_key)
+                                .password(true)
+                                .desired_width(FIELD_WIDTH),
+                        );
+                        if engine.api_key_from_env() && ai.api_key == engine.settings().ai.api_key {
+                            ui.label(RichText::new(t!("settings.ai.key_from_env")).small());
+                        }
+                    });
+                    ui.end_row();
+                }
 
                 let models = &mut ai.models;
-                for (label, value) in [
-                    (t!("settings.ai.model_plan"), &mut models.study_plan),
-                    (t!("settings.ai.model_tutor"), &mut models.tutor),
-                    (t!("settings.ai.model_quiz"), &mut models.quiz),
-                    (t!("settings.ai.model_correction"), &mut models.correction),
-                    (t!("settings.ai.model_handout"), &mut models.handout),
-                    (t!("settings.ai.model_verifier"), &mut models.verifier),
-                    (t!("settings.ai.model_vision"), &mut models.vision),
-                    (t!("settings.ai.model_fallback"), &mut models.fallback),
+                let default = t!("settings.ai.use_default");
+                let none = t!("settings.ai.no_model");
+                for (id, label, value, show, empty) in [
+                    (
+                        "plan",
+                        t!("settings.ai.model_plan"),
+                        &mut models.study_plan,
+                        true,
+                        None,
+                    ),
+                    (
+                        "tutor",
+                        t!("settings.ai.model_tutor"),
+                        &mut models.tutor,
+                        true,
+                        None,
+                    ),
+                    (
+                        "quiz",
+                        t!("settings.ai.model_quiz"),
+                        &mut models.quiz,
+                        true,
+                        None,
+                    ),
+                    (
+                        "correction",
+                        t!("settings.ai.model_correction"),
+                        &mut models.correction,
+                        true,
+                        None,
+                    ),
+                    (
+                        "handout",
+                        t!("settings.ai.model_handout"),
+                        &mut models.handout,
+                        true,
+                        Some(default.as_ref()),
+                    ),
+                    (
+                        "verifier",
+                        t!("settings.ai.model_verifier"),
+                        &mut models.verifier,
+                        true,
+                        Some(default.as_ref()),
+                    ),
+                    (
+                        "vision",
+                        t!("settings.ai.model_vision"),
+                        &mut models.vision,
+                        !is_copilot,
+                        Some(none.as_ref()),
+                    ),
+                    (
+                        "fallback",
+                        t!("settings.ai.model_fallback"),
+                        &mut models.fallback,
+                        true,
+                        Some(none.as_ref()),
+                    ),
                 ] {
+                    if !show {
+                        continue;
+                    }
                     ui.label(label);
-                    ui.add(egui::TextEdit::singleline(value).desired_width(FIELD_WIDTH));
+                    model_field(ui, id, value, &options, provider, empty);
                     ui.end_row();
                 }
             });
-        widgets::hint(ui, &t!("settings.ai.vision_notice"));
+        if is_copilot {
+            widgets::hint(ui, &t!("copilot.no_vision"));
+        } else {
+            widgets::hint(ui, &t!("settings.ai.vision_notice"));
+        }
+        ui.separator();
+        ui.label(t!("settings.manuscript_ocr.title"));
+        ui.add_enabled_ui(!is_copilot, |ui| {
+            ui.radio_value(
+                &mut draft.manuscript_ocr,
+                ManuscriptOcr::Local,
+                t!("settings.manuscript_ocr.local"),
+            );
+            ui.radio_value(
+                &mut draft.manuscript_ocr,
+                ManuscriptOcr::ExternalVision,
+                t!("settings.manuscript_ocr.external"),
+            );
+        });
+        let ocr_hint = if is_copilot {
+            t!("settings.manuscript_ocr.copilot")
+        } else if draft.manuscript_ocr == ManuscriptOcr::Local {
+            t!("settings.manuscript_ocr.local_hint")
+        } else {
+            t!("settings.manuscript_ocr.external_hint")
+        };
+        widgets::hint(ui, &ocr_hint);
         ui.checkbox(&mut draft.ai.fast_responses, t!("settings.ai.fast"));
         ui.horizontal(|ui| {
             let testing = engine.is_testing_connection();
@@ -660,6 +793,95 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
     });
 }
 
+/// The service's suggested models, then the ones its account listed.
+fn model_options(
+    engine: &Engine,
+    provider: Option<&kg_engine::Provider>,
+    config: &kg_engine::AiConfig,
+) -> Vec<String> {
+    let mut options: Vec<String> = provider
+        .map(|p| p.models.iter().map(|m| m.id.to_owned()).collect())
+        .unwrap_or_default();
+    let listed = engine
+        .model_list()
+        .filter(|list| list.is_for(config))
+        .and_then(|list| list.result.as_ref().ok());
+    for model in listed.into_iter().flatten() {
+        if !options.contains(model) {
+            options.push(model.clone());
+        }
+    }
+    options
+}
+
+/// A menu of the known models; "Other model" opens a field for any name.
+/// `empty` names the blank choice of an optional field.
+fn model_field(
+    ui: &mut egui::Ui,
+    id: &str,
+    value: &mut String,
+    options: &[String],
+    provider: Option<&kg_engine::Provider>,
+    empty: Option<&str>,
+) {
+    let typing_id = egui::Id::new(("settings_model_typing", id));
+    let mut typing = ui.data(|d| d.get_temp::<bool>(typing_id)).unwrap_or(false)
+        || (!value.trim().is_empty() && !options.contains(value));
+    let selected = if typing {
+        t!("setup.ai.other_model").into_owned()
+    } else if value.trim().is_empty() {
+        empty.map_or_else(|| t!("setup.ai.choose").into_owned(), str::to_owned)
+    } else {
+        value.clone()
+    };
+    ui.vertical(|ui| {
+        egui::ComboBox::from_id_salt(("settings_model", id))
+            .selected_text(selected)
+            .width(FIELD_WIDTH)
+            .height(360.0)
+            .show_ui(ui, |ui| {
+                ui.set_min_width(FIELD_WIDTH);
+                if let Some(empty) = empty
+                    && ui
+                        .selectable_label(!typing && value.trim().is_empty(), empty)
+                        .clicked()
+                {
+                    value.clear();
+                    typing = false;
+                }
+                for option in options {
+                    let text = if provider.is_some_and(|p| p.model_sees(option)) {
+                        format!("{option}   · {}", t!("setup.ai.reads_images"))
+                    } else {
+                        option.clone()
+                    };
+                    if ui
+                        .selectable_label(!typing && value == option, text)
+                        .clicked()
+                    {
+                        value.clone_from(option);
+                        typing = false;
+                    }
+                }
+                ui.separator();
+                if ui
+                    .selectable_label(typing, t!("setup.ai.other_model"))
+                    .clicked()
+                {
+                    typing = true;
+                }
+            });
+        if typing {
+            ui.add(
+                egui::TextEdit::singleline(value)
+                    .hint_text(t!("setup.ai.model_placeholder"))
+                    .desired_width(FIELD_WIDTH),
+            );
+        }
+    });
+    ui.data_mut(|d| d.insert_temp(typing_id, typing));
+}
+
 /// Picks an AI service: fills the address and one model for every task.
 /// The key typed so far is kept.
 fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
@@ -700,11 +922,16 @@ fn provider_picker(ui: &mut egui::Ui, draft: &mut Settings) {
                 }
             });
         if let Some(provider) = current {
-            if !provider.key_url.is_empty() {
-                widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
-            }
-            if !provider.site.is_empty() {
-                widgets::link(ui, &t!("setup.ai.prices"), provider.site);
+            if provider.id == "copilot" {
+                widgets::link(ui, &t!("copilot.sign_in_docs"), provider.site);
+                widgets::link(ui, &t!("copilot.plans"), provider.key_url);
+            } else {
+                if !provider.key_url.is_empty() {
+                    widgets::link(ui, &t!("setup.ai.get_key"), provider.key_url);
+                }
+                if !provider.site.is_empty() {
+                    widgets::link(ui, &t!("setup.ai.prices"), provider.site);
+                }
             }
         }
     });

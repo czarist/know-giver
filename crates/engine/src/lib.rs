@@ -5,13 +5,16 @@
 //! model calls, speech) runs on worker threads; results come back as events
 //! that [`Engine::poll`] applies on the UI thread.
 
+mod accounts;
 mod board;
+mod child_job;
 mod discursive;
 mod documents;
 mod handouts;
 mod illustrations;
 mod lesson;
 mod models;
+mod ocr;
 mod paths;
 mod plans;
 mod practice;
@@ -27,12 +30,12 @@ mod update;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Instant;
 
 use chrono::NaiveDate;
 
+pub use accounts::AccountAction;
 pub use board::{BoardItem, BoardJob};
 pub use discursive::{
     AttemptProblems, EvolutionGroup, EvolutionRow, ImageProblem, NOTE_INTERRUPTED, NOTE_UNREADABLE,
@@ -40,6 +43,7 @@ pub use discursive::{
 };
 pub use handouts::{HandoutJob, HandoutRequest, HandoutScope};
 pub use illustrations::{BoardImage, Illustration, illustration_key};
+pub use kg_ai::{AccountKind, AccountState, LoginPages};
 pub use kg_ai::{AiConfig, AiError, LessonLength, ModelSet, PlanPrefs, ReviewFeedback};
 pub use kg_ai::{
     FreeData, FreeTier, ModelChoice, PROVIDERS, Provider, ProviderKind, Recommendation,
@@ -73,14 +77,15 @@ pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use kg_study::{LessonRecap, Mistake, MistakeId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
 pub use models::ModelStatus;
+pub use ocr::{OcrError, OcrModelStatus};
 pub use paths::AppPaths;
 pub use practice::{QuizSession, QuizStep, REVIEW_ROUNDS, ReviewSession, ReviewStep};
 pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{
-    DEFAULT_TURN_PAUSE, Region, SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE,
-    TermsAcceptance,
+    DEFAULT_TURN_PAUSE, ManuscriptOcr, Region, SETUP_VERSION, Settings, TERMS_VERSION,
+    TURN_PAUSE_RANGE, TermsAcceptance,
 };
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
@@ -151,6 +156,15 @@ pub enum Command {
     TestConnection,
     /// Tests settings not saved yet (first-run setup).
     TestAiConfig(Box<AiConfig>),
+    /// Signs in with an account the student already has, through the
+    /// service's official flow; `pages` are shown in the browser at the end.
+    SignInAccount(AccountKind, LoginPages),
+    /// Installs the program a service needs (Claude Code), after consent.
+    InstallAccount(AccountKind),
+    /// Forgets the app's own sign-in (ChatGPT).
+    SignOutAccount(AccountKind),
+    /// Checks which account services are installed and signed in.
+    CheckAccounts,
     /// Asks the service which models a key can use.
     ListModels(Box<AiConfig>),
     /// Saves the first-run setup and the agreement to the terms.
@@ -235,6 +249,10 @@ pub enum Command {
 
     /// Asks for a written-answer proposal on the active plan.
     GenerateProposal(ProposalRequest),
+    /// Downloads the pinned local handwriting OCR model.
+    InstallOcrModel,
+    /// Cancels an in-progress OCR model download.
+    CancelOcrModelDownload,
     DeleteProposal(ProposalId),
     /// A new attempt on a proposal, opened to add its pages.
     StartAttempt(ProposalId),
@@ -291,6 +309,8 @@ pub enum EngineError {
     Pdf(#[from] PdfError),
     #[error(transparent)]
     Handout(#[from] HandoutError),
+    #[error(transparent)]
+    Ocr(#[from] OcrError),
     #[error("cancelled")]
     Cancelled,
     #[error("could not write {path}: {source}")]
@@ -336,6 +356,8 @@ pub enum Notice {
     PlanCreated,
     SettingsSaved,
     ConnectionOk,
+    AccountConnected(AccountKind),
+    AccountInstalled(AccountKind),
     ModelInstalled(ModelId),
     LessonSaved,
     ReviewSaved {
@@ -398,10 +420,13 @@ pub(crate) enum Event {
         result: Result<kg_ai::PlanDraft, AiError>,
     },
     ConnectionTested(Box<AiConfig>, Result<(), AiError>),
+    Account(accounts::AccountEvent),
     ModelsListed(setup::ModelList),
     Lesson(lesson::LessonEvent),
     Practice(practice::PracticeEvent),
     DownloadFinished(ModelId, Result<(), AudioError>),
+    OcrModelDownloaded(Result<(), OcrError>),
+    OcrServerStarted(Result<(), OcrError>),
     HandoutTopic {
         topic: TopicId,
         json: String,
@@ -455,6 +480,7 @@ pub struct Engine {
     last_test: Option<(AiConfig, bool)>,
     listing_models: bool,
     model_list: Option<setup::ModelList>,
+    accounts: accounts::Accounts,
 
     lesson: Option<LessonSession>,
     quiz: Option<QuizSession>,
@@ -463,6 +489,9 @@ pub struct Engine {
     stt: stt::Recognizers,
     illustrations: illustrations::Illustrations,
     downloads: HashMap<ModelId, models::Download>,
+    ocr_download: Option<ocr::Download>,
+    ocr_server: Arc<Mutex<Option<ocr::Server>>>,
+    ocr_server_starting: bool,
     handout_job: Option<HandoutJob>,
     handouts_cached: usize,
     readings: Vec<Reading>,
@@ -565,6 +594,7 @@ impl Engine {
             last_test: None,
             listing_models: false,
             model_list: None,
+            accounts: accounts::Accounts::default(),
             lesson: None,
             quiz: None,
             review: None,
@@ -572,6 +602,9 @@ impl Engine {
             stt: stt::Recognizers::default(),
             illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
+            ocr_download: None,
+            ocr_server: Arc::new(Mutex::new(None)),
+            ocr_server_starting: false,
             handout_job: None,
             readings: Vec::new(),
             reader: None,
@@ -592,6 +625,7 @@ impl Engine {
             waker: Arc::new(|| {}),
             next_session_id: 1,
         };
+        engine.restore_chatgpt_session();
         engine.recover_writing();
         engine.reload_plans();
         engine.refresh_activity();
@@ -602,6 +636,7 @@ impl Engine {
     /// Sets the callback workers use to wake the UI.
     pub fn set_waker(&mut self, waker: Waker) {
         self.waker = waker;
+        self.start_local_ocr_server();
     }
 
     pub fn today() -> NaiveDate {
@@ -700,6 +735,8 @@ impl Engine {
         self.generating_since.is_some()
             || matches!(self.import, ImportState::Extracting { .. })
             || !self.downloads.is_empty()
+            || self.ocr_download.is_some()
+            || self.ocr_server_starting
             || self.handout_job.is_some()
             || self.prepare_job.is_some()
             || self.board_job.is_some()
@@ -839,6 +876,11 @@ impl Engine {
             }
 
             Command::SaveSettings(settings) => self.save_settings(settings),
+            Command::InstallOcrModel => self.install_ocr_model(),
+            Command::CancelOcrModelDownload => {
+                self.cancel_ocr_model_download();
+                Ok(())
+            }
             Command::TestConnection => {
                 self.test_connection();
                 Ok(())
@@ -856,6 +898,22 @@ impl Engine {
             Command::FinishOnboarding => self.finish_onboarding(),
             Command::TestAiConfig(config) => {
                 self.test_config(*config);
+                Ok(())
+            }
+            Command::SignInAccount(kind, pages) => {
+                self.sign_in_account(kind, pages);
+                Ok(())
+            }
+            Command::InstallAccount(kind) => {
+                self.install_account(kind);
+                Ok(())
+            }
+            Command::SignOutAccount(kind) => {
+                self.sign_out_account(kind);
+                Ok(())
+            }
+            Command::CheckAccounts => {
+                self.check_accounts();
                 Ok(())
             }
             Command::ListModels(config) => {
@@ -947,6 +1005,7 @@ impl Engine {
     /// per frame.
     pub fn poll(&mut self) {
         self.tick_study_time();
+        self.save_chatgpt_session();
         while let Ok(event) = self.events_rx.try_recv() {
             let result = match event {
                 Event::EditalExtracted(result) => {
@@ -973,6 +1032,10 @@ impl Engine {
                         .map(|()| self.notices.push(Notice::ConnectionOk))
                         .map_err(EngineError::from)
                 }
+                Event::Account(event) => {
+                    self.on_account_event(event);
+                    Ok(())
+                }
                 Event::ModelsListed(list) => {
                     self.on_models_listed(list);
                     Ok(())
@@ -980,6 +1043,21 @@ impl Engine {
                 Event::Lesson(event) => self.on_lesson_event(event),
                 Event::Practice(event) => self.on_practice_event(event),
                 Event::DownloadFinished(id, result) => self.on_download_finished(id, result),
+                Event::OcrModelDownloaded(result) => {
+                    self.ocr_download = None;
+                    match result {
+                        Ok(()) => {
+                            self.start_local_ocr_server();
+                            Ok(())
+                        }
+                        Err(OcrError::Cancelled) => Ok(()),
+                        Err(error) => Err(error.into()),
+                    }
+                }
+                Event::OcrServerStarted(result) => {
+                    self.ocr_server_starting = false;
+                    result.map_err(EngineError::from)
+                }
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
                 Event::Reader(event) => self.on_reader_event(event),
@@ -1019,6 +1097,7 @@ impl Engine {
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;
+        self.start_local_ocr_server();
         if voice_changed {
             self.stop_audio();
             self.voice.reset_tts();
@@ -1041,7 +1120,7 @@ impl Engine {
     }
 
     /// Runs `job` on a worker thread and delivers its event.
-    pub(crate) fn spawn(&self, job: impl FnOnce() -> Event + Send + 'static) {
+    pub(crate) fn spawn(&self, job: impl FnOnce() -> Event + Send + 'static) -> bool {
         let tx = self.events_tx.clone();
         let waker = Arc::clone(&self.waker);
         let spawned = std::thread::Builder::new()
@@ -1050,8 +1129,12 @@ impl Engine {
                 let _ = tx.send(job());
                 waker();
             });
-        if let Err(err) = spawned {
-            tracing::error!(%err, "could not spawn worker thread");
+        match spawned {
+            Ok(_) => true,
+            Err(err) => {
+                tracing::error!(%err, "could not spawn worker thread");
+                false
+            }
         }
     }
 

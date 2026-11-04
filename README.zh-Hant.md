@@ -22,7 +22,10 @@
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
   <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
-  <img alt="AI: any OpenAI-compatible API" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
+  <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square"></a>
+  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -113,7 +116,8 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 - **核對讀取結果**：照片和轉寫並排顯示。你的書寫錯誤會保留，不確定的字詞不會扣分。
 - **形成性評分**：按標準估計的分數、經過核對的原文引用、優點、問題和建議、三個優先事項。
 
-照片由設定 → AI 中的**圖片模型**讀取。按字數要求的中文作文，字數要求會寫在題目說明中。
+預設由 PaddleOCR-VL 1.5（0.9B）透過隨應用程式提供的 [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 在本機讀取照片；首次需從 Hugging Face 下載約 1.82 GB 的模型。在設定 → AI 中明確選擇外部圖片 API 後，照片才會傳送給該服務商。Copilot 僅接受文字，因此一律使用本機 OCR。可透過**測試圖片讀取**確認所選方式。最低硬體需求和手寫辨識準確率尚未測試；評分前請務必核對轉寫。Windows/Linux 套件包含 🔺 [Vulkan](https://www.vulkan.org/) 執行環境，偵測到相容 GPU 時會優先使用；沒有裝置或 GPU 啟動失敗時退回 CPU。macOS 使用 CPU。按字數要求的中文作文，字數要求會寫在題目說明中。
+Windows 安裝程式包含所需的 C++ 執行階段和 Vulkan 載入器；使用 Vulkan 仍需安裝相容的顯示卡驅動程式。
 
 <table>
   <tr>
@@ -131,9 +135,17 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 ## 首次設定
 
-首先有五個簡短步驟：語言、名字、老師、AI 和金鑰、國家或地區及同意條款。可以從 21 個 AI 服務商中選擇（**Z.ai** 價效比高，**Claude** 準確度高），並附有建立金鑰的連結。之後有一段簡短的介面導覽。
+首先有五個簡短步驟：語言、名字、老師、AI 服務及 API 金鑰或帳戶登入、國家或地區及同意條款。可以從 22 個 AI 服務商中選擇（**Z.ai** 價效比高，**Claude** 準確度高），並附有建立金鑰的連結。之後有一段簡短的介面導覽。
 
-**免費或付費。** AI 步驟有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
+GitHub Copilot 可透過官方 Copilot CLI 使用 GitHub 帳戶登入，不需要 API 金鑰。CLI 通常將登入憑證儲存在作業系統鑰匙圈；如果鑰匙圈無法使用，可能改用明文設定檔（`~/.copilot/config.json`）。Know Giver 不會將憑證儲存在程式資料庫中。此整合僅支援文字，不支援圖片。
+
+**使用你已有的帳號登入。** AI 步驟首先顯示「使用帳號登入」，適合已訂閱聊天方案但從未建立過 API 金鑰的人：**ChatGPT**（OpenAI 官方的「Sign in with ChatGPT」，課堂計入你的 ChatGPT 方案上限）、**Claude**（透過 Anthropic 官方程式 Claude Code，使用你的 Claude Pro 或 Max 帳號；Know Giver 可以幫你安裝）以及 **GitHub Copilot**。每項都在其所屬公司的頁面上登入，Know Giver 不會看到你的密碼。Know Giver 與 OpenAI、Anthropic 和 GitHub 沒有關聯。
+
+<p align="center">
+  <img src="docs/images/zh-Hant/setup-ai-account.png" alt="AI 步驟的「使用帳號登入」分頁：ChatGPT、Claude 和 GitHub Copilot，各有登入按鈕" width="60%">
+</p>
+
+**免費或付費。** 除了「使用帳號登入」，AI 步驟還有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
 
 **你所在地區的備考方式。** 課堂、測驗、講義與申論題會依照你所在地區的備考方式進行：臺灣是國家考試的測驗題與申論題；香港是 HKDSE 與公務員考試的形式；中國大陸是行测與申论；日本是五選一與按字數寫的小論文；巴西、美國與英國也各有其題型。考試簡章與歷屆試題始終優先。
 
@@ -156,7 +168,7 @@ AI 可以使用任何相容 OpenAI 的模型（Z.ai、DeepSeek、Qwen、Kimi、A
 
 - 語音識別和朗讀在你的電腦上執行，錄音不會離開電腦。
 - 資料（SQLite 資料庫、模型、日誌）儲存在 `%LOCALAPPDATA%\KnowGiver`。
-- 只有任務所需的文字會傳送給你配置的 AI 服務。只有在設定了圖片模型時，答卷照片才會傳送給該模型。
+- 預設情況下，手寫照片在本機辨識，不會離開這台電腦。只有在設定 → AI 中明確選擇外部圖片 API 時，照片才會傳送給相應服務商；Copilot 一律使用本機 OCR。傳送前程式會顯示目的地。照片儲存在本機資料資料夾，刪除作答時一併刪除。掃描 PDF 頁面僅在你要求 OCR 時傳送給已設定的圖片模型。首次安裝本機 OCR 會從 Hugging Face 下載約 1.82 GB。
 - 開啟時，程式會向 GitHub 查詢最新版本；只傳送這個請求，可在 設定 → 關於與更新 中關閉。
 - 沒有賬戶、遙測或廣告。
 
@@ -185,6 +197,8 @@ curl -fsSL https://raw.githubusercontent.com/czarist/know-giver/main/scripts/ins
 ```
 
 Windows 安裝到 `%LOCALAPPDATA%\Programs\KnowGiver`，並加入開始功能表；macOS 安裝到 `~/Applications/Know Giver.app`；Linux 安裝到 `~/.local/opt/KnowGiver`，並提供 `know-giver` 指令與應用程式選單項目。
+
+如果尚未安裝 Claude Code，首次安裝時還會詢問是否用 Anthropic 官方安裝程式一併安裝，以便使用 Claude 訂閱。之後也可以在 AI 步驟中安裝。
 
 首次安裝時會詢問是否建立**桌面捷徑**，更新時保留先前的選擇。**解除安裝**：Windows 在 設定 → 應用程式 → Know Giver（也可用開始功能表中的「Uninstall Know Giver」，或程式資料夾中的 `unins000.exe`）；macOS 執行 `"~/Applications/Know Giver.app/Contents/Resources/uninstall.sh"`；Linux 執行 `~/.local/opt/KnowGiver/uninstall.sh`。解除安裝程式會詢問是否一併刪除學習資料，除非你選擇「是」，否則會保留。
 

@@ -176,8 +176,10 @@ impl Engine {
                 &request,
                 &path,
                 pictures.as_deref(),
-                &done,
-                &cancel,
+                Progress {
+                    done: &done,
+                    cancel: &cancel,
+                },
                 &|id, json| {
                     let _ = tx.send(Event::HandoutTopic { topic: id, json });
                     waker();
@@ -273,6 +275,12 @@ impl Engine {
     }
 }
 
+/// How far a handout build has gone, and whether the student cancelled it.
+struct Progress<'a> {
+    done: &'a AtomicUsize,
+    cancel: &'a AtomicBool,
+}
+
 /// Writes missing topics (a few at a time), then renders and saves the PDF.
 /// `on_written` receives each newly written topic as JSON, for caching.
 fn build_handout(
@@ -281,10 +289,10 @@ fn build_handout(
     request: &HandoutRequest,
     path: &std::path::Path,
     pictures: Option<&std::path::Path>,
-    done: &AtomicUsize,
-    cancel: &AtomicBool,
+    progress: Progress<'_>,
     on_written: &(dyn Fn(TopicId, String) + Sync),
 ) -> Result<SavedHandout, EngineError> {
+    let Progress { done, cancel } = progress;
     let slots: Vec<Mutex<Option<TopicHandout>>> = items
         .iter()
         .map(|item| Mutex::new(item.cached.clone()))

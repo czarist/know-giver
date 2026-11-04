@@ -18,12 +18,12 @@ pub(crate) enum TrayAction {
 
 impl SystemTray {
     pub(crate) fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let open_item = MenuItem::new(t!("tray.open").into_owned(), true, None);
-        let quit_item = MenuItem::new(t!("tray.quit").into_owned(), true, None);
+        let open_item = MenuItem::new(t!("tray.open"), true, None);
+        let quit_item = MenuItem::new(t!("tray.quit"), true, None);
         let menu = Menu::with_items(&[&open_item, &quit_item])?;
         let icon = Icon::from_rgba(crate::icon::rgba(32), 32, 32)?;
         let tray_icon = TrayIconBuilder::new()
-            .with_tooltip(t!("app.name").into_owned())
+            .with_tooltip(t!("app.name"))
             .with_menu(Box::new(menu))
             .with_icon(icon)
             .build()?;
@@ -41,8 +41,8 @@ impl SystemTray {
             return;
         }
         self.locale = locale.to_owned();
-        self.open_item.set_text(t!("tray.open").into_owned());
-        self.quit_item.set_text(t!("tray.quit").into_owned());
+        self.open_item.set_text(t!("tray.open"));
+        self.quit_item.set_text(t!("tray.quit"));
     }
 
     pub(crate) fn take_actions(&self) -> Vec<TrayAction> {

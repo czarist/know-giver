@@ -1,10 +1,17 @@
 # Native and accelerated builds
 
-The default build is CPU-only. Build on each target OS rather than copying a binary
-between operating systems. `scripts/package.ps1` builds Windows portable/installer
-packages; `bash scripts/package-unix.sh` builds Linux tarballs and macOS app bundles.
+Build on each target OS rather than copying a binary between operating systems.
+`scripts/package.ps1` builds Windows portable/installer packages;
+`bash scripts/package-unix.sh` builds Linux tarballs and macOS app bundles.
 `.github/workflows/packages.yml` runs native builds for version tags or a manual run.
 It uploads workflow artifacts; it does not publish a GitHub release or sign packages.
+Packaging builds the pinned llama.cpp CPU runtime on every platform and a Vulkan runtime
+on Windows and Linux. It needs Git, CMake and a native C/C++ toolchain; the build is
+limited to two jobs. Windows builds also need the Vulkan SDK (`VULKAN_SDK`); Linux builds
+need `libvulkan-dev`, `glslc`, `glslang-tools` and `pkg-config`. Vulkan acceleration
+requires a supported GPU and its Vulkan driver/loader at runtime. The app probes devices and falls back to the
+CPU runtime if the Vulkan backend or model startup fails. macOS packages remain CPU-only. The
+PaddleOCR-VL weights are downloaded by the app on demand, not included in packages.
 
 Linux builds need the platform audio/window development libraries, for example
 `libasound2-dev`, `libudev-dev`, `libxkbcommon-dev`, `libwayland-dev` and

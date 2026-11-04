@@ -306,11 +306,11 @@ fn photos_never_go_to_a_text_model() {
     assert!(engine.settings.ai.models.vision.is_empty());
     assert!(matches!(
         engine.handle(Command::SubmitPages),
-        Err(EngineError::Ai(AiError::NoVisionModel))
+        Err(EngineError::Ocr(crate::OcrError::ModelMissing))
     ));
     assert!(matches!(
         engine.handle(Command::CheckVision),
-        Err(EngineError::Ai(AiError::NoVisionModel))
+        Err(EngineError::Ocr(crate::OcrError::ModelMissing))
     ));
     let id = open(&engine).attempt.id;
     assert_eq!(status(&engine, id), AttemptStatus::Draft);
@@ -610,10 +610,41 @@ fn vision_host_is_named_before_photos_are_sent() {
     let (mut engine, _dir) = engine_with(NOTICE);
     assert!(engine.vision_target().is_none());
     engine.settings.ai.models.vision = "gpt-vision".into();
+    engine.settings.manuscript_ocr = crate::ManuscriptOcr::ExternalVision;
     assert_eq!(
         engine.vision_target(),
         Some(("gpt-vision".into(), "127.0.0.1:1".into()))
     );
+}
+
+#[test]
+fn copilot_never_uses_external_vision_for_written_answers() {
+    let (mut engine, _dir) = engine_with(NOTICE);
+    engine.settings.ai_provider = "copilot".into();
+    engine.settings.manuscript_ocr = crate::ManuscriptOcr::ExternalVision;
+    engine.settings.ai.models.vision = "gpt-vision".into();
+
+    assert_eq!(engine.manuscript_ocr(), crate::ManuscriptOcr::Local);
+    assert!(engine.vision_target().is_none());
+}
+
+#[test]
+fn local_ocr_text_becomes_trimmed_nonempty_transcript_lines() {
+    let reading = local_page_reading("  primeira linha  \n\n segunda linha \n".into()).unwrap();
+
+    assert_eq!(
+        reading.lines,
+        vec!["primeira linha".to_owned(), "segunda linha".to_owned()]
+    );
+    assert!(reading.uncertain.is_empty());
+}
+
+#[test]
+fn local_ocr_empty_text_is_reported_as_empty_response() {
+    assert!(matches!(
+        local_page_reading(" \n\t".into()),
+        Err(EngineError::Ocr(crate::OcrError::EmptyResponse))
+    ));
 }
 
 #[test]

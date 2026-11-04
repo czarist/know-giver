@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of October 31, 2026 (2026-10-31). This international version applies in every
+Version of November 3, 2026 (2026-11-03.4). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -12,7 +12,8 @@ Brazil (LGPD), Japan (APPI), Taiwan, Hong Kong and Singapore.
   receive, store or access your data**.
 - There is no Trentin account, no telemetry, no usage analytics, no advertising, and no
   sale or sharing of personal information.
-- The content each task needs goes to **the AI provider you chose**, with your key. That
+- The content each task needs goes to **the AI provider you chose**, using the
+  authentication method it requires (an API key or an official account sign-in). That
   provider handles it under its own terms.
 
 ## 2. Who is responsible
@@ -33,10 +34,23 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
 
 - your name (what the tutor calls you), language, region, teacher and other preferences;
 - your API key, stored unencrypted in the local database when typed in the app;
+- for GitHub Copilot, sign-in credentials managed by the official Copilot CLI. It
+  normally uses the operating system keychain; if unavailable, it may store credentials
+  in a plain-text config file (`~/.copilot/config.json`). Know Giver does not save them
+  in its database;
+- for ChatGPT, the "Sign in with ChatGPT" tokens (access and refresh), the account's
+  email, the app's registration with OpenAI and a random identifier for this computer,
+  sent to OpenAI at each sign-in to tell your computers apart; it does not identify you.
+  They are stored unencrypted in the local database like an API key. Signing out asks
+  OpenAI to revoke the refresh token;
+- for Claude, Anthropic's official Claude Code manages your Claude account sign-in, in its
+  own folder (`~/.claude`) or the system keychain. Know Giver neither sees nor stores
+  those credentials;
 - the notices, past exams, answer keys and materials you upload, plus your plans,
   progress, quizzes, reviews, handouts, highlights and notes;
 - lesson conversations and the mistakes notebook;
 - photos of written answers, their transcripts and grades;
+- PaddleOCR-VL model files, downloaded into the local models folder if you install local OCR;
 - the date and time you agreed to these documents;
 - a technical log, which never holds images, answers or keys.
 
@@ -48,11 +62,31 @@ diagnostic recordings stay in the data folder.
 | Recipient | What | When |
 |---|---|---|
 | The AI provider you chose | Excerpts of the notice and materials, topics, your messages and transcribed answers, your name (so the tutor can address you), handout text | For each AI task |
-| The provider's vision model | Photos of written answers and pages of scanned PDFs | Only if you set a vision model and send photos |
+| PaddleOCR-VL running locally through llama.cpp v0.8.0 `llama-server` | Photos of written answers | By default; processed on your computer, not sent to a provider |
+| The provider's vision model | Photos of written answers and pages of scanned PDFs | Written-answer photos only if you explicitly select external OCR; scanned-PDF pages only when you request OCR and have configured a vision model |
 | Wikipedia | The search term for a whiteboard picture | If whiteboard pictures are on |
-| Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice or speech models |
+| Hugging Face, GitHub and voice sites | Download requests, which show your IP address | When you download voice, speech or OCR models |
 | GitHub | A request for the latest version, which shows your IP address and the app's version; the new version's package, if you choose to update | Each time the app opens, if update checks are on (Settings → About and updates) |
 | A cloud voice service | The text the tutor will speak | Only if you turn on cloud voices |
+
+Windows and Linux packages include a Vulkan-enabled llama.cpp runtime. When a compatible
+GPU is available, the app uses its locally installed Vulkan driver; if no device is found
+or GPU startup fails, OCR falls back to CPU. macOS uses CPU. The runtime and GPU driver
+process the OCR locally; the Vulkan backend is not a recipient and does not transmit
+photos to Trentin or a provider.
+
+If you choose GitHub Copilot, the content described in the AI-provider row goes to GitHub.
+Sign-in runs through Copilot CLI. It normally stores credentials in the operating system
+keychain, but may fall back to a plain-text config file (`~/.copilot/config.json`) if the
+keychain is unavailable. Know Giver does not save these credentials in its database.
+
+If you choose ChatGPT, the same content goes to OpenAI through its Responses API and
+counts toward your ChatGPT plan's limits; Know Giver registers with OpenAI under its own
+name and does not receive your ChatGPT conversations. If you choose Claude, the content
+goes to Anthropic through the Claude Code program installed on your computer, which Know
+Giver runs with no tools, no MCP servers and none of your settings; usage counts toward
+your Claude subscription's limits. If you ask Know Giver to install Claude Code, the
+official installer is downloaded from claude.ai, which shows your IP address.
 
 Many AI providers are in other countries, so choosing one may transfer data
 internationally, including to countries whose data protection laws differ from yours. The
@@ -67,8 +101,12 @@ questions and handouts, grading answers and showing your progress.
 ## 6. Security
 
 Your data stays on your computer, protected by access to your user account; keep it
-password-protected. The API key is stored unencrypted in the local database. Security
-issues can be reported as described in the project's SECURITY.md file.
+password-protected. API keys typed in the app are stored unencrypted in the local
+database; GitHub Copilot sign-in credentials are managed by the CLI, normally in the
+operating system keychain, with a possible plain-text config-file fallback if the keychain
+is unavailable. They are not saved in the Know Giver database. ChatGPT tokens are stored unencrypted in the
+local database, like API keys; Claude credentials stay with Claude Code. Security issues can be
+reported as described in the project's SECURITY.md file.
 
 ## 7. Retention
 

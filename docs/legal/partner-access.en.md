@@ -1,6 +1,6 @@
 # Know Giver Partner Access Terms
 
-Version of October 31, 2026 (2026-10-31). These terms apply to every country and region
+Version of November 3, 2026 (2026-11-03.4). These terms apply to every country and region
 where Know Giver is not offered to the public.
 
 ## 1. Not offered to the public
@@ -45,9 +45,12 @@ and availability. Check official sources before relying on any result.
 
 The app runs on the partner's computers. Trentin has no servers for the app and does not
 receive, store or access the data used in it. The content each task needs goes to the AI
-provider the partner chose, with the partner's key. That provider handles it under its own
-terms, possibly in another country. The partner is responsible for that data and for any
-transfer of it.
+provider the partner chose, using the key or official account sign-in that provider
+requires. That provider handles it under its own terms, possibly in another country. For
+GitHub Copilot, sign-in runs through Copilot CLI. It normally stores credentials in the
+operating system keychain; if unavailable, it may use a plain-text config file
+(`~/.copilot/config.json`). Know Giver does not save the credentials in its database.
+The partner is responsible for that data and for any transfer of it.
 
 ## 6. No warranty and limited liability
 

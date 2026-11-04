@@ -8,7 +8,7 @@ use crate::theme;
 
 fn source(id: &str) -> Option<ImageSource<'static>> {
     Some(match id {
-        "anthropic" => include_image!("../assets/providers/claude.svg"),
+        "anthropic" | "claude-code" => include_image!("../assets/providers/claude.svg"),
         "gemini" => include_image!("../assets/providers/googlegemini.svg"),
         "deepseek" => include_image!("../assets/providers/deepseek.svg"),
         "mistral" => include_image!("../assets/providers/mistralai.svg"),
@@ -19,7 +19,8 @@ fn source(id: &str) -> Option<ImageSource<'static>> {
         "qwen" | "bailian" => include_image!("../assets/providers/qwen.svg"),
         "moonshot" | "moonshot-cn" => include_image!("../assets/providers/kimi.svg"),
         "lmstudio" => include_image!("../assets/providers/lmstudio.svg"),
-        "github" => include_image!("../assets/providers/github.svg"),
+        "github" | "copilot" => include_image!("../assets/providers/github.svg"),
+        "chatgpt" => include_image!("../assets/providers/chatgpt.svg"),
         _ => return None,
     })
 }
@@ -65,6 +66,12 @@ pub fn paint(ui: &egui::Ui, rect: Rect, provider: &Provider) {
         egui::FontId::new(size, theme::strong_family()),
         p.text,
     );
+}
+
+/// The ChatGPT logo, white, for OpenAI's sign-in button.
+pub fn chatgpt_white(size: f32) -> Image<'static> {
+    Image::new(include_image!("../assets/providers/chatgpt.svg"))
+        .fit_to_exact_size(Vec2::splat(size))
 }
 
 /// The logo as a widget of `size` points.

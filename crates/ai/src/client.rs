@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::AiError;
-use crate::culture::ExamCulture;
 use crate::config::{AiConfig, PromptLanguage, Task};
+use crate::culture::ExamCulture;
 use crate::providers::{Quirks, parse_model_list};
 use crate::throttle::{self, MAX_ATTEMPTS, Throttle};
 
@@ -66,6 +66,8 @@ pub(crate) struct ChatRequest<'a> {
 pub struct Client {
     config: AiConfig,
     agent: ureq::Agent,
+    /// Set when the settings point at a service signed in with an account.
+    account: Option<crate::account::Backend>,
     /// Shared pacing for batch jobs; `None` for interactive use.
     throttle: Option<Arc<Throttle>>,
     /// Language of the prompts this client's tasks send.
@@ -112,6 +114,7 @@ impl Client {
             .build()
             .into();
         Self {
+            account: crate::account::Backend::for_endpoint(&config.base_url),
             config,
             agent,
             throttle: None,
@@ -252,6 +255,9 @@ impl Client {
 
     /// Models the service offers to this key, from its `/models` list.
     pub fn list_models(&self) -> Result<Vec<String>, AiError> {
+        if let Some(account) = &self.account {
+            return account.list_models();
+        }
         let url = format!("{}/models", self.config.base_url.trim_end_matches('/'));
         let quirks = Quirks::of(&self.config.base_url, "");
         let mut call = self
@@ -297,9 +303,32 @@ impl Client {
         Ok(models)
     }
 
+    /// Streams a free-form answer from the tutor model (live checks).
+    pub fn ask(
+        &self,
+        messages: &[ChatMessage],
+        on_delta: impl FnMut(&str),
+    ) -> Result<String, AiError> {
+        self.chat_stream(
+            &ChatRequest {
+                task: Task::Tutor,
+                messages,
+                json: false,
+                max_tokens: 1024,
+            },
+            on_delta,
+        )
+    }
+
     /// Checks that the endpoint answers with the tutor model.
     pub fn ping(&self) -> Result<(), AiError> {
-        let messages = [ChatMessage::user("ok")];
+        let messages = [
+            ChatMessage::system(self.language.pick(
+                "Responda com uma confirmação breve.",
+                "Reply with a short confirmation.",
+            )),
+            ChatMessage::user("ok"),
+        ];
         self.send(
             self.config.models.for_task(Task::Tutor),
             &ChatRequest {
@@ -351,6 +380,12 @@ impl Client {
         request: &ChatRequest<'_>,
         on_delta: impl FnMut(&str),
     ) -> Result<String, AiError> {
+        if let Some(account) = &self.account {
+            let model = self.config.models.for_task(request.task);
+            let messages = serde_json::to_value(request.messages)
+                .map_err(|err| AiError::InvalidResponse(err.to_string()))?;
+            return account.chat(model, &messages, on_delta);
+        }
         let url = self.config.chat_url();
         let model = self.config.models.for_task(request.task);
         let mut body = json!({
@@ -411,6 +446,12 @@ impl Client {
     }
 
     fn send_body(&self, model: &str, body: &serde_json::Value) -> Result<String, AiError> {
+        if let Some(account) = &self.account {
+            let messages = body
+                .get("messages")
+                .ok_or_else(|| AiError::InvalidResponse("missing chat messages".into()))?;
+            return account.chat(model, messages, |_| {});
+        }
         let Some(throttle) = &self.throttle else {
             return self.send_once(model, body).map_err(|(err, _)| err);
         };
@@ -531,6 +572,13 @@ fn should_fall_back(err: &AiError) -> bool {
         AiError::InvalidResponse(_) | AiError::OutOfTokens => true,
         AiError::Connection { .. }
         | AiError::Auth { .. }
+        | AiError::Copilot(_)
+        | AiError::ChatGpt(_)
+        | AiError::ClaudeCode(_)
+        | AiError::ClaudeCodeMissing
+        | AiError::PlanLimit
+        | AiError::PlanNotIncluded
+        | AiError::SignInCancelled
         | AiError::NoVisionModel
         | AiError::VisionRejected { .. } => false,
     }

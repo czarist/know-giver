@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of October 31, 2026 (2026-10-31). This international version applies in every
+Version of November 3, 2026 (2026-11-03.4). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -39,6 +39,17 @@ asks for your agreement again.
   by its terms. Usage costs are charged by the provider, not by Trentin.
 - Use only providers that are lawfully available where you are.
 - You are responsible for keeping your key safe and for all use made with it.
+- GitHub Copilot uses your GitHub account through the official Copilot CLI instead of an
+  API key in Know Giver. The CLI normally stores sign-in credentials in the operating
+  system keychain; if unavailable, it may use a plain-text config file
+  (`~/.copilot/config.json`). Know Giver does not save them in its database. Availability
+  and use are subject to your GitHub Copilot plan and terms.
+- ChatGPT signs in on OpenAI's page ("Sign in with ChatGPT"), with no API key. Use is
+  subject to your ChatGPT plan's terms and limits.
+- For Claude, Know Giver runs Anthropic's official Claude Code, unmodified, with your own
+  Claude account and no API key. Use is subject to Anthropic's terms and your Claude
+  subscription's limits.
+- Know Giver is not affiliated with or endorsed by OpenAI, Anthropic or GitHub.
 
 ## 6. AI can make mistakes
 
@@ -81,6 +92,13 @@ The app may reach these third-party services:
 Third-party voices, fonts and images have their own licenses. The Dii voice, for example,
 is for personal, non-commercial use only. Trentin does not control those services and is
 not responsible for them.
+
+Local OCR runs PaddleOCR-VL through the bundled `llama-server` runtime from
+[llama.cpp](https://github.com/ggml-org/llama.cpp) v0.8.0, which is licensed under MIT.
+Windows and Linux packages include a Vulkan-enabled runtime; the app uses a compatible
+GPU when available and falls back to CPU if no device is found or GPU startup fails.
+macOS uses CPU. Vulkan uses the GPU driver installed on your computer; neither the runtime
+nor the Vulkan backend sends OCR photos to Trentin or a provider.
 
 ## 10. Software license
 

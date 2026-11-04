@@ -154,6 +154,7 @@ impl Drop for Engine {
         if let Err(err) = self.save_lesson_draft() {
             tracing::warn!(%err, "could not keep the open lesson");
         }
+        self.stop_ocr_server();
     }
 }
 

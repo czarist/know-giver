@@ -70,12 +70,31 @@ try {
         if ($answer -match '^(1|y|s)') { $tasks += 'studyreminders' }
 
         if ($tasks.Count -gt 0) { $arguments += "/MERGETASKS=$($tasks -join ',')" }
+
+        # Claude through the student's own subscription needs Claude Code.
+        $claude = Get-Command claude -ErrorAction SilentlyContinue
+        $nativeClaude = Join-Path $env:USERPROFILE '.local\bin\claude.exe'
+        if (-not $claude -and -not (Test-Path $nativeClaude)) {
+            $answer = $env:KG_CLAUDE_CODE
+            if (-not $answer) {
+                try { $answer = Read-Host "Also install Claude Code (Anthropic's official program) to use your Claude subscription in Know Giver? [y/N]" } catch { $answer = '' }
+            }
+            $installClaude = $answer -match '^(1|y|s)'
+        }
     }
 
     Write-Host 'Installing Know Giver'
     $process = Start-Process $installer -ArgumentList $arguments -Wait -PassThru
     if ($process.ExitCode -ne 0) { throw "The installer stopped with code $($process.ExitCode)." }
     Write-Host "Installed in $env:LOCALAPPDATA\Programs\KnowGiver"
+    if ($installClaude) {
+        Write-Host "Installing Claude Code with Anthropic's official installer"
+        try {
+            & powershell -NoProfile -ExecutionPolicy Bypass -Command 'irm https://claude.ai/install.ps1 | iex'
+        } catch {
+            Write-Host "Claude Code was not installed: $_. Know Giver can install it later from the AI step."
+        }
+    }
 }
 finally {
     Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
