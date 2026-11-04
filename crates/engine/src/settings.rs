@@ -16,7 +16,7 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-11-03.3";
+pub const TERMS_VERSION: &str = "2026-11-03.4";
 
 /// Where the student uses the app; the terms follow its law. The app is
 /// offered to the public only in the listed regions; elsewhere ("other"),
