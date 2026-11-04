@@ -674,6 +674,8 @@ settings:
     model_vision: "Modelo de visão para PDFs digitalizados (opcional)"
     vision_notice: "Se preencher o modelo de visão, páginas sem texto serão enviadas como imagem ao endereço de IA configurado para reconhecer o conteúdo. Deixe vazio para desativar."
     model_fallback: "Modelo reserva"
+    use_default: "Usar o padrão"
+    no_model: "Nenhum"
     fast: "Respostas rápidas (menos raciocínio nas aulas e quizzes)"
     test: "Testar conexão"
     test_hint: "Usa as configurações salvas."

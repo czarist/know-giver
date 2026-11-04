@@ -674,6 +674,8 @@ settings:
     model_vision: "スキャンPDF用の画像対応モデル（任意）"
     vision_notice: "画像対応モデルを設定すると、文字のないページは画像として、設定したAIのアドレスに送られて読み取られます。空欄にすると無効になります。"
     model_fallback: "予備のモデル"
+    use_default: "既定を使う"
+    no_model: "なし"
     fast: "速い回答（レッスンとクイズで推論を短く）"
     test: "接続をテスト"
     test_hint: "保存済みの設定を使います。"

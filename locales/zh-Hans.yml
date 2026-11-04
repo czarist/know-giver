@@ -674,6 +674,8 @@ settings:
     model_vision: "扫描版 PDF 的图片模型（可选）"
     vision_notice: "设置图片模型后，没有文字的页面会作为图片发送到你配置的 AI 地址进行识别。留空即可关闭。"
     model_fallback: "备用模型"
+    use_default: "使用默认"
+    no_model: "无"
     fast: "快速回答（课堂和测验中减少推理）"
     test: "测试连接"
     test_hint: "使用已保存的设置。"

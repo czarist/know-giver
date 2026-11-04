@@ -674,6 +674,8 @@ settings:
     model_vision: "Vision model for scanned PDFs (optional)"
     vision_notice: "When a vision model is set, pages without text are sent as images to your configured AI endpoint for recognition. Leave empty to disable."
     model_fallback: "Fallback model"
+    use_default: "Use the default"
+    no_model: "None"
     fast: "Fast answers (less reasoning in lessons and quizzes)"
     test: "Test connection"
     test_hint: "Uses the saved settings."
