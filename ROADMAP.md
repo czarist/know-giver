@@ -819,6 +819,11 @@ mid-lesson keeps what was already covered.
 - [ ] Faster Claude Code answers: each request starts `claude -p` (about 3 s to the first
       word in a live check); a long-lived `--input-format stream-json` session per lesson
       would save the start-up.
+- [ ] DeepSeek account sign-in in the *Sign in with an account* tab, like ChatGPT, Claude
+      and Copilot, so a student with a DeepSeek account needs no API key. First check that
+      DeepSeek documents a sign-in flow third-party apps may use, and its terms for it;
+      never reuse the web app's private tokens. Until then DeepSeek stays an API-key
+      provider.
 - [ ] Store the API key in the system keychain instead of the local database.
 - [ ] Have a lawyer review `docs/legal` (LGPD; GDPR/UK GDPR; US state laws) before a
       public release.
