@@ -819,6 +819,18 @@ mid-lesson keeps what was already covered.
 - [ ] Faster Claude Code answers: each request starts `claude -p` (about 3 s to the first
       word in a live check); a long-lived `--input-format stream-json` session per lesson
       would save the start-up.
+- [ ] Periodic checks that the account sign-ins still work; today only offline tests run
+      in CI, and the three breaks found on 2026-11-03 (host ID format, Copilot SDK's
+      sign-in folder, `GITHUB_TOKEN` overriding the sign-in) were caught by hand:
+  - weekly GitHub Actions job without credentials: the ChatGPT authorize URL with our
+    real parameters does not answer `invalid_authorize_request`, OpenAI's keys and
+    sign-in metadata load, every flag we pass still appears in the latest `claude
+    --help`, and the workspace builds and tests against the latest `github-copilot-sdk`;
+    a failure opens an issue;
+  - optional weekly run on a signed-in computer (scheduled task) of `cargo run -p
+    kg-engine --example accounts_live -- page.jpg`, with a short lesson per account and a
+    handwritten page through each vision service and the local OCR, saving a report. It
+    uses a little of each plan; credentials never go to CI.
 - [ ] DeepSeek account sign-in in the *Sign in with an account* tab, like ChatGPT, Claude
       and Copilot, so a student with a DeepSeek account needs no API key. First check that
       DeepSeek documents a sign-in flow third-party apps may use, and its terms for it;
