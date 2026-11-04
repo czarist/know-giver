@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of November 3, 2026 (2026-11-03.3). This international version applies in every
+Version of November 3, 2026 (2026-11-03.4). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -38,9 +38,11 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
   normally uses the operating system keychain; if unavailable, it may store credentials
   in a plain-text config file (`~/.copilot/config.json`). Know Giver does not save them
   in its database;
-- for ChatGPT, the "Sign in with ChatGPT" tokens (access and refresh) and the app's
-  registration with OpenAI, stored unencrypted in the local database like an API key.
-  Signing out asks OpenAI to revoke the refresh token;
+- for ChatGPT, the "Sign in with ChatGPT" tokens (access and refresh), the account's
+  email, the app's registration with OpenAI and a random identifier for this computer,
+  sent to OpenAI at each sign-in to tell your computers apart; it does not identify you.
+  They are stored unencrypted in the local database like an API key. Signing out asks
+  OpenAI to revoke the refresh token;
 - for Claude, Anthropic's official Claude Code manages your Claude account sign-in, in its
   own folder (`~/.claude`) or the system keychain. Know Giver neither sees nor stores
   those credentials;

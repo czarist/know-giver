@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-03
+
 ### Added
 - **Sign in with an account you already have.** The first run's AI step opens on a new
   *Sign in with an account* tab, for students who pay for a chat plan and have never made
@@ -41,8 +43,9 @@ All notable changes to Know Giver. Format based on
 - The AI step has three tabs: *Sign in with an account* (first), *Paid (API key)* and
   *Free*. Its intro mentions both ways in. Copilot shows the GitHub logo.
 - Terms of use and privacy policies (all regions and languages) describe the ChatGPT and
-  Claude sign-ins and where their credentials live. Legal version 2026-11-03.3 asks users
-  to agree again.
+  Claude sign-ins, where their credentials live, the account email kept for ChatGPT and
+  the random computer identifier sent to OpenAI. Legal version 2026-11-03.4 asks users to
+  agree again.
 - Photos stay on the device when local OCR is selected; Copilot always uses local OCR.
 - When the local OCR model is installed and selected, `llama-server` now starts in the
   background with the app and stays available for image reading until the app closes.
@@ -53,11 +56,11 @@ All notable changes to Know Giver. Format based on
   redistributable or Vulkan SDK installation is needed; a compatible GPU vendor driver is
   still required to use Vulkan.
 - All five READMEs and regional terms/privacy documents now identify the bundled llama.cpp
-  v0.8.0 runtime and Vulkan processing, with badges for llama.cpp, Vulkan and GitHub Copilot
-  OAuth. Legal version 2026-11-03.2 asks users to agree again.
+  v0.8.0 runtime and Vulkan processing, with badges for llama.cpp, Vulkan and the account
+  sign-ins.
 
 ### Fixed
-- Copilot lessons work again: the Copilot SDK now needs the CLI's sign-in folder named
+- Copilot lessons work with `github-copilot-sdk` 1.0.28, which needs the CLI's sign-in folder named
   (`COPILOT_HOME` or `~/.copilot`), and a general `GH_TOKEN`/`GITHUB_TOKEN` in the
   environment no longer takes the place of the student's Copilot sign-in.
 - Local handwriting OCR waited for `llama-server` to answer `/health` at all, so the first

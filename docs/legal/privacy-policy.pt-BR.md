@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.3), de acordo com a Lei Geral de Proteção de
+Versão de 3 de novembro de 2026 (2026-11-03.4), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -35,9 +35,11 @@ definida em `KG_DATA_DIR`):
   usar o chaveiro do sistema operacional; se ele não estiver disponível, pode guardar as
   credenciais em um arquivo de configuração sem criptografia (`~/.copilot/config.json`).
   O Know Giver não as guarda no banco;
-- no ChatGPT, os tokens do login "Sign in with ChatGPT" (acesso e renovação) e o registro
-  do aplicativo na OpenAI, guardados sem criptografia no banco de dados local, como a
-  chave de API. Sair da conta pede à OpenAI que revogue a renovação;
+- no ChatGPT, os tokens do login "Sign in with ChatGPT" (acesso e renovação), o e-mail da
+  conta, o registro do aplicativo na OpenAI e um identificador aleatório deste computador,
+  que é enviado à OpenAI a cada login para separar os seus computadores e não identifica
+  você. Ficam sem criptografia no banco de dados local, como a chave de API. Sair da conta
+  pede à OpenAI que revogue a renovação;
 - no Claude, o Claude Code oficial da Anthropic gerencia o login da sua conta Claude, na
   pasta dele (`~/.claude`) ou no chaveiro do sistema. O Know Giver não vê nem guarda essas
   credenciais;
