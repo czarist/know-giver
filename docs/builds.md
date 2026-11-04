@@ -8,8 +8,9 @@ It uploads workflow artifacts; it does not publish a GitHub release or sign pack
 Packaging builds the pinned llama.cpp CPU runtime on every platform and a Vulkan runtime
 on Windows and Linux. It needs Git, CMake and a native C/C++ toolchain; the build is
 limited to two jobs. Windows builds also need the Vulkan SDK (`VULKAN_SDK`); Linux builds
-need `libvulkan-dev`, `glslc`, `glslang-tools` and `pkg-config`. Vulkan acceleration
-requires a supported GPU and its Vulkan driver/loader at runtime. The app probes devices and falls back to the
+need `libvulkan-dev`, `glslc`, `glslang-tools`, `spirv-headers` and `pkg-config`. Vulkan
+acceleration requires a supported GPU and its Vulkan driver/loader at runtime. The app
+probes devices and falls back to the
 CPU runtime if the Vulkan backend or model startup fails. macOS packages remain CPU-only. The
 PaddleOCR-VL weights are downloaded by the app on demand, not included in packages.
 
