@@ -20,6 +20,16 @@ pub(crate) fn is_endpoint(base_url: &str) -> bool {
 }
 
 /// Starts the bundled Copilot CLI browser sign-in and streams its instructions.
+/// Where `copilot login` keeps the sign-in: `COPILOT_HOME` or `~/.copilot`.
+/// The SDK's empty mode needs it named explicitly.
+fn copilot_home() -> Option<std::path::PathBuf> {
+    if let Some(home) = std::env::var_os("COPILOT_HOME").filter(|home| !home.is_empty()) {
+        return Some(home.into());
+    }
+    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+        .map(|home| std::path::PathBuf::from(home).join(".copilot"))
+}
+
 pub fn login(mut on_output: impl FnMut(&str)) -> Result<(), AiError> {
     let cli = github_copilot_sdk::install_bundled_cli()
         .ok_or_else(|| AiError::Copilot("bundled Copilot CLI is unavailable".into()))?;
@@ -146,8 +156,15 @@ impl CopilotBackend {
             .lock()
             .map_err(|_| AiError::Copilot("Copilot client state is unavailable".into()))?;
         if client.is_none() {
+            let home = copilot_home().ok_or_else(|| {
+                AiError::Copilot("no home folder for the Copilot CLI sign-in".into())
+            })?;
             let options = ClientOptions::new()
                 .with_mode(ClientMode::Empty)
+                .with_base_directory(home)
+                // A general GitHub token in the environment would win over the
+                // student's sign-in and usually lacks Copilot access.
+                .with_env_remove(["GH_TOKEN", "GITHUB_TOKEN"])
                 .with_env([("COPILOT_TELEMETRY_ENABLED", "false")]);
             *client = Some(
                 runtime

@@ -718,15 +718,16 @@ mid-lesson keeps what was already covered.
 
 ## Not yet verified
 - Account sign-ins (Unreleased):
-  - ChatGPT: the whole *Sign in with ChatGPT* flow with a real account (registration,
-    consent, ID token, refresh after an hour, sign-out), which models `/v1/models` lists
-    for a plan, and which Responses features the plan route accepts (JSON-only answers,
-    images). Built from OpenAI's docs only.
+  - Checked live on Windows on 2026-11-03 (`cargo run -p kg-engine --example
+    accounts_live -- page.jpg`): ChatGPT sign-in, model list, lessons and a handwritten
+    page read as JSON; Claude Code lessons and the same page; Copilot lessons.
+  - ChatGPT: a token refresh after an hour, and sign-out with revocation.
   - Claude Code: `claude auth login` started from the app on a computer that never signed
     in, and the in-app install with the official installer on Windows, macOS and Linux.
-    Lessons through Claude Code were checked live on Windows (`cargo run -p kg-ai
-    --example account_check -- claude-code haiku`).
-  - The Inno Setup task that installs Claude Code (compiled only in CI).
+  - Copilot: the bundled CLI returns an empty model list (and auth info the SDK cannot
+    read) although lessons work, so Settings only offers the suggested models. Recheck
+    after the next `github-copilot-sdk` update.
+  - The Inno Setup task that installs Claude Code (compiled in CI, not run).
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
   review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
   conventions and grading scales. Notes are in Portuguese and English only; Japanese and
