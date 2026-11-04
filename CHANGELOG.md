@@ -57,6 +57,13 @@ All notable changes to Know Giver. Format based on
   OAuth. Legal version 2026-11-03.2 asks users to agree again.
 
 ### Fixed
+- Copilot lessons work again: the Copilot SDK now needs the CLI's sign-in folder named
+  (`COPILOT_HOME` or `~/.copilot`), and a general `GH_TOKEN`/`GITHUB_TOKEN` in the
+  environment no longer takes the place of the student's Copilot sign-in.
+- Local handwriting OCR waited for `llama-server` to answer `/health` at all, so the first
+  page after a start reached a model still loading and failed; it now waits for the model
+  and shows the runtime's own error message.
+- Sign in with ChatGPT sends the host ID as `urn:uuid:…`, the form OpenAI accepts.
 - The local OCR server (`llama-server`) could keep running after Know Giver closed, holding
   about 800 MB of memory: when the app closed while the server was still starting, the
   worker stored it after the engine was gone. Closing now waits for that start and stops

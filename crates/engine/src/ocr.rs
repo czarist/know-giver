@@ -490,11 +490,12 @@ impl Server {
                     "local OCR runtime exited with {status}"
                 )));
             }
+            // 503 while the model loads; only 200 means it can answer.
             if server
                 .agent
                 .get(&format!("{}/health", server.endpoint))
                 .call()
-                .is_ok()
+                .is_ok_and(|response| response.status() == 200)
             {
                 return Ok(server);
             }
@@ -560,6 +561,14 @@ struct CompletionMessage {
 }
 
 fn response_text(body: &str) -> Result<String, OcrError> {
+    if let Ok(serde_json::Value::Object(fields)) = serde_json::from_str(body)
+        && let Some(error) = fields.get("error")
+    {
+        let message = error["message"].as_str().unwrap_or_default();
+        return Err(OcrError::Runtime(format!(
+            "local OCR runtime refused: {message}"
+        )));
+    }
     let parsed: CompletionResponse =
         serde_json::from_str(body).map_err(|error| OcrError::InvalidResponse(error.to_string()))?;
     let text = parsed
@@ -1003,6 +1012,27 @@ mod tests {
                 .is_ok_and(|server| server.is_some()),
             "OCR server did not remain available after startup: {notices:?}"
         );
+    }
+
+    /// `KG_OCR_SAMPLE=page.jpg cargo test -p kg-engine local_ocr_reads -- --ignored --nocapture`
+    #[test]
+    #[ignore = "requires the installed OCR model, bundled llama-server and KG_OCR_SAMPLE"]
+    fn local_ocr_reads_a_handwritten_page() {
+        let sample = std::env::var("KG_OCR_SAMPLE").expect("KG_OCR_SAMPLE");
+        let image = fs::read(&sample).unwrap();
+        let paths = AppPaths::detect();
+        let server = Mutex::new(None);
+        let start = Instant::now();
+        ensure_server(&paths, &server).unwrap();
+        println!("server ready in {:.1}s", start.elapsed().as_secs_f32());
+        let start = Instant::now();
+        let text = transcribe(&paths, &server, &image, "image/jpeg").unwrap();
+        println!(
+            "read in {:.1}s, {} chars:\n{text}",
+            start.elapsed().as_secs_f32(),
+            text.chars().count()
+        );
+        assert!(text.chars().count() > 200, "{text}");
     }
 
     #[test]
