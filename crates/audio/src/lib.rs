@@ -29,7 +29,7 @@ pub use language::{SpeechLang, language_runs, speech_pieces, strip_language_mark
 pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
 pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
-pub use playback::{OnStart, Speaker};
+pub use playback::{OnStart, PlaybackLevel, Speaker};
 pub use signal::{prepare_for_stt, resample, soften, split_for_speech};
 pub use speech_text::normalize_for_speech;
 pub use tts::{
