@@ -216,11 +216,32 @@ fn visuals(mut v: Visuals, p: &Palette) -> Visuals {
     v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border);
     v.widgets.inactive.weak_bg_fill = p.surface;
     v.widgets.inactive.bg_stroke = Stroke::new(1.0, p.ink.gamma_multiply(0.45));
-    v.widgets.hovered.bg_stroke = Stroke::new(1.5, p.ink);
-    v.widgets.active.bg_stroke = Stroke::new(1.5, p.accent);
+    // Hover: a jade tint, a firmer border and a slight lift, so it shows
+    // also on buttons with their own fill (which keeps the tint out).
+    let tint = |share: f32| blend(p.surface, p.accent, share);
+    v.widgets.hovered.weak_bg_fill = tint(0.16);
+    v.widgets.hovered.bg_fill = tint(0.16);
+    v.widgets.hovered.bg_stroke = Stroke::new(2.0, p.ink);
+    v.widgets.hovered.expansion = 1.5;
+    v.widgets.active.weak_bg_fill = tint(0.28);
+    v.widgets.active.bg_fill = tint(0.28);
+    v.widgets.active.bg_stroke = Stroke::new(2.0, p.accent);
+    v.widgets.active.expansion = 0.5;
+    // A hand over anything that can be clicked.
+    v.interact_cursor = Some(egui::CursorIcon::PointingHand);
     v.window_corner_radius = CornerRadius::ZERO;
     v.menu_corner_radius = CornerRadius::ZERO;
     v
+}
+
+/// `base` with `share` of `over` laid on top.
+fn blend(base: Color32, over: Color32, share: f32) -> Color32 {
+    let mix = |a: u8, b: u8| (f32::from(a) * (1.0 - share) + f32::from(b) * share).round() as u8;
+    Color32::from_rgb(
+        mix(base.r(), over.r()),
+        mix(base.g(), over.g()),
+        mix(base.b(), over.b()),
+    )
 }
 
 /// Palette for the current theme.

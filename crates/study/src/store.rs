@@ -265,7 +265,8 @@ const MIGRATIONS: &[&str] = &[
     // Challenges and stickers. Progress is computed from the records above;
     // only what they cannot tell is kept here. Recoveries and reviews name
     // their source, so the same event is never counted twice. Unlocks keep
-    // the plan's title, so a sticker stays after its plan is deleted.
+    // the plan's title, so a sticker stays after its plan is deleted; an
+    // overall challenge (study time, study days) is won once, with no plan.
     r"
     CREATE TABLE mistake_recoveries (
         id INTEGER PRIMARY KEY,
@@ -291,8 +292,11 @@ const MIGRATIONS: &[&str] = &[
         unlocked_on TEXT NOT NULL,
         date_known INTEGER NOT NULL,
         announced INTEGER NOT NULL DEFAULT 0,
+        overall INTEGER NOT NULL DEFAULT 0,
         UNIQUE(challenge, plan_id)
     );
+    CREATE UNIQUE INDEX challenge_unlocks_overall ON challenge_unlocks(challenge)
+        WHERE overall = 1;
 ",
 ];
 

@@ -126,6 +126,8 @@ impl Engine {
         if now.saturating_duration_since(self.study_clock.last_save) >= SAVE_INTERVAL {
             self.flush_study_time();
             self.study_clock.last_save = now;
+            // Hours studied count toward the overall challenges.
+            self.sync_overall_challenges();
         }
     }
 

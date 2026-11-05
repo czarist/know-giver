@@ -23,8 +23,8 @@ pub use board::{
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,
 };
 pub use challenge::{
-    ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, NextStep, PLAN_IN_MOTION_TOPICS,
-    PlanRecords,
+    CATALOG, Challenge, ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, EssayRecord,
+    Family, Group, NextStep, OverallRecords, PlanRecords, QuizRecord, Scope,
 };
 pub use discursive::{
     Attempt, AttemptId, AttemptOrigin, AttemptStatus, ConfirmedTranscript, Criterion,
