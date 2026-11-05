@@ -64,6 +64,12 @@ pub enum Family {
     EssayTop,
     /// Share of the plan's subjects with a topic studied, in percent.
     SubjectsStarted,
+    /// Mock exams handed in.
+    Mocks,
+    /// Mock exams with 70 % or more of the points.
+    MocksHigh,
+    /// Mock exams with 90 % or more of the points.
+    MockTop,
     /// Hours of active study, every plan.
     Hours,
     /// Different days of study, every plan.
@@ -85,7 +91,7 @@ pub enum Family {
 }
 
 impl Family {
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 36] = [
         Self::Lessons,
         Self::LessonDays,
         Self::Quizzes,
@@ -110,6 +116,9 @@ impl Family {
         Self::EssaysHigh,
         Self::EssayTop,
         Self::SubjectsStarted,
+        Self::Mocks,
+        Self::MocksHigh,
+        Self::MockTop,
         Self::Hours,
         Self::StudyDays,
         Self::LongDay,
@@ -148,6 +157,9 @@ impl Family {
             Self::EssaysHigh => "essays_high",
             Self::EssayTop => "essay_top",
             Self::SubjectsStarted => "subjects_started",
+            Self::Mocks => "mocks",
+            Self::MocksHigh => "mocks_high",
+            Self::MockTop => "mock_top",
             Self::Hours => "hours",
             Self::StudyDays => "study_days",
             Self::LongDay => "long_day",
@@ -192,6 +204,7 @@ impl Family {
             | Self::Highlights
             | Self::HandoutsMade => Group::Materials,
             Self::Essays | Self::EssaysHigh | Self::EssayTop => Group::Writing,
+            Self::Mocks | Self::MocksHigh | Self::MockTop => Group::Mocks,
             Self::Hours | Self::StudyDays | Self::LongDay => Group::Time,
             Self::Plans
             | Self::AllLessons
@@ -236,12 +249,13 @@ pub enum Group {
     Mastery,
     Materials,
     Writing,
+    Mocks,
     Time,
     Collection,
 }
 
 impl Group {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Lessons,
         Self::Quizzes,
         Self::Mistakes,
@@ -250,6 +264,7 @@ impl Group {
         Self::Mastery,
         Self::Materials,
         Self::Writing,
+        Self::Mocks,
         Self::Time,
         Self::Collection,
     ];
@@ -265,6 +280,7 @@ impl Group {
             Self::Mastery => "mastery",
             Self::Materials => "materials",
             Self::Writing => "writing",
+            Self::Mocks => "mocks",
             Self::Time => "time",
             Self::Collection => "collection",
         }
@@ -291,7 +307,7 @@ const fn c(key: &'static str, family: Family, target: u32) -> Challenge {
 
 /// Every challenge. Keys are saved in the database: never rename one, and
 /// add new ones at the end of their family.
-pub const CATALOG: [Challenge; 154] = [
+pub const CATALOG: [Challenge; 164] = [
     c("first_step", Family::Lessons, 1),
     c("lessons_3", Family::Lessons, 3),
     c("lessons_5", Family::Lessons, 5),
@@ -401,6 +417,16 @@ pub const CATALOG: [Challenge; 154] = [
     c("essays_high_5", Family::EssaysHigh, 5),
     c("essay_top_1", Family::EssayTop, 1),
     c("subjects_started_100", Family::SubjectsStarted, 100),
+    c("first_mock", Family::Mocks, 1),
+    c("mocks_3", Family::Mocks, 3),
+    c("mocks_5", Family::Mocks, 5),
+    c("mocks_10", Family::Mocks, 10),
+    c("mocks_20", Family::Mocks, 20),
+    c("mocks_high_1", Family::MocksHigh, 1),
+    c("mocks_high_3", Family::MocksHigh, 3),
+    c("mocks_high_5", Family::MocksHigh, 5),
+    c("mocks_high_10", Family::MocksHigh, 10),
+    c("mock_top_1", Family::MockTop, 1),
     c("hours_1", Family::Hours, 1),
     c("hours_5", Family::Hours, 5),
     c("hours_10", Family::Hours, 10),
@@ -507,6 +533,10 @@ pub const HIGH_QUIZ_SHARE: f64 = 0.8;
 pub const ESSAY_HIGH_SHARE: f64 = 0.7;
 /// Share of the score for [`Family::EssayTop`].
 pub const ESSAY_TOP_SHARE: f64 = 0.9;
+/// Share of the points for [`Family::MocksHigh`].
+pub const MOCK_HIGH_SHARE: f64 = 0.7;
+/// Share of the points for [`Family::MockTop`].
+pub const MOCK_TOP_SHARE: f64 = 0.9;
 const HOUR_MS: u64 = 3_600_000;
 
 /// A finished quiz.
@@ -552,6 +582,8 @@ pub struct PlanRecords {
     /// Days handouts were made for the plan's topics.
     pub handout_days: Vec<NaiveDate>,
     pub essays: Vec<EssayRecord>,
+    /// Mock exams handed in: the day and the share of the points.
+    pub mocks: Vec<(NaiveDate, f64)>,
 }
 
 /// Study across every plan: the input of the overall challenges.
@@ -597,6 +629,8 @@ pub enum NextStep {
     Reader,
     /// Written answers.
     Writing,
+    /// Mock exams.
+    Mock,
     None,
 }
 
@@ -1037,6 +1071,15 @@ impl<'a> PlanStudy<'a> {
             .collect()
     }
 
+    fn mocks_where(&self, share: f64) -> Vec<NaiveDate> {
+        self.records
+            .mocks
+            .iter()
+            .filter(|(_, s)| *s >= share)
+            .map(|(day, _)| *day)
+            .collect()
+    }
+
     fn measure(&self, family: Family) -> Measure {
         let r = self.records;
         let topics = self.topics.len() as u32;
@@ -1188,6 +1231,11 @@ impl<'a> PlanStudy<'a> {
             Family::EssayTop => {
                 Measure::counting(self.essays_where(ESSAY_TOP_SHARE), NextStep::Writing)
             }
+            Family::Mocks => Measure::counting(r.mocks.iter().map(|m| m.0), NextStep::Mock),
+            Family::MocksHigh => {
+                Measure::counting(self.mocks_where(MOCK_HIGH_SHARE), NextStep::Mock)
+            }
+            Family::MockTop => Measure::counting(self.mocks_where(MOCK_TOP_SHARE), NextStep::Mock),
             // Overall families are measured by `evaluate_overall`.
             _ => Measure::counting([], NextStep::None),
         }
@@ -1254,8 +1302,8 @@ mod tests {
     }
 
     #[test]
-    fn the_catalog_has_154_unique_keys_and_keeps_the_first_ones() {
-        assert_eq!(CATALOG.len(), 154);
+    fn the_catalog_has_unique_keys_and_keeps_the_first_ones() {
+        assert_eq!(CATALOG.len(), 164);
         let keys: BTreeSet<&str> = CATALOG.iter().map(|c| c.key).collect();
         assert_eq!(keys.len(), CATALOG.len());
         for key in [
@@ -1475,6 +1523,34 @@ mod tests {
         let progress = evaluate(&plan(vec![a, b]), &PlanRecords::default());
         assert!(get(&progress, "subject_mastered").is_met());
         assert!(get(&progress, "notice_mastered_100").is_met());
+    }
+
+    #[test]
+    fn mock_exams_count_by_day_and_by_share_of_the_points() {
+        let plan = plan(vec![topic(1, 1)]);
+        let records = PlanRecords {
+            mocks: vec![(day(5), 0.55), (day(8), 0.72), (day(12), 0.93)],
+            ..Default::default()
+        };
+        let progress = evaluate(&plan, &records);
+        assert_eq!(
+            get(&progress, "first_mock").completion,
+            Completion::Met { day: Some(day(5)) }
+        );
+        assert_eq!(
+            get(&progress, "mocks_3").completion,
+            Completion::Met { day: Some(day(12)) }
+        );
+        assert_eq!(
+            get(&progress, "mocks_high_1").completion,
+            Completion::Met { day: Some(day(8)) }
+        );
+        assert_eq!(
+            get(&progress, "mock_top_1").completion,
+            Completion::Met { day: Some(day(12)) }
+        );
+        assert!(!get(&progress, "mocks_high_3").is_met());
+        assert_eq!(get(&progress, "mocks_5").next, NextStep::Mock);
     }
 
     #[test]

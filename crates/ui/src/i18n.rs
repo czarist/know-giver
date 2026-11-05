@@ -275,6 +275,11 @@ pub fn notice(notice: &Notice) -> (String, bool) {
             total = points(*total),
             max = points(*max)
         ),
+        Notice::ExamFormatRead { found: true } => t!("notice.exam_format_read"),
+        Notice::ExamFormatRead { found: false } => {
+            return (t!("notice.exam_format_missing").into_owned(), true);
+        }
+        Notice::MockCreated => t!("notice.mock_created"),
     };
     (text.into_owned(), false)
 }
@@ -376,6 +381,9 @@ pub fn error_message(err: &EngineError) -> String {
         }
         EngineError::Rubric(_) => t!("error.writing.rubric"),
         EngineError::SetupIncomplete => t!("error.setup_incomplete"),
+        EngineError::ExamFormat(_) => t!("error.mock.format"),
+        EngineError::MockExam(_) | EngineError::MockShort => t!("error.mock.questions"),
+        EngineError::MockSubject(subject) => t!("error.mock.subject", subject = subject),
     };
     text.into_owned()
 }
@@ -562,6 +570,7 @@ mod tests {
             include_str!("screens/handout.rs"),
             include_str!("screens/plan.rs"),
             include_str!("screens/lesson.rs"),
+            include_str!("screens/mock.rs"),
             include_str!("screens/quiz.rs"),
             include_str!("screens/review.rs"),
             include_str!("screens/progress.rs"),

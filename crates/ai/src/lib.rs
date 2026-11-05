@@ -15,6 +15,7 @@ mod copilot;
 mod culture;
 mod discursive;
 mod handout_review;
+mod mock;
 mod prompts;
 mod providers;
 mod tasks;
@@ -41,6 +42,10 @@ pub use discursive::{
     find_recurring_issues, generate_proposal, numbered_text, prompt_version, read_manuscript_page,
 };
 pub use handout_review::{ReviewedHandout, review_handout};
+pub use mock::{
+    ExamQuestionDraft, ExamQuestionsInput, FormatDraft, FormatSectionDraft,
+    generate_exam_questions, read_exam_format,
+};
 pub use prompts::handout_pipeline as handout_pipeline_prompts;
 pub use prompts::{Prompts, get as prompts_in};
 pub use providers::{

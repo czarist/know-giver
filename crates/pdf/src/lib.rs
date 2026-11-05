@@ -78,6 +78,18 @@ impl EditalText {
         take_chars(&excerpt, max_chars).to_owned()
     }
 
+    /// The rules of the notice, before its syllabus, where the exam's
+    /// layout (questions, time, scoring) is described. The whole text when
+    /// no syllabus heading is found.
+    pub fn exam_rules(&self, max_chars: usize) -> String {
+        let text = self.as_str();
+        let rules = match self.syllabus_start() {
+            Some(start) => &text[..start],
+            None => text,
+        };
+        take_chars(rules, max_chars).to_owned()
+    }
+
     /// Byte offset of the first heading-like line that opens the syllabus.
     fn syllabus_start(&self) -> Option<usize> {
         let text = self.as_str();

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.38.0. Everything an agent can build and check without a human ear, a
+Version 0.39.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -722,7 +722,8 @@ mid-lesson keeps what was already covered.
 profile of progress, without turning the app into a game. It stays calm: no countdowns,
 no loss messages, no comparison with other students unless they choose it.
 
-**Status:** challenges and stickers shipped in 0.38.0: 154 in 33 families, with levels.
+**Status:** challenges and stickers shipped in 0.38.0, with levels; 0.39.0 added the mock
+exam families: 164 in 36 families.
 Goals the student sets, hidden achievements, the profile and streak rules below are still
 to do.
 
@@ -733,7 +734,8 @@ to do.
       studied and the share of the notice, every subject started, plan weeks complete (the
       plan's check-mark rule) and the whole plan, topics, subjects and the whole notice
       mastered, spoken reviews, past exams, handouts read, highlights, handouts made,
-      written answers and their estimated scores. Overall, once: study hours, study days, a
+      written answers and their estimated scores, mock exams handed in and their scores
+      (70 %+ and 90 %+, since 0.39). Overall, once: study hours, study days, a
       long day, plans made, totals of lessons, quizzes, right answers and mastered topics,
       and stickers collected. Keys are stable; First Step, Comeback, Plan in Motion and Week
       on Track keep their names.
@@ -783,11 +785,59 @@ to do.
 real data, progress on locked ones and on their own goals, and nothing interrupts a
 lesson.
 
+## Phase 12 — Mock exams (simulados) (started)
+
+**Goal:** a whole exam in the notice's format, against the clock, on screen or on paper,
+graded in code, so the student rehearses the real sitting.
+
+**Status:** stage 1 shipped in 0.39.0. Stage 2 (reading a photo of the printed answer card)
+is next, in 0.40.
+
+- [x] The exam's format per plan (`kg_study::mock::ExamFormat`): time, sections per plan
+      subject with questions and points each, multiple choice (2 to 5 options) or
+      true/false, wrong cancels right, essay. Read from the notice's rules (the text before
+      the syllabus) by the AI (`exam_format` prompt, five languages) and kept only when its
+      counts are written in the notice; otherwise estimated from the plan's subjects. The
+      student can change every number; the source is shown (notice, estimate, student).
+- [x] Questions written per subject in batches of ten, three at a time
+      (`exam_questions` prompt), spread over the plan's topics, starting further down each
+      subject on every new exam; past exams on the board guide the style. Checked in code:
+      option count, answer index, empty and repeated prompts; options shuffled; a short
+      batch asked once more. Essay proposal from the written-answer pipeline when the
+      notice has a written test.
+- [x] Printable PDF (Typst, `crates/handout/templates/exam.typ`): booklet in two columns,
+      numbered essay sheet, answer card with fixed geometry (`CardLayout`, millimetres) and
+      four corner markers; the exam's code on every page.
+- [x] Timed sitting: deadline from the saved start time, so closing the app does not stop
+      it; answers saved as marked; one sitting at a time; sticker notices wait. On screen
+      or answer card only (for paper). Handing in after the time is allowed and shown.
+- [x] Grade in code against the saved key, per subject with points and the
+      wrong-cancels-right rule; missed questions to the mistakes notebook; essay to Written
+      answers; answer key with explanations. Ten challenges (`mocks`, `mocks_high`,
+      `mock_top`).
+- [ ] Stage 2 (0.40): photograph the printed answer card; find the four markers, correct
+      the perspective and read each bubble's darkness at the `CardLayout` positions, in
+      pure Rust, no AI; the student checks the grid read on screen before it is graded.
+      The exam code on the card picks the exam.
+- [ ] Average and trend across mock exams per subject on Progress; a suggested topic
+      list from the subjects that lost the most points.
+- [ ] Cut-off score from the notice, when it has one, shown beside the result.
+
+**Acceptance criteria:** with a real notice, the format read matches the notice (or the
+student fixes it in a minute); a generated exam prints cleanly; a sitting survives closing
+the app; the grade matches a hand count.
+
 ## Not yet verified
+- Mock exams (0.39.0): checked by unit tests (format bounds, the notice's numbers,
+  batches, question checks, grade with and without wrong-cancels-right), engine tests (a
+  sitting graded with mistakes to the notebook, a sitting kept across a restart, the PDF
+  written), PNG renders of the PDF and GPU screenshots in the five languages
+  (`mock_snapshots`). Not yet run against a real model and a real notice (reading the
+  format, writing 60+ questions, the essay proposal), not yet printed on paper.
 - Challenges and stickers (0.38.0): checked by engine tests on a database file
   closed and reopened (partial progress, completion, two plans, the same study checked
   twice, a grant missed before closing, overall stickers won once, a 0.37 database
-  migrated), by rendering every one of the 154 stickers in colour and grey, by GPU
+  migrated), by rendering every sticker in colour and grey, by GPU
   screenshots in the five languages (`challenges_snapshots`), and with the release
   build on a copy of a real 0.37 database. Not yet clicked through by hand on an
   installed build; F11 and the hover not checked on macOS and Linux.

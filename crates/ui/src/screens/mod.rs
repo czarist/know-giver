@@ -7,6 +7,7 @@ pub mod discursive;
 pub mod edital;
 pub mod handout;
 pub mod lesson;
+pub mod mock;
 pub mod plan;
 pub mod progress;
 pub mod quiz;

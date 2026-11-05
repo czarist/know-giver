@@ -27,6 +27,7 @@ pub enum Icon {
     GitHub,
     Update,
     Award,
+    Timer,
 }
 
 impl Icon {
@@ -54,6 +55,7 @@ impl Icon {
             Self::GitHub => include_image!("../assets/icons/github.svg"),
             Self::Update => include_image!("../assets/icons/download.svg"),
             Self::Award => include_image!("../assets/icons/award.svg"),
+            Self::Timer => include_image!("../assets/icons/timer.svg"),
         }
     }
 

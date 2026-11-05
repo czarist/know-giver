@@ -405,12 +405,42 @@ impl Engine {
         &mut self,
         request: ProposalRequest,
     ) -> Result<(), EngineError> {
+        if self.discursive.generating {
+            return Ok(());
+        }
+        let (input, candidates) = self.proposal_input(&request)?;
+        let plan_id = self.active.as_ref().ok_or(EngineError::NoActivePlan)?.id;
+        let client = self.ai_client();
+        let model = client.config().models.quiz.clone();
+        self.discursive.generating = true;
+        tracing::info!(
+            topics = candidates.len(),
+            kind = request.kind.as_str(),
+            "writing proposal requested"
+        );
+        self.spawn(move || {
+            let result = Box::new(kg_ai::generate_proposal(&client, &input));
+            Event::Discursive(DiscursiveEvent::Proposal {
+                plan: plan_id,
+                request,
+                edital: input.edital,
+                candidates,
+                model,
+                result,
+            })
+        });
+        Ok(())
+    }
+
+    /// What the model gets to write a proposal, and the topics numbered in
+    /// it.
+    pub(crate) fn proposal_input(
+        &self,
+        request: &ProposalRequest,
+    ) -> Result<(ProposalInput, Vec<TopicId>), EngineError> {
         let plan = self.active.as_ref().ok_or(EngineError::NoActivePlan)?;
         if !self.discursive.rules.kinds.contains(&request.kind) {
             return Err(EngineError::NoWrittenTest);
-        }
-        if self.discursive.generating {
-            return Ok(());
         }
         if let Some(text) = &request.manual_rubric {
             kg_study::discursive::parse_manual_rubric(text)?;
@@ -490,27 +520,7 @@ impl Engine {
             edital: self.discursive.rules.excerpt.clone(),
             manual_rubric: request.manual_rubric.clone().unwrap_or_default(),
         };
-        let plan_id = plan.id;
-        let client = self.ai_client();
-        let model = client.config().models.quiz.clone();
-        self.discursive.generating = true;
-        tracing::info!(
-            topics = candidates.len(),
-            kind = request.kind.as_str(),
-            "writing proposal requested"
-        );
-        self.spawn(move || {
-            let result = Box::new(kg_ai::generate_proposal(&client, &input));
-            Event::Discursive(DiscursiveEvent::Proposal {
-                plan: plan_id,
-                request,
-                edital: input.edital,
-                candidates,
-                model,
-                result,
-            })
-        });
-        Ok(())
+        Ok((input, candidates))
     }
 
     /// Topics to suggest a proposal on: those the last grades asked to
@@ -1435,6 +1445,35 @@ impl Engine {
     fn after_change(&mut self) {
         self.refresh_discursive();
         self.reload_open();
+    }
+
+    /// The kind of written test a mock exam gets, if the notice has one.
+    pub(crate) fn mock_writing_kind(&self) -> Option<kg_study::WritingKind> {
+        self.discursive.rules.kinds.first().copied()
+    }
+
+    /// Checks and saves a proposal written for a mock exam.
+    pub(crate) fn save_mock_proposal(
+        &mut self,
+        plan: PlanId,
+        draft: ProposalDraft,
+        request: &ProposalRequest,
+        candidates: &[TopicId],
+        edital: &str,
+        model: &str,
+    ) -> Result<ProposalId, EngineError> {
+        let proposal = validate::proposal(
+            draft,
+            request,
+            candidates,
+            edital,
+            model,
+            self.prompt_language(),
+        )
+        .map_err(|invalid| AiError::InvalidResponse(invalid.0))?;
+        let id = self.store.insert_proposal(plan, &proposal, now())?;
+        self.refresh_discursive();
+        Ok(id)
     }
 
     /// True while written-answer work runs in the background.

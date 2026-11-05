@@ -70,6 +70,7 @@ impl Store {
                 "created_on",
             )?,
             essays: self.essays(plan)?,
+            mocks: self.mock_records(plan)?,
         })
     }
 
@@ -200,6 +201,22 @@ impl Store {
         let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map([plan.0], |r| r.get(0).map(TopicId))?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Mock exams handed in: the day and the share of the points, graded
+    /// against each exam's key.
+    fn mock_records(&self, plan: PlanId) -> Result<Vec<(NaiveDate, f64)>> {
+        let exams = self.mock_exams(plan)?;
+        Ok(self
+            .mock_attempts(plan)?
+            .iter()
+            .filter_map(|attempt| {
+                let finished = attempt.finished_at?;
+                let exam = exams.iter().find(|e| e.id == attempt.exam_id)?;
+                let share = crate::mock::grade(exam, &attempt.answers).share();
+                Some((finished.date(), share))
+            })
+            .collect())
     }
 
     /// Graded written answers of a plan: the day and the estimated score.
@@ -543,7 +560,9 @@ mod tests {
                 .conn
                 .execute_batch(
                     "DROP TABLE mistake_recoveries; DROP TABLE review_log;
-                     DROP TABLE challenge_unlocks; PRAGMA user_version = 9;",
+                     DROP TABLE challenge_unlocks; DROP TABLE mock_attempts;
+                     DROP TABLE mock_exams; DROP TABLE exam_formats;
+                     PRAGMA user_version = 9;",
                 )
                 .unwrap();
             topic

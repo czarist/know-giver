@@ -1562,3 +1562,179 @@ fn won(engine: &Engine) -> Vec<ChallengeId> {
         .map(|u| u.challenge)
         .collect()
 }
+
+fn mock_format() -> ExamFormat {
+    ExamFormat {
+        minutes: 60,
+        style: AnswerStyle::Choice { options: 4 },
+        wrong_cancels: false,
+        sections: vec![
+            ExamSection {
+                subject: "Português".into(),
+                questions: 2,
+                weight: 1.0,
+            },
+            ExamSection {
+                subject: "Direito Constitucional".into(),
+                questions: 1,
+                weight: 2.0,
+            },
+        ],
+        essay: false,
+        source: FormatSource::Student,
+    }
+}
+
+fn mock_question(section: usize, topic: TopicId, prompt: &str) -> MockQuestion {
+    MockQuestion {
+        section,
+        topic: Some(topic),
+        prompt: prompt.into(),
+        options: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+        correct: 2,
+        explanation: "Porque sim.".into(),
+    }
+}
+
+/// Delivers a written mock exam as the worker would.
+fn deliver_mock(engine: &mut Engine) {
+    let plan = engine.active_plan().unwrap();
+    let id = plan.id;
+    let crase = plan.subjects[0].topics[0].id;
+    let rights = plan.subjects[1].topics[0].id;
+    engine.expect_mock();
+    engine
+        .events_tx
+        .send(Event::Mock(crate::mock::MockEvent::Written {
+            plan: id,
+            title: "Simulado 1".into(),
+            format: mock_format(),
+            model: "test".into(),
+            result: Ok(vec![
+                mock_question(0, crase, "Q1"),
+                mock_question(0, crase, "Q2"),
+                mock_question(1, rights, "Q3"),
+            ]),
+            essay: None,
+        }))
+        .unwrap();
+    engine.poll();
+}
+
+#[test]
+fn the_estimated_format_covers_every_subject_until_one_is_saved() {
+    let (mut engine, _dir) = engine_with_plan();
+    let format = engine.exam_format().unwrap();
+    assert_eq!(format.source, FormatSource::Estimate);
+    assert_eq!(format.sections.len(), 2);
+    engine
+        .handle(Command::SaveExamFormat(mock_format()))
+        .unwrap();
+    assert_eq!(engine.exam_format(), Some(mock_format()));
+    let mut bad = mock_format();
+    bad.minutes = 1;
+    assert!(engine.handle(Command::SaveExamFormat(bad)).is_err());
+}
+
+#[test]
+fn a_timed_mock_exam_is_graded_and_its_mistakes_go_to_the_notebook() {
+    let (mut engine, _dir) = engine_with_plan();
+    deliver_mock(&mut engine);
+    let exam = engine.mock_exams()[0].id;
+    assert!(
+        engine
+            .take_notices()
+            .iter()
+            .any(|n| matches!(n, Notice::MockCreated))
+    );
+
+    engine.handle(Command::StartMock(exam)).unwrap();
+    assert!(engine.studying_now(), "no sticker toasts during the exam");
+    for (question, answer) in [(0, Some(2)), (1, Some(0)), (2, Some(2))] {
+        engine
+            .handle(Command::MarkMockAnswer { question, answer })
+            .unwrap();
+    }
+    engine
+        .handle(Command::MarkMockAnswer {
+            question: 1,
+            answer: None,
+        })
+        .unwrap();
+    engine
+        .handle(Command::MarkMockAnswer {
+            question: 1,
+            answer: Some(1),
+        })
+        .unwrap();
+    // Starting again while it runs opens the same attempt.
+    engine.handle(Command::StartMock(exam)).unwrap();
+    assert_eq!(engine.mock_attempts().len(), 1);
+
+    engine
+        .handle(Command::FinishMock(["Certo".into(), "Errado".into()]))
+        .unwrap();
+    assert!(!engine.studying_now());
+    let attempt = engine.mock_attempts()[0].clone();
+    assert!(attempt.finished_at.is_some());
+    let result = engine.mock_result(&attempt).unwrap();
+    assert_eq!((result.right, result.wrong, result.blank), (2, 1, 0));
+    assert_eq!(result.points, 3.0);
+    assert_eq!(result.max, 4.0);
+    assert_eq!(engine.mistakes().len(), 1);
+    assert_eq!(engine.mistakes()[0].question.prompt, "Q2");
+    assert_eq!(engine.mistakes()[0].chosen, 1);
+
+    // Answers can no longer change.
+    engine
+        .handle(Command::MarkMockAnswer {
+            question: 1,
+            answer: Some(2),
+        })
+        .unwrap();
+    assert_eq!(engine.mock_attempts()[0].answers[1], Some(1));
+}
+
+#[test]
+fn a_running_attempt_survives_a_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let mut engine = engine_on_disk(dir.path());
+        generate_plan(&mut engine, "Plano");
+        deliver_mock(&mut engine);
+        let exam = engine.mock_exams()[0].id;
+        engine.handle(Command::StartMock(exam)).unwrap();
+        engine
+            .handle(Command::MarkMockAnswer {
+                question: 0,
+                answer: Some(3),
+            })
+            .unwrap();
+    }
+    let engine = engine_on_disk(dir.path());
+    let running = engine.running_mock().unwrap();
+    assert_eq!(running.answers[0], Some(3));
+}
+
+#[test]
+fn a_mock_exam_prints_with_its_answer_card() {
+    let (mut engine, dir) = engine_with_plan();
+    deliver_mock(&mut engine);
+    let exam = engine.mock_exams()[0].id;
+    let path = dir.path().join("simulado.pdf");
+    engine
+        .handle(Command::PrintMock(Box::new(MockPrint {
+            exam,
+            path: path.clone(),
+            subtitle: "TRF".into(),
+            lang: "pt-BR".into(),
+            labels: ExamLabels::default(),
+            duration: "1 h".into(),
+            instructions: vec!["Boa prova.".into()],
+            choice_marks: ["A", "B", "C", "D", "E"].map(String::from).to_vec(),
+            true_false_marks: ["C".into(), "E".into()],
+        })))
+        .unwrap();
+    poll_until(&mut engine, |e| !e.printing_mock());
+    assert!(std::fs::read(&path).unwrap().starts_with(b"%PDF"));
+}

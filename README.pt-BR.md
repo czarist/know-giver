@@ -160,9 +160,35 @@ você quiser.
   gabarito, salvas em PDF.
 - **Progresso** por matéria e **tempo de estudo diário**, que conta só o estudo ativo.
 
+## Simulados
+
+Uma prova inteira no formato do edital, com tempo marcado. **Ler do edital** encontra
+quantas questões cada matéria tem, o tempo, se é múltipla escolha ou certo/errado, se uma
+errada anula uma certa e se há redação; o app confere esses números no texto do edital e você
+pode ajustar qualquer um. **Gerar simulado** escreve questões novas no estilo da banca para
+cada matéria, distribuídas pelos tópicos do plano (as provas anteriores que você adicionou
+guiam o estilo), e um tema de redação quando o edital prevê prova discursiva.
+
+Faça **na tela**, com o relógio no canto, ou **imprima**: um PDF com o caderno de questões em
+duas colunas, a folha de redação com linhas numeradas e o cartão-resposta com marcadores nos
+cantos. Fazendo no papel, você passa as marcações para o cartão-resposta do app e entrega. O
+relógio continua se você sair da tela ou fechar o app, e só uma prova corre por vez. A nota é
+conta simples sobre o gabarito salvo, por matéria e com os pesos do edital: certas, erradas,
+em branco, tempo usado e se passou do tempo. As erradas vão para o caderno de erros, a redação
+vai para as Discursivas para ser fotografada e corrigida, e o gabarito comentado abre logo
+abaixo. Vêm junto dez desafios novos.
+
+<table>
+  <tr>
+    <td><img src="docs/images/pt-BR/mock.png" alt="Simulados: o formato lido do edital, o botão para gerar e os resultados anteriores"></td>
+    <td><img src="docs/images/pt-BR/mock-sitting.png" alt="Prova em andamento: o relógio no canto, as questões na tela e o cartão-resposta"></td>
+    <td><img src="docs/images/pt-BR/mock-result.png" alt="Resultado: pontos por matéria, certas, erradas e em branco, e o tempo usado"></td>
+  </tr>
+</table>
+
 ## Desafios e figurinhas
 
-A tela **Conquistas** tem **154 desafios** em 33 famílias, e cada nível vale uma figurinha
+A tela **Conquistas** tem **164 desafios** em 36 famílias, e cada nível vale uma figurinha
 original (jade, lua crescente, gravura como a marca do app). Em cada plano: aulas, quizzes,
 acertos e gabaritos perfeitos, questões erradas recuperadas, tópicos estudados e a parte do
 edital coberta, semanas do plano em dia, tópicos e matérias dominados, revisões, provas da

@@ -298,6 +298,7 @@ impl Engine {
             self.lesson_drafts.clear();
             self.refresh_board();
             self.refresh_discursive();
+            self.refresh_mock();
             self.sync_challenges();
             return;
         };
@@ -307,6 +308,7 @@ impl Engine {
         self.refresh_lesson_drafts();
         self.refresh_board();
         self.refresh_discursive();
+        self.refresh_mock();
         self.reload_list();
         self.sync_challenges();
     }
