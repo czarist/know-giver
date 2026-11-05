@@ -716,6 +716,47 @@ applies to every lesson until changed.
 lessons (length, number of examples, past-exam questions, final check), and switching
 mid-lesson keeps what was already covered.
 
+## Phase 11 — Goals and achievements (planned, not started)
+
+**Goal:** reward steady study the way Steam rewards play, with achievements, goals and a
+profile of progress, without turning the app into a game. It stays calm: no countdowns,
+no loss messages, no comparison with other students unless they choose it.
+
+**Status:** progress per topic, quiz scores and lesson history already exist in SQLite
+(`study/`); nothing turns them into goals or achievements yet.
+
+- [ ] Achievements (medals) computed in code from saved data, never by the AI:
+  - consistency: first lesson, 7 and 30 days in a row, study hours per week;
+  - performance: quiz above 80 % on a topic, a whole subject mastered, a written answer
+    with a high score, improvement on a weak topic;
+  - coverage: every topic of the edital studied once, the full plan reviewed before the
+    exam date;
+  - voice and writing: first voice lesson, first handwritten answer corrected.
+  Each has an icon, a name, a description, the unlock date and its rarity among the
+  student's own achievements (Steam shows the share of players; here there is no
+  server, so no global share).
+- [ ] Levels of an achievement (bronze, silver, gold) for the same goal with growing
+      targets, like Steam's progress bars on locked achievements ("12 / 30 days").
+- [ ] Hidden achievements shown as "secret" until unlocked, a few only.
+- [ ] Goals the student sets: hours per week, topics per week, a target quiz score by a
+      date; the study plan suggests realistic values from the exam date and the
+      student's pace. Progress on the home screen, a gentle note when a week is missed.
+- [ ] Profile screen: level and experience from study time and results (not from clicks),
+      showcase of chosen medals, calendar heat map of study days, history per subject.
+- [ ] Quiet unlock notice (a small toast with the medal and a sound that can be turned
+      off), never in the middle of a lesson; collected at the end.
+- [ ] Streaks forgive: one rest day per week keeps the streak, and travel or illness can
+      be marked so it does not break.
+- [ ] Everything local in SQLite, kept per plan and in total; export with the rest of
+      the data. Optional sharing later (an image of the profile), never an online
+      ranking by default.
+- [ ] Achievement names and descriptions in the five locales; icons in the app's visual
+      identity, not stock trophies; README sections and screenshots in each language.
+
+**Acceptance criteria:** a student who studies a week sees achievements unlocked from
+real data, progress on locked ones and on their own goals, and nothing interrupts a
+lesson.
+
 ## Not yet verified
 - Account sign-ins (Unreleased):
   - Checked live on Windows on 2026-11-03 (`cargo run -p kg-engine --example
