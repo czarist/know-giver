@@ -160,6 +160,31 @@ você quiser.
   gabarito, salvas em PDF.
 - **Progresso** por matéria e **tempo de estudo diário**, que conta só o estudo ativo.
 
+## Desafios e figurinhas
+
+A tela **Conquistas** dá a cada plano alguns desafios pequenos, e cada um vale uma
+figurinha original (jade, lua crescente, gravura como a marca do app):
+
+- **Primeiro Passo**: concluir a primeira aula do plano.
+- **Volta por Cima**: acertar, numa nova tentativa, uma questão que você tinha errado.
+- **Plano em Movimento**: estudar três tópicos diferentes do plano (aula, quiz ou revisão).
+- **Semana em Dia**: completar todos os tópicos previstos para uma semana do plano.
+
+Cada cartão mostra o que fazer, em qual plano vale, quanto falta (2/3) e um botão para a
+aula ou o quiz. A tela Hoje mostra o próximo, com discrição. As figurinhas vêm só de
+regras no código, a partir do seu estudo salvo, nunca da IA; cada plano tem o próprio
+progresso, e a vitrine mostra cada figurinha uma vez, com a data e os planos em que foi
+conquistada. O estudo de antes deste recurso também conta; quando o histórico não diz o
+dia, o cartão avisa. Um aviso curto com a figurinha aparece depois que a aula ou o quiz
+termina, nunca no meio, e uma vez só. Sem pontos, sem ranking, sem sequência a perder.
+
+<table>
+  <tr>
+    <td><img src="docs/images/pt-BR/challenges.png" alt="Conquistas: os desafios do plano com progresso, recompensa e botão para o próximo tópico, e o aviso de uma figurinha conquistada"></td>
+    <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de figurinhas: as conquistadas em cores, com data e planos; as bloqueadas em cinza, com o requisito e o progresso"></td>
+  </tr>
+</table>
+
 ## Discursivas
 
 Quando o edital tem redação ou prova discursiva, aparece a área **Discursivas**. Ela nunca
@@ -394,6 +419,8 @@ Mais: [builds nativos/CUDA](docs/builds.md), [avaliação do Kokoro](docs/kokoro
 - As imagens do quadro vêm da [Wikipédia](https://pt.wikipedia.org); a legenda indica o
   artigo, onde estão o autor e a licença de cada imagem.
 - Ícones: [Lucide](https://lucide.dev), licença ISC (`crates/ui/assets/icons`).
+- Figurinhas dos desafios (`crates/ui/assets/stickers`): SVGs originais feitos para o Know
+  Giver, sob a licença do projeto.
 - Logos dos fornecedores de IA: [Simple Icons](https://simpleicons.org), CC0
   (`crates/ui/assets/providers`); os logos são marcas dos seus donos, usados só para
   identificar cada serviço.

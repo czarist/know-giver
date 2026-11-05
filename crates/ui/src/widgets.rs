@@ -164,6 +164,22 @@ pub fn empty_state(
     clicked
 }
 
+/// A thin progress bar with its count beside it, e.g. "2/3". The empty part
+/// stays visible on both themes.
+pub fn progress_line(ui: &mut egui::Ui, width: f32, fraction: f32, text: &str, color: Color32) {
+    let p = theme::palette(ui.ctx());
+    ui.horizontal(|ui| {
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 8.0), Sense::hover());
+        ui.painter().rect_filled(rect, 4.0, p.border);
+        let mut filled = rect;
+        filled.set_width(rect.width() * fraction.clamp(0.0, 1.0));
+        if filled.width() > 0.0 {
+            ui.painter().rect_filled(filled, 4.0, color);
+        }
+        ui.label(RichText::new(text).small().strong().color(color));
+    });
+}
+
 /// Muted helper text.
 pub fn hint(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).color(theme::palette(ui.ctx()).muted));

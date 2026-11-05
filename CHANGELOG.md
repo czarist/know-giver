@@ -6,6 +6,22 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Added
+- **Challenges and stickers.** A new Achievements screen gives each study plan four small
+  challenges, each worth an original sticker in the app's jade and engraving style: First
+  Step (finish the first lesson), Comeback (answer right, on a new try, a question you had
+  missed), Plan in Motion (study three different topics) and Week on Track (complete every
+  topic planned for one week). Each card shows what to do, the plan it counts in, the
+  progress and the reward, with a button to the lesson or quiz; Today shows the next one.
+  The showcase shows every sticker once, in colour when won, with the date and the plans
+  where it was won, and in grey with the requirement until then. Stickers come only from
+  rules in the code over saved study, never from the AI, and are saved per plan in SQLite:
+  they survive restarts, earlier study is recognised on the next start (a day the history
+  cannot tell is shown as such), and the short notice with the sticker waits for the end
+  of a lesson or quiz and is shown once. No points, ranking or streaks.
+  Comeback counts only from this version: older right answers to missed questions were
+  not recorded.
+
 ## [0.37.1] - 2026-11-04
 
 ### Fixed

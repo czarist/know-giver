@@ -26,6 +26,7 @@ pub enum Icon {
     Writing,
     GitHub,
     Update,
+    Award,
 }
 
 impl Icon {
@@ -52,6 +53,7 @@ impl Icon {
             Self::Writing => include_image!("../assets/icons/pen-line.svg"),
             Self::GitHub => include_image!("../assets/icons/github.svg"),
             Self::Update => include_image!("../assets/icons/download.svg"),
+            Self::Award => include_image!("../assets/icons/award.svg"),
         }
     }
 

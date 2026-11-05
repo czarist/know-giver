@@ -102,6 +102,7 @@ nav:
   quiz: "クイズ"
   review: "復習"
   progress: "進捗"
+  challenges: "実績"
   settings: "設定"
   in_progress: "進行中"
   active_plan: "使用中のプラン"
@@ -533,6 +534,9 @@ tour:
   progress:
     title: "進捗"
     text: "科目ごとの進み具合と、毎日の学習時間。"
+  challenges:
+    title: "実績"
+    text: "プランごとの小さなチャレンジ。達成するとショーケースにステッカーが加わります。急ぐ必要も、ランキングもありません。"
   settings:
     title: "設定"
     text: "言語、先生、音声、AIを変更し、規約を読み直せます。準備完了、さあ始めましょう！"
@@ -1074,3 +1078,49 @@ teachers:
   otavio:
     name: "修（おさむ）"
     about: "経験豊富で辛抱強い。"
+
+challenges:
+  title: "チャレンジと実績"
+  subtitle: "学習プランの小さな目標。達成するたびにステッカーがコレクションに加わります。"
+  plan_section: "このプランのチャレンジ"
+  valid_in: "対象のプラン：%{plan}"
+  week: "第%{n}週"
+  progress: "%{current}/%{target}"
+  reward: "報酬：ステッカー「%{name}」"
+  done: "達成"
+  open_quiz: "クイズを受ける"
+  open_mistakes: "間違えた問題をやり直す"
+  topic: "%{topic} · %{subject}"
+  comeback_note: "このバージョンから記録されます。以前の間違いへの正解は記録されていません。"
+  won_on: "%{date} に獲得"
+  won_noted: "%{date} に履歴から確認（正確な日付は記録されていません）"
+  won_in: "獲得したプラン：%{plans}"
+  plan_deleted: "%{title}（削除されたプラン）"
+  showcase: "ショーケース"
+  showcase_count: "%{total} 枚中 %{won} 枚"
+  showcase_note: "ステッカーは1枚ずつ表示され、カードには獲得したプランが表示されます。"
+  locked: "未獲得"
+  in_this_plan: "このプラン：%{current}/%{target}"
+  no_plan: "チャレンジを始めるには学習プランを作成してください。獲得済みのステッカーはショーケースに残ります。"
+  unlocked_toast: "ステッカー獲得：%{name}"
+  next: "次のチャレンジ"
+  see_all: "チャレンジを見る"
+  all_done: "このプランのチャレンジはすべて達成しました。"
+
+challenge:
+  first_step:
+    name: "はじめの一歩"
+    goal: "このプランで最初のレッスンを終える。"
+    caption: "巻物が開いた：プランの最初のレッスンを終えました。"
+  comeback:
+    name: "巻き返し"
+    goal: "以前間違えた問題に、新しい挑戦で正解する。"
+    caption: "月がふたたび昇る：間違えた問題が正解になりました。"
+  plan_in_motion:
+    name: "動き出したプラン"
+    goal: "このプランの異なるトピックを%{count}つ、レッスン・クイズ・復習のいずれかで学習する。"
+    caption: "地図に道ができた：試験要項のトピックを3つ学習しました。"
+  week_on_track:
+    name: "順調な一週間"
+    goal: "プランのある週に予定されたトピックをすべて完了する（レッスン済みまたは復習中）。"
+    caption: "月の封印：プランの1週間をやり遂げました。"

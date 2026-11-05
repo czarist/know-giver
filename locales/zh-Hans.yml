@@ -102,6 +102,7 @@ nav:
   quiz: "测验"
   review: "复习"
   progress: "进度"
+  challenges: "成就"
   settings: "设置"
   in_progress: "进行中"
   active_plan: "当前计划"
@@ -533,6 +534,9 @@ tour:
   progress:
     title: "进度"
     text: "各科目的进展和每天的学习时间。"
+  challenges:
+    title: "成就"
+    text: "每个计划中的小挑战。每完成一个就能在展示柜中获得一张贴纸，不必着急，也没有排行榜。"
   settings:
     title: "设置"
     text: "更改语言、老师、语音或 AI，也可以重新阅读条款。准备好了，开始吧！"
@@ -1074,3 +1078,49 @@ teachers:
   otavio:
     name: "欧阳文"
     about: "经验丰富，耐心细致。"
+
+challenges:
+  title: "挑战与成就"
+  subtitle: "学习计划中的小目标，每完成一个就为收藏增添一张贴纸。"
+  plan_section: "本计划的挑战"
+  valid_in: "适用计划：%{plan}"
+  week: "第 %{n} 周"
+  progress: "%{current}/%{target}"
+  reward: "奖励：贴纸“%{name}”"
+  done: "已完成"
+  open_quiz: "做测验"
+  open_mistakes: "重做错题"
+  topic: "%{topic} · %{subject}"
+  comeback_note: "从此版本开始记录：以前错题的答对记录未保存。"
+  won_on: "获得于 %{date}"
+  won_noted: "于 %{date} 在历史记录中发现（未记录确切日期）"
+  won_in: "获得于计划：%{plans}"
+  plan_deleted: "%{title}（计划已删除）"
+  showcase: "展示柜"
+  showcase_count: "%{won} / %{total} 张贴纸"
+  showcase_note: "每张贴纸只显示一次；卡片会列出获得它的计划。"
+  locked: "未解锁"
+  in_this_plan: "本计划：%{current}/%{target}"
+  no_plan: "创建学习计划即可开始挑战。已获得的贴纸会保留在展示柜中。"
+  unlocked_toast: "获得贴纸：%{name}"
+  next: "下一个挑战"
+  see_all: "查看挑战"
+  all_done: "本计划的挑战已全部完成。"
+
+challenge:
+  first_step:
+    name: "第一步"
+    goal: "完成本计划的第一节课堂。"
+    caption: "卷轴展开：计划的第一节课堂已完成。"
+  comeback:
+    name: "反败为胜"
+    goal: "在新的尝试中答对一道以前答错的题。"
+    caption: "新月再次升起：一道错题变成了正确答案。"
+  plan_in_motion:
+    name: "计划启动"
+    goal: "通过课堂、测验或复习，学习本计划中 %{count} 个不同的主题。"
+    caption: "地图有了路线：已学习考试公告中的三个主题。"
+  week_on_track:
+    name: "一周达标"
+    goal: "完成计划中某一周安排的全部主题（已上课堂或正在复习）。"
+    caption: "月之印章：计划中的一周已经完成。"

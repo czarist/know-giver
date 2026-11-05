@@ -102,6 +102,7 @@ nav:
   quiz: "Quiz"
   review: "Review"
   progress: "Progress"
+  challenges: "Achievements"
   settings: "Settings"
   in_progress: "in progress"
   active_plan: "Active plan"
@@ -533,6 +534,9 @@ tour:
   progress:
     title: "Progress"
     text: "Your progress per subject and your study time each day."
+  challenges:
+    title: "Achievements"
+    text: "Small challenges in each plan. Each one gives a sticker for your showcase, with no rush and no scoreboard."
   settings:
     title: "Settings"
     text: "Change the language, teacher, voice or AI, and read the terms again. That's it: over to you!"
@@ -1074,3 +1078,49 @@ teachers:
   otavio:
     name: "Oliver"
     about: "Experienced and patient. Voice: Cadu."
+
+challenges:
+  title: "Challenges and achievements"
+  subtitle: "Small goals in your plan, each with a sticker for your collection."
+  plan_section: "Challenges in this plan"
+  valid_in: "Counts in: %{plan}"
+  week: "week %{n}"
+  progress: "%{current}/%{target}"
+  reward: "Reward: the %{name} sticker"
+  done: "Done"
+  open_quiz: "Take a quiz"
+  open_mistakes: "Retry missed questions"
+  topic: "%{topic} · %{subject}"
+  comeback_note: "Counts from this version on: right answers to older mistakes were not recorded."
+  won_on: "Won on %{date}"
+  won_noted: "Found in your history on %{date} (the exact day was not recorded)"
+  won_in: "In: %{plans}"
+  plan_deleted: "%{title} (plan removed)"
+  showcase: "Showcase"
+  showcase_count: "%{won} of %{total} stickers"
+  showcase_note: "Each sticker appears once; its card shows the plans where you won it."
+  locked: "Locked"
+  in_this_plan: "This plan: %{current}/%{target}"
+  no_plan: "Create a study plan to start the challenges. Stickers you already won stay in the showcase."
+  unlocked_toast: "Sticker won: %{name}"
+  next: "Next challenge"
+  see_all: "See challenges"
+  all_done: "Every challenge in this plan is done."
+
+challenge:
+  first_step:
+    name: "First Step"
+    goal: "Finish the first lesson in this plan."
+    caption: "The scroll is open: the plan’s first lesson is done."
+  comeback:
+    name: "Comeback"
+    goal: "On a new try, answer right a question you had missed."
+    caption: "The moon rises again: a missed question became a right answer."
+  plan_in_motion:
+    name: "Plan in Motion"
+    goal: "Study %{count} different topics in this plan, with a lesson, a quiz or a review."
+    caption: "The map has a path: three topics of the notice are studied."
+  week_on_track:
+    name: "Week on Track"
+    goal: "Complete every topic planned for one week of the plan: each with its lesson taken or in review."
+    caption: "The lunar seal: one week of the plan is complete."

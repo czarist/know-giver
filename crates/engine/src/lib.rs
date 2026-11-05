@@ -7,6 +7,7 @@
 
 mod accounts;
 mod board;
+mod challenges;
 mod child_job;
 mod discursive;
 mod documents;
@@ -68,6 +69,9 @@ pub use kg_study::{
 };
 pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
+};
+pub use kg_study::{
+    ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, NextStep, PLAN_IN_MOTION_TOPICS,
 };
 pub use kg_study::{
     Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,
@@ -469,6 +473,7 @@ pub struct Engine {
     lesson_drafts: Vec<TopicId>,
     /// A taken lesson being looked back at.
     recap: Option<(TopicId, Option<LessonRecap>)>,
+    challenges: challenges::ChallengeState,
 
     import: ImportState,
     /// Roles (cargos) of the imported edital; empty when none were found.
@@ -585,6 +590,7 @@ impl Engine {
             mistakes: Vec::new(),
             lesson_drafts: Vec::new(),
             recap: None,
+            challenges: challenges::ChallengeState::default(),
             lesson_count: 0,
             import: ImportState::Empty,
             roles: Vec::new(),
@@ -628,6 +634,7 @@ impl Engine {
         engine.restore_chatgpt_session();
         engine.recover_writing();
         engine.reload_plans();
+        engine.sync_all_challenges();
         engine.refresh_activity();
         engine.load_study_time();
         engine

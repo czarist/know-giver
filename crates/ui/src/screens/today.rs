@@ -67,6 +67,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         });
         ui.add_space(14.0);
         next_step(ui, engine, plan, &mut actions);
+        ui.add_space(10.0);
+        super::challenges::today_card(ui, engine, &mut actions);
         ui.add_space(14.0);
         this_week(ui, engine, plan, &mut actions);
     });

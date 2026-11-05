@@ -154,6 +154,31 @@ highlights when you want one.
   answer key, saved as PDF.
 - **Progress** per subject and **daily study time** that only counts active study.
 
+## Challenges and stickers
+
+The **Achievements** screen gives each plan a few small challenges, and each one
+earns an original sticker (jade, crescent moon, engraved like the app's mark):
+
+- **First Step**: finish the plan's first lesson.
+- **Comeback**: on a new try, answer right a question you had missed.
+- **Plan in Motion**: study three different topics of the plan (lesson, quiz or review).
+- **Week on Track**: complete every topic planned for one week of the plan.
+
+Each card shows what to do, the plan it counts in, how far along you are (2/3) and a
+button to the lesson or quiz. Today shows the next one, quietly. Stickers are won only
+by rules in the code, from your saved study, never by the AI; each plan keeps its own
+progress, and the showcase shows every sticker once, with the date and the plans where
+you won it. Study from before this feature counts too; when the history does not tell
+the day, the card says so. A small notice with the sticker appears after a lesson or
+quiz ends, never in the middle, and only once. No points, no ranking, no streak to lose.
+
+<table>
+  <tr>
+    <td><img src="docs/images/challenges.png" alt="Achievements: the plan's challenges with progress, reward and a button to the next topic, and the notice of a sticker won"></td>
+    <td><img src="docs/images/showcase.png" alt="The sticker showcase: stickers won in colour with date and plans, locked ones in grey with the requirement and progress"></td>
+  </tr>
+</table>
+
 ## Written answers
 
 When the exam notice has an essay or a discursive test, a **Written answers** area
@@ -386,6 +411,8 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 - Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
   caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
+- Challenge stickers (`crates/ui/assets/stickers`): original SVGs made for Know Giver,
+  under the project's license.
 - AI provider logos: [Simple Icons](https://simpleicons.org), CC0 (`crates/ui/assets/providers`);
   the logos are trademarks of their owners, shown only to identify each service.
 

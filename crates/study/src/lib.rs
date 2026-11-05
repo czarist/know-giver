@@ -1,10 +1,11 @@
 //! Study domain: plans, subjects, topics, reviews, quizzes and their storage.
 //!
-//! [`plan`], [`review`] and [`quiz`] are pure rules with no I/O.
+//! [`plan`], [`review`], [`quiz`] and [`challenge`] are pure rules with no I/O.
 //! [`store`] persists them in SQLite.
 
 pub mod activity;
 pub mod board;
+pub mod challenge;
 pub mod discursive;
 pub mod notebook;
 pub mod plan;
@@ -20,6 +21,10 @@ pub use activity::{
 pub use board::{
     BoardDocument, BoardExcerpt, BoardQuestion, BoardQuestionId, DocumentId, DocumentKind,
     ExcerptId, NewBoardExcerpt, NewBoardQuestion, Relevance, answer_index,
+};
+pub use challenge::{
+    ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, NextStep, PLAN_IN_MOTION_TOPICS,
+    PlanRecords,
 };
 pub use discursive::{
     Attempt, AttemptId, AttemptOrigin, AttemptStatus, ConfirmedTranscript, Criterion,

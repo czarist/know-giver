@@ -132,6 +132,16 @@ fn seed(paths: &AppPaths, locale: &'static str) {
     let t = &mut plan.subjects[1].topics[0];
     t.complete_lesson(today);
     store.update_topic(t).unwrap();
+    // Two lessons on record: the first-step sticker is won and the plan is
+    // on its way to the next one.
+    for (topic, day) in [
+        (plan.subjects[0].topics[0].id, start),
+        (plan.subjects[1].topics[0].id, today),
+    ] {
+        store
+            .record_lesson(topic, day, &kg_engine::LessonRecap::default())
+            .unwrap();
+    }
 
     let crase = plan.subjects[0].topics[1].id;
     // A question missed in a quiz, and a lesson left halfway.
@@ -396,6 +406,31 @@ fn render(harness: &mut Harness<'_, KnowGiverApp>, dir: Option<&std::path::Path>
     }
 }
 
+/// The challenges screen, tall enough for the showcase, in every language.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn challenges_snapshots() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in crate::i18n::LOCALES {
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        seed(&paths, locale);
+        crate::i18n::set(locale);
+        let mut harness = Harness::builder()
+            .with_size([1180.0, 1900.0])
+            .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+        crate::i18n::set(locale);
+        harness.state_mut().ui.screen = Screen::Challenges;
+        render(&mut harness, None, "warm-up");
+        harness.state_mut().clear_toasts();
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-challenges-full"),
+        );
+    }
+}
+
 #[test]
 #[ignore = "needs a GPU; run with --ignored"]
 fn snapshots() {
@@ -419,6 +454,7 @@ fn snapshots() {
             (Screen::Board, "board"),
             (Screen::Review, "review"),
             (Screen::Progress, "progress"),
+            (Screen::Challenges, "challenges"),
             (Screen::Settings, "settings"),
             (Screen::Quiz, "quiz"),
             (Screen::Lesson, "lesson"),
@@ -1163,7 +1199,7 @@ fn writing_snapshots() {
         let (graded, review) = seed_writing(&paths, locale);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
-            .with_size([1180.0, 1500.0])
+            .with_size([1180.0, 1900.0])
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         harness.state_mut().ui.screen = Screen::Discursive;
