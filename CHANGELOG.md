@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.37.1] - 2026-11-04
+
 ### Fixed
 - **Lessons on speakers no longer loop.** Without a headset the microphone heard the
   tutor's own voice and took it for the student: the tutor stopped itself or answered its
