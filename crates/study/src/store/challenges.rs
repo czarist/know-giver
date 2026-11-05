@@ -7,8 +7,15 @@ use chrono::NaiveDate;
 use rusqlite::params;
 
 use super::{Result, Store, StoreError, parse_date};
-use crate::challenge::{ChallengeId, ChallengeUnlock, PlanRecords};
+use crate::challenge::{
+    ChallengeId, ChallengeUnlock, EssayRecord, OverallRecords, PlanRecords, QuizRecord,
+};
 use crate::plan::{PlanId, TopicId};
+
+/// Rows of a plan's topic table joined up to the plan.
+const IN_PLAN: &str = "JOIN topics t ON t.id = r.topic_id
+     JOIN subjects s ON s.id = t.subject_id
+     WHERE s.plan_id = ?1";
 
 impl Store {
     /// Notes that a topic's review was graded on `day`. Grading it again the
@@ -23,13 +30,104 @@ impl Store {
 
     /// Everything the challenge rules read about one plan.
     pub fn plan_records(&self, plan: PlanId) -> Result<PlanRecords> {
+        let readings_finished = self
+            .readings(plan)?
+            .iter()
+            .filter(|r| r.page_count > 0 && r.progress() >= 1.0)
+            .count();
         Ok(PlanRecords {
             first_lesson: self.first_days(plan, "lessons", "taken_on")?,
             first_quiz: self.first_days(plan, "quiz_attempts", "taken_on")?,
             first_review: self.first_days(plan, "review_log", "reviewed_on")?,
+            lesson_days: self.days(
+                &format!("SELECT r.taken_on FROM lessons r {IN_PLAN}"),
+                plan,
+                "taken_on",
+            )?,
+            quizzes: self.quizzes(plan)?,
+            review_days: self.days(
+                &format!("SELECT r.reviewed_on FROM review_log r {IN_PLAN}"),
+                plan,
+                "reviewed_on",
+            )?,
             recoveries: self.recoveries(plan)?,
             open_mistakes: self.mistake_topics(plan)?,
+            exam_days: self.days(
+                "SELECT added_on FROM board_documents WHERE plan_id = ?1 AND kind = 'exam'",
+                plan,
+                "added_on",
+            )?,
+            readings_finished: u32::try_from(readings_finished).unwrap_or(u32::MAX),
+            highlight_days: self.days(
+                "SELECT h.created_on FROM highlights h
+                 JOIN readings r ON r.id = h.reading_id WHERE r.plan_id = ?1",
+                plan,
+                "created_on",
+            )?,
+            handout_days: self.days(
+                &format!("SELECT r.created_on FROM handouts r {IN_PLAN}"),
+                plan,
+                "created_on",
+            )?,
+            essays: self.essays(plan)?,
         })
+    }
+
+    /// Study across every plan: time per day and days with activity.
+    pub fn overall_records(&self) -> Result<OverallRecords> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT day, milliseconds FROM study_time ORDER BY day")?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
+        let mut study_millis = Vec::new();
+        for row in rows {
+            let (day, ms) = row?;
+            study_millis.push((parse_date("day", &day)?, u64::try_from(ms).unwrap_or(0)));
+        }
+        let mut stmt = self
+            .conn
+            .prepare("SELECT DISTINCT day FROM activity ORDER BY day")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        let activity_days = rows
+            .map(|row| parse_date("day", &row?))
+            .collect::<Result<_>>()?;
+        let all = |sql: &str, column: &'static str| -> Result<Vec<NaiveDate>> {
+            let mut stmt = self.conn.prepare(sql)?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+            rows.map(|row| parse_date(column, &row?)).collect()
+        };
+        let mut stmt = self
+            .conn
+            .prepare("SELECT taken_on, correct FROM quiz_attempts")?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, u32>(1)?)))?;
+        let mut quizzes = Vec::new();
+        for row in rows {
+            let (day, right) = row?;
+            quizzes.push((parse_date("taken_on", &day)?, right));
+        }
+        let mastered: u32 = self.conn.query_row(
+            "SELECT COUNT(*) FROM topics WHERE status = 'done'",
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(OverallRecords {
+            study_millis,
+            activity_days,
+            plan_days: all("SELECT created_on FROM plans", "created_on")?,
+            lesson_days: all("SELECT taken_on FROM lessons", "taken_on")?,
+            quizzes,
+            mastered,
+            // The engine fills it from the unlocks.
+            sticker_days: Vec::new(),
+        })
+    }
+
+    /// The day column of `sql`'s rows, for plan `?1`. `column` names it in
+    /// errors.
+    fn days(&self, sql: &str, plan: PlanId, column: &'static str) -> Result<Vec<NaiveDate>> {
+        let mut stmt = self.conn.prepare(sql)?;
+        let rows = stmt.query_map([plan.0], |r| r.get::<_, String>(0))?;
+        rows.map(|row| parse_date(column, &row?)).collect()
     }
 
     /// First day per topic in a table of dated records. `table` and
@@ -41,10 +139,7 @@ impl Store {
         column: &'static str,
     ) -> Result<HashMap<TopicId, NaiveDate>> {
         let sql = format!(
-            "SELECT r.topic_id, MIN(r.{column}) FROM {table} r
-             JOIN topics t ON t.id = r.topic_id
-             JOIN subjects s ON s.id = t.subject_id
-             WHERE s.plan_id = ?1
+            "SELECT r.topic_id, MIN(r.{column}) FROM {table} r {IN_PLAN}
              GROUP BY r.topic_id"
         );
         let mut stmt = self.conn.prepare(&sql)?;
@@ -58,14 +153,33 @@ impl Store {
         .collect()
     }
 
+    fn quizzes(&self, plan: PlanId) -> Result<Vec<QuizRecord>> {
+        let sql = format!("SELECT r.taken_on, r.correct, r.total FROM quiz_attempts r {IN_PLAN}");
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, u32>(1)?,
+                r.get::<_, u32>(2)?,
+            ))
+        })?;
+        rows.map(|row| {
+            let (day, correct, total) = row?;
+            Ok(QuizRecord {
+                day: parse_date("taken_on", &day)?,
+                correct,
+                total,
+            })
+        })
+        .collect()
+    }
+
     fn recoveries(&self, plan: PlanId) -> Result<Vec<(TopicId, NaiveDate)>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT r.topic_id, r.recovered_on FROM mistake_recoveries r
-             JOIN topics t ON t.id = r.topic_id
-             JOIN subjects s ON s.id = t.subject_id
-             WHERE s.plan_id = ?1
-             ORDER BY r.recovered_on, r.id",
-        )?;
+        let sql = format!(
+            "SELECT r.topic_id, r.recovered_on FROM mistake_recoveries r {IN_PLAN}
+             ORDER BY r.recovered_on, r.id"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map([plan.0], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
         })?;
@@ -78,16 +192,42 @@ impl Store {
 
     /// Topics with open mistakes, the most recently missed first.
     fn mistake_topics(&self, plan: PlanId) -> Result<Vec<TopicId>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT m.topic_id FROM mistakes m
-             JOIN topics t ON t.id = m.topic_id
-             JOIN subjects s ON s.id = t.subject_id
-             WHERE s.plan_id = ?1
-             GROUP BY m.topic_id
-             ORDER BY MAX(m.missed_on) DESC, m.topic_id",
-        )?;
+        let sql = format!(
+            "SELECT r.topic_id FROM mistakes r {IN_PLAN}
+             GROUP BY r.topic_id
+             ORDER BY MAX(r.missed_on) DESC, r.topic_id"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map([plan.0], |r| r.get(0).map(TopicId))?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Graded written answers of a plan: the day and the estimated score.
+    fn essays(&self, plan: PlanId) -> Result<Vec<EssayRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT e.evaluated_at, e.total, e.max_total FROM discursive_evaluations e
+             JOIN discursive_attempts a ON a.id = e.attempt_id
+             JOIN discursive_proposals p ON p.id = a.proposal_id
+             WHERE p.plan_id = ?1",
+        )?;
+        let rows = stmt.query_map([plan.0], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, f64>(1)?,
+                r.get::<_, f64>(2)?,
+            ))
+        })?;
+        rows.map(|row| {
+            let (at, total, max) = row?;
+            // "YYYY-MM-DD HH:MM:SS": the day is the first part.
+            let day = at.get(..10).unwrap_or(&at);
+            Ok(EssayRecord {
+                day: parse_date("evaluated_at", day)?,
+                total,
+                max,
+            })
+        })
+        .collect()
     }
 
     /// Saves a sticker won in a plan. Returns `false` when that plan already
@@ -111,6 +251,23 @@ impl Store {
                 day.to_string(),
                 date_known
             ],
+        )?;
+        Ok(added > 0)
+    }
+
+    /// Saves a sticker won across every plan (study time, study days).
+    /// Returns `false` when it was already won.
+    pub fn grant_overall_challenge(
+        &mut self,
+        challenge: ChallengeId,
+        day: NaiveDate,
+        date_known: bool,
+    ) -> Result<bool> {
+        let added = self.conn.execute(
+            "INSERT OR IGNORE INTO challenge_unlocks
+               (challenge, plan_id, plan_title, unlocked_on, date_known, overall)
+             VALUES (?1, NULL, '', ?2, ?3, 1)",
+            params![challenge.key(), day.to_string(), date_known],
         )?;
         Ok(added > 0)
     }
@@ -238,10 +395,19 @@ mod tests {
             .unwrap();
         let records_a = store.plan_records(a.id).unwrap();
         assert_eq!(records_a.first_lesson.get(&topic_a), Some(&day(2)));
-        assert!(records_a.first_quiz.is_empty());
+        assert_eq!(records_a.lesson_days.len(), 2);
+        assert!(records_a.quizzes.is_empty());
         let records_b = store.plan_records(b.id).unwrap();
         assert!(records_b.first_lesson.is_empty());
         assert_eq!(records_b.first_quiz.get(&topic_b), Some(&day(4)));
+        assert_eq!(
+            records_b.quizzes,
+            [QuizRecord {
+                day: day(4),
+                correct: 1,
+                total: 2
+            }]
+        );
     }
 
     #[test]
@@ -281,6 +447,24 @@ mod tests {
         store.record_review(topic, day(8)).unwrap();
         let records = store.plan_records(plan.id).unwrap();
         assert_eq!(records.first_review.get(&topic), Some(&day(6)));
+        assert_eq!(records.review_days.len(), 2);
+    }
+
+    #[test]
+    fn overall_records_sum_study_time_and_activity_days() {
+        let mut store = Store::open_in_memory().unwrap();
+        store.add_study_millis(day(2), 1_000).unwrap();
+        store.add_study_millis(day(2), 500).unwrap();
+        store
+            .record_activity(crate::ActivityKind::Lesson, day(3))
+            .unwrap();
+        store
+            .record_activity(crate::ActivityKind::Quiz, day(3))
+            .unwrap();
+        let records = store.overall_records().unwrap();
+        assert_eq!(records.study_millis, [(day(2), 1_500)]);
+        assert!(records.plan_days.is_empty() && records.lesson_days.is_empty());
+        assert_eq!(records.activity_days, [day(3)]);
     }
 
     #[test]
@@ -292,7 +476,7 @@ mod tests {
         let b = store
             .insert_plan(&new_plan("B"), "b.pdf", "", day(1))
             .unwrap();
-        let first = ChallengeId::FirstStep;
+        let first = ChallengeId::from_key("first_step").unwrap();
         assert!(
             store
                 .grant_challenge(first, a.id, "A", day(2), true)
@@ -328,6 +512,17 @@ mod tests {
                 .grant_challenge(first, c.id, "C", day(5), true)
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn an_overall_sticker_is_won_once() {
+        let mut store = Store::open_in_memory().unwrap();
+        let hours = ChallengeId::from_key("hours_10").unwrap();
+        assert!(store.grant_overall_challenge(hours, day(2), true).unwrap());
+        assert!(!store.grant_overall_challenge(hours, day(4), true).unwrap());
+        let unlocks = store.challenge_unlocks().unwrap();
+        assert_eq!(unlocks.len(), 1);
+        assert_eq!((unlocks[0].plan, unlocks[0].unlocked_on), (None, day(2)));
     }
 
     #[test]

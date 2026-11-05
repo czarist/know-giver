@@ -6,21 +6,36 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-05
+
 ### Added
-- **Challenges and stickers.** A new Achievements screen gives each study plan four small
-  challenges, each worth an original sticker in the app's jade and engraving style: First
-  Step (finish the first lesson), Comeback (answer right, on a new try, a question you had
-  missed), Plan in Motion (study three different topics) and Week on Track (complete every
-  topic planned for one week). Each card shows what to do, the plan it counts in, the
-  progress and the reward, with a button to the lesson or quiz; Today shows the next one.
-  The showcase shows every sticker once, in colour when won, with the date and the plans
-  where it was won, and in grey with the requirement until then. Stickers come only from
-  rules in the code over saved study, never from the AI, and are saved per plan in SQLite:
-  they survive restarts, earlier study is recognised on the next start (a day the history
-  cannot tell is shown as such), and the short notice with the sticker waits for the end
-  of a lesson or quiz and is shown once. No points, ranking or streaks.
-  Comeback counts only from this version: older right answers to missed questions were
-  not recorded.
+- **Challenges and stickers: 154 to collect.** A new Achievements screen gives every study
+  plan challenges in 33 families, each level worth an original sticker in the app's jade and
+  engraving style: lessons and lesson days, quizzes, right answers, perfect and high scores,
+  missed questions won back and a clean mistakes notebook, topics studied and the share of
+  the notice, plan weeks on track, topics and subjects mastered, spoken reviews, past exams,
+  handouts read, made and highlighted, and written answers (only in plans with a written
+  test). Across every plan: study hours, study days, a long day of study, plans made, totals
+  of lessons, quizzes, right answers and mastered topics, and the album itself. First Step,
+  Comeback, Plan in Motion and Week on Track keep their own names. Each family is one line
+  with its next level, the progress, "level 3 of 11" and a button to the lesson, quiz,
+  review, board, handouts or written answers; Today shows the next one. The showcase has
+  every sticker, grouped and filtered (all, won, locked), in colour with the date and plans
+  when won and in grey with the progress until then, with the details on hover. Each family
+  has its own outline and motif; the level is the rim's colour (bronze, silver, gold, jade)
+  and one to three dots. Stickers come only from rules in the code over saved study, never
+  from the AI, and are saved in SQLite, per plan and once for the overall ones: they
+  survive restarts, earlier study is recognised on the next start (a day the history cannot
+  tell is shown as such), and the notice waits for the end of a lesson or quiz, is shown
+  once, and many at once become one line. No points, ranking or streaks.
+  Won-back questions count only from this version: older right answers to missed questions
+  were not recorded; spoken reviews are dated from now on too.
+- **F11 for full screen**, and F11 again to leave it.
+
+### Changed
+- **Buttons show the hover.** Every button now lifts slightly with a firmer border and a
+  jade tint under the pointer, also the filled ones, and the pointer turns into a hand;
+  buttons without a frame (sidebar, close, links) show it on hover.
 
 ## [0.37.1] - 2026-11-04
 

@@ -417,7 +417,7 @@ fn challenges_snapshots() {
         seed(&paths, locale);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
-            .with_size([1180.0, 1900.0])
+            .with_size([1180.0, 4200.0])
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         harness.state_mut().ui.screen = Screen::Challenges;
@@ -446,6 +446,9 @@ fn snapshots() {
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         // The app applies the saved language on start; override it here.
         crate::i18n::set(locale);
+        // The seed unlocks stickers; keep their notices off the screenshots.
+        render(&mut harness, None, "warm-up");
+        harness.state_mut().clear_toasts();
         for (screen, name) in [
             (Screen::Today, "today"),
             (Screen::Welcome, "welcome"),
@@ -1199,7 +1202,7 @@ fn writing_snapshots() {
         let (graded, review) = seed_writing(&paths, locale);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
-            .with_size([1180.0, 1900.0])
+            .with_size([1180.0, 4200.0])
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         harness.state_mut().ui.screen = Screen::Discursive;

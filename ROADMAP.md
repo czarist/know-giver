@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.37.1. Everything an agent can build and check without a human ear, a
+Version 0.38.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -722,24 +722,36 @@ mid-lesson keeps what was already covered.
 profile of progress, without turning the app into a game. It stays calm: no countdowns,
 no loss messages, no comparison with other students unless they choose it.
 
-**Status:** the first challenges and stickers shipped (Unreleased). Goals, levels,
-hidden achievements, the profile and streak rules below are still to do.
+**Status:** challenges and stickers shipped in 0.38.0: 154 in 33 families, with levels.
+Goals the student sets, hidden achievements, the profile and streak rules below are still
+to do.
 
-- [x] Challenges per plan with an original sticker each, computed in code from saved
-      study (`kg_study::challenge`), never by the AI: First Step (first lesson), Comeback
-      (a missed question answered right on a new try), Plan in Motion (three topics
-      studied by lesson, quiz or review) and Week on Track (every topic of one plan week
-      in review or done, the plan's check-mark rule). Achievements screen with progress,
-      plan, reward and a button to the next topic; the next one on Today; Steam-style
-      showcase with each sticker once, its first date and the plans where it was won.
-      Unlocks are kept per plan (unique per challenge and plan, kept when the plan is
-      deleted) and recomputed on start, so study saved before a grant or before this
-      version is recognised; a day the history cannot tell is shown as such. The notice
-      waits until no lesson, quiz question or review is open and is shown once.
+- [x] Challenges with an original sticker each, computed in code from saved study
+      (`kg_study::challenge`, a table of families and targets), never by the AI. Per plan:
+      lessons and lesson days, quizzes, right answers, perfect (5+ questions, all right) and
+      high (80 %+) quizzes, missed questions won back, a clean mistakes notebook, topics
+      studied and the share of the notice, every subject started, plan weeks complete (the
+      plan's check-mark rule) and the whole plan, topics, subjects and the whole notice
+      mastered, spoken reviews, past exams, handouts read, highlights, handouts made,
+      written answers and their estimated scores. Overall, once: study hours, study days, a
+      long day, plans made, totals of lessons, quizzes, right answers and mastered topics,
+      and stickers collected. Keys are stable; First Step, Comeback, Plan in Motion and Week
+      on Track keep their names.
+- [x] Levels inside a family with growing targets and Steam-like progress on locked
+      ones ("12 / 30"): the rim's colour (bronze, silver, gold, jade) and one to three dots.
+- [x] Achievements screen: one line per family with the next level, progress and a
+      button to the lesson, quiz, review, board, handouts or written answers; targets a
+      plan is too small for are said so; the next one on Today; a showcase of every sticker
+      grouped and filtered, with details on hover. Unlocks are kept per plan (unique per
+      challenge and plan, kept when the plan is deleted) or once overall, recomputed on
+      start, so study saved before a grant or before this version is recognised; a day the
+      history cannot tell is shown as such. The notice waits until no lesson, quiz question
+      or review is open, is shown once, and many at once become one line.
   - Gap: right answers to old mistakes were not recorded before this version (the
-    mistakes notebook deleted them), so Comeback counts only from now on; the screen
-    says so. Reviews are dated from now on (`review_log`); an older review counts with
-    an unknown day.
+    mistakes notebook deleted them), so won-back questions count only from now on; the
+    screen says so. Reviews are dated from now on (`review_log`); an older review counts
+    with an unknown day. Handouts read and topics mastered have no day on record, so a
+    grant found on start says the day is unknown.
 
 - [ ] Achievements (medals) computed in code from saved data, never by the AI:
   - consistency: first lesson, 7 and 30 days in a row, study hours per week;
@@ -751,8 +763,6 @@ hidden achievements, the profile and streak rules below are still to do.
   Each has an icon, a name, a description, the unlock date and its rarity among the
   student's own achievements (Steam shows the share of players; here there is no
   server, so no global share).
-- [ ] Levels of an achievement (bronze, silver, gold) for the same goal with growing
-      targets, like Steam's progress bars on locked achievements ("12 / 30 days").
 - [ ] Hidden achievements shown as "secret" until unlocked, a few only.
 - [ ] Goals the student sets: hours per week, topics per week, a target quiz score by a
       date; the study plan suggests realistic values from the exam date and the
@@ -774,12 +784,14 @@ real data, progress on locked ones and on their own goals, and nothing interrupt
 lesson.
 
 ## Not yet verified
-- Challenges and stickers (Unreleased): checked by engine tests on a database file
+- Challenges and stickers (0.38.0): checked by engine tests on a database file
   closed and reopened (partial progress, completion, two plans, the same study checked
-  twice, a grant missed before closing, a 0.37 database migrated) and by GPU screenshots
-  in the five languages (`challenges_snapshots`); not yet clicked through on an
-  installed build.
-- Account sign-ins (Unreleased):
+  twice, a grant missed before closing, overall stickers won once, a 0.37 database
+  migrated), by rendering every one of the 154 stickers in colour and grey, by GPU
+  screenshots in the five languages (`challenges_snapshots`), and with the release
+  build on a copy of a real 0.37 database. Not yet clicked through by hand on an
+  installed build; F11 and the hover not checked on macOS and Linux.
+- Account sign-ins (0.37.0):
   - Checked live on Windows on 2026-11-03 (`cargo run -p kg-engine --example
     accounts_live -- page.jpg`): ChatGPT sign-in, model list, lessons and a handwritten
     page read as JSON; Claude Code lessons and the same page; Copilot lessons.

@@ -162,26 +162,27 @@ você quiser.
 
 ## Desafios e figurinhas
 
-A tela **Conquistas** dá a cada plano alguns desafios pequenos, e cada um vale uma
-figurinha original (jade, lua crescente, gravura como a marca do app):
+A tela **Conquistas** tem **154 desafios** em 33 famílias, e cada nível vale uma figurinha
+original (jade, lua crescente, gravura como a marca do app). Em cada plano: aulas, quizzes,
+acertos e gabaritos perfeitos, questões erradas recuperadas, tópicos estudados e a parte do
+edital coberta, semanas do plano em dia, tópicos e matérias dominados, revisões, provas da
+banca, apostilas e destaques, e discursivas quando o edital tem. Somando todos os planos:
+horas e dias de estudo, planos criados e o próprio álbum. Primeiro Passo, Volta por Cima,
+Plano em Movimento e Semana em Dia têm nome próprio.
 
-- **Primeiro Passo**: concluir a primeira aula do plano.
-- **Volta por Cima**: acertar, numa nova tentativa, uma questão que você tinha errado.
-- **Plano em Movimento**: estudar três tópicos diferentes do plano (aula, quiz ou revisão).
-- **Semana em Dia**: completar todos os tópicos previstos para uma semana do plano.
-
-Cada cartão mostra o que fazer, em qual plano vale, quanto falta (2/3) e um botão para a
-aula ou o quiz. A tela Hoje mostra o próximo, com discrição. As figurinhas vêm só de
-regras no código, a partir do seu estudo salvo, nunca da IA; cada plano tem o próprio
-progresso, e a vitrine mostra cada figurinha uma vez, com a data e os planos em que foi
-conquistada. O estudo de antes deste recurso também conta; quando o histórico não diz o
-dia, o cartão avisa. Um aviso curto com a figurinha aparece depois que a aula ou o quiz
-termina, nunca no meio, e uma vez só. Sem pontos, sem ranking, sem sequência a perder.
+Cada família é uma linha: o próximo nível, quanto falta (2/3), "nível 3 de 11" e um botão
+para a aula, o quiz ou a revisão. A tela Hoje mostra o próximo, com discrição. A vitrine tem
+todas as figurinhas, com filtro de conquistadas e bloqueadas e os detalhes ao passar o mouse;
+o nível aparece na cor do aro e em um a três pontos. As figurinhas vêm só de regras no
+código, a partir do seu estudo salvo, nunca da IA; cada plano tem o próprio progresso. O
+estudo de antes deste recurso também conta; quando o histórico não diz o dia, o cartão avisa.
+Um aviso curto aparece depois que a aula ou o quiz termina, nunca no meio, e uma vez só. Sem
+pontos, sem ranking, sem sequência a perder.
 
 <table>
   <tr>
-    <td><img src="docs/images/pt-BR/challenges.png" alt="Conquistas: os desafios do plano com progresso, recompensa e botão para o próximo tópico, e o aviso de uma figurinha conquistada"></td>
-    <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de figurinhas: as conquistadas em cores, com data e planos; as bloqueadas em cinza, com o requisito e o progresso"></td>
+    <td><img src="docs/images/pt-BR/challenges.png" alt="Conquistas: uma linha por família com o nível, o progresso e um botão para a próxima aula ou quiz"></td>
+    <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de figurinhas: as conquistadas em cores com a data; as bloqueadas em cinza com o progresso"></td>
   </tr>
 </table>
 

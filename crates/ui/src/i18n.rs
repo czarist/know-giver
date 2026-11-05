@@ -59,39 +59,47 @@ pub fn date(date: NaiveDate) -> String {
     date.format(&t!("format.date")).to_string()
 }
 
+/// Challenges with a name of their own; the others are named by family.
+const NAMED_CHALLENGES: [&str; 4] = ["first_step", "comeback", "plan_in_motion", "week_on_track"];
+
+fn named(id: ChallengeId) -> bool {
+    NAMED_CHALLENGES.contains(&id.key())
+}
+
 pub fn challenge_name(id: ChallengeId) -> String {
-    match id {
-        ChallengeId::FirstStep => t!("challenge.first_step.name"),
-        ChallengeId::Comeback => t!("challenge.comeback.name"),
-        ChallengeId::PlanInMotion => t!("challenge.plan_in_motion.name"),
-        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.name"),
+    if named(id) {
+        return t!(format!("challenge.{}.name", id.key())).into_owned();
     }
+    t!(
+        format!("family.{}.name", id.family().key()),
+        count = id.target()
+    )
     .into_owned()
 }
 
-/// What the challenge asks, shown while it is not met.
+/// What the challenge asks.
 pub fn challenge_goal(id: ChallengeId) -> String {
-    match id {
-        ChallengeId::FirstStep => t!("challenge.first_step.goal"),
-        ChallengeId::Comeback => t!("challenge.comeback.goal"),
-        ChallengeId::PlanInMotion => t!(
-            "challenge.plan_in_motion.goal",
-            count = kg_engine::PLAN_IN_MOTION_TOPICS
-        ),
-        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.goal"),
+    if named(id) {
+        return t!(format!("challenge.{}.goal", id.key())).into_owned();
     }
+    let form = if id.target() == 1 { "goal_one" } else { "goal" };
+    t!(
+        format!("family.{}.{form}", id.family().key()),
+        count = id.target()
+    )
     .into_owned()
 }
 
 /// The won sticker's description.
 pub fn challenge_caption(id: ChallengeId) -> String {
-    match id {
-        ChallengeId::FirstStep => t!("challenge.first_step.caption"),
-        ChallengeId::Comeback => t!("challenge.comeback.caption"),
-        ChallengeId::PlanInMotion => t!("challenge.plan_in_motion.caption"),
-        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.caption"),
+    if named(id) {
+        return t!(format!("challenge.{}.caption", id.key())).into_owned();
     }
-    .into_owned()
+    t!(format!("family.{}.caption", id.family().key())).into_owned()
+}
+
+pub fn challenge_group(group: kg_engine::Group) -> String {
+    t!(format!("challenge_group.{}", group.key())).into_owned()
 }
 
 pub fn status(status: TopicStatus) -> String {
@@ -595,6 +603,28 @@ mod tests {
                 assert!(known.contains(&key), "{key}");
                 assert!(known.contains(&format!("{key}_hint")), "{key}_hint");
             }
+        }
+    }
+
+    #[test]
+    fn every_challenge_family_and_group_is_translated() {
+        let known = keys(DEFAULT_LOCALE);
+        for family in kg_engine::Family::ALL {
+            for part in ["name", "goal", "goal_one", "caption"] {
+                let key = format!("family.{}.{part}", family.key());
+                assert!(known.contains(&key), "{key}");
+            }
+        }
+        for key in NAMED_CHALLENGES {
+            for part in ["name", "goal", "caption"] {
+                let key = format!("challenge.{key}.{part}");
+                assert!(known.contains(&key), "{key}");
+            }
+            assert!(ChallengeId::from_key(key).is_some(), "{key}");
+        }
+        for group in kg_engine::Group::ALL {
+            let key = format!("challenge_group.{}", group.key());
+            assert!(known.contains(&key), "{key}");
         }
     }
 

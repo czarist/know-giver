@@ -156,26 +156,27 @@ highlights when you want one.
 
 ## Challenges and stickers
 
-The **Achievements** screen gives each plan a few small challenges, and each one
-earns an original sticker (jade, crescent moon, engraved like the app's mark):
+The **Achievements** screen has **154 challenges** in 33 families, each level worth an
+original sticker (jade, crescent moon, engraved like the app's mark). In each plan: lessons,
+quizzes, right answers and perfect scores, missed questions won back, topics studied and
+the share of the notice, plan weeks on track, topics and subjects mastered, reviews, past
+exams, handouts and highlights, and written answers when the notice has them. Across every
+plan: study hours and days, plans made and the album itself. First Step, Comeback, Plan in
+Motion and Week on Track keep their own names.
 
-- **First Step**: finish the plan's first lesson.
-- **Comeback**: on a new try, answer right a question you had missed.
-- **Plan in Motion**: study three different topics of the plan (lesson, quiz or review).
-- **Week on Track**: complete every topic planned for one week of the plan.
-
-Each card shows what to do, the plan it counts in, how far along you are (2/3) and a
-button to the lesson or quiz. Today shows the next one, quietly. Stickers are won only
-by rules in the code, from your saved study, never by the AI; each plan keeps its own
-progress, and the showcase shows every sticker once, with the date and the plans where
-you won it. Study from before this feature counts too; when the history does not tell
-the day, the card says so. A small notice with the sticker appears after a lesson or
-quiz ends, never in the middle, and only once. No points, no ranking, no streak to lose.
+Each family is one line: the next level, how far along you are (2/3), "level 3 of 11" and a
+button to the lesson, quiz or review. Today shows the next one, quietly. The showcase has
+every sticker, filtered by won or locked, with the details on hover; the level is the
+rim's colour and one to three dots. Stickers are won only by rules in the code, from your
+saved study, never by the AI; each plan keeps its own progress. Study from before this
+feature counts too; when the history does not tell the day, the card says so. A short
+notice appears after a lesson or quiz ends, never in the middle, and only once. No points,
+no ranking, no streak to lose.
 
 <table>
   <tr>
-    <td><img src="docs/images/challenges.png" alt="Achievements: the plan's challenges with progress, reward and a button to the next topic, and the notice of a sticker won"></td>
-    <td><img src="docs/images/showcase.png" alt="The sticker showcase: stickers won in colour with date and plans, locked ones in grey with the requirement and progress"></td>
+    <td><img src="docs/images/challenges.png" alt="Achievements: one line per family with its level, progress and a button to the next lesson or quiz"></td>
+    <td><img src="docs/images/showcase.png" alt="The sticker showcase: stickers won in colour with the date, locked ones in grey with their progress"></td>
   </tr>
 </table>
 
