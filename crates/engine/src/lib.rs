@@ -71,7 +71,8 @@ pub use kg_study::{
     BoardDocument, BoardExcerpt, BoardQuestion, DocumentId, DocumentKind, Relevance,
 };
 pub use kg_study::{
-    ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, NextStep, PLAN_IN_MOTION_TOPICS,
+    CATALOG, ChallengeId, ChallengeProgress, ChallengeUnlock, Completion, Family, Group, NextStep,
+    Scope,
 };
 pub use kg_study::{
     Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,

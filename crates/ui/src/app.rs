@@ -345,8 +345,8 @@ impl KnowGiverApp {
                                 .color(p.muted),
                             );
                             // The source code, as the GitHub mark.
-                            let mark =
-                                egui::Button::image(Icon::GitHub.image(12.0, p.muted)).frame(false);
+                            let mark = egui::Button::image(Icon::GitHub.image(12.0, p.muted))
+                                .frame_when_inactive(false);
                             if ui.add(mark).on_hover_text(t!("nav.source")).clicked() {
                                 open_url(kg_engine::REPOSITORY);
                             }
@@ -376,7 +376,7 @@ impl KnowGiverApp {
                     let mut button =
                         egui::Button::image_and_text(screen.icon().image(18.0, color), text)
                             .selected(selected)
-                            .frame(selected)
+                            .frame_when_inactive(selected)
                             .min_size(egui::vec2(ui.available_width(), 36.0));
                     if let Some(badge) = engine_badges.for_screen(screen) {
                         button = button
@@ -446,7 +446,7 @@ impl KnowGiverApp {
                                     if ui
                                         .add(
                                             egui::Button::image(Icon::Close.image(14.0, p.muted))
-                                                .frame(false),
+                                                .frame_when_inactive(false),
                                         )
                                         .on_hover_text(t!("common.close"))
                                         .clicked()
@@ -462,6 +462,14 @@ impl KnowGiverApp {
         if let Some(i) = close {
             self.toasts.remove(i);
         }
+    }
+}
+
+/// F11 puts the window in full screen and back.
+fn toggle_fullscreen(ctx: &egui::Context) {
+    if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F11)) {
+        let full = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+        ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!full));
     }
 }
 
@@ -486,7 +494,7 @@ pub(crate) fn source_link(ui: &mut egui::Ui, color: egui::Color32) {
         icons::Icon::GitHub.image(14.0, color),
         egui::RichText::new(t!("nav.source")).small().color(color),
     )
-    .frame(false);
+    .frame_when_inactive(false);
     if ui
         .add(button)
         .on_hover_text(kg_engine::REPOSITORY)
@@ -629,8 +637,21 @@ impl eframe::App for KnowGiverApp {
         if go_to_reader {
             self.ui.screen = Screen::Reader;
         }
-        for sticker in stickers {
-            self.push_sticker_toast(sticker);
+        // A few with their art; many at once (earlier study found on the
+        // first start) end in one line, so the screen stays calm.
+        let shown = if stickers.len() > 3 {
+            2
+        } else {
+            stickers.len()
+        };
+        for sticker in &stickers[..shown] {
+            self.push_sticker_toast(*sticker);
+        }
+        if stickers.len() > shown {
+            self.push_toast(
+                t!("challenges.unlocked_many", count = stickers.len() - shown).into_owned(),
+                false,
+            );
         }
 
         let close_requested = ctx.input(|input| input.viewport().close_requested());
@@ -667,6 +688,7 @@ impl eframe::App for KnowGiverApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        toggle_fullscreen(ui.ctx());
         let locale = i18n::current();
         if locale != self.fonts_locale {
             theme::set_fonts(ui.ctx(), &locale);

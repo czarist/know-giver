@@ -1255,7 +1255,7 @@ fn generate_plan(engine: &mut Engine, title: &str) -> PlanId {
 }
 
 fn challenge(engine: &Engine, id: ChallengeId) -> ChallengeProgress {
-    *engine.challenges().iter().find(|c| c.id == id).unwrap()
+    **engine.challenges().iter().find(|c| c.id == id).unwrap()
 }
 
 /// A quiz on `topic` with one question per entry: `true` answers it right.
@@ -1307,33 +1307,36 @@ fn challenges_resume_after_a_restart_and_announce_a_sticker_once() {
 
     // Part of the way: a quiz on one topic, with a miss.
     take_quiz(&mut engine, topics[0], &[false, true]);
-    let moving = challenge(&engine, ChallengeId::PlanInMotion);
+    let moving = challenge(&engine, cid("plan_in_motion"));
     assert_eq!((moving.current, moving.target), (1, 3));
     assert_eq!(
-        challenge(&engine, ChallengeId::Comeback).next,
+        challenge(&engine, cid("comeback")).next,
         NextStep::Mistakes(topics[0])
     );
     drop(engine);
 
-    // Closed and opened again: the same progress, nothing won yet.
+    // Closed and opened again: the same progress; the quiz won its sticker,
+    // the first lesson is still to do.
     let mut engine = engine_on_disk(dir.path());
-    assert_eq!(challenge(&engine, ChallengeId::PlanInMotion).current, 1);
-    assert!(engine.sticker_unlocks().is_empty());
+    assert_eq!(challenge(&engine, cid("plan_in_motion")).current, 1);
+    assert!(won(&engine).contains(&cid("first_quiz")));
+    assert!(!won(&engine).contains(&cid("first_step")));
+    assert!(engine.take_sticker_notices().contains(&cid("first_quiz")));
 
     // The first lesson wins the sticker; its notice waits for the lesson.
     // Topic 2 is the other week-1 topic: the quiz already put topic 0 in
     // review, so week 1 is complete too.
     engine.handle(Command::StartLesson(topics[2])).unwrap();
     engine.simulate_tutor_text("Terminamos por hoje.\nFIM");
-    assert!(challenge(&engine, ChallengeId::FirstStep).is_met());
-    assert!(challenge(&engine, ChallengeId::WeekOnTrack).is_met());
+    assert!(challenge(&engine, cid("first_step")).is_met());
+    assert!(challenge(&engine, cid("week_on_track")).is_met());
     assert!(engine.studying_now());
     assert!(engine.take_sticker_notices().is_empty());
     engine.handle(Command::EndLesson).unwrap();
-    assert_eq!(
-        engine.take_sticker_notices(),
-        [ChallengeId::FirstStep, ChallengeId::WeekOnTrack]
-    );
+    let notices = engine.take_sticker_notices();
+    assert!(notices.contains(&cid("first_step")));
+    assert!(notices.contains(&cid("week_on_track")));
+    assert!(!notices.contains(&cid("first_quiz")));
     assert!(engine.take_sticker_notices().is_empty());
     // Won live: the day is today and known.
     assert!(
@@ -1347,19 +1350,20 @@ fn challenges_resume_after_a_restart_and_announce_a_sticker_once() {
     engine.handle(Command::RetryMistakes(topics[0])).unwrap();
     let correct = engine.quiz().unwrap().current().unwrap().correct;
     engine.handle(Command::AnswerQuiz(correct)).unwrap();
-    assert!(challenge(&engine, ChallengeId::Comeback).is_met());
+    assert!(challenge(&engine, cid("comeback")).is_met());
     // Still on the quiz: the notice waits for its end.
     assert!(engine.take_sticker_notices().is_empty());
     engine.handle(Command::NextQuestion).unwrap();
-    assert_eq!(engine.take_sticker_notices(), [ChallengeId::Comeback]);
-    drop(engine);
+    assert!(engine.take_sticker_notices().contains(&cid("comeback")));
 
     // A restart shows no notice again and keeps the stickers.
+    let kept = engine.sticker_unlocks().len();
+    drop(engine);
     let mut engine = engine_on_disk(dir.path());
     assert!(engine.take_sticker_notices().is_empty());
-    assert_eq!(engine.sticker_unlocks().len(), 3);
+    assert_eq!(engine.sticker_unlocks().len(), kept);
     take_quiz(&mut engine, topics[1], &[true]);
-    assert!(challenge(&engine, ChallengeId::PlanInMotion).is_met());
+    assert!(challenge(&engine, cid("plan_in_motion")).is_met());
 }
 
 #[test]
@@ -1370,29 +1374,37 @@ fn each_plan_has_its_own_challenges_and_the_collection_shows_where() {
     finish_lesson(&mut engine, topic_a);
     let b = generate_plan(&mut engine, "Plano B");
     assert_ne!(a, b);
-    assert!(!challenge(&engine, ChallengeId::FirstStep).is_met());
+    assert!(!challenge(&engine, cid("first_step")).is_met());
 
     let topic_b = first_topic(&engine);
     finish_lesson(&mut engine, topic_b);
-    let won: Vec<(ChallengeId, Option<PlanId>)> = engine
+    let first_steps = |engine: &Engine| -> Vec<Option<PlanId>> {
+        engine
+            .sticker_unlocks()
+            .iter()
+            .filter(|u| u.challenge == cid("first_step"))
+            .map(|u| u.plan)
+            .collect()
+    };
+    assert_eq!(first_steps(&engine), [Some(a), Some(b)]);
+    // One notice per sticker, even when won in two plans.
+    let notices = engine.take_sticker_notices();
+    assert_eq!(
+        notices.iter().filter(|c| **c == cid("first_step")).count(),
+        1
+    );
+    // Overall stickers are won once: the first plan made.
+    let plans_1 = engine
         .sticker_unlocks()
         .iter()
-        .map(|u| (u.challenge, u.plan))
-        .collect();
-    assert_eq!(
-        won,
-        [
-            (ChallengeId::FirstStep, Some(a)),
-            (ChallengeId::FirstStep, Some(b))
-        ]
-    );
-    // One notice per sticker, even when won in two plans.
-    assert_eq!(engine.take_sticker_notices(), [ChallengeId::FirstStep]);
+        .filter(|u| u.challenge == cid("plans_1"))
+        .count();
+    assert_eq!(plans_1, 1);
 
     // Back on plan A, its own progress.
     engine.handle(Command::SelectPlan(a)).unwrap();
-    assert!(challenge(&engine, ChallengeId::FirstStep).is_met());
-    assert_eq!(engine.sticker_unlocks().len(), 2);
+    assert!(challenge(&engine, cid("first_step")).is_met());
+    assert_eq!(first_steps(&engine), [Some(a), Some(b)]);
 }
 
 #[test]
@@ -1401,10 +1413,17 @@ fn checking_the_same_study_again_grants_nothing_new() {
     let id = first_topic(&engine);
     finish_lesson(&mut engine, id);
     finish_lesson(&mut engine, id);
+    let won = engine.sticker_unlocks().to_vec();
     engine.sync_all_challenges();
     engine.sync_all_challenges();
-    assert_eq!(engine.sticker_unlocks().len(), 1);
-    assert_eq!(engine.take_sticker_notices(), [ChallengeId::FirstStep]);
+    assert_eq!(engine.sticker_unlocks(), won);
+    assert_eq!(
+        won.iter()
+            .filter(|u| u.challenge == cid("first_step"))
+            .count(),
+        1
+    );
+    assert!(engine.take_sticker_notices().contains(&cid("first_step")));
     engine.sync_all_challenges();
     assert!(engine.take_sticker_notices().is_empty());
 }
@@ -1438,21 +1457,108 @@ fn study_saved_before_a_grant_is_recognized_on_the_next_start() {
         }
     }
     let mut engine = engine_on_disk(dir.path());
-    let won: Vec<(ChallengeId, NaiveDate, bool)> = engine
+    let found: Vec<(ChallengeId, NaiveDate, bool)> = engine
         .sticker_unlocks()
         .iter()
         .filter(|u| u.plan == Some(plan))
         .map(|u| (u.challenge, u.unlocked_on, u.date_known))
         .collect();
+    // Two of the three topics: the first lesson, half the notice and the
+    // first week, all on the real day.
+    for id in [cid("first_step"), cid("half_notice"), cid("week_on_track")] {
+        assert!(found.contains(&(id, past, true)), "{id:?} in {found:?}");
+    }
+    let notices = engine.take_sticker_notices();
+    assert!(notices.contains(&cid("first_step")));
+    assert!(engine.take_sticker_notices().is_empty());
+}
+
+#[test]
+fn a_topic_mastered_now_is_dated_today_but_one_found_on_start_is_not() {
+    let dir = tempfile::tempdir().unwrap();
+    let topic = {
+        let mut engine = engine_on_disk(dir.path());
+        generate_plan(&mut engine, "Plano TRF");
+        first_topic(&engine)
+    };
+    // Mastered before the app knew about stickers.
+    {
+        let mut store = Store::open(&AppPaths::new(dir.path()).database()).unwrap();
+        let mut plan = store.load_plan(store.list_plans().unwrap()[0].id).unwrap();
+        let t = plan.find_topic_mut(topic).unwrap();
+        t.status = TopicStatus::Done;
+        store.update_topic(t).unwrap();
+    }
+    let mut engine = engine_on_disk(dir.path());
+    let mastery = |engine: &Engine| {
+        engine
+            .sticker_unlocks()
+            .iter()
+            .find(|u| u.challenge == cid("first_mastery"))
+            .cloned()
+            .unwrap()
+    };
+    assert!(!mastery(&engine).date_known);
+    // A second plan, its topic marked mastered while the app is open.
+    generate_plan(&mut engine, "Plano B");
+    let second = first_topic(&engine);
+    engine
+        .handle(Command::SetTopicStatus(second, TopicStatus::Done))
+        .unwrap();
+    let live = engine
+        .sticker_unlocks()
+        .iter()
+        .filter(|u| u.challenge == cid("first_mastery"))
+        .find(|u| u.plan == engine.active_plan().map(|p| p.id))
+        .cloned()
+        .unwrap();
+    assert!(live.date_known);
+    assert_eq!(live.unlocked_on, Engine::today());
+}
+
+#[test]
+fn hours_of_study_win_an_overall_sticker_once() {
+    let (mut engine, _dir) = engine_with_plan();
+    engine
+        .store
+        .add_study_millis(Engine::today(), 10 * 3_600_000)
+        .unwrap();
+    engine.sync_overall_challenges();
+    let hours: Vec<&ChallengeUnlock> = engine
+        .sticker_unlocks()
+        .iter()
+        .filter(|u| u.challenge == cid("hours_10"))
+        .collect();
+    assert_eq!(hours.len(), 1);
+    assert_eq!(hours[0].plan, None);
+    let fifty = engine
+        .overall_challenges()
+        .iter()
+        .find(|c| c.id == cid("hours_50"))
+        .copied()
+        .unwrap();
+    assert_eq!((fifty.current, fifty.target), (10, 50));
+    // A second plan does not win it again.
+    generate_plan(&mut engine, "Plano B");
+    engine.sync_overall_challenges();
     assert_eq!(
-        won,
-        [
-            (ChallengeId::FirstStep, past, true),
-            (ChallengeId::WeekOnTrack, past, true)
-        ]
+        engine
+            .sticker_unlocks()
+            .iter()
+            .filter(|u| u.challenge == cid("hours_10"))
+            .count(),
+        1
     );
-    assert_eq!(
-        engine.take_sticker_notices(),
-        [ChallengeId::FirstStep, ChallengeId::WeekOnTrack]
-    );
+}
+
+fn cid(key: &str) -> ChallengeId {
+    ChallengeId::from_key(key).unwrap()
+}
+
+fn won(engine: &Engine) -> Vec<ChallengeId> {
+    engine
+        .sticker_unlocks()
+        .iter()
+        .map(|u| u.challenge)
+        .collect()
 }

@@ -54,7 +54,7 @@ pub(crate) fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| match &status {
                     UpdateStatus::Available(release) | UpdateStatus::Failed(release) => {
                         let close = egui::Button::image(icons::Icon::Close.image(14.0, p.muted))
-                            .frame(false)
+                            .frame_when_inactive(false)
                             .min_size(egui::vec2(28.0, 28.0));
                         if ui.add(close).on_hover_text(t!("update.later")).clicked() {
                             command = Some(Command::DismissUpdate);
