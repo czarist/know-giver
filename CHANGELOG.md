@@ -6,6 +6,13 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- **Lessons on speakers no longer loop.** Without a headset the microphone heard the
+  tutor's own voice and took it for the student: the tutor stopped itself or answered its
+  own echo, over and over. The microphone now follows what the app is playing, learns how
+  much of it comes back (almost nothing with a headset) and only counts sound clearly
+  louder than that echo as the student.
+
 ## [0.37.0] - 2026-11-03
 
 ### Added

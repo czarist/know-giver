@@ -1,5 +1,11 @@
 //! Microphone capture with a simple energy-based end-of-speech detector.
+//!
+//! When the tutor plays through speakers instead of a headset, the
+//! microphone hears it. The detector follows what is being played
+//! ([`Recording::follow_playback`]) and learns how much of it comes back, so
+//! the tutor's echo does not count as the student speaking.
 
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -10,7 +16,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample};
 
 use crate::signal::rms;
-use crate::{AudioClip, AudioError};
+use crate::{AudioClip, AudioError, PlaybackLevel};
 
 /// How a recording ends.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,6 +50,23 @@ impl Default for RecordOptions {
 const MIN_SPEECH_LEVEL: f32 = 0.0025;
 /// Speech must be this many times louder than the room.
 const SPEECH_OVER_NOISE: f32 = 3.0;
+/// The detector's step.
+const TICK: Duration = Duration::from_millis(30);
+/// Sound from the speakers keeps arriving after it was played (output
+/// latency, the room's reverb): the expected echo fades over about this long.
+const ECHO_FADE: Duration = Duration::from_millis(400);
+/// Playback this loud is used to learn how much of it the microphone hears.
+const ECHO_LEARN_LEVEL: f32 = 0.01;
+/// Measurements kept to learn the echo (about 12 seconds of playback).
+const ECHO_HISTORY: usize = 400;
+/// Measurements needed before trusting what was learned.
+const ECHO_MIN_HISTORY: usize = 20;
+/// Until then, assume speakers that the microphone hears loudly.
+const ECHO_DEFAULT_GAIN: f32 = 1.0;
+/// Share of the measured echo levels the estimate covers.
+const ECHO_PERCENTILE: f32 = 0.8;
+/// The student must be this many times louder than the expected echo.
+const ECHO_MARGIN: f32 = 2.0;
 
 /// The audio kept so far. Positions count from the start of the recording,
 /// also after older audio was let go with [`Recording::forget_before`].
@@ -77,6 +100,8 @@ struct Shared {
     now_ms: AtomicU64,
     /// Room noise level (f32 bits), once known.
     noise_floor: AtomicU32,
+    /// What the app is playing, so its echo is not taken for speech.
+    playback: Mutex<Option<PlaybackLevel>>,
 }
 
 /// A recording in progress. The capture stream lives on its own thread
@@ -139,6 +164,17 @@ impl Recording {
         let now = self.shared.now_ms.load(Ordering::Relaxed);
         let voice = self.shared.voice_at_ms.load(Ordering::Relaxed);
         Some(Duration::from_millis(now.saturating_sub(voice)))
+    }
+
+    /// Follows what `level` reports being played, so that sound coming back
+    /// from the speakers does not count as speech. Cheap to call often; a
+    /// new speaker replaces the old one.
+    pub fn follow_playback(&self, level: &PlaybackLevel) {
+        if let Ok(mut current) = self.shared.playback.lock()
+            && !current.as_ref().is_some_and(|c| c.same_as(level))
+        {
+            *current = Some(level.clone());
+        }
     }
 
     /// Room noise level, once measured.
@@ -245,8 +281,9 @@ fn capture_thread(
     }
     let mut heard_speech = false;
     let mut last_voice = Instant::now();
+    let mut echo = EchoGate::default();
     while !shared.stop.load(Ordering::Relaxed) {
-        std::thread::sleep(Duration::from_millis(30));
+        std::thread::sleep(TICK);
         let level = f32::from_bits(shared.level.load(Ordering::Relaxed));
         shared
             .now_ms
@@ -264,7 +301,15 @@ fn capture_thread(
             shared.noise_floor.store(floor.to_bits(), Ordering::Relaxed);
             floor
         });
-        let threshold = (floor * SPEECH_OVER_NOISE).max(MIN_SPEECH_LEVEL);
+        let played = shared
+            .playback
+            .lock()
+            .ok()
+            .and_then(|p| p.as_ref().map(PlaybackLevel::get))
+            .unwrap_or(0.0);
+        let threshold = (floor * SPEECH_OVER_NOISE)
+            .max(MIN_SPEECH_LEVEL)
+            .max(echo.threshold(level, played));
         if level > threshold {
             heard_speech = true;
             shared.heard_speech.store(true, Ordering::Relaxed);
@@ -288,6 +333,54 @@ fn capture_thread(
         }
     }
     drop(stream);
+}
+
+/// Tells the tutor's voice coming back through the speakers from the
+/// student: learns how loud the microphone hears playback (almost nothing
+/// with a headset) and expects that much echo while the tutor is heard.
+struct EchoGate {
+    /// Recent playback loudness, held while its echo can still arrive.
+    envelope: f32,
+    /// Microphone level divided by `envelope`, while the tutor plays.
+    ratios: VecDeque<f32>,
+}
+
+impl Default for EchoGate {
+    fn default() -> Self {
+        Self {
+            envelope: 0.0,
+            ratios: VecDeque::with_capacity(ECHO_HISTORY),
+        }
+    }
+}
+
+impl EchoGate {
+    /// Takes one detector step (`mic` heard, `played` being played) and
+    /// returns the level the microphone must pass to count as speech;
+    /// zero when nothing has been played lately.
+    fn threshold(&mut self, mic: f32, played: f32) -> f32 {
+        let fade = 0.1f32.powf(TICK.as_secs_f32() / ECHO_FADE.as_secs_f32());
+        let played = if played.is_finite() { played } else { 0.0 };
+        self.envelope = played.max(self.envelope * fade);
+        if self.envelope >= ECHO_LEARN_LEVEL && mic.is_finite() {
+            if self.ratios.len() == ECHO_HISTORY {
+                self.ratios.pop_front();
+            }
+            self.ratios.push_back(mic / self.envelope);
+        }
+        self.gain() * self.envelope * ECHO_MARGIN
+    }
+
+    /// How loud the echo is next to what is played.
+    fn gain(&self) -> f32 {
+        if self.ratios.len() < ECHO_MIN_HISTORY {
+            return ECHO_DEFAULT_GAIN;
+        }
+        let mut sorted: Vec<f32> = self.ratios.iter().copied().collect();
+        sorted.sort_by(f32::total_cmp);
+        let at = ((sorted.len() - 1) as f32 * ECHO_PERCENTILE) as usize;
+        sorted.get(at).copied().unwrap_or(ECHO_DEFAULT_GAIN)
+    }
 }
 
 fn median(values: &mut [f32]) -> f32 {
@@ -359,7 +452,41 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::median;
+    use super::{EchoGate, median};
+
+    /// Runs `steps` detector steps and returns the last threshold.
+    fn run(gate: &mut EchoGate, steps: usize, mic: f32, played: f32) -> f32 {
+        (0..steps).fold(0.0, |_, _| gate.threshold(mic, played))
+    }
+
+    #[test]
+    fn speakers_echo_is_not_speech_but_the_student_over_it_is() {
+        let mut gate = EchoGate::default();
+        // The tutor plays at 0.1 and the microphone hears 0.03 of it.
+        let threshold = run(&mut gate, 100, 0.03, 0.1);
+        assert!(threshold > 0.03, "echo passed: {threshold}");
+        // The student speaks up close, well over the echo.
+        assert!(0.1 > threshold, "student blocked: {threshold}");
+    }
+
+    #[test]
+    fn echo_fades_after_playback_stops() {
+        let mut gate = EchoGate::default();
+        run(&mut gate, 100, 0.03, 0.1);
+        // Right after the tutor stops, its last words still come back.
+        assert!(gate.threshold(0.03, 0.0) > 0.03);
+        // Half a second later the room is the student's again.
+        assert!(run(&mut gate, 20, 0.0, 0.0) < 0.002);
+    }
+
+    #[test]
+    fn a_headset_leaves_the_microphone_open() {
+        let mut gate = EchoGate::default();
+        // The microphone hears only the room while the tutor plays.
+        let threshold = run(&mut gate, 100, 0.001, 0.1);
+        assert!(threshold < 0.0025, "headset blocked: {threshold}");
+        assert_eq!(EchoGate::default().threshold(0.01, 0.0), 0.0);
+    }
 
     #[test]
     fn noise_floor_ignores_an_early_answer() {

@@ -18,6 +18,23 @@ enum Command {
     Stop,
 }
 
+/// Loudness of what a [`Speaker`] is playing right now, readable from any
+/// thread. The microphone uses it to tell the tutor's echo from the student.
+#[derive(Debug, Clone, Default)]
+pub struct PlaybackLevel(Arc<AtomicU32>);
+
+impl PlaybackLevel {
+    /// Roughly `0.0..=1.0`; zero when nothing plays.
+    pub fn get(&self) -> f32 {
+        f32::from_bits(self.0.load(Ordering::Relaxed))
+    }
+
+    /// True when both handles follow the same speaker.
+    pub fn same_as(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 /// Plays clips one after another. The output device lives on its own thread;
 /// this handle is cheap to clone and safe to share.
 #[derive(Debug, Clone)]
@@ -80,6 +97,11 @@ impl Speaker {
     /// Loudness of the audio being played, roughly `0.0..=1.0`.
     pub fn level(&self) -> f32 {
         f32::from_bits(self.level.load(Ordering::Relaxed))
+    }
+
+    /// A handle that follows [`Speaker::level`] from other threads.
+    pub fn playback_level(&self) -> PlaybackLevel {
+        PlaybackLevel(Arc::clone(&self.level))
     }
 }
 

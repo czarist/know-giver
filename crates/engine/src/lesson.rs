@@ -1109,6 +1109,11 @@ impl Engine {
             return;
         };
         if let Some(mic) = &lesson.mic {
+            // With speakers instead of a headset, the microphone hears the
+            // tutor: it must know what is playing to not take it for the student.
+            if let Some(speaker) = &self.voice.speaker {
+                mic.follow_playback(&speaker.playback_level());
+            }
             // Let go of old audio, in steps so it is not moved every frame.
             let keep = (MIC_KEEP_SECS * mic.sample_rate() as f32) as usize;
             let mut until = mic.len().saturating_sub(keep) / keep * keep;
