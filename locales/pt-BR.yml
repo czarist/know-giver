@@ -102,6 +102,7 @@ nav:
   quiz: "Quiz"
   review: "Revisão"
   progress: "Progresso"
+  challenges: "Conquistas"
   settings: "Configurações"
   in_progress: "em andamento"
   active_plan: "Plano ativo"
@@ -533,6 +534,9 @@ tour:
   progress:
     title: "Progresso"
     text: "Seu avanço por matéria e o tempo de estudo de cada dia."
+  challenges:
+    title: "Conquistas"
+    text: "Desafios pequenos de cada plano. Cada um vale uma figurinha para a vitrine, sem pressa e sem placar."
   settings:
     title: "Configurações"
     text: "Troque o idioma, o professor, a voz ou a IA, e releia os termos. Pronto: agora é com você!"
@@ -1074,3 +1078,49 @@ teachers:
   otavio:
     name: "Otávio"
     about: "Experiente e paciente. Voz: Cadu."
+
+challenges:
+  title: "Desafios e conquistas"
+  subtitle: "Metas pequenas do seu plano, cada uma com uma figurinha para a coleção."
+  plan_section: "Desafios deste plano"
+  valid_in: "Vale para: %{plan}"
+  week: "semana %{n}"
+  progress: "%{current}/%{target}"
+  reward: "Recompensa: figurinha %{name}"
+  done: "Concluído"
+  open_quiz: "Fazer quiz"
+  open_mistakes: "Refazer questões erradas"
+  topic: "%{topic} · %{subject}"
+  comeback_note: "Conta a partir desta versão: acertos de erros antigos não ficaram registrados."
+  won_on: "Conquistada em %{date}"
+  won_noted: "Encontrada no histórico em %{date} (o dia exato não foi registrado)"
+  won_in: "Em: %{plans}"
+  plan_deleted: "%{title} (plano removido)"
+  showcase: "Vitrine"
+  showcase_count: "%{won} de %{total} figurinhas"
+  showcase_note: "Cada figurinha aparece uma vez; o cartão mostra em quais planos ela foi conquistada."
+  locked: "Bloqueada"
+  in_this_plan: "Neste plano: %{current}/%{target}"
+  no_plan: "Crie um plano de estudo para começar os desafios. As figurinhas já conquistadas continuam na vitrine."
+  unlocked_toast: "Figurinha conquistada: %{name}"
+  next: "Próximo desafio"
+  see_all: "Ver desafios"
+  all_done: "Todos os desafios deste plano foram concluídos."
+
+challenge:
+  first_step:
+    name: "Primeiro Passo"
+    goal: "Conclua a primeira aula deste plano."
+    caption: "O pergaminho se abriu: a primeira aula do plano está feita."
+  comeback:
+    name: "Volta por Cima"
+    goal: "Acerte, numa nova tentativa, uma questão que você tinha errado."
+    caption: "A lua volta a subir: uma questão errada virou acerto."
+  plan_in_motion:
+    name: "Plano em Movimento"
+    goal: "Estude %{count} tópicos diferentes deste plano, com aula, quiz ou revisão."
+    caption: "O mapa ganhou caminho: três tópicos do edital já foram estudados."
+  week_on_track:
+    name: "Semana em Dia"
+    goal: "Complete todos os tópicos previstos para uma semana do plano: cada um com a aula feita ou em revisão."
+    caption: "O selo da lua: uma semana do plano ficou completa."

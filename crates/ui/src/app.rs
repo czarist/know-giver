@@ -27,11 +27,13 @@ pub enum Screen {
     /// Written answers: essays and discursive questions.
     Discursive,
     Progress,
+    /// Challenges of the plan and the sticker showcase.
+    Challenges,
     Settings,
 }
 
 impl Screen {
-    const ALL: [Self; 11] = [
+    const ALL: [Self; 12] = [
         Self::Today,
         Self::Edital,
         Self::Plan,
@@ -42,6 +44,7 @@ impl Screen {
         Self::Review,
         Self::Discursive,
         Self::Progress,
+        Self::Challenges,
         Self::Settings,
     ];
 
@@ -58,6 +61,7 @@ impl Screen {
             Self::Review => Icon::Review,
             Self::Discursive => Icon::Writing,
             Self::Progress => Icon::Progress,
+            Self::Challenges => Icon::Award,
             Self::Settings => Icon::Settings,
         }
     }
@@ -76,6 +80,7 @@ impl Screen {
             Self::Review => t!("nav.review"),
             Self::Discursive => t!("nav.discursive"),
             Self::Progress => t!("nav.progress"),
+            Self::Challenges => t!("nav.challenges"),
             Self::Settings => t!("nav.settings"),
         }
         .into_owned()
@@ -94,6 +99,8 @@ struct Toast {
     text: String,
     is_error: bool,
     shown_at: Instant,
+    /// A sticker just won, drawn beside the text.
+    sticker: Option<kg_engine::ChallengeId>,
 }
 
 /// Plan list grouping on the Plan screen.
@@ -280,6 +287,25 @@ impl KnowGiverApp {
             text,
             is_error,
             shown_at: Instant::now(),
+            sticker: None,
+        });
+        if self.toasts.len() > 4 {
+            self.toasts.remove(0);
+        }
+    }
+
+    /// A short notice with the sticker's art. It never takes focus; the
+    /// engine holds it back while a lesson, quiz question or review is open.
+    fn push_sticker_toast(&mut self, sticker: kg_engine::ChallengeId) {
+        self.toasts.push(Toast {
+            text: t!(
+                "challenges.unlocked_toast",
+                name = i18n::challenge_name(sticker)
+            )
+            .into_owned(),
+            is_error: false,
+            shown_at: Instant::now(),
+            sticker: Some(sticker),
         });
         if self.toasts.len() > 4 {
             self.toasts.remove(0);
@@ -403,8 +429,16 @@ impl KnowGiverApp {
                         ui.ctx().request_repaint();
                     }
                     ui.set_opacity(opacity.clamp(0.0, 1.0));
+                    let color = if toast.sticker.is_some() {
+                        p.accent
+                    } else {
+                        color
+                    };
                     widgets::callout(ui, color, |ui| {
                         ui.horizontal(|ui| {
+                            if let Some(sticker) = toast.sticker {
+                                ui.add(crate::stickers::image(ui.ctx(), sticker, 36.0, true));
+                            }
                             ui.label(egui::RichText::new(&toast.text).color(color));
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
@@ -563,9 +597,11 @@ impl eframe::App for KnowGiverApp {
             }
         }
 
+        let mut stickers = Vec::new();
         let notices = match self.engine.as_mut() {
             Ok(engine) => {
                 engine.poll();
+                stickers = engine.take_sticker_notices();
                 if let Some(url) = engine.take_account_url() {
                     open_url(&url);
                     crate::accounts::remember_url(ctx, url);
@@ -592,6 +628,9 @@ impl eframe::App for KnowGiverApp {
         }
         if go_to_reader {
             self.ui.screen = Screen::Reader;
+        }
+        for sticker in stickers {
+            self.push_sticker_toast(sticker);
         }
 
         let close_requested = ctx.input(|input| input.viewport().close_requested());
@@ -729,6 +768,7 @@ impl eframe::App for KnowGiverApp {
                     Screen::Review => screens::review::show(self, ui),
                     Screen::Discursive => screens::discursive::show(self, ui),
                     Screen::Progress => screens::progress::show(self, ui),
+                    Screen::Challenges => screens::challenges::show(self, ui),
                     Screen::Settings => screens::settings::show(self, ui),
                 }
             });

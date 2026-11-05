@@ -262,8 +262,41 @@ const MIGRATIONS: &[&str] = &[
     CREATE INDEX discursive_attempts_proposal ON discursive_attempts(proposal_id);
     CREATE INDEX discursive_pages_attempt ON discursive_pages(attempt_id, position);
 ",
+    // Challenges and stickers. Progress is computed from the records above;
+    // only what they cannot tell is kept here. Recoveries and reviews name
+    // their source, so the same event is never counted twice. Unlocks keep
+    // the plan's title, so a sticker stays after its plan is deleted.
+    r"
+    CREATE TABLE mistake_recoveries (
+        id INTEGER PRIMARY KEY,
+        topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        mistake_id INTEGER NOT NULL,
+        missed_on TEXT NOT NULL,
+        misses INTEGER NOT NULL,
+        recovered_on TEXT NOT NULL,
+        UNIQUE(mistake_id, missed_on, misses)
+    );
+    CREATE INDEX mistake_recoveries_topic ON mistake_recoveries(topic_id);
+    CREATE TABLE review_log (
+        id INTEGER PRIMARY KEY,
+        topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        reviewed_on TEXT NOT NULL,
+        UNIQUE(topic_id, reviewed_on)
+    );
+    CREATE TABLE challenge_unlocks (
+        id INTEGER PRIMARY KEY,
+        challenge TEXT NOT NULL,
+        plan_id INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+        plan_title TEXT NOT NULL,
+        unlocked_on TEXT NOT NULL,
+        date_known INTEGER NOT NULL,
+        announced INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(challenge, plan_id)
+    );
+",
 ];
 
+mod challenges;
 mod discursive;
 
 /// Handle to the app database.
@@ -679,13 +712,41 @@ impl Store {
         Ok(())
     }
 
-    /// The question was answered right: it leaves the notebook.
-    pub fn clear_mistake(&mut self, topic: TopicId, prompt: &str) -> Result<bool> {
-        let removed = self.conn.execute(
-            "DELETE FROM mistakes WHERE topic_id = ?1 AND prompt = ?2",
-            params![topic.0, prompt],
+    /// The question was answered right: it leaves the notebook, and the
+    /// recovery is kept for the challenges, in the same transaction.
+    /// Answering it right again finds nothing to clear and counts nothing.
+    pub fn clear_mistake(
+        &mut self,
+        topic: TopicId,
+        prompt: &str,
+        today: NaiveDate,
+    ) -> Result<bool> {
+        let tx = self.conn.transaction()?;
+        let missed = tx
+            .query_row(
+                "SELECT id, missed_on, misses FROM mistakes WHERE topic_id = ?1 AND prompt = ?2",
+                params![topic.0, prompt],
+                |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, i64>(2)?,
+                    ))
+                },
+            )
+            .optional()?;
+        let Some((id, missed_on, misses)) = missed else {
+            return Ok(false);
+        };
+        tx.execute(
+            "INSERT OR IGNORE INTO mistake_recoveries
+               (topic_id, mistake_id, missed_on, misses, recovered_on)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![topic.0, id, missed_on, misses, today.to_string()],
         )?;
-        Ok(removed > 0)
+        tx.execute("DELETE FROM mistakes WHERE id = ?1", [id])?;
+        tx.commit()?;
+        Ok(true)
     }
 
     pub fn delete_mistake(&mut self, id: MistakeId) -> Result<()> {
@@ -1443,9 +1504,17 @@ mod tests {
         assert_eq!(mistakes[0].question, question);
         assert_eq!(store.topic_mistakes(topic).unwrap().len(), 1);
 
-        assert!(store.clear_mistake(topic, &question.prompt).unwrap());
+        assert!(
+            store
+                .clear_mistake(topic, &question.prompt, today())
+                .unwrap()
+        );
         assert!(store.mistakes(plan.id).unwrap().is_empty());
-        assert!(!store.clear_mistake(topic, &question.prompt).unwrap());
+        assert!(
+            !store
+                .clear_mistake(topic, &question.prompt, today())
+                .unwrap()
+        );
     }
 
     #[test]

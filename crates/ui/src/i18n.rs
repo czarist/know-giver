@@ -5,10 +5,10 @@
 
 use chrono::NaiveDate;
 use kg_engine::{
-    AiError, AttemptStatus, AudioError, Criterion, Difficulty, EngineError, HandoutError,
-    ImageProblem, KokoroVoice, LessonPhase, MAX_PAGES, Milestone, ModelId, Notice, PageIssue,
-    PdfError, PiperVoice, ProblemCategory, ReviewGrade, RubricError, RubricSource, StoreError,
-    StudyError, TopicStatus, Voice, VoiceGender, WhisperModel, WritingKind,
+    AiError, AttemptStatus, AudioError, ChallengeId, Criterion, Difficulty, EngineError,
+    HandoutError, ImageProblem, KokoroVoice, LessonPhase, MAX_PAGES, Milestone, ModelId, Notice,
+    PageIssue, PdfError, PiperVoice, ProblemCategory, ReviewGrade, RubricError, RubricSource,
+    StoreError, StudyError, TopicStatus, Voice, VoiceGender, WhisperModel, WritingKind,
 };
 use rust_i18n::t;
 
@@ -57,6 +57,41 @@ pub fn language_name(locale: &str) -> String {
 
 pub fn date(date: NaiveDate) -> String {
     date.format(&t!("format.date")).to_string()
+}
+
+pub fn challenge_name(id: ChallengeId) -> String {
+    match id {
+        ChallengeId::FirstStep => t!("challenge.first_step.name"),
+        ChallengeId::Comeback => t!("challenge.comeback.name"),
+        ChallengeId::PlanInMotion => t!("challenge.plan_in_motion.name"),
+        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.name"),
+    }
+    .into_owned()
+}
+
+/// What the challenge asks, shown while it is not met.
+pub fn challenge_goal(id: ChallengeId) -> String {
+    match id {
+        ChallengeId::FirstStep => t!("challenge.first_step.goal"),
+        ChallengeId::Comeback => t!("challenge.comeback.goal"),
+        ChallengeId::PlanInMotion => t!(
+            "challenge.plan_in_motion.goal",
+            count = kg_engine::PLAN_IN_MOTION_TOPICS
+        ),
+        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.goal"),
+    }
+    .into_owned()
+}
+
+/// The won sticker's description.
+pub fn challenge_caption(id: ChallengeId) -> String {
+    match id {
+        ChallengeId::FirstStep => t!("challenge.first_step.caption"),
+        ChallengeId::Comeback => t!("challenge.comeback.caption"),
+        ChallengeId::PlanInMotion => t!("challenge.plan_in_motion.caption"),
+        ChallengeId::WeekOnTrack => t!("challenge.week_on_track.caption"),
+    }
+    .into_owned()
 }
 
 pub fn status(status: TopicStatus) -> String {
@@ -513,6 +548,7 @@ mod tests {
             include_str!("export.rs"),
             include_str!("screens/mod.rs"),
             include_str!("screens/board.rs"),
+            include_str!("screens/challenges.rs"),
             include_str!("screens/discursive.rs"),
             include_str!("screens/edital.rs"),
             include_str!("screens/handout.rs"),

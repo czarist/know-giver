@@ -13,6 +13,12 @@
       "skillPath": ".claude/skills/brand/SKILL.md",
       "computedHash": "105287ad08d5baa5948522df45ba6d291b5ccfacc4b5a8ae3282b1e92b412496"
     },
+    "core-loop-designer": {
+      "source": "baxatron-git/claude-game-design-suite",
+      "sourceType": "github",
+      "skillPath": "core-loop-designer/SKILL.md",
+      "computedHash": "fa8fa05d7994bd246ba13c1ac96df7839590a32f644d76095d5fe087cac81efe"
+    },
     "design": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
@@ -25,11 +31,17 @@
       "skillPath": ".claude/skills/design-system/SKILL.md",
       "computedHash": "a8d1f1cd0f55979a872a2ce9717d3c33df23b0c378738b8d6adb574bfb266c77"
     },
+    "economy-progression-designer": {
+      "source": "baxatron-git/claude-game-design-suite",
+      "sourceType": "github",
+      "skillPath": "economy-progression-designer/SKILL.md",
+      "computedHash": "dcd85b8a1b2bfcfa3212c0d7d4a7d47b61620817f6cd73ccc71c484f30b48c72"
+    },
     "rust-best-practices": {
-      "source": "morganlinton/BeautifulRust",
+      "source": "apollographql/skills",
       "sourceType": "github",
       "skillPath": "skills/rust-best-practices/SKILL.md",
-      "computedHash": "bb5c4d149b959b33f864e0aaae18b5d5d49729377b29ea668369fb8e8a31d49a"
+      "computedHash": "5f050929b5b62c8c847b75955d7d773be9dc649d03778e6e94cd8db1101fb674"
     },
     "rust-port": {
       "source": "morganlinton/BeautifulRust",
@@ -60,6 +72,12 @@
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
       "computedHash": "bf7fef75af567d1f5be7bcb98b4af1f9b38a68ad26d71b513f629896747ee190"
+    },
+    "ui-ux-systems-designer": {
+      "source": "baxatron-git/claude-game-design-suite",
+      "sourceType": "github",
+      "skillPath": "ui-ux-systems-designer/SKILL.md",
+      "computedHash": "2be61a99b66fdd50c418c704a3b4ebc20388e982ed02ef0643c7b6de1c7323c6"
     }
   }
 }
