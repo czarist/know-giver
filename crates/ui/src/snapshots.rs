@@ -446,6 +446,9 @@ fn snapshots() {
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         // The app applies the saved language on start; override it here.
         crate::i18n::set(locale);
+        // The seed unlocks stickers; keep their notices off the screenshots.
+        render(&mut harness, None, "warm-up");
+        harness.state_mut().clear_toasts();
         for (screen, name) in [
             (Screen::Today, "today"),
             (Screen::Welcome, "welcome"),
