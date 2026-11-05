@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.37.1. Everything an agent can build and check without a human ear, a
+Version 0.38.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -722,7 +722,7 @@ mid-lesson keeps what was already covered.
 profile of progress, without turning the app into a game. It stays calm: no countdowns,
 no loss messages, no comparison with other students unless they choose it.
 
-**Status:** challenges and stickers shipped in Unreleased: 154 in 33 families, with levels.
+**Status:** challenges and stickers shipped in 0.38.0: 154 in 33 families, with levels.
 Goals the student sets, hidden achievements, the profile and streak rules below are still
 to do.
 
@@ -784,7 +784,7 @@ real data, progress on locked ones and on their own goals, and nothing interrupt
 lesson.
 
 ## Not yet verified
-- Challenges and stickers (Unreleased): checked by engine tests on a database file
+- Challenges and stickers (0.38.0): checked by engine tests on a database file
   closed and reopened (partial progress, completion, two plans, the same study checked
   twice, a grant missed before closing, overall stickers won once, a 0.37 database
   migrated), by rendering every one of the 154 stickers in colour and grey, by GPU

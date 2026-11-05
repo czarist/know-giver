@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-05
+
 ### Added
 - **Challenges and stickers: 154 to collect.** A new Achievements screen gives every study
   plan challenges in 33 families, each level worth an original sticker in the app's jade and
