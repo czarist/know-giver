@@ -14,25 +14,28 @@ use crate::plan::{Difficulty, PlanId, TopicId};
 
 const TIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
-fn time(value: NaiveDateTime) -> String {
+pub(super) fn time(value: NaiveDateTime) -> String {
     value.format(TIME_FORMAT).to_string()
 }
 
-fn parse_time(column: &'static str, value: &str) -> Result<NaiveDateTime> {
+pub(super) fn parse_time(column: &'static str, value: &str) -> Result<NaiveDateTime> {
     NaiveDateTime::parse_from_str(value, TIME_FORMAT).map_err(|_| StoreError::Corrupt {
         column,
         value: value.to_owned(),
     })
 }
 
-fn json<T: serde::Serialize>(value: &T) -> Result<String> {
+pub(super) fn json<T: serde::Serialize>(value: &T) -> Result<String> {
     serde_json::to_string(value).map_err(|e| StoreError::Corrupt {
         column: "json",
         value: e.to_string(),
     })
 }
 
-fn from_json<T: serde::de::DeserializeOwned>(column: &'static str, value: &str) -> Result<T> {
+pub(super) fn from_json<T: serde::de::DeserializeOwned>(
+    column: &'static str,
+    value: &str,
+) -> Result<T> {
     serde_json::from_str(value).map_err(|_| StoreError::Corrupt {
         column,
         value: value.chars().take(80).collect(),

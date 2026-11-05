@@ -278,6 +278,7 @@ fn next_step(
             Screen::Discursive,
             None,
         ),
+        NextStep::Mock => (t!("challenges.open_mock"), None, Screen::Mock, None),
         NextStep::None => return,
     };
     let mut button = widgets::primary_button(ui, &label);

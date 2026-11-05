@@ -28,6 +28,8 @@ pub struct Prompts {
     pub discursive_transcribe: &'static str,
     pub discursive_evaluate: &'static str,
     pub discursive_difficulties: &'static str,
+    pub exam_format: &'static str,
+    pub exam_questions: &'static str,
 }
 
 macro_rules! prompts {
@@ -68,6 +70,8 @@ macro_rules! prompts {
                 $dir,
                 "/discursive_difficulties.md"
             )),
+            exam_format: include_str!(concat!("../prompts/", $dir, "/exam_format.md")),
+            exam_questions: include_str!(concat!("../prompts/", $dir, "/exam_questions.md")),
         }
     };
 }
@@ -202,6 +206,8 @@ mod tests {
             (pt.discursive_transcribe, en.discursive_transcribe),
             (pt.discursive_evaluate, en.discursive_evaluate),
             (pt.discursive_difficulties, en.discursive_difficulties),
+            (pt.exam_format, en.exam_format),
+            (pt.exam_questions, en.exam_questions),
         ];
         for (pt, en) in pairs {
             assert_eq!(placeholders(pt), placeholders(en), "{en}");

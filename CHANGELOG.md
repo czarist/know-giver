@@ -6,6 +6,38 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-05
+
+### Added
+- **Mock exams (simulados).** A new screen builds a whole exam in the notice's format.
+  *Read from the notice* asks the AI for the questions per subject, the time, the answer
+  style (multiple choice with 2 to 5 options, or true/false), whether a wrong answer cancels
+  a right one and whether there is an essay; the app keeps the reading only when its numbers
+  are in the notice's text, matches subjects to the plan's, and falls back to an estimate
+  from the plan's subjects. The student can adjust every number. *Generate* writes new
+  questions per subject in batches of ten, three at a time, spread over the plan's topics
+  and guided by past exams on the board; each question is checked in code (options, answer,
+  repeats), shuffled, and a short batch is asked once more. An essay proposal comes along
+  when the notice has a written test.
+- **Printable PDF.** Question booklet in two columns, numbered essay sheet and an answer card
+  with fixed positions and corner markers (ready for reading photos of it in 0.40), laid out
+  with Typst like the handouts; every page carries the exam's code.
+- **Timed sittings.** The clock runs from the start and keeps going if the student leaves
+  the screen or closes the app; answers are saved as they are marked; one sitting at a time;
+  sticker notices wait until it ends. On screen or answer card only, for exams taken on
+  paper. Handed in after the time, the result says so.
+- **Results.** Graded in code against the saved key, per subject with the notice's points
+  and the wrong-cancels-right rule: right, wrong, blank, time used. Missed questions go to the
+  mistakes notebook; the essay goes to Written answers to be photographed and graded; the
+  answer key with explanations opens below.
+- **Ten challenges for mock exams** (164 in all, in 36 families): hand in 1, 3, 5, 10 and 20,
+  score 70% or more in 1, 3, 5 and 10, and 90% or more once, with their own stopwatch
+  stickers.
+
+### Changed
+- The sidebar is a little tighter, so thirteen screens and the active plan fit a small
+  window.
+
 ## [0.38.0] - 2026-11-05
 
 ### Added
