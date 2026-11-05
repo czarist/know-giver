@@ -64,6 +64,7 @@ impl Engine {
     pub fn studying_now(&self) -> bool {
         self.lesson.is_some()
             || self.review.is_some()
+            || self.mock_sitting()
             || self
                 .quiz
                 .as_ref()

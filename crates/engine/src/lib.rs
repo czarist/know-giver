@@ -14,6 +14,7 @@ mod documents;
 mod handouts;
 mod illustrations;
 mod lesson;
+mod mock;
 mod models;
 mod ocr;
 mod paths;
@@ -56,11 +57,15 @@ pub use kg_audio::{
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{
-    CjkScript, Document as HandoutDocument, Exercise as HandoutExercise, HandoutError,
+    CjkScript, Document as HandoutDocument, ExamLabels, Exercise as HandoutExercise, HandoutError,
     Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout, cjk_font,
 };
 pub use kg_pdf::{Edital, EditalText, PdfError, Role};
 pub use kg_study::discursive::{REWRITE_RATIO, change_ratio, marks as transcript_marks};
+pub use kg_study::{
+    AnswerStyle, ExamFormat, ExamSection, FormatError, FormatSource, MockAttempt, MockAttemptId,
+    MockError, MockExam, MockExamId, MockQuestion, MockResult, SectionResult,
+};
 pub use kg_study::{
     Attempt, AttemptId, AttemptOrigin, AttemptStatus, Criterion, DifficultyReport, Evaluation,
     Evidence, Legibility, MAX_PAGES, Page, PageId, PageIssue, Problem, ProblemCategory, Proposal,
@@ -81,6 +86,7 @@ pub use kg_study::{
 pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use kg_study::{LessonRecap, Mistake, MistakeId};
 pub use lesson::{LessonPhase, LessonSession, LessonTurn, Speaker};
+pub use mock::{MockJob, MockPrint, mock_code};
 pub use models::ModelStatus;
 pub use ocr::{OcrError, OcrModelStatus};
 pub use paths::AppPaths;
@@ -292,6 +298,30 @@ pub enum Command {
     /// Checks that the vision model really reads images.
     CheckVision,
 
+    /// Asks the model how the notice lays out the exam.
+    ReadExamFormat,
+    /// Saves the exam format as the student set it.
+    SaveExamFormat(ExamFormat),
+    /// Writes a new mock exam with this title, following the format.
+    GenerateMock(String),
+    CancelMock,
+    DeleteMock(MockExamId),
+    /// Saves a mock exam as a printable PDF.
+    PrintMock(Box<MockPrint>),
+    /// Starts the clock on a mock exam (or opens the one running).
+    StartMock(MockExamId),
+    OpenMockAttempt(MockAttemptId),
+    CloseMock,
+    /// Marks or clears one answer (0-based question) of the running attempt.
+    MarkMockAnswer {
+        question: usize,
+        answer: Option<u8>,
+    },
+    /// Hands the running attempt in. The words for true and false go with
+    /// wrong answers into the mistakes notebook.
+    FinishMock([String; 2]),
+    DeleteMockAttempt(MockAttemptId),
+
     /// Writes an already formatted progress report.
     ExportProgress {
         path: PathBuf,
@@ -350,6 +380,14 @@ pub enum EngineError {
     NotEnoughAttempts,
     #[error(transparent)]
     Rubric(#[from] RubricError),
+    #[error(transparent)]
+    ExamFormat(#[from] FormatError),
+    #[error(transparent)]
+    MockExam(#[from] MockError),
+    #[error("no topics for the exam section {0}")]
+    MockSubject(String),
+    #[error("the model wrote too few valid questions")]
+    MockShort,
     #[error("the first-run setup is missing a choice")]
     SetupIncomplete,
 }
@@ -395,6 +433,12 @@ pub enum Notice {
         total: f64,
         max: f64,
     },
+    /// The exam format was read from the notice; `found` is false when the
+    /// notice did not say enough.
+    ExamFormatRead {
+        found: bool,
+    },
+    MockCreated,
 }
 
 /// State of the edital import on the Edital screen.
@@ -445,6 +489,7 @@ pub(crate) enum Event {
         result: Result<Vec<(u32, String)>, EngineError>,
     },
     Discursive(discursive::DiscursiveEvent),
+    Mock(mock::MockEvent),
     EditalRevalidated {
         plan: PlanId,
         result: Result<Edital, EngineError>,
@@ -508,6 +553,7 @@ pub struct Engine {
     board: board::BoardState,
     board_job: Option<BoardJob>,
     discursive: discursive::DiscursiveState,
+    mock: mock::MockState,
     /// Plan whose notice is being read again.
     revalidating: Option<PlanId>,
     streak: u32,
@@ -621,6 +667,7 @@ impl Engine {
             board: board::BoardState::default(),
             board_job: None,
             discursive: discursive::DiscursiveState::default(),
+            mock: mock::MockState::default(),
             revalidating: None,
             streak: 0,
             studied_today: false,
@@ -998,6 +1045,27 @@ impl Engine {
             Command::DeleteAttempt(id) => self.delete_attempt(id),
             Command::AnalyzeWriting => self.analyze_writing(),
             Command::CheckVision => self.check_vision(),
+            Command::ReadExamFormat => self.read_exam_format(),
+            Command::SaveExamFormat(format) => self.save_exam_format(format),
+            Command::GenerateMock(title) => self.generate_mock(title),
+            Command::CancelMock => {
+                self.cancel_mock();
+                Ok(())
+            }
+            Command::DeleteMock(id) => self.delete_mock(id),
+            Command::PrintMock(print) => self.print_mock(*print),
+            Command::StartMock(id) => self.start_mock(id),
+            Command::OpenMockAttempt(id) => {
+                self.open_mock_attempt(id);
+                Ok(())
+            }
+            Command::CloseMock => {
+                self.close_mock();
+                Ok(())
+            }
+            Command::MarkMockAnswer { question, answer } => self.mark_mock_answer(question, answer),
+            Command::FinishMock(true_false) => self.finish_mock(true_false),
+            Command::DeleteMockAttempt(id) => self.delete_mock_attempt(id),
             Command::ExportProgress { path, content } => {
                 std::fs::write(&path, content).map_err(|source| EngineError::Export {
                     path: path.clone(),
@@ -1081,6 +1149,7 @@ impl Engine {
                     Ok(())
                 }
                 Event::Discursive(event) => self.on_discursive_event(event),
+                Event::Mock(event) => self.on_mock_event(event),
                 Event::EditalRevalidated { plan, result } => {
                     self.on_edital_revalidated(plan, result)
                 }

@@ -7,6 +7,7 @@ pub mod activity;
 pub mod board;
 pub mod challenge;
 pub mod discursive;
+pub mod mock;
 pub mod notebook;
 pub mod plan;
 pub mod quiz;
@@ -33,6 +34,10 @@ pub use discursive::{
     ProposalId, RecurringIssue, Remark, Rubric, RubricError, RubricSource, Stage, Transcript,
     TranscriptPage, TranscriptRecord, Uncertain, Unreadable, WritingKind, WritingRules,
     writing_rules,
+};
+pub use mock::{
+    AnswerStyle, ExamFormat, ExamSection, FormatError, FormatSource, MockAttempt, MockAttemptId,
+    MockError, MockExam, MockExamId, MockQuestion, MockResult, NewMockExam, SectionResult,
 };
 pub use notebook::{LessonRecap, Mistake, MistakeId};
 pub use plan::{

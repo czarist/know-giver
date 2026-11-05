@@ -76,6 +76,7 @@ SHAPES = {
     "sun": (star(64, 64, 61, 53, 16), 125),
     "oval": ("M64,4 A50,60 0 1,0 64.01,4 Z", 124),
     "pentagon": (polygon(5, r=62, start=-90), 114),
+    "ticket": ("M24 6 H104 L122 24 V104 L104 122 H24 L6 104 V24 Z", 122),
 }
 
 INNER = 0.86
@@ -437,6 +438,30 @@ def album():
     return body, ""
 
 
+def stopwatch(extra=None):
+    """A mock exam: the answer card behind, the stopwatch in front."""
+    body = f'<rect x="30" y="30" width="44" height="60" rx="3" fill="{PAPER}" stroke="{INK}" stroke-width="1.8" transform="rotate(-10 52 60)"/>'
+    for row in range(4):
+        for col in range(3):
+            filled = (row + col) % 3 == 0
+            body += (
+                f'<circle cx="{40 + col * 9}" cy="{44 + row * 10}" r="3" '
+                f'fill="{INK if filled else PAPER}" stroke="{INK}" stroke-width="1" transform="rotate(-10 52 60)"/>'
+            )
+    body += f'<rect x="73" y="34" width="10" height="8" rx="2" fill="{GOLD}" stroke="{INK}" stroke-width="1.6"/>'
+    body += f'<circle cx="78" cy="70" r="26" fill="{PAPER}" stroke="{INK}" stroke-width="2.2"/>'
+    body += f'<circle cx="78" cy="70" r="20" fill="none" stroke="{JADE_M}" stroke-width="1.4" stroke-dasharray="2 3"/>'
+    body += f'<path d="M78 70 L78 54 M78 70 L89 76" stroke="{INK}" stroke-width="2.6" stroke-linecap="round"/>'
+    body += small_moon(78, 70, 4)
+    if extra == "star":
+        body += f'<path d="{star(100, 40, 9, 3.5, 4)}" fill="{HIGHLIGHT}" stroke="{INK}" stroke-width="1.2"/>'
+    if extra == "halo":
+        body = f'<circle cx="78" cy="70" r="33" fill="none" stroke="{HIGHLIGHT}" stroke-width="4"/>' + body
+        body += f'<path d="{star(102, 38, 8, 3, 4)}" fill="{HIGHLIGHT}" stroke="{INK}" stroke-width="1.2"/>'
+        body += f'<path d="{star(28, 98, 6, 2.4, 4)}" fill="{HIGHLIGHT}" stroke="{INK}" stroke-width="1.2"/>'
+    return body, ""
+
+
 FAMILIES = {
     "lessons": ("circle", scroll),
     "lesson_days": ("card", calendar),
@@ -462,6 +487,9 @@ FAMILIES = {
     "essays": ("diamond", nib),
     "essays_high": ("diamond", lambda: nib("star")),
     "essay_top": ("diamond", lambda: nib("halo")),
+    "mocks": ("ticket", stopwatch),
+    "mocks_high": ("ticket", lambda: stopwatch("star")),
+    "mock_top": ("ticket", lambda: stopwatch("halo")),
     "hours": ("sun", sundial),
     "long_day": ("sun", radiant_sun),
     "study_days": ("oval", phases),

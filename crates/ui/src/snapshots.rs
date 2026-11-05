@@ -417,7 +417,7 @@ fn challenges_snapshots() {
         seed(&paths, locale);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
-            .with_size([1180.0, 4200.0])
+            .with_size([1180.0, 4600.0])
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         harness.state_mut().ui.screen = Screen::Challenges;
@@ -1202,7 +1202,7 @@ fn writing_snapshots() {
         let (graded, review) = seed_writing(&paths, locale);
         crate::i18n::set(locale);
         let mut harness = Harness::builder()
-            .with_size([1180.0, 4200.0])
+            .with_size([1180.0, 4600.0])
             .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
         crate::i18n::set(locale);
         harness.state_mut().ui.screen = Screen::Discursive;
@@ -1706,4 +1706,269 @@ fn update_bar_snapshots() {
         );
     }
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
+}
+
+/// Demo text of the mock exam: Portuguese, English, Japanese, Simplified
+/// and Traditional Chinese.
+fn pick(locale: &str, texts: [&'static str; 5]) -> &'static str {
+    match locale {
+        "pt-BR" => texts[0],
+        "en" => texts[1],
+        "ja" => texts[2],
+        "zh-Hans" => texts[3],
+        _ => texts[4],
+    }
+}
+
+/// A mock exam with one sitting handed in, on the demo plan.
+fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId {
+    use kg_study::{AnswerStyle, ExamFormat, ExamSection, FormatSource, MockQuestion, NewMockExam};
+    let mut store = Store::open(&paths.database()).unwrap();
+    let plan = store.list_plans().unwrap()[0].id;
+    let loaded = store.load_plan(plan).unwrap();
+    let language = &loaded.subjects[0];
+    let law = &loaded.subjects[1];
+    let pt = locale == "pt-BR";
+    let options: u8 = if pt { 5 } else { 4 };
+    let format = ExamFormat {
+        minutes: 210,
+        style: AnswerStyle::Choice { options },
+        wrong_cancels: false,
+        sections: vec![
+            ExamSection {
+                subject: language.name.clone(),
+                questions: 3,
+                weight: 1.0,
+            },
+            ExamSection {
+                subject: law.name.clone(),
+                questions: 2,
+                weight: 2.0,
+            },
+        ],
+        essay: true,
+        source: FormatSource::Notice,
+    };
+    store.save_exam_format(plan, &format).unwrap();
+    let choices = |pt_options: [&str; 5], other: [&str; 4]| -> Vec<String> {
+        if pt {
+            pt_options.iter().map(|o| (*o).to_owned()).collect()
+        } else {
+            other.iter().map(|o| (*o).to_owned()).collect()
+        }
+    };
+    let explanation = pick(
+        locale,
+        [
+            "Confira a regra no material do tópico.",
+            "Check the rule in the handout of the topic.",
+            "トピックのテキストで規則を確認しましょう。",
+            "请在该主题的讲义中核对规则。",
+            "請在該主題的講義中核對規則。",
+        ],
+    );
+    let question = |section, topic, prompt, options, correct| MockQuestion {
+        section,
+        topic: Some(topic),
+        prompt: pick(locale, prompt).into(),
+        options,
+        correct,
+        explanation: explanation.into(),
+    };
+    let questions = vec![
+        question(
+            0,
+            language.topics[0].id,
+            [
+                "Segundo o texto, a principal função da linguagem no primeiro parágrafo é:",
+                "According to the text, the first paragraph mainly aims to:",
+                "本文によれば、第1段落の主な目的は何か。",
+                "根据短文，第一段的主要目的是：",
+                "根據短文，第一段的主要目的是：",
+            ],
+            choices(
+                ["informar", "persuadir", "emocionar", "descrever", "narrar"],
+                ["inform", "persuade", "entertain", "describe"],
+            ),
+            0,
+        ),
+        question(
+            0,
+            language.topics[1].id,
+            [
+                "Assinale a frase em que o acento indicativo de crase está correto.",
+                "Which is right: “The list of names ___ on the desk.”",
+                "正しいものを選べ：“The list of names ___ on the desk.”",
+                "选出正确的一项：“The list of names ___ on the desk.”",
+                "選出正確的一項：“The list of names ___ on the desk.”",
+            ],
+            choices(
+                [
+                    "Refiro-me à questões antigas.",
+                    "Fui à Bahia nas férias.",
+                    "Começou à chover.",
+                    "Entregou o ofício à ele.",
+                    "Estava frente à frente.",
+                ],
+                ["is", "are", "were", "been"],
+            ),
+            if pt { 1 } else { 0 },
+        ),
+        question(
+            0,
+            language.topics[2].id,
+            [
+                "A vírgula está empregada corretamente em:",
+                "Choose the sentence with correct punctuation.",
+                "句読点が正しい文を選べ。",
+                "选出标点正确的句子。",
+                "選出標點正確的句子。",
+            ],
+            choices(
+                [
+                    "Os candidatos, aprovados serão chamados.",
+                    "Ontem, o tribunal publicou o edital.",
+                    "O juiz, decidiu o caso.",
+                    "Maria e, João chegaram.",
+                    "Pediu que, saíssemos.",
+                ],
+                [
+                    "However, the court published the notice.",
+                    "However the court, published the notice.",
+                    "However the court published, the notice.",
+                    "However the, court published the notice.",
+                ],
+            ),
+            if pt { 1 } else { 0 },
+        ),
+        question(
+            1,
+            law.topics[0].id,
+            [
+                "É fundamento da República Federativa do Brasil:",
+                "Which of these is a founding principle of the constitution?",
+                "憲法の基本原理はどれか。",
+                "下列哪一项是宪法的基本原则？",
+                "下列哪一項是憲法的基本原則？",
+            ],
+            choices(
+                [
+                    "a dignidade da pessoa humana",
+                    "a soberania dos estados",
+                    "o voto facultativo",
+                    "a religião oficial",
+                    "o poder moderador",
+                ],
+                [
+                    "human dignity",
+                    "an official religion",
+                    "a single party",
+                    "hereditary office",
+                ],
+            ),
+            0,
+        ),
+        question(
+            1,
+            law.topics[1].id,
+            [
+                "O habeas corpus protege, em regra, o direito de:",
+                "Habeas corpus protects, as a rule, the right to:",
+                "人身保護令が原則として保護する権利は何か。",
+                "人身保护令原则上保护的权利是：",
+                "人身保護令原則上保護的權利是：",
+            ],
+            choices(
+                [
+                    "informação",
+                    "locomoção",
+                    "propriedade",
+                    "reunião",
+                    "petição",
+                ],
+                ["freedom of movement", "property", "assembly", "information"],
+            ),
+            if pt { 1 } else { 0 },
+        ),
+    ];
+    let exam = NewMockExam {
+        title: pick(
+            locale,
+            [
+                "Simulado 1",
+                "Mock exam 1",
+                "模擬試験 1",
+                "模拟考试 1",
+                "模擬考試 1",
+            ],
+        )
+        .into(),
+        format,
+        questions,
+        proposal: None,
+        model: "demo".into(),
+    };
+    let started = chrono::Local::now().naive_local() - chrono::Duration::days(1);
+    let id = store.insert_mock_exam(plan, &exam, started).unwrap();
+    let attempt = store.start_mock_attempt(id, 5, started).unwrap();
+    let right = |n: usize| Some(exam.questions[n].correct);
+    let wrong = |n: usize| Some((exam.questions[n].correct + 1) % options);
+    store
+        .finish_mock_attempt(
+            attempt.id,
+            &[right(0), wrong(1), right(2), right(3), None],
+            started + chrono::Duration::minutes(172),
+        )
+        .unwrap();
+    attempt.id
+}
+
+/// The mock exam screens: the list, a result and a sitting.
+#[test]
+#[ignore = "needs a GPU; run with --ignored"]
+fn mock_snapshots() {
+    let out = std::env::var_os("KG_SNAPSHOT_DIR").map(std::path::PathBuf::from);
+    for locale in crate::i18n::LOCALES {
+        let data = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(data.path());
+        seed(&paths, locale);
+        let attempt = seed_mock(&paths, locale);
+        crate::i18n::set(locale);
+        let mut harness = Harness::builder()
+            .with_size([1180.0, 760.0])
+            .build_eframe(|cc| KnowGiverApp::with_paths(cc, paths.clone(), AiConfig::default()));
+        crate::i18n::set(locale);
+        render(&mut harness, None, "warm-up");
+        harness.state_mut().clear_toasts();
+        harness.state_mut().ui.screen = Screen::Mock;
+        render(&mut harness, out.as_deref(), &format!("{locale}-mock"));
+
+        harness
+            .state_mut()
+            .dispatch(Command::OpenMockAttempt(attempt));
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-mock-result"),
+        );
+
+        let exam = harness
+            .state()
+            .engine
+            .as_ref()
+            .ok()
+            .map(|e| e.mock_exams()[0].id)
+            .unwrap();
+        harness.state_mut().dispatch(Command::StartMock(exam));
+        harness.state_mut().dispatch(Command::MarkMockAnswer {
+            question: 0,
+            answer: Some(0),
+        });
+        harness.state_mut().clear_toasts();
+        render(
+            &mut harness,
+            out.as_deref(),
+            &format!("{locale}-mock-sitting"),
+        );
+    }
 }

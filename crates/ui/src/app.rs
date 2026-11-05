@@ -26,6 +26,8 @@ pub enum Screen {
     Review,
     /// Written answers: essays and discursive questions.
     Discursive,
+    /// Mock exams: timed, printable, graded.
+    Mock,
     Progress,
     /// Challenges of the plan and the sticker showcase.
     Challenges,
@@ -33,7 +35,7 @@ pub enum Screen {
 }
 
 impl Screen {
-    const ALL: [Self; 12] = [
+    const ALL: [Self; 13] = [
         Self::Today,
         Self::Edital,
         Self::Plan,
@@ -43,6 +45,7 @@ impl Screen {
         Self::Quiz,
         Self::Review,
         Self::Discursive,
+        Self::Mock,
         Self::Progress,
         Self::Challenges,
         Self::Settings,
@@ -60,6 +63,7 @@ impl Screen {
             Self::Quiz => Icon::Quiz,
             Self::Review => Icon::Review,
             Self::Discursive => Icon::Writing,
+            Self::Mock => Icon::Timer,
             Self::Progress => Icon::Progress,
             Self::Challenges => Icon::Award,
             Self::Settings => Icon::Settings,
@@ -79,6 +83,7 @@ impl Screen {
             Self::Quiz => t!("nav.quiz"),
             Self::Review => t!("nav.review"),
             Self::Discursive => t!("nav.discursive"),
+            Self::Mock => t!("nav.mock"),
             Self::Progress => t!("nav.progress"),
             Self::Challenges => t!("nav.challenges"),
             Self::Settings => t!("nav.settings"),
@@ -359,6 +364,8 @@ impl KnowGiverApp {
                 ui.add_space(12.0);
 
                 self.nav_rects.clear();
+                // Thirteen entries must fit a 760-pixel window with the plan's name.
+                ui.spacing_mut().item_spacing.y = 2.0;
                 for screen in Screen::ALL {
                     // Written answers only when the notice describes a written test.
                     if screen == Screen::Discursive
@@ -377,7 +384,7 @@ impl KnowGiverApp {
                         egui::Button::image_and_text(screen.icon().image(18.0, color), text)
                             .selected(selected)
                             .frame_when_inactive(selected)
-                            .min_size(egui::vec2(ui.available_width(), 36.0));
+                            .min_size(egui::vec2(ui.available_width(), 33.0));
                     if let Some(badge) = engine_badges.for_screen(screen) {
                         button = button
                             .right_text(egui::RichText::new(badge).small().color(p.highlight));
@@ -528,6 +535,8 @@ struct Badges {
     due_reviews: usize,
     quiz_active: bool,
     lesson_active: bool,
+    /// A mock exam's clock is running.
+    mock_running: bool,
     /// The active plan's notice describes a written test.
     writing: bool,
     plan_title: Option<String>,
@@ -544,6 +553,7 @@ impl Badges {
                 .map_or(0, |p| p.due_topics(today).len()),
             quiz_active: engine.quiz().is_some(),
             lesson_active: engine.lesson().is_some(),
+            mock_running: engine.running_mock().is_some(),
             writing: engine.writing_rules().has_written_test(),
             plan_title: engine.active_plan().map(|p| p.title.clone()),
             preparing: engine.prepare_job().map(|job| (job.done(), job.total)),
@@ -555,6 +565,8 @@ impl Badges {
             Screen::Review if self.due_reviews > 0 => Some(self.due_reviews.to_string()),
             Screen::Quiz if self.quiz_active => Some(t!("nav.in_progress").into_owned()),
             Screen::Lesson if self.lesson_active => Some(t!("nav.in_progress").into_owned()),
+            // A dot: the label is long and the clock shows on the screen itself.
+            Screen::Mock if self.mock_running => Some("●".to_owned()),
             Screen::Plan => self
                 .preparing
                 .map(|(done, total)| t!("nav.preparing", done = done, total = total).into_owned()),
@@ -702,6 +714,7 @@ impl eframe::App for KnowGiverApp {
                     Screen::Lesson => engine.lesson().is_some(),
                     Screen::Quiz => engine.quiz().is_some(),
                     Screen::Review => engine.review().is_some(),
+                    Screen::Mock => engine.running_mock().is_some(),
                     _ => false,
                 };
                 let presence = ui.input(|input| {
@@ -789,6 +802,7 @@ impl eframe::App for KnowGiverApp {
                     Screen::Quiz => screens::quiz::show(self, ui),
                     Screen::Review => screens::review::show(self, ui),
                     Screen::Discursive => screens::discursive::show(self, ui),
+                    Screen::Mock => screens::mock::show(self, ui),
                     Screen::Progress => screens::progress::show(self, ui),
                     Screen::Challenges => screens::challenges::show(self, ui),
                     Screen::Settings => screens::settings::show(self, ui),

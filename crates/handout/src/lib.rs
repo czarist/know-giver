@@ -15,9 +15,14 @@ use typst_kit::fonts::FontStore;
 use typst_layout::PagedDocument;
 
 mod cjk;
+mod exam;
 mod pages;
 
 pub use cjk::{CjkFont, CjkScript, cjk_font};
+pub use exam::{
+    CardLayout, EssaySheet, ExamDocument, ExamLabels, ExamPageQuestion, ExamPageSection,
+    render_exam_pages, render_exam_pdf,
+};
 pub use pages::{PageImage, Pages, TextBox, paginate};
 
 const TEMPLATE: &str = include_str!("../templates/handout.typ");
@@ -168,7 +173,7 @@ pub(crate) fn layout(document: &Document) -> Result<PagedDocument, HandoutError>
         return Err(HandoutError::Empty);
     }
     let data = serde_json::to_vec(document).map_err(|e| HandoutError::Layout(e.to_string()))?;
-    let world = HandoutWorld::new(data, &document.files, &document.lang)?;
+    let world = HandoutWorld::new(TEMPLATE, data, &document.files, &document.lang)?;
     let compiled = typst::compile::<PagedDocument>(&world).output;
     compiled.map_err(|errors| HandoutError::Layout(join(&errors)))
 }
@@ -192,7 +197,12 @@ struct HandoutWorld {
 }
 
 impl HandoutWorld {
-    fn new(data: Vec<u8>, files: &[(String, Vec<u8>)], lang: &str) -> Result<Self, HandoutError> {
+    fn new(
+        template: &str,
+        data: Vec<u8>,
+        files: &[(String, Vec<u8>)],
+        lang: &str,
+    ) -> Result<Self, HandoutError> {
         let file = |name: &str| {
             VirtualPath::new(name)
                 .map(|path| FileId::new(RootedPath::new(VirtualRoot::Project, path)))
@@ -219,7 +229,7 @@ impl HandoutWorld {
         Ok(Self {
             library: LazyHash::new(Library::default()),
             fonts,
-            main: Source::new(file("/main.typ")?, TEMPLATE.to_owned()),
+            main: Source::new(file("/main.typ")?, template.to_owned()),
             data_id: file("/data.json")?,
             data: Bytes::new(data),
             files: files

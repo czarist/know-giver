@@ -298,10 +298,36 @@ const MIGRATIONS: &[&str] = &[
     CREATE UNIQUE INDEX challenge_unlocks_overall ON challenge_unlocks(challenge)
         WHERE overall = 1;
 ",
+    r"
+    CREATE TABLE exam_formats (
+        plan_id INTEGER PRIMARY KEY REFERENCES plans(id) ON DELETE CASCADE,
+        format TEXT NOT NULL
+    );
+    CREATE TABLE mock_exams (
+        id INTEGER PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        format TEXT NOT NULL,
+        questions TEXT NOT NULL,
+        proposal_id INTEGER REFERENCES discursive_proposals(id) ON DELETE SET NULL,
+        model TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX mock_exams_plan ON mock_exams(plan_id);
+    CREATE TABLE mock_attempts (
+        id INTEGER PRIMARY KEY,
+        exam_id INTEGER NOT NULL REFERENCES mock_exams(id) ON DELETE CASCADE,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        answers TEXT NOT NULL
+    );
+    CREATE INDEX mock_attempts_exam ON mock_attempts(exam_id);
+",
 ];
 
 mod challenges;
 mod discursive;
+mod mock;
 
 /// Handle to the app database.
 #[derive(Debug)]

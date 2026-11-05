@@ -154,13 +154,40 @@ highlights when you want one.
   answer key, saved as PDF.
 - **Progress** per subject and **daily study time** that only counts active study.
 
+## Mock exams
+
+A whole exam in the notice's format, against the clock. **Read from the notice** finds how
+many questions each subject has, the time, multiple choice or true/false, whether a wrong
+answer cancels a right one and whether there is an essay; the app checks those numbers
+against the notice's text and you can adjust any of them. **Generate a mock exam** writes
+new questions in the exam board's style for every section, spread over the plan's topics
+(past exams you added guide the style), and an essay proposal when the notice has a written
+test.
+
+Take it **on screen**, with the clock in the corner, or **print it**: a PDF with the
+question booklet in two columns, a numbered essay sheet and an answer card with corner
+markers. Doing it on paper, you copy your marks into the app's answer card and hand in. The
+clock keeps going if you leave or close the app, and only one sitting runs at a time. The
+grade is plain arithmetic on the saved key, per subject and with the notice's points: right,
+wrong, blank, time used and whether you went over time. Missed questions go to your mistakes
+notebook, the essay goes to Written answers to be photographed and graded, and the answer key
+with explanations opens below. Ten new challenges come with it.
+
+<table>
+  <tr>
+    <td><img src="docs/images/mock.png" alt="Mock exams: the format read from the notice, a button to generate one and past results"></td>
+    <td><img src="docs/images/mock-sitting.png" alt="A sitting: the clock in the corner, the questions on screen and the answer card"></td>
+    <td><img src="docs/images/mock-result.png" alt="A result: points per subject, right, wrong and blank, and the time used"></td>
+  </tr>
+</table>
+
 ## Challenges and stickers
 
-The **Achievements** screen has **154 challenges** in 33 families, each level worth an
+The **Achievements** screen has **164 challenges** in 36 families, each level worth an
 original sticker (jade, crescent moon, engraved like the app's mark). In each plan: lessons,
 quizzes, right answers and perfect scores, missed questions won back, topics studied and
 the share of the notice, plan weeks on track, topics and subjects mastered, reviews, past
-exams, handouts and highlights, and written answers when the notice has them. Across every
+exams, handouts and highlights, written answers when the notice has them, and mock exams. Across every
 plan: study hours and days, plans made and the album itself. First Step, Comeback, Plan in
 Motion and Week on Track keep their own names.
 
