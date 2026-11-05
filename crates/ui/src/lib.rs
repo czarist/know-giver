@@ -19,6 +19,7 @@ mod legal;
 mod provider_logo;
 mod reminders;
 mod screens;
+mod stickers;
 mod teacher;
 mod theme;
 mod tour;

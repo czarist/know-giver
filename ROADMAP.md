@@ -716,14 +716,30 @@ applies to every lesson until changed.
 lessons (length, number of examples, past-exam questions, final check), and switching
 mid-lesson keeps what was already covered.
 
-## Phase 11 — Goals and achievements (planned, not started)
+## Phase 11 — Goals and achievements (started)
 
 **Goal:** reward steady study the way Steam rewards play, with achievements, goals and a
 profile of progress, without turning the app into a game. It stays calm: no countdowns,
 no loss messages, no comparison with other students unless they choose it.
 
-**Status:** progress per topic, quiz scores and lesson history already exist in SQLite
-(`study/`); nothing turns them into goals or achievements yet.
+**Status:** the first challenges and stickers shipped (Unreleased). Goals, levels,
+hidden achievements, the profile and streak rules below are still to do.
+
+- [x] Challenges per plan with an original sticker each, computed in code from saved
+      study (`kg_study::challenge`), never by the AI: First Step (first lesson), Comeback
+      (a missed question answered right on a new try), Plan in Motion (three topics
+      studied by lesson, quiz or review) and Week on Track (every topic of one plan week
+      in review or done, the plan's check-mark rule). Achievements screen with progress,
+      plan, reward and a button to the next topic; the next one on Today; Steam-style
+      showcase with each sticker once, its first date and the plans where it was won.
+      Unlocks are kept per plan (unique per challenge and plan, kept when the plan is
+      deleted) and recomputed on start, so study saved before a grant or before this
+      version is recognised; a day the history cannot tell is shown as such. The notice
+      waits until no lesson, quiz question or review is open and is shown once.
+  - Gap: right answers to old mistakes were not recorded before this version (the
+    mistakes notebook deleted them), so Comeback counts only from now on; the screen
+    says so. Reviews are dated from now on (`review_log`); an older review counts with
+    an unknown day.
 
 - [ ] Achievements (medals) computed in code from saved data, never by the AI:
   - consistency: first lesson, 7 and 30 days in a row, study hours per week;
@@ -758,6 +774,11 @@ real data, progress on locked ones and on their own goals, and nothing interrupt
 lesson.
 
 ## Not yet verified
+- Challenges and stickers (Unreleased): checked by engine tests on a database file
+  closed and reopened (partial progress, completion, two plans, the same study checked
+  twice, a grant missed before closing, a 0.37 database migrated) and by GPU screenshots
+  in the five languages (`challenges_snapshots`); not yet clicked through on an
+  installed build.
 - Account sign-ins (Unreleased):
   - Checked live on Windows on 2026-11-03 (`cargo run -p kg-engine --example
     accounts_live -- page.jpg`): ChatGPT sign-in, model list, lessons and a handwritten

@@ -298,6 +298,7 @@ impl Engine {
             self.lesson_drafts.clear();
             self.refresh_board();
             self.refresh_discursive();
+            self.sync_challenges();
             return;
         };
         self.quiz_stats = self.store.quiz_stats(id).unwrap_or_default();
@@ -307,6 +308,7 @@ impl Engine {
         self.refresh_board();
         self.refresh_discursive();
         self.reload_list();
+        self.sync_challenges();
     }
 
     pub(crate) fn refresh_lesson_drafts(&mut self) {

@@ -339,7 +339,13 @@ impl Engine {
         };
         let topic_id = session.topic_id;
         if is_correct {
-            self.store.clear_mistake(topic_id, &question.prompt)?;
+            let recovered = self
+                .store
+                .clear_mistake(topic_id, &question.prompt, Self::today())?;
+            if recovered {
+                // A missed question answered right: the comeback challenge.
+                self.sync_challenges();
+            }
         } else {
             self.store
                 .record_mistake(topic_id, &question, option, Self::today())?;
@@ -534,6 +540,7 @@ impl Engine {
         };
         let today = Self::today();
         let mut next_due: Option<NaiveDate> = None;
+        self.store.record_review(session.topic_id, today)?;
         self.update_topic(session.topic_id, |t| {
             t.apply_review(grade, today);
             next_due = t.review.due;

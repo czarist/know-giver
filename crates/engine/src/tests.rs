@@ -1231,3 +1231,228 @@ fn chinese_and_japanese_lessons_have_no_local_voice() {
     engine.settings.locale = "en".into();
     assert!(engine.local_speech_language());
 }
+
+/// Engine on a database file in `dir`, as the app opens it.
+fn engine_on_disk(dir: &std::path::Path) -> Engine {
+    let mut engine = Engine::new(AppPaths::new(dir), silent_ai()).unwrap();
+    engine.settings.board_images = false;
+    engine
+}
+
+fn generate_plan(engine: &mut Engine, title: &str) -> PlanId {
+    let mut draft = draft();
+    draft.title = title.into();
+    engine
+        .events_tx
+        .send(Event::PlanGenerated {
+            edital: edital(),
+            prefs: prefs(),
+            result: Ok(draft),
+        })
+        .unwrap();
+    engine.poll();
+    engine.active_plan().unwrap().id
+}
+
+fn challenge(engine: &Engine, id: ChallengeId) -> ChallengeProgress {
+    *engine.challenges().iter().find(|c| c.id == id).unwrap()
+}
+
+/// A quiz on `topic` with one question per entry: `true` answers it right.
+fn take_quiz(engine: &mut Engine, topic: TopicId, answers: &[bool]) {
+    engine.handle(Command::StartQuiz(topic)).unwrap();
+    let session = engine.quiz().unwrap().id;
+    let drafts = (0..answers.len())
+        .map(|i| QuestionDraft {
+            prompt: format!("Pergunta {i}?"),
+            options: vec!["a".into(), "b".into(), "c".into()],
+            correct: 0,
+            explanation: String::new(),
+        })
+        .collect();
+    engine
+        .events_tx
+        .send(Event::Practice(PracticeEvent::QuizReady {
+            session,
+            result: Ok(drafts),
+        }))
+        .unwrap();
+    engine.poll();
+    for right in answers {
+        let correct = engine.quiz().unwrap().current().unwrap().correct;
+        let option = if *right { correct } else { (correct + 1) % 3 };
+        engine.handle(Command::AnswerQuiz(option)).unwrap();
+        engine.handle(Command::NextQuestion).unwrap();
+    }
+}
+
+fn finish_lesson(engine: &mut Engine, topic: TopicId) {
+    engine.handle(Command::StartLesson(topic)).unwrap();
+    engine.simulate_tutor_text("Terminamos por hoje.\nFIM");
+    engine.handle(Command::EndLesson).unwrap();
+}
+
+#[test]
+fn challenges_resume_after_a_restart_and_announce_a_sticker_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut engine = engine_on_disk(dir.path());
+    generate_plan(&mut engine, "Plano TRF");
+    let topics: Vec<TopicId> = engine
+        .active_plan()
+        .unwrap()
+        .topics()
+        .map(|(_, t)| t.id)
+        .collect();
+    assert!(engine.challenges().iter().all(|c| !c.is_met()));
+
+    // Part of the way: a quiz on one topic, with a miss.
+    take_quiz(&mut engine, topics[0], &[false, true]);
+    let moving = challenge(&engine, ChallengeId::PlanInMotion);
+    assert_eq!((moving.current, moving.target), (1, 3));
+    assert_eq!(
+        challenge(&engine, ChallengeId::Comeback).next,
+        NextStep::Mistakes(topics[0])
+    );
+    drop(engine);
+
+    // Closed and opened again: the same progress, nothing won yet.
+    let mut engine = engine_on_disk(dir.path());
+    assert_eq!(challenge(&engine, ChallengeId::PlanInMotion).current, 1);
+    assert!(engine.sticker_unlocks().is_empty());
+
+    // The first lesson wins the sticker; its notice waits for the lesson.
+    // Topic 2 is the other week-1 topic: the quiz already put topic 0 in
+    // review, so week 1 is complete too.
+    engine.handle(Command::StartLesson(topics[2])).unwrap();
+    engine.simulate_tutor_text("Terminamos por hoje.\nFIM");
+    assert!(challenge(&engine, ChallengeId::FirstStep).is_met());
+    assert!(challenge(&engine, ChallengeId::WeekOnTrack).is_met());
+    assert!(engine.studying_now());
+    assert!(engine.take_sticker_notices().is_empty());
+    engine.handle(Command::EndLesson).unwrap();
+    assert_eq!(
+        engine.take_sticker_notices(),
+        [ChallengeId::FirstStep, ChallengeId::WeekOnTrack]
+    );
+    assert!(engine.take_sticker_notices().is_empty());
+    // Won live: the day is today and known.
+    assert!(
+        engine
+            .sticker_unlocks()
+            .iter()
+            .all(|u| u.date_known && u.unlocked_on == Engine::today())
+    );
+
+    // A missed question answered right on a new try.
+    engine.handle(Command::RetryMistakes(topics[0])).unwrap();
+    let correct = engine.quiz().unwrap().current().unwrap().correct;
+    engine.handle(Command::AnswerQuiz(correct)).unwrap();
+    assert!(challenge(&engine, ChallengeId::Comeback).is_met());
+    // Still on the quiz: the notice waits for its end.
+    assert!(engine.take_sticker_notices().is_empty());
+    engine.handle(Command::NextQuestion).unwrap();
+    assert_eq!(engine.take_sticker_notices(), [ChallengeId::Comeback]);
+    drop(engine);
+
+    // A restart shows no notice again and keeps the stickers.
+    let mut engine = engine_on_disk(dir.path());
+    assert!(engine.take_sticker_notices().is_empty());
+    assert_eq!(engine.sticker_unlocks().len(), 3);
+    take_quiz(&mut engine, topics[1], &[true]);
+    assert!(challenge(&engine, ChallengeId::PlanInMotion).is_met());
+}
+
+#[test]
+fn each_plan_has_its_own_challenges_and_the_collection_shows_where() {
+    let (mut engine, _dir) = engine();
+    let a = generate_plan(&mut engine, "Plano A");
+    let topic_a = first_topic(&engine);
+    finish_lesson(&mut engine, topic_a);
+    let b = generate_plan(&mut engine, "Plano B");
+    assert_ne!(a, b);
+    assert!(!challenge(&engine, ChallengeId::FirstStep).is_met());
+
+    let topic_b = first_topic(&engine);
+    finish_lesson(&mut engine, topic_b);
+    let won: Vec<(ChallengeId, Option<PlanId>)> = engine
+        .sticker_unlocks()
+        .iter()
+        .map(|u| (u.challenge, u.plan))
+        .collect();
+    assert_eq!(
+        won,
+        [
+            (ChallengeId::FirstStep, Some(a)),
+            (ChallengeId::FirstStep, Some(b))
+        ]
+    );
+    // One notice per sticker, even when won in two plans.
+    assert_eq!(engine.take_sticker_notices(), [ChallengeId::FirstStep]);
+
+    // Back on plan A, its own progress.
+    engine.handle(Command::SelectPlan(a)).unwrap();
+    assert!(challenge(&engine, ChallengeId::FirstStep).is_met());
+    assert_eq!(engine.sticker_unlocks().len(), 2);
+}
+
+#[test]
+fn checking_the_same_study_again_grants_nothing_new() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    finish_lesson(&mut engine, id);
+    finish_lesson(&mut engine, id);
+    engine.sync_all_challenges();
+    engine.sync_all_challenges();
+    assert_eq!(engine.sticker_unlocks().len(), 1);
+    assert_eq!(engine.take_sticker_notices(), [ChallengeId::FirstStep]);
+    engine.sync_all_challenges();
+    assert!(engine.take_sticker_notices().is_empty());
+}
+
+#[test]
+fn study_saved_before_a_grant_is_recognized_on_the_next_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let (plan, topics) = {
+        let mut engine = engine_on_disk(dir.path());
+        let plan = generate_plan(&mut engine, "Plano TRF");
+        let topics: Vec<Topic> = engine
+            .active_plan()
+            .unwrap()
+            .topics()
+            .map(|(_, t)| t.clone())
+            .collect();
+        (plan, topics)
+    };
+    // Study saved while the app was closing, before stickers were checked
+    // (or by a version without them): written to the database directly.
+    let past = Engine::today() - chrono::Days::new(10);
+    {
+        let mut store = Store::open(&AppPaths::new(dir.path()).database()).unwrap();
+        for topic in topics.iter().filter(|t| t.week == 1) {
+            store
+                .record_lesson(topic.id, past, &LessonRecap::default())
+                .unwrap();
+            let mut taken = topic.clone();
+            taken.complete_lesson(past);
+            store.update_topic(&taken).unwrap();
+        }
+    }
+    let mut engine = engine_on_disk(dir.path());
+    let won: Vec<(ChallengeId, NaiveDate, bool)> = engine
+        .sticker_unlocks()
+        .iter()
+        .filter(|u| u.plan == Some(plan))
+        .map(|u| (u.challenge, u.unlocked_on, u.date_known))
+        .collect();
+    assert_eq!(
+        won,
+        [
+            (ChallengeId::FirstStep, past, true),
+            (ChallengeId::WeekOnTrack, past, true)
+        ]
+    );
+    assert_eq!(
+        engine.take_sticker_notices(),
+        [ChallengeId::FirstStep, ChallengeId::WeekOnTrack]
+    );
+}
