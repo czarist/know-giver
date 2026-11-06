@@ -20,7 +20,7 @@ All notable changes to Know Giver. Format based on
 
 ### Changed
 - The study reminder is now a Know Giver popup in the corner of the screen, in the app's
-  look with the monkey on its jade tile: the subjects furthest behind with their progress,
+  look with the engraving of Thoth on a jade panel: the subjects furthest behind with their progress,
   "Study now" (opens the app) and "Later". It replaces the system notification.
 - The time between reminders can be set in Settings, from 30 minutes to 8 hours; 3 hours
   by default.
