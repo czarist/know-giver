@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "Lembrete de estudo"
-  subject_progress: "%{subject}: %{percent}%"
+  lead: "Que tal uma sessão agora? Estas matérias estão mais atrás:"
+  study_now: "Estudar agora"
+  later: "Depois"
+  close: "Fechar"
   more_subjects: "+ %{count} matérias"
 
 language:
@@ -540,7 +543,7 @@ tour:
     text: "Seu avanço por matéria e o tempo de estudo de cada dia."
   challenges:
     title: "Conquistas"
-    text: "Desafios pequenos de cada plano. Cada um vale uma figurinha para a vitrine, sem pressa e sem placar."
+    text: "Desafios pequenos de cada plano. Cada um vale uma conquista para a vitrine, sem pressa e sem placar."
   settings:
     title: "Configurações"
     text: "Troque o idioma, o professor, a voz ou a IA, e releia os termos. Pronto: agora é com você!"
@@ -633,7 +636,10 @@ settings:
   quiz_size: "Questões por quiz"
   study_reminders:
     title: "Lembretes de estudo"
-    enabled: "Receber um lembrete a cada 3 horas enquanto o app estiver na bandeja"
+    enabled: "Receber lembretes quando eu estiver longe do app (na bandeja, minimizado ou em segundo plano)"
+    interval: "Lembrar a cada"
+    minutes: "%{count} min"
+    hours: "%{count} h"
     hint: "A notificação mostra até três matérias que ainda não foram concluídas no plano atual. O sistema decide onde exibi-la. Fechar o app pelo menu da bandeja interrompe os lembretes."
   english_voice:
     title: "Voz para trechos em inglês"
@@ -1092,7 +1098,7 @@ teachers:
 
 challenges:
   title: "Desafios e conquistas"
-  subtitle: "Metas do seu estudo, cada uma com uma figurinha para a coleção. Sem pressa e sem placar."
+  subtitle: "Metas do seu estudo, cada uma com uma conquista para a coleção. Sem pressa e sem placar."
   plan_section: "Desafios deste plano"
   plan_summary: "%{won} de %{total} conquistados neste plano"
   overall_section: "Geral"
@@ -1118,15 +1124,15 @@ challenges:
   plan_deleted: "%{title} (plano removido)"
   overall_won: "todos os planos"
   showcase: "Vitrine"
-  showcase_count: "%{won} de %{total} figurinhas"
-  showcase_note: "Passe o mouse numa figurinha para ver o que ela pede e onde foi conquistada."
+  showcase_count: "%{won} de %{total} conquistas"
+  showcase_note: "Passe o mouse numa conquista para ver o que ela pede e onde foi obtida."
   filter_all: "Todas"
   filter_won: "Conquistadas"
   filter_locked: "Bloqueadas"
   locked: "Bloqueada"
-  no_plan: "Crie um plano de estudo para começar os desafios do plano. As figurinhas já conquistadas continuam na vitrine."
-  unlocked_toast: "Figurinha conquistada: %{name}"
-  unlocked_many: "E mais %{count} figurinhas novas na vitrine."
+  no_plan: "Crie um plano de estudo para começar os desafios do plano. As conquistas já obtidas continuam na vitrine."
+  unlocked_toast: "Conquista desbloqueada: %{name}"
+  unlocked_many: "E mais %{count} conquistas novas na vitrine."
   next: "Próximo desafio"
   see_all: "Ver desafios"
   all_done: "Todos os desafios deste plano foram concluídos."
@@ -1339,10 +1345,10 @@ family:
     goal_one: "Domine um tópico."
     caption: "Um campo de lótus."
   stickers:
-    name: "Álbum: %{count}"
-    goal: "Ganhe %{count} figurinhas diferentes."
-    goal_one: "Ganhe uma figurinha."
-    caption: "O álbum da coleção."
+    name: "Coleção: %{count}"
+    goal: "Desbloqueie %{count} conquistas diferentes."
+    goal_one: "Desbloqueie uma conquista."
+    caption: "A coleção de conquistas."
 mock:
   title: "Simulados"
   subtitle: "Uma prova inteira no formato do edital, com tempo marcado. Na tela ou no papel."

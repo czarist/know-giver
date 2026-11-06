@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "Study reminder"
-  subject_progress: "%{subject}: %{percent}%"
+  lead: "How about a session now? These subjects are furthest behind:"
+  study_now: "Study now"
+  later: "Later"
+  close: "Close"
   more_subjects: "+ %{count} subjects"
 
 language:
@@ -540,7 +543,7 @@ tour:
     text: "Your progress per subject and your study time each day."
   challenges:
     title: "Achievements"
-    text: "Small challenges in each plan. Each one gives a sticker for your showcase, with no rush and no scoreboard."
+    text: "Small challenges in each plan. Each one gives an achievement for your showcase, with no rush and no scoreboard."
   settings:
     title: "Settings"
     text: "Change the language, teacher, voice or AI, and read the terms again. That's it: over to you!"
@@ -633,7 +636,10 @@ settings:
   quiz_size: "Questions per quiz"
   study_reminders:
     title: "Study reminders"
-    enabled: "Remind me every 3 hours while the app is in the system tray"
+    enabled: "Remind me while I'm away from the app (in the tray, minimized or in the background)"
+    interval: "Remind me every"
+    minutes: "%{count} min"
+    hours: "%{count} h"
     hint: "The notification shows up to three unfinished subjects in the active plan. Your system chooses where to display it. Quit from the tray menu to stop reminders."
   english_voice:
     title: "Voice for English passages"
@@ -1092,7 +1098,7 @@ teachers:
 
 challenges:
   title: "Challenges and achievements"
-  subtitle: "Goals for your study, each with a sticker for your collection. No rush, no scoreboard."
+  subtitle: "Goals for your study, each with an achievement for your collection. No rush, no scoreboard."
   plan_section: "Challenges in this plan"
   plan_summary: "%{won} of %{total} won in this plan"
   overall_section: "Overall"
@@ -1118,15 +1124,15 @@ challenges:
   plan_deleted: "%{title} (plan removed)"
   overall_won: "every plan"
   showcase: "Showcase"
-  showcase_count: "%{won} of %{total} stickers"
-  showcase_note: "Hover over a sticker to see what it asks and where you won it."
+  showcase_count: "%{won} of %{total} achievements"
+  showcase_note: "Hover over an achievement to see what it asks and where you won it."
   filter_all: "All"
   filter_won: "Won"
   filter_locked: "Locked"
   locked: "Locked"
-  no_plan: "Create a study plan to start the plan challenges. Stickers you already won stay in the showcase."
-  unlocked_toast: "Sticker won: %{name}"
-  unlocked_many: "And %{count} more new stickers in the showcase."
+  no_plan: "Create a study plan to start the plan challenges. Achievements you already won stay in the showcase."
+  unlocked_toast: "Achievement unlocked: %{name}"
+  unlocked_many: "And %{count} more new achievements in the showcase."
   next: "Next challenge"
   see_all: "See challenges"
   all_done: "Every challenge in this plan is done."
@@ -1339,10 +1345,10 @@ family:
     goal_one: "Master a topic."
     caption: "A field of lotus flowers."
   stickers:
-    name: "Album: %{count}"
-    goal: "Win %{count} different stickers."
-    goal_one: "Win a sticker."
-    caption: "The collection's album."
+    name: "Collection: %{count}"
+    goal: "Unlock %{count} different achievements."
+    goal_one: "Unlock an achievement."
+    caption: "The achievement collection."
 mock:
   title: "Mock exams"
   subtitle: "A whole exam in the notice's format, against the clock. On screen or on paper."

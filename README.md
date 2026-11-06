@@ -181,20 +181,20 @@ with explanations opens below. Ten new challenges come with it.
   </tr>
 </table>
 
-## Challenges and stickers
+## Challenges and achievements
 
 The **Achievements** screen has **164 challenges** in 36 families, each level worth an
-original sticker (jade, crescent moon, engraved like the app's mark). In each plan: lessons,
+original achievement badge (jade, crescent moon, engraved like the app's mark). In each plan: lessons,
 quizzes, right answers and perfect scores, missed questions won back, topics studied and
 the share of the notice, plan weeks on track, topics and subjects mastered, reviews, past
 exams, handouts and highlights, written answers when the notice has them, and mock exams. Across every
-plan: study hours and days, plans made and the album itself. First Step, Comeback, Plan in
+plan: study hours and days, plans made and the collection itself. First Step, Comeback, Plan in
 Motion and Week on Track keep their own names.
 
 Each family is one line: the next level, how far along you are (2/3), "level 3 of 11" and a
 button to the lesson, quiz or review. Today shows the next one, quietly. The showcase has
-every sticker, filtered by won or locked, with the details on hover; the level is the
-rim's colour and one to three dots. Stickers are won only by rules in the code, from your
+every achievement, filtered by won or locked, with the details on hover; the level is the
+rim's colour and one to three dots. Achievements are won only by rules in the code, from your
 saved study, never by the AI; each plan keeps its own progress. Study from before this
 feature counts too; when the history does not tell the day, the card says so. A short
 notice appears after a lesson or quiz ends, never in the middle, and only once. No points,
@@ -203,7 +203,7 @@ no ranking, no streak to lose.
 <table>
   <tr>
     <td><img src="docs/images/challenges.png" alt="Achievements: one line per family with its level, progress and a button to the next lesson or quiz"></td>
-    <td><img src="docs/images/showcase.png" alt="The sticker showcase: stickers won in colour with the date, locked ones in grey with their progress"></td>
+    <td><img src="docs/images/showcase.png" alt="The achievement showcase: achievements won in colour with the date, locked ones in grey with their progress"></td>
   </tr>
 </table>
 
@@ -367,7 +367,7 @@ the model from the list (**Z.ai** is recommended for value, **Claude** for accur
 with a link to create a key), or load the models your key can use. A short tour of the
 screens follows. Plans made before are kept.
 
-Closing the window keeps the app in the system tray; use the icon menu to reopen or quit. During installation, you can choose whether it starts with the system and whether to receive study reminders every 3 hours; both are off by default. Reminders appear while the app is running in the tray and the active plan has unfinished subjects.
+Closing the window keeps the app in the system tray: double-click the icon to reopen it, or click it once for the menu (open or quit). Opening Know Giver again while it runs brings back the same window; there is only ever one copy and one tray icon. During installation, you can choose whether it starts with the system and whether to receive study reminders (every 3 hours by default, from 30 minutes to 8 hours in Settings); both are off by default. The reminder is a small Know Giver window in the corner of the screen, with the subjects furthest behind and a button to start studying. Reminders come while you are away from the app (in the tray, minimized or behind other windows), not during a lesson, quiz or review, and only while the active plan has unfinished subjects.
 
 For development, `.env` (copy `.env.example`) can still set the endpoint and models;
 `.env` overrides global variables with the same name. Download the speech models in
@@ -439,7 +439,7 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 - Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
   caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
-- Challenge stickers (`crates/ui/assets/stickers`): original SVGs made for Know Giver,
+- Achievement badges (`crates/ui/assets/stickers`): original SVGs made for Know Giver,
   under the project's license.
 - AI provider logos: [Simple Icons](https://simpleicons.org), CC0 (`crates/ui/assets/providers`);
   the logos are trademarks of their owners, shown only to identify each service.

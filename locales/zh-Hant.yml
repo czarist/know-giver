@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "學習提醒"
-  subject_progress: "%{subject}：%{percent}%"
+  lead: "現在學一會兒吧？這些科目進度最慢："
+  study_now: "立即學習"
+  later: "稍後"
+  close: "關閉"
   more_subjects: "另有 %{count} 門科目"
 
 language:
@@ -540,7 +543,7 @@ tour:
     text: "各科目的進展和每天的學習時間。"
   challenges:
     title: "成就"
-    text: "每個計劃中的小挑戰。每完成一個就能在展示櫃中獲得一張貼紙，不必著急，也沒有排行榜。"
+    text: "每個計劃中的小挑戰。每完成一個就能在展示櫃中獲得一項成就，不必著急，也沒有排行榜。"
   settings:
     title: "設定"
     text: "更改語言、老師、語音或 AI，也可以重新閱讀條款。準備好了，開始吧！"
@@ -633,7 +636,10 @@ settings:
   quiz_size: "每次測驗的題數"
   study_reminders:
     title: "學習提醒"
-    enabled: "程式留在系統匣時，每 3 小時提醒一次"
+    enabled: "離開程式時（在系統匣、最小化或在背景）提醒我"
+    interval: "提醒間隔"
+    minutes: "%{count} 分鐘"
+    hours: "%{count} 小時"
     hint: "通知會顯示目前計劃中最多三門尚未完成的科目及其進度。顯示位置由系統決定。透過系統匣選單結束程式後，提醒會停止。"
   english_voice:
     title: "英文段落的語音"
@@ -1092,7 +1098,7 @@ teachers:
 
 challenges:
   title: "挑戰與成就"
-  subtitle: "學習的目標，每完成一個就為收藏增添一張貼紙。不必著急，也沒有排行榜。"
+  subtitle: "學習的目標，每完成一個就為收藏增添一項成就。不必著急，也沒有排行榜。"
   plan_section: "本計劃的挑戰"
   plan_summary: "本計劃已獲得 %{won} / %{total}"
   overall_section: "總體"
@@ -1118,15 +1124,15 @@ challenges:
   plan_deleted: "%{title}（計劃已刪除）"
   overall_won: "所有計劃"
   showcase: "展示櫃"
-  showcase_count: "%{won} / %{total} 張貼紙"
-  showcase_note: "將滑鼠停在貼紙上，可查看條件和獲得它的計劃。"
+  showcase_count: "%{won} / %{total} 項成就"
+  showcase_note: "將滑鼠停在成就上，可查看條件和獲得它的計劃。"
   filter_all: "全部"
   filter_won: "已獲得"
   filter_locked: "未解鎖"
   locked: "未解鎖"
-  no_plan: "建立學習計劃即可開始計劃挑戰。已獲得的貼紙會保留在展示櫃中。"
-  unlocked_toast: "獲得貼紙：%{name}"
-  unlocked_many: "展示櫃中還有 %{count} 張新貼紙。"
+  no_plan: "建立學習計劃即可開始計劃挑戰。已獲得的成就會保留在展示櫃中。"
+  unlocked_toast: "解鎖成就：%{name}"
+  unlocked_many: "展示櫃中還有 %{count} 項新成就。"
   next: "下一個挑戰"
   see_all: "查看挑戰"
   all_done: "本計劃的挑戰已全部完成。"
@@ -1339,10 +1345,10 @@ family:
     goal_one: "掌握一個主題。"
     caption: "一片蓮花田。"
   stickers:
-    name: "貼紙冊：%{count}"
-    goal: "獲得 %{count} 張不同的貼紙。"
-    goal_one: "獲得一張貼紙。"
-    caption: "收藏的貼紙冊。"
+    name: "成就收藏：%{count}"
+    goal: "解鎖 %{count} 項不同的成就。"
+    goal_one: "解鎖一項成就。"
+    caption: "成就的收藏。"
 mock:
   title: "模擬考試"
   subtitle: "依簡章格式的一整場考試，限時作答。螢幕上或紙上都可以。"

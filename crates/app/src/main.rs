@@ -14,6 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     // Also to a file: release builds have no console to read it from.
     let log = log_file();
+    let fresh_log = log.as_ref().and_then(|file| file.try_clone().ok());
     let subscriber = tracing_subscriber::fmt().with_env_filter(filter);
     match log {
         Some(file) => subscriber
@@ -23,8 +24,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => subscriber.init(),
     }
 
-    load_env();
     let args: Vec<_> = std::env::args_os().collect();
+    // The study reminder popup, opened by the running copy.
+    if args.get(1).and_then(|arg| arg.to_str()) == Some(kg_ui::REMINDER_FLAG) {
+        let rest: Vec<String> = args[2..]
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+        kg_ui::run_reminder(&rest)?;
+        return Ok(());
+    }
+    let start_hidden = args.iter().any(|arg| arg.to_str() == Some("--background"));
+    // Only one copy runs: a later launch shows that copy's window and exits.
+    let Some(instance) = kg_ui::claim_instance(start_hidden) else {
+        return Ok(());
+    };
+    // The log is per run; it is only emptied once this copy is the one running.
+    if let Some(file) = fresh_log
+        && let Err(err) = file.set_len(0)
+    {
+        tracing::warn!(%err, "could not clear the previous log");
+    }
+
+    load_env();
     let enable_study_reminders = args
         .iter()
         .any(|arg| arg.to_str() == Some("--enable-study-reminders"))
@@ -32,9 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     kg_ui::run(
         kg_ui::AiConfig::from_env(|key| std::env::var(key).ok()),
         kg_ui::RunOptions {
-            start_hidden: args.iter().any(|arg| arg.to_str() == Some("--background")),
+            start_hidden,
             enable_study_reminders,
         },
+        instance,
     )?;
     Ok(())
 }
@@ -60,12 +83,17 @@ fn take_study_reminder_marker() -> bool {
     }
 }
 
-/// The log file for this run, when the data folder can be written.
+/// The log file, when the data folder can be written. Opened for appending,
+/// so a launch that hands over to the running copy keeps that copy's log.
 fn log_file() -> Option<std::fs::File> {
     let path = kg_ui::AppPaths::detect().log_file();
     let dir = path.parent()?;
     std::fs::create_dir_all(dir).ok()?;
-    std::fs::File::create(path).ok()
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .ok()
 }
 
 /// Loads `.env` from the working directory (development) or from next to

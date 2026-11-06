@@ -15,8 +15,10 @@ mod i18n;
 mod icon;
 mod icons;
 mod illustrations;
+mod instance;
 mod legal;
 mod provider_logo;
+mod reminder_popup;
 mod reminders;
 mod screens;
 mod stickers;
@@ -34,6 +36,9 @@ mod snapshots;
 
 pub use app::KnowGiverApp;
 pub use icon::rgba as icon_rgba;
+pub use instance::{SingleInstance, claim_instance};
+pub use reminder_popup::run_reminder;
+pub use reminders::REMINDER_FLAG;
 
 pub use kg_engine::{AiConfig, AppPaths};
 use rust_i18n::t;
@@ -50,13 +55,14 @@ pub struct RunOptions {
     pub enable_study_reminders: bool,
 }
 
-/// Opens Know Giver and runs until the user exits. `env_ai` supplies initial
+/// Opens Know Giver and runs until the user exits. `instance` comes from
+/// [`claim_instance`]. `env_ai` supplies initial
 /// AI settings from `.env`; `run_options` controls installer-selected behavior.
 ///
 /// # Errors
 ///
 /// Returns an error if eframe cannot start the native application.
-pub fn run(env_ai: AiConfig, run_options: RunOptions) -> eframe::Result {
+pub fn run(env_ai: AiConfig, run_options: RunOptions, instance: SingleInstance) -> eframe::Result {
     rust_i18n::set_locale(i18n::DEFAULT_LOCALE);
     let title = t!("app.name").into_owned();
 
@@ -75,11 +81,9 @@ pub fn run(env_ai: AiConfig, run_options: RunOptions) -> eframe::Result {
         APP_ID,
         options,
         Box::new(move |cc| {
-            Ok(Box::new(KnowGiverApp::with_run_options(
-                cc,
-                env_ai,
-                run_options,
-            )))
+            let mut app = KnowGiverApp::with_run_options(cc, env_ai, run_options);
+            app.attach_instance(instance.0, &cc.egui_ctx);
+            Ok(Box::new(app))
         }),
     )
 }

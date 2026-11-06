@@ -6,6 +6,34 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.39.2] - 2026-11-06
+
+### Fixed
+- Study reminders never showed up: they only counted time while the window was hidden in
+  the tray. They now come whenever you are away from the app (tray, minimized or behind
+  other windows) and never during a lesson, quiz or review.
+
+### Changed
+- The study reminder is now a Know Giver popup in the corner of the screen, in the app's
+  look with the engraving of Thoth on a jade panel: the subjects furthest behind with
+  their progress, "Study now" (opens the app), "Later" and a close button. It replaces
+  the system notification.
+- The time between reminders can be set in Settings, from 30 minutes to 8 hours; 3 hours
+  by default.
+
+## [0.39.1] - 2026-11-06
+
+### Fixed
+- Opening Know Giver while it is already running no longer starts a second copy with a
+  second tray icon: the running copy shows its window instead. During an update on macOS
+  and Linux, the new version waits for the old one to close and then takes over.
+- Tray icon: a double-click opens the window; a single left or right click opens the menu.
+- A second launch no longer empties the running copy's log.
+
+### Changed
+- Stickers are now called achievements in every language: conquistas (pt-BR),
+  achievements (en), 実績 (ja), 成就 (zh-Hans, zh-Hant). The album family is now the collection.
+
 ## [0.39.0] - 2026-11-05
 
 ### Added
