@@ -16,5 +16,8 @@ typst-pdf = "0.15"
 typst-render = "0.15"
 typst-kit = { version = "0.15", default-features = false, features = ["embedded-fonts"] }
 
+[dev-dependencies]
+image.workspace = true
+
 [lints]
 workspace = true

@@ -5,6 +5,7 @@
 use std::ops::Range;
 
 use typst::layout::{Abs, Frame, FrameItem, Point, Transform};
+use typst::visualize::Paint;
 use typst_layout::PagedDocument;
 
 use crate::{Document, HandoutError, join};
@@ -135,6 +136,8 @@ fn collect(frame: &Frame, ts: Transform, out: &mut Vec<TextBox>) {
                     .pre_concat(group.transform);
                 collect(&group.frame, ts, out);
             }
+            // The maker's watermark and credit are not part of the lesson.
+            FrameItem::Text(text) if is_brand(&text.fill) => {}
             FrameItem::Text(text) => {
                 let size = text.size;
                 let mut x = Abs::zero();
@@ -157,6 +160,14 @@ fn collect(frame: &Frame, ts: Transform, out: &mut Vec<TextBox>) {
             | FrameItem::Link(..)
             | FrameItem::Tag(_) => {}
         }
+    }
+}
+
+/// Text in the Trentin Software green (`brand` in the template).
+fn is_brand(fill: &Paint) -> bool {
+    match fill {
+        Paint::Solid(color) => color.to_vec4_u8()[..3] == [0x00, 0x62, 0x41],
+        _ => false,
     }
 }
 

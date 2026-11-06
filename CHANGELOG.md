@@ -6,6 +6,19 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.39.3] - 2026-11-06
+
+### Added
+- **Trentin Software credits.** Know Giver is made by Trentin Software
+  (https://trentin.software), and says so quietly:
+  - handout PDFs carry a faint watermark (the Trentin Software dragon and name) in the
+    middle of each page, and a small "Trentin Software · trentin.software" link in the
+    footer beside the page number. The in-app reader leaves this text out of selection
+    and highlights;
+  - the lesson whiteboard shows the mark and name in faint chalk in its bottom corner;
+  - the sidebar ends with "Made by Trentin Software", and Settings → About has the same
+    link and the credit for the mark (a Font Awesome Free icon, CC BY 4.0).
+
 ## [0.39.2] - 2026-11-06
 
 ### Fixed

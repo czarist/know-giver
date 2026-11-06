@@ -91,6 +91,10 @@ fatal:
   title: "无法启动"
   subtitle: "Know Giver 无法打开你的数据。"
 
+brand:
+  name: "Trentin Software"
+  made_by: "由 Trentin Software 开发"
+  icon_credit: "Trentin Software 标志：Font Awesome Free 图标（CC BY 4.0）。"
 nav:
   mock: "模拟考试"
   discursive: "主观题与作文"

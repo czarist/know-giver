@@ -91,6 +91,10 @@ fatal:
   title: "起動できませんでした"
   subtitle: "Know Giver がデータを開けませんでした。"
 
+brand:
+  name: "Trentin Software"
+  made_by: "開発：Trentin Software"
+  icon_credit: "Trentin Software のマーク：Font Awesome Free のアイコン（CC BY 4.0）。"
 nav:
   mock: "模擬試験"
   discursive: "記述・小論文"

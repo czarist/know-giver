@@ -91,6 +91,10 @@ fatal:
   title: "Não foi possível iniciar"
   subtitle: "O Know Giver não conseguiu abrir seus dados."
 
+brand:
+  name: "Trentin Software"
+  made_by: "Desenvolvido por Trentin Software"
+  icon_credit: "Marca da Trentin Software: ícone do Font Awesome Free (CC BY 4.0)."
 nav:
   mock: "Simulados"
   discursive: "Discursivas"
