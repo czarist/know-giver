@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "学習リマインダー"
-  subject_progress: "%{subject}: %{percent}%"
+  lead: "少し学習しませんか？ 遅れている科目："
+  study_now: "今すぐ学習"
+  later: "あとで"
+  close: "閉じる"
   more_subjects: "ほか %{count} 科目"
 
 language:
@@ -633,7 +636,10 @@ settings:
   quiz_size: "1回のクイズの問題数"
   study_reminders:
     title: "学習リマインダー"
-    enabled: "アプリをシステムトレイに置いている間、3時間ごとに通知する"
+    enabled: "アプリから離れている間（トレイ、最小化、背面）に通知する"
+    interval: "通知の間隔"
+    minutes: "%{count}分"
+    hours: "%{count}時間"
     hint: "通知には、現在のプランで未完了の科目を最大3つ表示します。表示位置はシステムが決めます。終了するにはトレイのメニューから終了してください。"
   english_voice:
     title: "英語部分の音声"

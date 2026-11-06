@@ -157,6 +157,8 @@ pub struct KnowGiverApp {
     fonts_locale: String,
     tray: Option<crate::tray::SystemTray>,
     tray_initialized: bool,
+    /// Keeps this the only running copy; later launches ask it to show.
+    instance: Option<crate::instance::Instance>,
     window_hidden: bool,
     quit_requested: bool,
     reminder_schedule: crate::reminders::ReminderSchedule,
@@ -178,6 +180,16 @@ impl KnowGiverApp {
     /// Like [`Self::new`], with an explicit data folder.
     pub fn with_paths(cc: &eframe::CreationContext<'_>, paths: AppPaths, env_ai: AiConfig) -> Self {
         Self::with_paths_and_options(cc, paths, env_ai, crate::RunOptions::default())
+    }
+
+    /// Makes this the single running copy and answers later launches.
+    pub(crate) fn attach_instance(
+        &mut self,
+        mut instance: crate::instance::Instance,
+        ctx: &egui::Context,
+    ) {
+        instance.listen(ctx.clone());
+        self.instance = Some(instance);
     }
 
     pub(crate) fn with_run_options(
@@ -253,6 +265,7 @@ impl KnowGiverApp {
             fonts_locale: String::new(),
             tray: None,
             tray_initialized: false,
+            instance: None,
             window_hidden: run_options.start_hidden,
             quit_requested: false,
             reminder_schedule: crate::reminders::ReminderSchedule::new(Instant::now()),
@@ -595,19 +608,39 @@ impl eframe::App for KnowGiverApp {
         }
 
         let locale = i18n::current();
-        let actions = self
+        let mut actions = self
             .tray
-            .as_ref()
+            .as_mut()
             .map(crate::tray::SystemTray::take_actions)
             .unwrap_or_default();
         if let Some(tray) = self.tray.as_mut() {
             tray.set_locale(&locale);
+            if let Some(wait) = tray.wake_in() {
+                ctx.request_repaint_after(wait);
+            }
+        }
+        if let Some(instance) = &self.instance {
+            if instance.take_show_request() {
+                actions.push(crate::tray::TrayAction::Open);
+            }
+            // While an update replaces this copy, the new version waits
+            // for it to close instead of handing over to it.
+            instance.set_closing(self.engine.as_ref().is_ok_and(|engine| {
+                matches!(
+                    engine.update(),
+                    Some(
+                        kg_engine::UpdateStatus::Downloading { .. }
+                            | kg_engine::UpdateStatus::Installing(_)
+                    )
+                )
+            }));
         }
         for action in actions {
             match action {
                 crate::tray::TrayAction::Open => {
                     self.window_hidden = false;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 }
                 crate::tray::TrayAction::Quit => {
@@ -673,9 +706,21 @@ impl eframe::App for KnowGiverApp {
             self.window_hidden = true;
         }
 
-        let reminder_eligible = self.window_hidden
+        // The student is away from the app: in the tray, minimized or behind
+        // other windows. Not while they are using it or studying.
+        let away = self.window_hidden
+            || ctx.input(|input| {
+                let viewport = input.viewport();
+                viewport.minimized == Some(true) || viewport.focused == Some(false)
+            });
+        let reminders_on = self
+            .engine
+            .as_ref()
+            .is_ok_and(|engine| engine.settings().study_reminders);
+        let reminder_eligible = away
             && self.engine.as_ref().is_ok_and(|engine| {
                 engine.settings().study_reminders
+                    && !engine.studying_now()
                     && engine.active_plan().is_some_and(|plan| {
                         plan.subjects.iter().any(|subject| {
                             subject
@@ -685,17 +730,32 @@ impl eframe::App for KnowGiverApp {
                         })
                     })
             });
-        if self
-            .reminder_schedule
-            .is_due(Instant::now(), reminder_eligible)
-            && let Some(plan) = self.engine.as_ref().ok().and_then(Engine::active_plan)
-            && let Err(err) = crate::reminders::show_progress(plan)
+        if self.reminder_schedule.is_due(
+            Instant::now(),
+            reminder_eligible,
+            Duration::from_secs(
+                u64::from(
+                    self.engine
+                        .as_ref()
+                        .map_or(kg_engine::DEFAULT_REMINDER_MINUTES, |engine| {
+                            engine.settings().reminder_minutes
+                        }),
+                )
+                .max(1)
+                    * 60,
+            ),
+        ) && let Some(plan) = self.engine.as_ref().ok().and_then(Engine::active_plan)
+            && let Err(err) = self.reminder_schedule.show(plan)
         {
             tracing::warn!(%err, "could not show study reminder");
         }
 
         if self.window_hidden {
             ctx.request_repaint_after(Duration::from_millis(250));
+        } else if reminders_on {
+            // A window in the background is not redrawn on its own; look
+            // again now and then so the reminder still comes.
+            ctx.request_repaint_after(Duration::from_secs(30));
         }
     }
 

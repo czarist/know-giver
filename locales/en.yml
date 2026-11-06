@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "Study reminder"
-  subject_progress: "%{subject}: %{percent}%"
+  lead: "How about a session now? These subjects are furthest behind:"
+  study_now: "Study now"
+  later: "Later"
+  close: "Close"
   more_subjects: "+ %{count} subjects"
 
 language:
@@ -633,7 +636,10 @@ settings:
   quiz_size: "Questions per quiz"
   study_reminders:
     title: "Study reminders"
-    enabled: "Remind me every 3 hours while the app is in the system tray"
+    enabled: "Remind me while I'm away from the app (in the tray, minimized or in the background)"
+    interval: "Remind me every"
+    minutes: "%{count} min"
+    hours: "%{count} h"
     hint: "The notification shows up to three unfinished subjects in the active plan. Your system chooses where to display it. Quit from the tray menu to stop reminders."
   english_voice:
     title: "Voice for English passages"

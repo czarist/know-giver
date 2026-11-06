@@ -120,6 +120,9 @@ pub enum ManuscriptOcr {
     ExternalVision,
 }
 
+/// Default time between study reminders: three hours.
+pub const DEFAULT_REMINDER_MINUTES: u32 = 180;
+
 /// Everything the user can change in Settings.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -166,8 +169,10 @@ pub struct Settings {
     /// Ask GitHub for a newer version when the app opens (only that request
     /// is sent).
     pub check_updates: bool,
-    /// Show study-progress notifications while the app is in the system tray.
+    /// Show a study reminder while the student is away from the app.
     pub study_reminders: bool,
+    /// Minutes between study reminders.
+    pub reminder_minutes: u32,
     /// Who teaches; `None` in settings saved before teachers existed (see
     /// [`Settings::teacher`]).
     #[serde(default, deserialize_with = "crate::teacher::lenient")]
@@ -217,6 +222,7 @@ impl Default for Settings {
             board_images: true,
             check_updates: true,
             study_reminders: false,
+            reminder_minutes: DEFAULT_REMINDER_MINUTES,
             teacher: None,
             speech_rate: 0.95,
             quiz_size: 5,

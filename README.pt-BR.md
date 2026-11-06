@@ -373,7 +373,7 @@ modelo na lista (**Z.ai** é a recomendação de custo-benefício, **Claude** a 
 acerto, cada um com o link para criar a chave) ou carregue os modelos que a sua chave pode
 usar. Depois vem um tour rápido pelas telas. Planos já criados são mantidos.
 
-Fechar a janela mantém o app na bandeja do sistema: use o menu do ícone para reabrir ou sair. Na instalação, você escolhe se ele inicia com o sistema e se quer receber lembretes a cada 3 horas; as duas opções começam desativadas. Os lembretes aparecem enquanto o app estiver na bandeja e houver matérias pendentes no plano ativo.
+Fechar a janela mantém o app na bandeja do sistema: dois cliques no ícone reabrem a janela, e um clique abre o menu (abrir ou sair). Abrir o Know Giver de novo com ele já aberto traz de volta a mesma janela; nunca há duas cópias nem dois ícones na bandeja. Na instalação, você escolhe se ele inicia com o sistema e se quer receber lembretes de estudo (a cada 3 horas por padrão, de 30 minutos a 8 horas em Configurações); as duas opções começam desativadas. O lembrete é uma janelinha do Know Giver no canto da tela, com as matérias mais atrasadas e um botão para começar a estudar. Os lembretes aparecem quando você está longe do app (na bandeja, minimizado ou atrás de outras janelas), nunca durante aula, quiz ou revisão, e só enquanto houver matérias pendentes no plano ativo.
 
 Para desenvolvimento, o `.env` (copie o `.env.example`) ainda pode definir o endereço e os
 modelos; ele tem prioridade sobre variáveis globais com o mesmo nome. Baixe os modelos de

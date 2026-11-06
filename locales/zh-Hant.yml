@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "學習提醒"
-  subject_progress: "%{subject}：%{percent}%"
+  lead: "現在學一會兒吧？這些科目進度最慢："
+  study_now: "立即學習"
+  later: "稍後"
+  close: "關閉"
   more_subjects: "另有 %{count} 門科目"
 
 language:
@@ -633,7 +636,10 @@ settings:
   quiz_size: "每次測驗的題數"
   study_reminders:
     title: "學習提醒"
-    enabled: "程式留在系統匣時，每 3 小時提醒一次"
+    enabled: "離開程式時（在系統匣、最小化或在背景）提醒我"
+    interval: "提醒間隔"
+    minutes: "%{count} 分鐘"
+    hours: "%{count} 小時"
     hint: "通知會顯示目前計劃中最多三門尚未完成的科目及其進度。顯示位置由系統決定。透過系統匣選單結束程式後，提醒會停止。"
   english_voice:
     title: "英文段落的語音"

@@ -95,8 +95,8 @@ pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{
-    DEFAULT_TURN_PAUSE, ManuscriptOcr, Region, SETUP_VERSION, Settings, TERMS_VERSION,
-    TURN_PAUSE_RANGE, TermsAcceptance,
+    DEFAULT_REMINDER_MINUTES, DEFAULT_TURN_PAUSE, ManuscriptOcr, Region, SETUP_VERSION, Settings,
+    TERMS_VERSION, TURN_PAUSE_RANGE, TermsAcceptance,
 };
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
