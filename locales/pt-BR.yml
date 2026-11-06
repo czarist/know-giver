@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "Lembrete de estudo"
-  subject_progress: "%{subject}: %{percent}%"
+  lead: "Que tal uma sessão agora? Estas matérias estão mais atrás:"
+  study_now: "Estudar agora"
+  later: "Depois"
+  close: "Fechar"
   more_subjects: "+ %{count} matérias"
 
 language:
@@ -633,7 +636,10 @@ settings:
   quiz_size: "Questões por quiz"
   study_reminders:
     title: "Lembretes de estudo"
-    enabled: "Receber um lembrete a cada 3 horas enquanto o app estiver na bandeja"
+    enabled: "Receber lembretes quando eu estiver longe do app (na bandeja, minimizado ou em segundo plano)"
+    interval: "Lembrar a cada"
+    minutes: "%{count} min"
+    hours: "%{count} h"
     hint: "A notificação mostra até três matérias que ainda não foram concluídas no plano atual. O sistema decide onde exibi-la. Fechar o app pelo menu da bandeja interrompe os lembretes."
   english_voice:
     title: "Voz para trechos em inglês"

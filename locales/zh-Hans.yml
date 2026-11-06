@@ -11,7 +11,10 @@ tray:
 
 reminder:
   title: "学习提醒"
-  subject_progress: "%{subject}：%{percent}%"
+  lead: "现在学一会儿吧？这些科目进度最慢："
+  study_now: "立即学习"
+  later: "稍后"
+  close: "关闭"
   more_subjects: "另有 %{count} 门科目"
 
 language:
@@ -633,7 +636,10 @@ settings:
   quiz_size: "每次测验的题数"
   study_reminders:
     title: "学习提醒"
-    enabled: "应用留在系统托盘时，每 3 小时提醒一次"
+    enabled: "离开应用时（在托盘、最小化或在后台）提醒我"
+    interval: "提醒间隔"
+    minutes: "%{count} 分钟"
+    hours: "%{count} 小时"
     hint: "通知会显示当前计划中最多三门尚未完成的科目及其进度。显示位置由系统决定。通过托盘菜单退出应用后，提醒会停止。"
   english_voice:
     title: "英文段落的语音"

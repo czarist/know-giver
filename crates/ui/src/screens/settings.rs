@@ -46,6 +46,22 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
                 &mut draft.study_reminders,
                 t!("settings.study_reminders.enabled"),
             );
+            ui.add_enabled_ui(draft.study_reminders, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(t!("settings.study_reminders.interval"));
+                    egui::ComboBox::from_id_salt("reminder_interval")
+                        .selected_text(crate::reminders::interval_label(draft.reminder_minutes))
+                        .show_ui(ui, |ui| {
+                            for minutes in crate::reminders::REMINDER_CHOICES {
+                                ui.selectable_value(
+                                    &mut draft.reminder_minutes,
+                                    minutes,
+                                    crate::reminders::interval_label(minutes),
+                                );
+                            }
+                        });
+                });
+            });
             widgets::hint(ui, &t!("settings.study_reminders.hint"));
         });
         ui.add_space(12.0);
