@@ -540,7 +540,7 @@ tour:
     text: "科目ごとの進み具合と、毎日の学習時間。"
   challenges:
     title: "実績"
-    text: "プランごとの小さなチャレンジ。達成するとショーケースにステッカーが加わります。急ぐ必要も、ランキングもありません。"
+    text: "プランごとの小さなチャレンジ。達成するとショーケースに実績が加わります。急ぐ必要も、ランキングもありません。"
   settings:
     title: "設定"
     text: "言語、先生、音声、AIを変更し、規約を読み直せます。準備完了、さあ始めましょう！"
@@ -1092,7 +1092,7 @@ teachers:
 
 challenges:
   title: "チャレンジと実績"
-  subtitle: "学習の目標。達成するたびにステッカーがコレクションに加わります。急ぐ必要も、ランキングもありません。"
+  subtitle: "学習の目標。達成するたびに実績がコレクションに加わります。急ぐ必要も、ランキングもありません。"
   plan_section: "このプランのチャレンジ"
   plan_summary: "このプランで%{total}個中%{won}個を獲得"
   overall_section: "全体"
@@ -1119,14 +1119,14 @@ challenges:
   overall_won: "すべてのプラン"
   showcase: "ショーケース"
   showcase_count: "%{total} 枚中 %{won} 枚"
-  showcase_note: "ステッカーにマウスを重ねると、条件と獲得したプランが表示されます。"
+  showcase_note: "実績にマウスを重ねると、条件と獲得したプランが表示されます。"
   filter_all: "すべて"
   filter_won: "獲得済み"
   filter_locked: "未獲得"
   locked: "未獲得"
-  no_plan: "プランのチャレンジを始めるには学習プランを作成してください。獲得済みのステッカーはショーケースに残ります。"
-  unlocked_toast: "ステッカー獲得：%{name}"
-  unlocked_many: "ほかに新しいステッカーが%{count}枚、ショーケースにあります。"
+  no_plan: "プランのチャレンジを始めるには学習プランを作成してください。獲得済みの実績はショーケースに残ります。"
+  unlocked_toast: "実績解除：%{name}"
+  unlocked_many: "ほかに新しい実績が%{count}件、ショーケースにあります。"
   next: "次のチャレンジ"
   see_all: "チャレンジを見る"
   all_done: "このプランのチャレンジはすべて達成しました。"
@@ -1339,10 +1339,10 @@ family:
     goal_one: "トピックを1つ習得する。"
     caption: "一面の蓮。"
   stickers:
-    name: "アルバム：%{count}"
-    goal: "異なるステッカーを%{count}枚集める。"
-    goal_one: "ステッカーを1枚集める。"
-    caption: "コレクションのアルバム。"
+    name: "コレクション：%{count}"
+    goal: "異なる実績を%{count}件解除する。"
+    goal_one: "実績を1件解除する。"
+    caption: "実績のコレクション。"
 mock:
   title: "模擬試験"
   subtitle: "要項の形式どおりの試験を、時間を計って。画面でも紙でも。"

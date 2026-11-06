@@ -6,6 +6,10 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Changed
+- Stickers are now called achievements in every language: conquistas (pt-BR),
+  achievements (en), 実績 (ja), 成就 (zh-Hans, zh-Hant). The album family is now the collection.
+
 ## [0.39.0] - 2026-11-05
 
 ### Added
