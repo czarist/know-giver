@@ -1,5 +1,5 @@
 //! The study reminder: a small Know Giver window in the corner of the
-//! screen, in the app's look, with the monkey on its jade tile.
+//! screen, in the app's look, with the engraving of Thoth on a jade panel.
 
 use std::time::{Duration, Instant};
 
@@ -7,15 +7,14 @@ use egui::{Color32, RichText, Sense, Stroke, vec2};
 use rust_i18n::t;
 
 use crate::reminders::Progress;
-use crate::{i18n, icons, theme, widgets};
+use crate::{i18n, theme, widgets};
 
-const WIDTH: f32 = 440.0;
-const TILE: f32 = 116.0;
-const LOGO: f32 = 84.0;
+const WIDTH: f32 = 470.0;
+const TILE: f32 = 150.0;
 const PADDING: f32 = 14.0;
 const NAME_WIDTH: f32 = 130.0;
 const BAR_WIDTH: f32 = 90.0;
-/// The jade of the app icon's tile.
+/// The jade of the app icon.
 const JADE: Color32 = Color32::from_rgb(0x2F, 0x6F, 0x68);
 const MARGIN: f32 = 20.0;
 /// Clears a typical taskbar at the bottom of the screen.
@@ -106,13 +105,19 @@ impl eframe::App for ReminderPopup {
                 ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
 
-            // The logo's own jade, in both themes.
+            // The engraving on the icon's jade, in both themes; the bust
+            // rests on the bottom edge.
             let tile = egui::Rect::from_min_size(full.min, vec2(TILE, full.height()));
             ui.painter().rect_filled(tile, 0.0, JADE);
+            let side = TILE.min(tile.height());
+            let art = egui::Rect::from_min_size(
+                egui::pos2(tile.center().x - side / 2.0, tile.bottom() - side),
+                vec2(side, side),
+            );
+            egui::Image::new(egui::include_image!("../assets/thoth-engraving.png"))
+                .paint_at(ui, art);
             ui.painter()
                 .vline(tile.right(), tile.y_range(), Stroke::new(1.5, p.ink));
-            let logo = egui::Rect::from_center_size(tile.center(), vec2(LOGO, LOGO));
-            ui.put(logo, icons::logo(LOGO));
 
             let content = egui::Rect::from_min_max(
                 egui::pos2(tile.right() + 18.0, full.top() + PADDING),
