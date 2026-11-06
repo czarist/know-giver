@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Version 0.39.1. Everything an agent can build and check without a human ear, a
+Version 0.39.2. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -10,10 +10,12 @@ Work happens on short-lived task branches from `dev`, merged into `dev`; the own
 `dev` into `main` on GitHub (see "Git workflow" in CLAUDE.md). Up to v0.31.2, releases
 were committed to `main` directly.
 
-The system tray, optional login startup and three-hour study reminders are implemented
-on `dev`. The app keeps running when its window is closed; reminders require an
-unfinished subject in the active plan and can be changed in Settings. Native tray,
-notification and installer behavior still needs testing on Windows, macOS and Linux.
+The system tray, optional login startup and study reminders are implemented on `dev`.
+The app keeps running when its window is closed, and only one copy runs: opening it again
+shows the running window. Reminders are Know Giver's own popup, every 3 hours by default
+(30 minutes to 8 hours in Settings), while the student is away from the app and the
+active plan has an unfinished subject. Native tray, popup and installer behavior still
+needs testing on Windows, macOS and Linux.
 
 ### Handoff for the next agent
 
@@ -73,7 +75,7 @@ app and CPU/Vulkan OCR runtimes were rebuilt and the portable package was verifi
    answers need the Whisper check.
 6. Human checks (cannot be done by an agent): listening comparison Piper × Kokoro and
    choice of Piper expressiveness/rhythm defaults; live microphone loop with streamed
-   speech; installer build and install test; tray, login startup and native reminder
+   speech; installer build and install test; tray, login startup and reminder popup
    behavior on Windows, macOS and Linux.
 7. Tutor fact-checking: live lesson answers are not reviewed. A streamed reply on crase
    claimed "meio-dia"/"meia-noite" take no crase, which is wrong. Options: a lighter
@@ -289,11 +291,16 @@ binaries passed `--version`. Vulkan still relies on the computer's compatible GP
 - [x] Streaks and gentle milestones (no gamified noise)
 - [x] Micro-animations: screen transitions, progress filling, toast entry
 - [x] Review the whole flow for clicks saved (start a lesson straight from Today)
-- [x] System tray: closing the window hides the app; the tray menu reopens or quits it
-- [x] Optional startup at login and three-hour progress reminders, both off by default;
-      reminders only run while the app is in the tray and the active plan has unfinished
-      subjects
-- [ ] Verify native tray, notifications and startup installers on Windows, macOS and Linux
+- [x] System tray: closing the window hides the app; a double-click reopens it and a
+      single click opens the menu (open or quit)
+- [x] Single running copy: a second launch shows the running window; after an update the
+      new version waits for the old one to close
+- [x] Optional startup at login and progress reminders, both off by default; reminders
+      come while the student is away from the app (tray, minimized or in the background),
+      never during a lesson, quiz or review, every 3 hours by default (30 minutes to
+      8 hours in Settings), as a Know Giver popup with the subjects furthest behind
+- [ ] Verify native tray, the reminder popup and startup installers on Windows, macOS and
+      Linux
 
 ## Phase 7 — Natural voice, male and female
 
