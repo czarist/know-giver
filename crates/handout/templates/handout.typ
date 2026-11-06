@@ -8,6 +8,8 @@
 #let right = rgb("#3B7A4A")
 #let muted = luma(110)
 #let rule = luma(210)
+// Trentin Software, who makes Know Giver.
+#let brand = rgb("#006241")
 
 #set document(title: data.title)
 #set text(font: "Libertinus Serif", size: 11pt, lang: lower(data.lang.split("-").at(0)))
@@ -101,6 +103,24 @@
   paper: "a4",
   margin: (x: 2.3cm, top: 2.6cm, bottom: 2.4cm),
   numbering: "1",
+  // The maker's mark, faint, in the middle of the page. Text in the brand
+  // colour is left out of the reader's text (`pages.rs`).
+  background: place(center + horizon, stack(
+    spacing: 14pt,
+    align(center, image("/brand/trentin-dragon.svg", width: 52%)),
+    align(center, text(size: 34pt, weight: "bold", tracking: 3pt,
+      fill: brand.transparentize(93%))[TRENTIN SOFTWARE]),
+  )),
+  footer: context {
+    set text(size: 7.5pt)
+    grid(
+      columns: (1fr, auto, 1fr),
+      [],
+      text(size: 9pt, fill: muted, counter(page).display("1")),
+      align(end, link("https://trentin.software",
+        text(fill: brand)[Trentin Software · trentin.software])),
+    )
+  },
   foreground: context {
     let here-page = here().page()
     for mark in marks.filter(m => m.page == here-page) {

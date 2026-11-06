@@ -27,6 +27,10 @@ pub use pages::{PageImage, Pages, TextBox, paginate};
 
 const TEMPLATE: &str = include_str!("../templates/handout.typ");
 
+/// The Trentin Software mark, faint, as the handout's watermark.
+const BRAND_MARK: &[u8] = include_bytes!("../assets/trentin-dragon.svg");
+const BRAND_MARK_PATH: &str = "/brand/trentin-dragon.svg";
+
 /// A picture placed in the handout: a file of [`Document::files`] and its
 /// caption (where it comes from).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -235,6 +239,10 @@ impl HandoutWorld {
             files: files
                 .iter()
                 .map(|(path, bytes)| Ok((file(path)?, Bytes::new(bytes.clone()))))
+                .chain(std::iter::once(Ok((
+                    file(BRAND_MARK_PATH)?,
+                    Bytes::new(BRAND_MARK),
+                ))))
                 .collect::<Result<_, HandoutError>>()?,
         })
     }
@@ -354,10 +362,32 @@ mod tests {
         let pdf = render_pdf(&document).unwrap();
         assert!(pdf.starts_with(b"%PDF"));
         assert!(pdf.len() > 10_000);
+        if let Some(path) = std::env::var_os("KG_HANDOUT_PREVIEW") {
+            std::fs::write(path, &pdf).unwrap();
+        }
 
         // The same pages for the reader: pictures, and text with positions.
         let pages = paginate(&document).unwrap();
         assert!(pages.len() >= 3);
+        if let Some(path) = std::env::var_os("KG_HANDOUT_PAGE_PNG") {
+            let page = pages.render(1, 1.5).unwrap();
+            image::save_buffer(
+                path,
+                &page.rgba,
+                page.width,
+                page.height,
+                image::ExtendedColorType::Rgba8,
+            )
+            .unwrap();
+        }
+        // The Trentin Software watermark and credit stay out of the reader's text.
+        for page in 0..pages.len() {
+            let all = pages.text_of(page, 0..pages.text(page).len());
+            assert!(
+                !all.contains("TRENTIN") && !all.contains("trentin.software"),
+                "{all}"
+            );
+        }
         let found = (0..pages.len()).find_map(|page| {
             let boxes = pages.text(page);
             let all = pages.text_of(page, 0..boxes.len());

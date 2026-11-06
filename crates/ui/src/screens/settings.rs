@@ -964,6 +964,8 @@ fn about_section(ui: &mut egui::Ui, draft: &mut kg_engine::Settings) {
             .on_hover_text(t!("settings.about.check_updates_hint"));
         let muted = crate::theme::palette(ui.ctx()).muted;
         crate::app::source_link(ui, muted);
+        crate::app::company_link(ui, muted);
+        widgets::hint(ui, &t!("brand.icon_credit"));
     });
 }
 

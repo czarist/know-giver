@@ -359,6 +359,20 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, engine: &Engine, lesson: &Lesso
         BOARD_INK.gamma_multiply(0.6),
     );
 
+    // The maker's mark, faint like old chalk, in the corner.
+    let mark =
+        egui::Rect::from_min_size(board.right_bottom() - vec2(196.0, 46.0), vec2(30.0, 24.0));
+    crate::app::company_mark()
+        .tint(BOARD_INK.gamma_multiply(0.14))
+        .paint_at(ui, mark);
+    painter.text(
+        pos2(mark.right() + 8.0, mark.center().y),
+        egui::Align2::LEFT_CENTER,
+        t!("brand.name").to_uppercase(),
+        egui::FontId::new(11.0, theme::strong_family()),
+        BOARD_INK.gamma_multiply(0.16),
+    );
+
     let now = ui.input(|i| i.time);
     let width = board.width() - 52.0;
     let mut y = board.top() + 46.0;

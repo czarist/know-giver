@@ -91,6 +91,10 @@ fatal:
   title: "無法啟動"
   subtitle: "Know Giver 無法開啟你的資料。"
 
+brand:
+  name: "Trentin Software"
+  made_by: "由 Trentin Software 開發"
+  icon_credit: "Trentin Software 標誌：Font Awesome Free 圖示（CC BY 4.0）。"
 nav:
   mock: "模擬考試"
   discursive: "主觀題與作文"

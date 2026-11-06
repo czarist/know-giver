@@ -91,6 +91,10 @@ fatal:
   title: "Could not start"
   subtitle: "Know Giver could not open your data."
 
+brand:
+  name: "Trentin Software"
+  made_by: "Made by Trentin Software"
+  icon_credit: "Trentin Software mark: Font Awesome Free icon (CC BY 4.0)."
 nav:
   mock: "Mock exams"
   discursive: "Written answers"

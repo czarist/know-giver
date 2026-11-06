@@ -410,6 +410,8 @@ impl KnowGiverApp {
                 }
 
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+                    company_link(ui, p.muted.gamma_multiply(0.8));
+                    ui.add_space(6.0);
                     if let Some(plan) = &engine_badges.plan_title {
                         ui.label(egui::RichText::new(plan).small().color(p.muted));
                         widgets::kicker(ui, &t!("nav.active_plan"), p.muted);
@@ -521,6 +523,30 @@ pub(crate) fn source_link(ui: &mut egui::Ui, color: egui::Color32) {
         .clicked()
     {
         open_url(kg_engine::REPOSITORY);
+    }
+}
+
+/// The site of Trentin Software, who makes Know Giver.
+pub(crate) const COMPANY_URL: &str = "https://trentin.software";
+
+/// The Trentin Software mark (white, tinted when drawn).
+pub(crate) fn company_mark() -> egui::Image<'static> {
+    egui::Image::new(egui::include_image!("../assets/brand/trentin-dragon.svg"))
+}
+
+/// A small credit to Trentin Software that opens its site.
+pub(crate) fn company_link(ui: &mut egui::Ui, color: egui::Color32) {
+    let button = egui::Button::image_and_text(
+        company_mark()
+            .fit_to_exact_size(egui::vec2(15.0, 12.0))
+            .tint(color),
+        egui::RichText::new(t!("brand.made_by"))
+            .small()
+            .color(color),
+    )
+    .frame_when_inactive(false);
+    if ui.add(button).on_hover_text(COMPANY_URL).clicked() {
+        open_url(COMPANY_URL);
     }
 }
 
