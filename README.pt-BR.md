@@ -186,20 +186,20 @@ abaixo. Vêm junto dez desafios novos.
   </tr>
 </table>
 
-## Desafios e figurinhas
+## Desafios e conquistas
 
-A tela **Conquistas** tem **164 desafios** em 36 famílias, e cada nível vale uma figurinha
+A tela **Conquistas** tem **164 desafios** em 36 famílias, e cada nível vale uma conquista
 original (jade, lua crescente, gravura como a marca do app). Em cada plano: aulas, quizzes,
 acertos e gabaritos perfeitos, questões erradas recuperadas, tópicos estudados e a parte do
 edital coberta, semanas do plano em dia, tópicos e matérias dominados, revisões, provas da
 banca, apostilas e destaques, e discursivas quando o edital tem. Somando todos os planos:
-horas e dias de estudo, planos criados e o próprio álbum. Primeiro Passo, Volta por Cima,
+horas e dias de estudo, planos criados e a própria coleção. Primeiro Passo, Volta por Cima,
 Plano em Movimento e Semana em Dia têm nome próprio.
 
 Cada família é uma linha: o próximo nível, quanto falta (2/3), "nível 3 de 11" e um botão
 para a aula, o quiz ou a revisão. A tela Hoje mostra o próximo, com discrição. A vitrine tem
-todas as figurinhas, com filtro de conquistadas e bloqueadas e os detalhes ao passar o mouse;
-o nível aparece na cor do aro e em um a três pontos. As figurinhas vêm só de regras no
+todas as conquistas, com filtro de obtidas e bloqueadas e os detalhes ao passar o mouse;
+o nível aparece na cor do aro e em um a três pontos. As conquistas vêm só de regras no
 código, a partir do seu estudo salvo, nunca da IA; cada plano tem o próprio progresso. O
 estudo de antes deste recurso também conta; quando o histórico não diz o dia, o cartão avisa.
 Um aviso curto aparece depois que a aula ou o quiz termina, nunca no meio, e uma vez só. Sem
@@ -208,7 +208,7 @@ pontos, sem ranking, sem sequência a perder.
 <table>
   <tr>
     <td><img src="docs/images/pt-BR/challenges.png" alt="Conquistas: uma linha por família com o nível, o progresso e um botão para a próxima aula ou quiz"></td>
-    <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de figurinhas: as conquistadas em cores com a data; as bloqueadas em cinza com o progresso"></td>
+    <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de conquistas: as obtidas em cores com a data; as bloqueadas em cinza com o progresso"></td>
   </tr>
 </table>
 
@@ -446,7 +446,7 @@ Mais: [builds nativos/CUDA](docs/builds.md), [avaliação do Kokoro](docs/kokoro
 - As imagens do quadro vêm da [Wikipédia](https://pt.wikipedia.org); a legenda indica o
   artigo, onde estão o autor e a licença de cada imagem.
 - Ícones: [Lucide](https://lucide.dev), licença ISC (`crates/ui/assets/icons`).
-- Figurinhas dos desafios (`crates/ui/assets/stickers`): SVGs originais feitos para o Know
+- Ícones das conquistas (`crates/ui/assets/stickers`): SVGs originais feitos para o Know
   Giver, sob a licença do projeto.
 - Logos dos fornecedores de IA: [Simple Icons](https://simpleicons.org), CC0
   (`crates/ui/assets/providers`); os logos são marcas dos seus donos, usados só para

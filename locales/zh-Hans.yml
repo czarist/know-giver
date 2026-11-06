@@ -540,7 +540,7 @@ tour:
     text: "各科目的进展和每天的学习时间。"
   challenges:
     title: "成就"
-    text: "每个计划中的小挑战。每完成一个就能在展示柜中获得一张贴纸，不必着急，也没有排行榜。"
+    text: "每个计划中的小挑战。每完成一个就能在展示柜中获得一项成就，不必着急，也没有排行榜。"
   settings:
     title: "设置"
     text: "更改语言、老师、语音或 AI，也可以重新阅读条款。准备好了，开始吧！"
@@ -1092,7 +1092,7 @@ teachers:
 
 challenges:
   title: "挑战与成就"
-  subtitle: "学习的目标，每完成一个就为收藏增添一张贴纸。不必着急，也没有排行榜。"
+  subtitle: "学习的目标，每完成一个就为收藏增添一项成就。不必着急，也没有排行榜。"
   plan_section: "本计划的挑战"
   plan_summary: "本计划已获得 %{won} / %{total}"
   overall_section: "总体"
@@ -1118,15 +1118,15 @@ challenges:
   plan_deleted: "%{title}（计划已删除）"
   overall_won: "所有计划"
   showcase: "展示柜"
-  showcase_count: "%{won} / %{total} 张贴纸"
-  showcase_note: "将鼠标悬停在贴纸上，可查看条件和获得它的计划。"
+  showcase_count: "%{won} / %{total} 项成就"
+  showcase_note: "将鼠标悬停在成就上，可查看条件和获得它的计划。"
   filter_all: "全部"
   filter_won: "已获得"
   filter_locked: "未解锁"
   locked: "未解锁"
-  no_plan: "创建学习计划即可开始计划挑战。已获得的贴纸会保留在展示柜中。"
-  unlocked_toast: "获得贴纸：%{name}"
-  unlocked_many: "展示柜中还有 %{count} 张新贴纸。"
+  no_plan: "创建学习计划即可开始计划挑战。已获得的成就会保留在展示柜中。"
+  unlocked_toast: "解锁成就：%{name}"
+  unlocked_many: "展示柜中还有 %{count} 项新成就。"
   next: "下一个挑战"
   see_all: "查看挑战"
   all_done: "本计划的挑战已全部完成。"
@@ -1339,10 +1339,10 @@ family:
     goal_one: "掌握一个主题。"
     caption: "一片莲花田。"
   stickers:
-    name: "贴纸册：%{count}"
-    goal: "获得 %{count} 张不同的贴纸。"
-    goal_one: "获得一张贴纸。"
-    caption: "收藏的贴纸册。"
+    name: "成就收藏：%{count}"
+    goal: "解锁 %{count} 项不同的成就。"
+    goal_one: "解锁一项成就。"
+    caption: "成就的收藏。"
 mock:
   title: "模拟考试"
   subtitle: "按公告格式的一整场考试，限时作答。屏幕上或纸上都可以。"
