@@ -1,7 +1,9 @@
 //! Renders every screen to PNG for visual review. Needs a GPU, so it is
 //! ignored by default:
 //!
-//! KG_SNAPSHOT_DIR=<dir> cargo test -p kg-ui snapshots -- --ignored
+//! KG_SNAPSHOT_DIR=<dir> cargo test -p kg-ui snapshots -- --ignored --test-threads=1
+//!
+//! One thread: the UI language is global, so parallel tests mix languages.
 
 use chrono::Days;
 use egui_kittest::Harness;
