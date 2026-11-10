@@ -6,6 +6,17 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Added
+- **Cebraspe-style quizzes (Certo/Errado).** Settings → *Quiz question style* offers
+  *Like the exam* (default), *Multiple choice* and *True/false (Cebraspe)*. True/false
+  quizzes ask statements to judge, written by the model with a clear content error in
+  the wrong ones, and keep Certo before Errado. The result also shows Cebraspe's net
+  score, where each wrong answer cancels a right one. *Like the exam* asks Certo/Errado
+  when the exam format read from the notice is true/false, when the plan names
+  Cebraspe/CESPE, or when most of the plan's past exam questions are Certo/Errado.
+  Past exam questions follow the chosen style; the multiple-choice question bank
+  prepared in advance is skipped for true/false quizzes.
+
 ### Fixed
 - **Voice downloads on Linux and macOS.** Piper could only be downloaded on Windows;
   elsewhere the button failed with "This is not supported on this system". The app now

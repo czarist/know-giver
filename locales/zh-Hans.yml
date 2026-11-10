@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "测验"
-  subtitle: "仿照考试风格的选择题。"
+  subtitle: "出题机构风格的题目：选择题或判断题。"
   none: "没有进行中的测验。从计划中的知识点开始一次吧。"
   go_to_plan: "前往计划"
   loading: "正在准备题目…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "这道题你之前答错过"
   your_answer: "你的答案"
   right_answer: "正确答案"
+  judge: "判断这句话：对还是错？"
+  net_score: "按 Cebraspe 规则的净得分（每答错一题抵消一题答对）：%{score} / %{total}"
   missed_on: "%{date} 答错 · %{count} 次"
   remove_mistake: "移除"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "放弃更改"
   data_dir: "你的数据保存在 %{path}"
   quiz_size: "每次测验的题数"
+  quiz_style:
+    title: "测验题型"
+    hint: "判断题是 Cebraspe 的题型：判断一句陈述的对错，正式考试中每答错一题抵消一题答对。"
+    exam: "与考试相同"
+    choice: "选择题"
+    true_false: "判断题（Cebraspe）"
+    now_true_false: "本考试：判断题。"
+    now_choice: "本考试：选择题。"
   study_reminders:
     title: "学习提醒"
     enabled: "离开应用时（在托盘、最小化或在后台）提醒我"

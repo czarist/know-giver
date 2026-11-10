@@ -149,7 +149,8 @@ você quiser.
 ## Prática, revisão e apostilas
 
 - **Quizzes** no estilo da banca, com explicações; questões reais de provas anteriores
-  quando você as envia.
+  quando você as envia. Múltipla escolha ou itens de certo e errado no estilo Cebraspe,
+  com a nota líquida da banca (cada erro anula um acerto).
 - **Caderno de erros**: toda questão que você erra fica guardada até você acertar; ela abre
   o próximo quiz do tópico e o professor a retoma na aula.
 - **Revisão espaçada (SM-2)**: os tópicos voltam pouco antes de você esquecer, como três

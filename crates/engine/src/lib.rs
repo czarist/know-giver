@@ -80,8 +80,8 @@ pub use kg_study::{
     Scope,
 };
 pub use kg_study::{
-    Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, ReviewGrade, StoreError, StudyError,
-    StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
+    Difficulty, PlanId, PlanSummary, QuizQuestion, QuizStats, QuizStyle, ReviewGrade, StoreError,
+    StudyError, StudyPlan, Subject, SubjectId, Topic, TopicId, TopicStatus,
 };
 pub use kg_study::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use kg_study::{LessonRecap, Mistake, MistakeId};

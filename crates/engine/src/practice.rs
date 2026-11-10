@@ -3,9 +3,9 @@
 use std::time::Duration;
 
 use chrono::NaiveDate;
-use kg_ai::{AiError, QuestionDraft, ReviewFeedback, TopicContext};
+use kg_ai::{AiError, QuestionDraft, QuizFormat, ReviewFeedback, TopicContext};
 use kg_audio::{ModelId, RecordOptions, Recording};
-use kg_study::{Quiz, QuizAttempt, QuizQuestion, ReviewGrade, TopicId};
+use kg_study::{Quiz, QuizAttempt, QuizQuestion, QuizStyle, ReviewGrade, TopicId};
 
 /// Letters and digits only, to spot the same question twice.
 fn prompt_key(prompt: &str) -> String {
@@ -40,6 +40,8 @@ pub struct QuizSession {
     pub retries: usize,
     /// Only past mistakes: the result does not count as a review.
     pub mistakes_only: bool,
+    /// Certo/Errado items, scored the Cebraspe way on the result.
+    pub true_false: bool,
 }
 
 impl QuizSession {
@@ -61,6 +63,25 @@ impl QuizSession {
 
     pub fn correct_so_far(&self) -> u32 {
         self.correct
+    }
+
+    /// Cebraspe's net score of a true/false quiz: each wrong answer cancels
+    /// a right one.
+    pub fn net_score(&self, correct: u32, total: u32) -> Option<i64> {
+        self.true_false
+            .then(|| i64::from(correct) - i64::from(total.saturating_sub(correct)))
+    }
+}
+
+impl Engine {
+    /// Quizzes ask Certo/Errado items: the student's choice, or the exam's
+    /// style when they left it to the exam.
+    pub fn quiz_true_false(&self) -> bool {
+        match self.settings.quiz_style {
+            QuizStyle::Choice => false,
+            QuizStyle::TrueFalse => true,
+            QuizStyle::Exam => self.exam_is_true_false(),
+        }
     }
 }
 
@@ -234,8 +255,15 @@ impl Engine {
         let retries = retry.len();
         let asked: Vec<String> = retry.iter().map(|q| prompt_key(&q.prompt)).collect();
         let fresh = |q: &QuizQuestion| !asked.contains(&prompt_key(&q.prompt));
+        let true_false = self.quiz_true_false();
         let mut board = self.usable_board_questions(topic_id);
         board.retain(|q| fresh(q));
+        match self.settings.quiz_style {
+            // Real questions come as the exam asks them.
+            QuizStyle::Exam => {}
+            QuizStyle::Choice => board.retain(|q| !q.is_true_false()),
+            QuizStyle::TrueFalse => board.retain(QuizQuestion::is_true_false),
+        }
         shuffle(&mut board, seed());
         board.truncate(size - retries);
         for (i, q) in board.iter_mut().enumerate() {
@@ -245,6 +273,10 @@ impl Engine {
         let missing = size - board.len();
         // Questions prepared in advance come next; the model writes the rest.
         let mut prepared = self.quiz_bank(topic_id);
+        if true_false {
+            // The bank is written in advance as multiple choice.
+            prepared.clear();
+        }
         prepared.retain(|q| !asked.contains(&prompt_key(&q.prompt)));
         shuffle(&mut prepared, seed());
         prepared.truncate(missing);
@@ -259,6 +291,7 @@ impl Engine {
             board,
             retries,
             mistakes_only: false,
+            true_false,
         });
         if missing == 0 {
             // Enough real or prepared questions: no model call needed.
@@ -268,11 +301,17 @@ impl Engine {
             });
         }
         let client = self.ai_client();
+        let format = if true_false {
+            QuizFormat::TrueFalse
+        } else {
+            QuizFormat::Choice
+        };
         self.spawn(move || {
-            let result = kg_ai::generate_quiz(&client, &ctx, missing as u32).map(|generated| {
-                prepared.extend(generated);
-                prepared
-            });
+            let result =
+                kg_ai::generate_quiz(&client, &ctx, missing as u32, format).map(|generated| {
+                    prepared.extend(generated);
+                    prepared
+                });
             Event::Practice(PracticeEvent::QuizReady {
                 session: id,
                 result,
@@ -296,6 +335,7 @@ impl Engine {
         }
         let quiz = Quiz::new(topic_id, questions)?;
         let retries = quiz.questions().len();
+        let true_false = quiz.questions().iter().all(QuizQuestion::is_true_false);
         self.quiz = Some(QuizSession {
             id: self.next_id(),
             topic_id,
@@ -309,6 +349,7 @@ impl Engine {
             board: Vec::new(),
             retries,
             mistakes_only: true,
+            true_false,
         });
         Ok(())
     }
@@ -553,23 +594,36 @@ impl Engine {
     pub(crate) fn on_practice_event(&mut self, event: PracticeEvent) -> Result<(), EngineError> {
         match event {
             PracticeEvent::QuizReady { session, result } => {
+                let lang = self.prompt_language();
+                let words = [lang.pick("Certo", "True"), lang.pick("Errado", "False")];
                 let Some(quiz) = self.quiz.as_mut().filter(|q| q.id == session) else {
                     return Ok(());
                 };
+                let true_false = quiz.true_false;
                 let built = result.map_err(EngineError::from).and_then(|drafts| {
                     let seed = seed();
-                    let generated = drafts.into_iter().enumerate().map(|(i, d)| {
+                    let generated = drafts.into_iter().enumerate().filter_map(|(i, d)| {
+                        let options = if true_false && d.options.is_empty() {
+                            words.iter().map(|w| (*w).to_owned()).collect()
+                        } else {
+                            d.options
+                        };
                         let mut question = QuizQuestion {
                             prompt: d.prompt,
-                            options: d.options,
+                            options,
                             correct: d.correct,
                             explanation: d.explanation,
                             from_board: false,
                         };
-                        if question.correct < question.options.len() {
-                            question.shuffle_options(seed.wrapping_add(i as u64 * 0x9E37));
+                        let valid = !question.prompt.trim().is_empty()
+                            && (2..=6).contains(&question.options.len())
+                            && question.correct < question.options.len();
+                        if !valid {
+                            tracing::warn!("dropped a malformed quiz question");
+                            return None;
                         }
-                        question
+                        question.shuffle_options(seed.wrapping_add(i as u64 * 0x9E37));
+                        Some(question)
                     });
                     let questions = std::mem::take(&mut quiz.board)
                         .into_iter()

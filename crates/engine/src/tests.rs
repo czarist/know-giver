@@ -224,6 +224,67 @@ fn quiz_flow_records_attempt_and_schedules_review() {
 }
 
 #[test]
+fn true_false_quiz_judges_statements_and_scores_like_cebraspe() {
+    let (mut engine, _dir) = engine_with_plan();
+    let id = first_topic(&engine);
+    // Nothing points to Cebraspe yet: "like the exam" means multiple choice.
+    assert!(!engine.quiz_true_false());
+    engine.settings.quiz_style = QuizStyle::TrueFalse;
+    assert!(engine.quiz_true_false());
+    engine.handle(Command::StartQuiz(id)).unwrap();
+    let session = engine.quiz().unwrap();
+    assert!(session.true_false);
+    let session = session.id;
+    let item = |correct| QuestionDraft {
+        prompt: format!("Afirmação {correct}."),
+        options: Vec::new(),
+        correct,
+        explanation: "Explicação.".into(),
+    };
+    engine
+        .events_tx
+        .send(Event::Practice(PracticeEvent::QuizReady {
+            session,
+            // The third one is broken (no such answer) and is dropped.
+            result: Ok(vec![item(0), item(1), item(5)]),
+        }))
+        .unwrap();
+    engine.poll();
+    let quiz = engine.quiz().unwrap();
+    assert_eq!(quiz.questions().len(), 2);
+    for (question, correct) in quiz.questions().iter().zip([0, 1]) {
+        assert_eq!(question.options, ["Certo", "Errado"]);
+        assert_eq!(question.correct, correct, "true/false is never shuffled");
+    }
+    engine.handle(Command::AnswerQuiz(0)).unwrap();
+    engine.handle(Command::NextQuestion).unwrap();
+    engine.handle(Command::AnswerQuiz(0)).unwrap();
+    engine.handle(Command::NextQuestion).unwrap();
+    let quiz = engine.quiz().unwrap();
+    assert_eq!(
+        quiz.step,
+        QuizStep::Finished {
+            correct: 1,
+            total: 2
+        }
+    );
+    assert_eq!(quiz.net_score(1, 2), Some(0));
+    assert_eq!(quiz.net_score(0, 2), Some(-2));
+}
+
+#[test]
+fn exam_style_follows_a_cebraspe_plan() {
+    let (mut engine, _dir) = engine_with_plan();
+    if let Some(plan) = engine.active.as_mut() {
+        plan.exam = "Polícia Federal – banca CEBRASPE".into();
+    }
+    assert_eq!(engine.settings.quiz_style, QuizStyle::Exam);
+    assert!(engine.quiz_true_false());
+    engine.settings.quiz_style = QuizStyle::Choice;
+    assert!(!engine.quiz_true_false());
+}
+
+#[test]
 fn invalid_quiz_from_model_is_reported() {
     let (mut engine, _dir) = engine_with_plan();
     let id = first_topic(&engine);

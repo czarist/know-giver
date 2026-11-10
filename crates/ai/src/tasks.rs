@@ -55,6 +55,8 @@ pub struct PlanDraft {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct QuestionDraft {
     pub prompt: String,
+    /// Empty for a true/false item.
+    #[serde(default)]
     pub options: Vec<String>,
     pub correct: usize,
     #[serde(default)]
@@ -696,21 +698,33 @@ fn mistakes_block(topic: &TopicContext, lang: PromptLanguage) -> String {
 /// Past mistakes given to the tutor or the review, at most.
 const MISTAKES_IN_PROMPT: usize = 8;
 
-/// Generates `count` multiple-choice questions about a topic.
+/// What kind of questions a quiz asks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuizFormat {
+    /// The region's usual number of options, one right.
+    Choice,
+    /// Cebraspe-style statements to judge as right or wrong. Drafts come back
+    /// with no options and `correct` 0 (right) or 1 (wrong).
+    TrueFalse,
+}
+
+/// Generates `count` questions about a topic.
 pub fn generate_quiz(
     client: &Client,
     topic: &TopicContext,
     count: u32,
+    format: QuizFormat,
 ) -> Result<Vec<QuestionDraft>, AiError> {
     if count < PARALLEL_QUIZ_MIN {
-        return quiz_batch(client, topic, count, None);
+        return quiz_batch(client, topic, count, format, None);
     }
     // Two smaller requests at once take about half the time of one large
     // one. Each gets its own focus so they do not write the same questions.
     let first = count.div_ceil(2);
     let (a, b) = std::thread::scope(|scope| {
-        let other = scope.spawn(|| quiz_batch(client, topic, count - first, Some(QUIZ_FOCUS[1])));
-        let mine = quiz_batch(client, topic, first, Some(QUIZ_FOCUS[0]));
+        let other =
+            scope.spawn(|| quiz_batch(client, topic, count - first, format, Some(QUIZ_FOCUS[1])));
+        let mine = quiz_batch(client, topic, first, format, Some(QUIZ_FOCUS[0]));
         let other = other
             .join()
             .unwrap_or_else(|_| Err(AiError::InvalidResponse("quiz worker panicked".into())));
@@ -752,14 +766,15 @@ fn quiz_batch(
     client: &Client,
     topic: &TopicContext,
     count: u32,
+    format: QuizFormat,
     focus: Option<(&str, &str)>,
 ) -> Result<Vec<QuestionDraft>, AiError> {
     let lang = client.language();
     let count = count.to_string();
-    let options = client.quiz_options().to_string();
+    let format = quiz_format_rules(lang, format, client.quiz_options());
     let mut values = topic.values().to_vec();
     values.push(("count", &count));
-    values.push(("options", &options));
+    values.push(("format", &format));
     let ask = lang.pick("Gere as questões.", "Write the questions.");
     let request = match focus {
         Some((pt, en)) => format!("{ask} {}", lang.pick(pt, en)),
@@ -771,6 +786,24 @@ fn quiz_batch(
     ];
     let draft: QuizDraft = chat_json(client, Task::Quiz, &messages, 8_000)?;
     Ok(draft.questions)
+}
+
+/// The quiz prompt's rule for the kind of question, with its JSON fields.
+fn quiz_format_rules(lang: PromptLanguage, format: QuizFormat, options: u32) -> String {
+    match (format, lang) {
+        (QuizFormat::Choice, PromptLanguage::Portuguese) => format!(
+            "Cada questão tem {options} alternativas, e só uma está correta. As alternativas serão embaralhadas depois: não comece alternativas com letras (A, B, C…) e, na explicação, cite o conteúdo da alternativa, nunca a letra ou a posição. A explicação diz por que a correta está certa e por que as outras estão erradas, em até 60 palavras. \"correct\" é o índice da alternativa correta, começando em 0."
+        ),
+        (QuizFormat::Choice, _) => format!(
+            "Each question has {options} options, and only one is correct. The options will be shuffled afterwards: do not start options with letters (A, B, C…) and, in the explanation, quote the option's content, never its letter or position. The explanation says why the correct option is right and why the others are wrong, in up to 60 words. \"correct\" is the index of the correct option, starting at 0."
+        ),
+        (QuizFormat::TrueFalse, _) => lang
+            .pick(
+                "Cada questão é um item no estilo Cebraspe: uma afirmação sobre o tópico para o aluno julgar como Certo ou Errado, sem alternativas. Faça mais ou menos metade certas e metade erradas. Um item errado tem um erro de conteúdo claro (um conceito trocado, uma exceção tratada como regra, um prazo, órgão ou requisito diferente), nunca um detalhe irrelevante ou uma palavra ambígua. Escreva só a afirmação, sem \"Julgue o item\" na frente. \"options\" fica vazio ([]) e \"correct\" é 0 se a afirmação está certa e 1 se está errada. A explicação diz por que a afirmação está certa ou, se está errada, qual é o erro e como seria a forma certa, em até 60 palavras.",
+                "Each question is a Cebraspe-style item: a statement about the topic for the student to judge as true or false, with no options. Make about half of them true and half false. A false item has a clear content error (a concept swapped, an exception treated as the rule, a different deadline, body or requirement), never an irrelevant detail or an ambiguous word. Write only the statement, with no \"Judge the item\" in front. \"options\" stays empty ([]) and \"correct\" is 0 if the statement is true and 1 if it is false. The explanation says why the statement is true or, if it is false, what the error is and what the right version would be, in up to 60 words.",
+            )
+            .to_owned(),
+    }
 }
 
 /// Lowercase letters and digits only, to spot the same question twice.
