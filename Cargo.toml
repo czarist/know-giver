@@ -27,6 +27,7 @@ candle-core = "0.11"
 candle-nn = "0.11"
 candle-transformers = "0.11"
 bzip2 = "0.6"
+flate2 = "1"
 hound = "3.5"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 libloading = "0.8"

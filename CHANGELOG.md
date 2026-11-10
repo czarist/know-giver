@@ -6,6 +6,31 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Added
+- **Cebraspe-style quizzes (Certo/Errado).** Settings → *Quiz question style* offers
+  *Like the exam* (default), *Multiple choice* and *True/false (Cebraspe)*. True/false
+  quizzes ask statements to judge, written by the model with a clear content error in
+  the wrong ones, and keep Certo before Errado. The result also shows Cebraspe's net
+  score, where each wrong answer cancels a right one. *Like the exam* asks Certo/Errado
+  when the exam format read from the notice is true/false, when the plan names
+  Cebraspe/CESPE, or when most of the plan's past exam questions are Certo/Errado.
+  Past exam questions follow the chosen style; the multiple-choice question bank
+  prepared in advance is skipped for true/false quizzes.
+
+### Fixed
+- **Voice downloads on Linux and macOS.** Piper could only be downloaded on Windows;
+  elsewhere the button failed with "This is not supported on this system". The app now
+  downloads the official builds for each system, checked against pinned SHA-256 sums:
+  - Piper on Windows and Linux (x86_64 and aarch64);
+  - sherpa-onnx v1.12.20, which runs the Kokoro voices and Parakeet, on Windows,
+    Linux (x86_64 and aarch64) and macOS (Apple silicon and Intel).
+
+  Piper's macOS archives are broken upstream, so on macOS the default voice is Kokoro,
+  a saved Piper voice switches to the Kokoro voice of the same gender, and Settings
+  shows "Not available on this system" instead of a button that fails. The welcome
+  screen downloads the program of the chosen voice, and the lesson hint no longer
+  names Piper.
+
 ## [0.39.3] - 2026-11-06
 
 ### Added

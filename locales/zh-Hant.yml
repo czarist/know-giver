@@ -288,7 +288,7 @@ lesson:
   keys: "按住空格鍵說話 · Esc 打斷老師"
   open_settings: "開啟設定"
   need_stt: "要和老師對話，請在設定中下載語音識別模型。"
-  need_tts: "要聽老師說話，請在設定中下載 Piper 和一個語音。"
+  need_tts: "要聽老師說話，請在設定中下載一個語音及其程式。"
   voice_language: "這種語言暫不支援語音課堂。請輸入你的回答，老師會用文字回覆。"
   phase:
     idle: "就緒"
@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "測驗"
-  subtitle: "仿照考試風格的選擇題。"
+  subtitle: "出題機構風格的題目：選擇題或是非題。"
   none: "沒有進行中的測驗。從計劃中的知識點開始一次吧。"
   go_to_plan: "前往計劃"
   loading: "正在準備題目…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "這道題你之前答錯過"
   your_answer: "你的答案"
   right_answer: "正確答案"
+  judge: "判斷這句話：對還是錯？"
+  net_score: "按 Cebraspe 規則的淨得分（每答錯一題抵銷一題答對）：%{score} / %{total}"
   missed_on: "%{date} 答錯 · %{count} 次"
   remove_mistake: "移除"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "放棄更改"
   data_dir: "你的資料儲存在 %{path}"
   quiz_size: "每次測驗的題數"
+  quiz_style:
+    title: "測驗題型"
+    hint: "是非題是 Cebraspe 的題型：判斷一句陳述的對錯，正式考試中每答錯一題抵銷一題答對。"
+    exam: "與考試相同"
+    choice: "選擇題"
+    true_false: "是非題（Cebraspe）"
+    now_true_false: "本考試：是非題。"
+    now_choice: "本考試：選擇題。"
   study_reminders:
     title: "學習提醒"
     enabled: "離開程式時（在系統匣、最小化或在背景）提醒我"
@@ -753,6 +763,8 @@ settings:
     download: "下載"
     remove: "移除"
     piper_note: "Piper 從專案官方的 GitHub 頁面（rhasspy/piper）下載。"
+    piper_unavailable: "Piper 沒有可在 macOS 上執行的官方版本。請使用在 sherpa-onnx 上執行的 Kokoro 語音。"
+    unavailable: "此系統無法使用"
 
 models:
   kokoro_runtime: "Sherpa-ONNX（Kokoro 與 Parakeet）"

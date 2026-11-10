@@ -288,7 +288,7 @@ lesson:
   keys: "Segure Espaço para falar · Esc interrompe o tutor"
   open_settings: "Abrir configurações"
   need_stt: "Para falar com o tutor, baixe um modelo de reconhecimento de voz em Configurações."
-  need_tts: "Para ouvir o tutor, baixe o Piper e uma voz em Configurações."
+  need_tts: "Para ouvir o tutor, baixe uma voz e o programa dela em Configurações."
   voice_language: "Aulas por voz ainda não estão disponíveis neste idioma. Digite suas respostas; o tutor responde por escrito."
   phase:
     idle: "Pronto"
@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "Quiz"
-  subtitle: "Questões de múltipla escolha no estilo das bancas."
+  subtitle: "Questões no estilo das bancas: múltipla escolha ou certo e errado."
   none: "Nenhum quiz em andamento. Comece um a partir de um tópico do plano."
   go_to_plan: "Ir para o plano"
   loading: "Preparando as questões…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "Você errou esta antes"
   your_answer: "Sua resposta"
   right_answer: "Resposta certa"
+  judge: "Julgue o item: certo ou errado?"
+  net_score: "Nota líquida pela regra do Cebraspe (cada erro anula um acerto): %{score} de %{total}"
   missed_on: "Errada em %{date} · %{count}x"
   remove_mistake: "Tirar do caderno"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "Descartar alterações"
   data_dir: "Seus dados ficam em %{path}"
   quiz_size: "Questões por quiz"
+  quiz_style:
+    title: "Estilo das questões do quiz"
+    hint: "Certo e errado é o formato do Cebraspe: uma afirmação para julgar, e na prova cada erro anula um acerto."
+    exam: "Como na prova"
+    choice: "Múltipla escolha"
+    true_false: "Certo e errado (Cebraspe)"
+    now_true_false: "Para este concurso: certo e errado."
+    now_choice: "Para este concurso: múltipla escolha."
   study_reminders:
     title: "Lembretes de estudo"
     enabled: "Receber lembretes quando eu estiver longe do app (na bandeja, minimizado ou em segundo plano)"
@@ -753,6 +763,8 @@ settings:
     download: "Baixar"
     remove: "Remover"
     piper_note: "O Piper é baixado da página oficial do projeto no GitHub (rhasspy/piper)."
+    piper_unavailable: "O Piper não tem versão oficial que funcione no macOS. Use as vozes Kokoro, que rodam no sherpa-onnx."
+    unavailable: "Não disponível neste sistema"
 
 models:
   kokoro_runtime: "Sherpa-ONNX (Kokoro e Parakeet)"

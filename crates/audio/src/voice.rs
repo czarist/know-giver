@@ -126,7 +126,12 @@ pub enum Voice {
 
 impl Default for Voice {
     fn default() -> Self {
-        Self::Piper(PiperVoice::default())
+        if ModelId::PiperRuntime.downloadable() {
+            Self::Piper(PiperVoice::default())
+        } else {
+            // macOS: Piper has no working build there.
+            Self::Kokoro(KokoroVoice::Alex)
+        }
     }
 }
 
@@ -172,6 +177,19 @@ impl Voice {
         match self {
             Self::Piper(_) => ModelId::PiperRuntime,
             Self::Kokoro(_) => ModelId::KokoroRuntime,
+        }
+    }
+
+    /// This voice, or a Kokoro voice of the same gender when its program can
+    /// be neither downloaded nor found on this system (Piper on macOS).
+    pub fn runnable(self, installed: impl Fn(ModelId) -> bool) -> Self {
+        let runtime = self.runtime_id();
+        if runtime.downloadable() || installed(runtime) {
+            return self;
+        }
+        match self.gender() {
+            VoiceGender::Female => Self::Kokoro(KokoroVoice::Dora),
+            VoiceGender::Male => Self::Kokoro(KokoroVoice::Alex),
         }
     }
 }

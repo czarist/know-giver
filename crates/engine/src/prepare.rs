@@ -404,7 +404,12 @@ fn prepare_topic(
     }
     if !has_quiz_bank && !progress.cancelled() {
         let questions = with_retry(progress, || {
-            kg_ai::generate_quiz(client, &item.context, QUIZ_BANK_SIZE)
+            kg_ai::generate_quiz(
+                client,
+                &item.context,
+                QUIZ_BANK_SIZE,
+                kg_ai::QuizFormat::Choice,
+            )
         });
         match questions.map(|q| serde_json::to_string(&q)) {
             Ok(Ok(json)) => {

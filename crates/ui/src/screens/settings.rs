@@ -2,8 +2,8 @@
 
 use egui::RichText;
 use kg_engine::{
-    Command, Engine, EnglishVoice, ManuscriptOcr, ModelId, ModelStatus, Settings, SttEngine,
-    Teacher, TtsBackend, Voice, VoiceGender, WhisperModel,
+    Command, Engine, EnglishVoice, ManuscriptOcr, ModelId, ModelStatus, QuizStyle, Settings,
+    SttEngine, Teacher, TtsBackend, Voice, VoiceGender, WhisperModel,
 };
 use rust_i18n::t;
 
@@ -465,6 +465,32 @@ pub(crate) fn voice_section(
                 ui.add(egui::Slider::new(&mut draft.quiz_size, 3..=10));
                 ui.end_row();
 
+                ui.label(t!("settings.quiz_style.title"))
+                    .on_hover_text(t!("settings.quiz_style.hint"));
+                ui.vertical(|ui| {
+                    egui::ComboBox::from_id_salt("quiz_style")
+                        .selected_text(quiz_style_name(draft.quiz_style))
+                        .show_ui(ui, |ui| {
+                            for style in [QuizStyle::Exam, QuizStyle::Choice, QuizStyle::TrueFalse]
+                            {
+                                ui.selectable_value(
+                                    &mut draft.quiz_style,
+                                    style,
+                                    quiz_style_name(style),
+                                );
+                            }
+                        });
+                    if draft.quiz_style == QuizStyle::Exam {
+                        let current = if engine.quiz_true_false() {
+                            t!("settings.quiz_style.now_true_false")
+                        } else {
+                            t!("settings.quiz_style.now_choice")
+                        };
+                        widgets::hint(ui, &current);
+                    }
+                });
+                ui.end_row();
+
                 ui.label(t!("settings.lesson_length.title"))
                     .on_hover_text(t!("settings.lesson_length.hint"));
                 ui.horizontal(|ui| {
@@ -657,7 +683,7 @@ fn local_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
         widgets::hint(ui, &t!("settings.voice.none_installed"));
         let voice = Voice::ALL
             .into_iter()
-            .find(|voice| voice.gender() == gender);
+            .find(|voice| voice.gender() == gender && voice.runtime_id().downloadable());
         if let Some(voice) = voice {
             ui.label(
                 RichText::new(t!(
@@ -766,6 +792,11 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center),
                     |ui| match engine.model_status(id) {
+                        ModelStatus::Missing if !id.downloadable() => {
+                            ui.label(
+                                RichText::new(t!("settings.models.unavailable")).color(p.muted),
+                            );
+                        }
                         ModelStatus::Missing => {
                             if ui.button(t!("settings.models.download")).clicked() {
                                 actions.send(Command::DownloadModel(id));
@@ -798,15 +829,23 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
                 );
             });
         }
-        if cfg!(windows) {
-            ui.add_space(4.0);
-            ui.label(
-                RichText::new(t!("settings.models.piper_note"))
-                    .small()
-                    .color(p.muted),
-            );
-        }
+        let note = if ModelId::PiperRuntime.downloadable() {
+            t!("settings.models.piper_note")
+        } else {
+            t!("settings.models.piper_unavailable")
+        };
+        ui.add_space(4.0);
+        ui.label(RichText::new(note).small().color(p.muted));
     });
+}
+
+fn quiz_style_name(style: QuizStyle) -> String {
+    match style {
+        QuizStyle::Exam => t!("settings.quiz_style.exam"),
+        QuizStyle::Choice => t!("settings.quiz_style.choice"),
+        QuizStyle::TrueFalse => t!("settings.quiz_style.true_false"),
+    }
+    .into_owned()
 }
 
 /// The service's suggested models, then the ones its account listed.

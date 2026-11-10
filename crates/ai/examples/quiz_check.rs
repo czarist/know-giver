@@ -1,10 +1,12 @@
 //! Manual check of quiz generation time against the real endpoint in `.env`.
 //!
-//! cargo run --release -p kg-ai --example quiz_check -- [count]
+//! cargo run --release -p kg-ai --example quiz_check -- [count] [tf]
+//!
+//! `tf` asks Cebraspe-style Certo/Errado items instead of multiple choice.
 //!
 //! Prompts are Portuguese by default; `KG_PROMPT_LANG=en` uses the English ones.
 
-use kg_ai::{AiConfig, Client, TopicContext, generate_quiz};
+use kg_ai::{AiConfig, Client, QuizFormat, TopicContext, generate_quiz};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
@@ -15,6 +17,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .and_then(|c| c.parse().ok())
         .unwrap_or(5);
+    let format = if std::env::args().nth(2).as_deref() == Some("tf") {
+        QuizFormat::TrueFalse
+    } else {
+        QuizFormat::Choice
+    };
     let client = Client::new(AiConfig::from_env(|k| std::env::var(k).ok()))
         .with_language(kg_ai::PromptLanguage::from_env());
     let context = TopicContext {
@@ -24,14 +31,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..TopicContext::default()
     };
     let started = std::time::Instant::now();
-    let questions = generate_quiz(&client, &context, count)?;
+    let questions = generate_quiz(&client, &context, count, format)?;
     println!(
         "{} of {count} questions in {:.1}s",
         questions.len(),
         started.elapsed().as_secs_f32()
     );
     for (i, q) in questions.iter().enumerate() {
-        println!("{}. {}", i + 1, q.prompt);
+        println!("{}. {} -> {} {:?}", i + 1, q.prompt, q.correct, q.options);
     }
     Ok(())
 }

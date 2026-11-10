@@ -127,6 +127,32 @@ impl Engine {
         ))
     }
 
+    /// The exam asks Certo/Errado items: its saved format says so, the plan
+    /// names Cebraspe, or most of its past exam questions are true/false.
+    pub(crate) fn exam_is_true_false(&self) -> bool {
+        if let Some(format) = &self.mock.saved_format {
+            return format.style == AnswerStyle::TrueFalse;
+        }
+        let Some(plan) = self.active.as_ref() else {
+            return false;
+        };
+        let names = format!("{} {}", plan.exam, plan.title).to_lowercase();
+        if names.contains("cebraspe") || names.contains("cespe") {
+            return true;
+        }
+        let answered: Vec<_> = self
+            .board
+            .questions
+            .iter()
+            .filter(|q| q.correct.is_some())
+            .collect();
+        let true_false = answered
+            .iter()
+            .filter(|q| kg_study::is_true_false(&q.options))
+            .count();
+        true_false * 2 > answered.len()
+    }
+
     pub fn reading_exam_format(&self) -> bool {
         self.mock.reading_format
     }
