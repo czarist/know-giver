@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "クイズ"
-  subtitle: "試験の出題形式に合わせた選択式問題。"
+  subtitle: "出題機関のスタイルの問題：選択式または正誤式。"
   none: "進行中のクイズはありません。プランのトピックから始めましょう。"
   go_to_plan: "プランへ"
   loading: "問題を準備中…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "前に間違えた問題です"
   your_answer: "あなたの答え"
   right_answer: "正しい答え"
+  judge: "この記述は正しいか、誤りか？"
+  net_score: "Cebraspe 方式の純得点（誤答1つで正答1つが相殺）：%{total} 問中 %{score}"
   missed_on: "%{date} に間違えた · %{count} 回"
   remove_mistake: "削除"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "変更を取り消す"
   data_dir: "データの保存先：%{path}"
   quiz_size: "1回のクイズの問題数"
+  quiz_style:
+    title: "クイズの出題形式"
+    hint: "正誤式は Cebraspe の形式です。記述の正誤を判定し、本番では誤答1つで正答1つが相殺されます。"
+    exam: "本番と同じ"
+    choice: "選択式"
+    true_false: "正誤式（Cebraspe）"
+    now_true_false: "この試験では：正誤式。"
+    now_choice: "この試験では：選択式。"
   study_reminders:
     title: "学習リマインダー"
     enabled: "アプリから離れている間（トレイ、最小化、背面）に通知する"

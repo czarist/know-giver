@@ -1,4 +1,4 @@
-//! Multiple-choice quiz, one question at a time.
+//! Quiz, one question at a time: multiple choice or Certo/Errado items.
 
 use egui::{RichText, Stroke};
 use kg_engine::{Command, Engine, Mistake, QuizQuestion, QuizSession, QuizStep, TopicId};
@@ -81,16 +81,25 @@ fn question_view(
     });
     ui.add_space(8.0);
     ui.label(RichText::new(&question.prompt).size(18.0));
+    let true_false = question.is_true_false();
+    if true_false {
+        widgets::hint(ui, &t!("quiz.judge"));
+    }
     ui.add_space(8.0);
 
-    for (i, option) in question.options.iter().enumerate() {
-        let letter = char::from(b'A' + (i as u8 % 26));
+    for i in 0..question.options.len() {
+        let label = if true_false {
+            option_text(question, i)
+        } else {
+            let letter = char::from(b'A' + (i as u8 % 26));
+            format!("{letter})  {}", option_text(question, i))
+        };
         let (fill, stroke) = match chosen {
             Some(_) if i == question.correct => (p.success.gamma_multiply(0.15), p.success),
             Some(c) if c == i => (p.danger.gamma_multiply(0.15), p.danger),
             _ => (p.surface, p.border),
         };
-        let button = egui::Button::new(RichText::new(format!("{letter})  {option}")))
+        let button = egui::Button::new(RichText::new(label))
             .fill(fill)
             .stroke(Stroke::new(1.0, stroke))
             .wrap()
@@ -130,6 +139,17 @@ fn question_view(
             actions.send(Command::NextQuestion);
         }
     }
+}
+
+/// An option as shown: a true/false item reads in the app's language.
+fn option_text(question: &QuizQuestion, index: usize) -> String {
+    if question.is_true_false() {
+        return match index {
+            0 => t!("mock.true_word").into_owned(),
+            _ => t!("mock.false_word").into_owned(),
+        };
+    }
+    question.options.get(index).cloned().unwrap_or_default()
 }
 
 /// Questions answered wrong, by topic, with the way to try them again.
@@ -189,7 +209,7 @@ fn mistake_row(ui: &mut egui::Ui, topic: TopicId, mistake: &Mistake, actions: &m
     egui::CollapsingHeader::new(prompt)
         .id_salt(("mistake", topic.0, mistake.id.0))
         .show(ui, |ui| {
-            let option = |i: usize| q.options.get(i).map_or("", String::as_str);
+            let option = |i: usize| option_text(q, i);
             if mistake.chosen != q.correct {
                 ui.label(
                     RichText::new(format!(
@@ -251,6 +271,10 @@ fn finished(
             t!("quiz.result.keep_going")
         };
         ui.label(message);
+        if let Some(net) = session.net_score(correct, total) {
+            ui.add_space(4.0);
+            widgets::hint(ui, &t!("quiz.net_score", score = net, total = total));
+        }
     });
     ui.add_space(8.0);
     ui.horizontal(|ui| {

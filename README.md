@@ -143,7 +143,8 @@ highlights when you want one.
 ## Practice, review, handouts
 
 - **Quizzes** in the style of the exam, with explanations; real past questions
-  when you upload past exams.
+  when you upload past exams. Multiple choice, or Cebraspe-style true/false items
+  scored the Cebraspe way (each wrong answer cancels a right one).
 - **Mistakes notebook**: every question you miss is kept until you get it right; it
   opens the next quiz on the topic and the teacher goes over it in the lesson.
 - **Spaced review (SM-2)**: topics come back right before you would forget them, as

@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "Quiz"
-  subtitle: "Multiple-choice questions in the style of exam boards."
+  subtitle: "Questions in the exam boards' style: multiple choice or true/false."
   none: "No quiz in progress. Start one from a topic in your plan."
   go_to_plan: "Go to plan"
   loading: "Preparing questions…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "You missed this one before"
   your_answer: "Your answer"
   right_answer: "Right answer"
+  judge: "Judge the statement: true or false?"
+  net_score: "Net score under Cebraspe's rule (each wrong answer cancels a right one): %{score} of %{total}"
   missed_on: "Missed on %{date} · %{count}x"
   remove_mistake: "Remove"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "Discard changes"
   data_dir: "Your data is stored in %{path}"
   quiz_size: "Questions per quiz"
+  quiz_style:
+    title: "Quiz question style"
+    hint: "True/false is Cebraspe's format: a statement to judge, and on the exam each wrong answer cancels a right one."
+    exam: "Like the exam"
+    choice: "Multiple choice"
+    true_false: "True/false (Cebraspe)"
+    now_true_false: "For this exam: true/false."
+    now_choice: "For this exam: multiple choice."
   study_reminders:
     title: "Study reminders"
     enabled: "Remind me while I'm away from the app (in the tray, minimized or in the background)"

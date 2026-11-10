@@ -299,7 +299,7 @@ lesson:
 
 quiz:
   title: "測驗"
-  subtitle: "仿照考試風格的選擇題。"
+  subtitle: "出題機構風格的題目：選擇題或是非題。"
   none: "沒有進行中的測驗。從計劃中的知識點開始一次吧。"
   go_to_plan: "前往計劃"
   loading: "正在準備題目…"
@@ -318,6 +318,8 @@ quiz:
   retry_badge: "這道題你之前答錯過"
   your_answer: "你的答案"
   right_answer: "正確答案"
+  judge: "判斷這句話：對還是錯？"
+  net_score: "按 Cebraspe 規則的淨得分（每答錯一題抵銷一題答對）：%{score} / %{total}"
   missed_on: "%{date} 答錯 · %{count} 次"
   remove_mistake: "移除"
   result:
@@ -638,6 +640,14 @@ settings:
   discard: "放棄更改"
   data_dir: "你的資料儲存在 %{path}"
   quiz_size: "每次測驗的題數"
+  quiz_style:
+    title: "測驗題型"
+    hint: "是非題是 Cebraspe 的題型：判斷一句陳述的對錯，正式考試中每答錯一題抵銷一題答對。"
+    exam: "與考試相同"
+    choice: "選擇題"
+    true_false: "是非題（Cebraspe）"
+    now_true_false: "本考試：是非題。"
+    now_choice: "本考試：選擇題。"
   study_reminders:
     title: "學習提醒"
     enabled: "離開程式時（在系統匣、最小化或在背景）提醒我"

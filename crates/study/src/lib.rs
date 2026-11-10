@@ -44,7 +44,9 @@ pub use plan::{
     Difficulty, NewPlan, NewSubject, NewTopic, PlanId, PlanSummary, StudyPlan, Subject, SubjectId,
     Topic, TopicId, TopicStatus,
 };
-pub use quiz::{Quiz, QuizAttempt, QuizQuestion, QuizStats};
+pub use quiz::{
+    Quiz, QuizAttempt, QuizQuestion, QuizStats, QuizStyle, TRUE_FALSE_WORDS, is_true_false,
+};
 pub use reading::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use review::{ReviewGrade, ReviewState};
 pub use store::{Store, StoreError};
