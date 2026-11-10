@@ -616,7 +616,7 @@ impl Engine {
         env_ai: AiConfig,
         mut notices: Vec<Notice>,
     ) -> Self {
-        let settings = Settings::load(&store, &env_ai).unwrap_or_else(|err| {
+        let mut settings = Settings::load(&store, &env_ai).unwrap_or_else(|err| {
             notices.push(Notice::Error(err.into()));
             Settings {
                 ai: env_ai.clone(),
@@ -625,6 +625,7 @@ impl Engine {
         });
         let (events_tx, events_rx) = mpsc::channel();
         let models = ModelStore::new(paths.models_dir());
+        settings.voice = settings.voice.runnable(|id| models.is_installed(id));
         let mut engine = Self {
             store,
             paths,

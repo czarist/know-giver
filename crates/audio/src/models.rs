@@ -14,10 +14,6 @@ use crate::AudioError;
 const HF: &str = "https://huggingface.co";
 /// OpenVoiceOS "Dii" pt-BR voice (CC BY-NC-ND 4.0), pinned to a revision.
 const DII_BASE: &str = "https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii/resolve/38281189bdbc6a0346041925b56da6d71d6fba3d/dii_pt-BR";
-const PIPER_RELEASE: &str =
-    "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip";
-const KOKORO_RUNTIME_DIR: &str = "sherpa-onnx-v1.12.20-win-x64-shared";
-const KOKORO_RUNTIME_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/sherpa-onnx-v1.12.20-win-x64-shared.tar.bz2";
 const KOKORO_MODEL_DIR: &str = "kokoro-multi-lang-v1_0";
 const KOKORO_MODEL_URL: &str = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2";
 const PARAKEET_DIR: &str = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8";
@@ -28,6 +24,119 @@ const PARAKEET_FILES: [&str; 4] = [
     "joiner.int8.onnx",
     "tokens.txt",
 ];
+
+/// An official, pinned build of a program the app runs, for one system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Package {
+    url: &'static str,
+    sha256: &'static str,
+    /// Top folder inside the archive.
+    dir: &'static str,
+}
+
+macro_rules! piper {
+    ($file:literal, $sha256:literal) => {
+        Package {
+            url: concat!(
+                "https://github.com/rhasspy/piper/releases/download/2023.11.14-2/",
+                $file
+            ),
+            sha256: $sha256,
+            dir: "piper",
+        }
+    };
+}
+
+macro_rules! sherpa {
+    ($dir:literal, $sha256:literal) => {
+        Package {
+            url: concat!(
+                "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.20/",
+                $dir,
+                ".tar.bz2"
+            ),
+            sha256: $sha256,
+            dir: $dir,
+        }
+    };
+}
+
+/// Piper 2023.11.14-2. Its macOS archives are broken (an Intel binary
+/// without its libraries), so macOS has no Piper download.
+fn piper_package() -> Option<Package> {
+    if cfg!(windows) {
+        // x64 build; Windows on Arm runs it through emulation.
+        Some(piper!(
+            "piper_windows_amd64.zip",
+            "f3c58906402b24f3a96d92145f58acba6d86c9b5db896d207f78dc80811efcea"
+        ))
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        Some(piper!(
+            "piper_linux_x86_64.tar.gz",
+            "a50cb45f355b7af1f6d758c1b360717877ba0a398cc8cbe6d2a7a3a26e225992"
+        ))
+    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+        Some(piper!(
+            "piper_linux_aarch64.tar.gz",
+            "fea0fd2d87c54dbc7078d0f878289f404bd4d6eea6e7444a77835d1537ab88eb"
+        ))
+    } else {
+        None
+    }
+}
+
+/// sherpa-onnx v1.12.20 (Kokoro voices and Parakeet). The app loads its C
+/// library, so the build must match the app's own architecture.
+fn sherpa_package() -> Option<Package> {
+    if cfg!(all(windows, target_arch = "x86_64")) {
+        Some(sherpa!(
+            "sherpa-onnx-v1.12.20-win-x64-shared",
+            "2aa9c11f13d6a20308afedcaa8c04a678a1aaebc206b7609e4df7d7910582f56"
+        ))
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        Some(sherpa!(
+            "sherpa-onnx-v1.12.20-linux-x64-shared",
+            "13a2c502f5ef373f514a5fc5c5ad03cc0798dcb564a6f8cbd54f8f6ce9e47462"
+        ))
+    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+        Some(sherpa!(
+            "sherpa-onnx-v1.12.20-linux-aarch64-shared-cpu",
+            "d8b90c7e92b153c64be8403fdb3e45180473a646f3ac4447f75737cf4fc67d69"
+        ))
+    } else if cfg!(target_os = "macos") {
+        // Universal build: Apple silicon and Intel.
+        Some(sherpa!(
+            "sherpa-onnx-v1.12.20-osx-universal2-shared",
+            "ee78b87028e42e461cd828ce4a4fdcaed602b659a811cd104c4219aecf0a0290"
+        ))
+    } else {
+        None
+    }
+}
+
+/// `local` when it exists; outside Windows, also a program the student
+/// installed on `PATH`.
+fn find_program(local: Option<PathBuf>, name: &str) -> Option<PathBuf> {
+    if let Some(local) = local.filter(|path| path.is_file()) {
+        return Some(local);
+    }
+    if cfg!(windows) {
+        return None;
+    }
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .map(|p| p.join(name))
+            .find(|p| p.is_file())
+    })
+}
+
+fn exe_name(program: &str) -> String {
+    if cfg!(windows) {
+        format!("{program}.exe")
+    } else {
+        program.to_owned()
+    }
+}
 
 /// Multilingual Whisper checkpoints. Bigger is more accurate and slower.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -139,10 +248,22 @@ impl ModelId {
         match self {
             Self::Whisper(m) => m.approx_bytes(),
             Self::Voice(_) => 63_500_000,
+            Self::PiperRuntime if cfg!(target_os = "linux") => 26_000_000,
             Self::PiperRuntime => 22_000_000,
+            Self::KokoroRuntime if cfg!(target_os = "macos") => 40_200_000,
             Self::KokoroRuntime => 26_700_000,
             Self::KokoroModel => 350_000_000,
             Self::Parakeet => 487_200_000,
+        }
+    }
+
+    /// The app can download this on the current system. Programs without an
+    /// official build here can still be found on `PATH` outside Windows.
+    pub fn downloadable(self) -> bool {
+        match self {
+            Self::PiperRuntime => piper_package().is_some(),
+            Self::KokoroRuntime => sherpa_package().is_some(),
+            _ => true,
         }
     }
 }
@@ -187,7 +308,8 @@ impl ModelStore {
         self.root.join("parakeet").join(PARAKEET_DIR)
     }
 
-    /// Downloaded runtime on Windows, or an explicitly installed executable on PATH.
+    /// The downloaded sherpa-onnx runtime, or one installed on `PATH`
+    /// outside Windows.
     pub fn kokoro_exe(&self) -> Option<PathBuf> {
         self.sherpa_exe("sherpa-onnx-offline-tts")
     }
@@ -197,47 +319,23 @@ impl ModelStore {
         self.sherpa_exe("sherpa-onnx-offline-websocket-server")
     }
 
+    fn sherpa_dir(&self) -> PathBuf {
+        self.root.join("sherpa-onnx")
+    }
+
     fn sherpa_exe(&self, program: &str) -> Option<PathBuf> {
-        let name = if cfg!(windows) {
-            format!("{program}.exe")
-        } else {
-            program.to_owned()
-        };
-        let local = self
-            .root
-            .join("sherpa-onnx")
-            .join(KOKORO_RUNTIME_DIR)
-            .join("bin")
-            .join(&name);
-        if local.is_file() {
-            return Some(local);
-        }
-        if cfg!(windows) {
-            return None;
-        }
-        std::env::var_os("PATH").and_then(|paths| {
-            std::env::split_paths(&paths)
-                .map(|p| p.join(&name))
-                .find(|p| p.is_file())
-        })
+        let name = exe_name(program);
+        let local = sherpa_package()
+            .map(|package| self.sherpa_dir().join(package.dir).join("bin").join(&name));
+        find_program(local, &name)
     }
 
     /// The Piper executable: the downloaded one, or `piper` on `PATH`
     /// outside Windows.
     pub fn piper_exe(&self) -> Option<PathBuf> {
-        let name = if cfg!(windows) { "piper.exe" } else { "piper" };
-        let local = self.piper_dir().join("piper").join(name);
-        if local.is_file() {
-            return Some(local);
-        }
-        if cfg!(windows) {
-            return None;
-        }
-        std::env::var_os("PATH").and_then(|paths| {
-            std::env::split_paths(&paths)
-                .map(|p| p.join(name))
-                .find(|p| p.is_file())
-        })
+        let name = exe_name("piper");
+        let local = piper_package().map(|package| self.piper_dir().join(package.dir).join(&name));
+        find_program(local, &name)
     }
 
     pub fn is_installed(&self, id: ModelId) -> bool {
@@ -266,7 +364,7 @@ impl ModelStore {
                 vec![a, b]
             }
             ModelId::PiperRuntime => vec![self.piper_dir()],
-            ModelId::KokoroRuntime => vec![self.root.join("sherpa-onnx")],
+            ModelId::KokoroRuntime => vec![self.sherpa_dir()],
             ModelId::KokoroModel => vec![self.root.join("kokoro")],
             ModelId::Parakeet => vec![self.root.join("parakeet")],
         };
@@ -281,7 +379,7 @@ impl ModelStore {
         match id {
             ModelId::Whisper(m) => remove_dir(self.whisper_dir(m)),
             ModelId::PiperRuntime => remove_dir(self.piper_dir()),
-            ModelId::KokoroRuntime => remove_dir(self.root.join("sherpa-onnx")),
+            ModelId::KokoroRuntime => remove_dir(self.sherpa_dir()),
             ModelId::KokoroModel => remove_dir(self.root.join("kokoro")),
             ModelId::Parakeet => remove_dir(self.root.join("parakeet")),
             ModelId::Voice(v) => {
@@ -323,59 +421,80 @@ impl ModelStore {
                 fetcher.fetch(&format!("{base}.onnx"), &onnx)?;
             }
             ModelId::PiperRuntime => {
-                if !cfg!(windows) {
-                    return Err(AudioError::Unsupported(
-                        "install piper from your package manager".into(),
-                    ));
-                }
-                let zip_path = self.root.join("piper.zip");
-                fetcher.fetch(PIPER_RELEASE, &zip_path)?;
-                let result = unzip(&zip_path, &self.piper_dir());
-                let _ = fs::remove_file(&zip_path);
-                result?;
+                let package = piper_package().ok_or_else(|| {
+                    AudioError::Unsupported("no official piper build for this system".into())
+                })?;
+                let exe = Path::new(package.dir).join(exe_name("piper"));
+                self.install_bundle(
+                    &mut fetcher,
+                    package.url,
+                    Some(package.sha256),
+                    &self.piper_dir(),
+                    &|unpacked| unpacked.join(&exe).is_file(),
+                )?;
             }
-            ModelId::KokoroRuntime | ModelId::KokoroModel | ModelId::Parakeet => {
-                if id == ModelId::KokoroRuntime && !cfg!(all(windows, target_arch = "x86_64")) {
-                    return Err(AudioError::Unsupported(
-                        "install sherpa-onnx v1.12.20 on PATH".into(),
-                    ));
-                }
-                let (url, directory) = match id {
-                    ModelId::KokoroRuntime => (KOKORO_RUNTIME_URL, "sherpa-onnx"),
-                    ModelId::Parakeet => (PARAKEET_URL, "parakeet"),
-                    _ => (KOKORO_MODEL_URL, "kokoro"),
-                };
-                fs::create_dir_all(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
-                // Stage the whole bundle: interruption never leaves an installed-looking tree.
-                let staging =
-                    tempfile::tempdir_in(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
-                let archive = staging.path().join("download.tar.bz2");
-                fetcher.fetch(url, &archive)?;
-                let unpacked = staging.path().join("unpacked");
-                unpack_bzip_tar(&archive, &unpacked, cancel)?;
-                let complete = match id {
-                    ModelId::KokoroRuntime => unpacked
-                        .join(KOKORO_RUNTIME_DIR)
-                        .join("bin/sherpa-onnx-offline-tts.exe")
-                        .is_file(),
-                    ModelId::Parakeet => parakeet_complete(&unpacked.join(PARAKEET_DIR)),
-                    _ => kokoro_model_complete(&unpacked.join(KOKORO_MODEL_DIR)),
-                };
-                if !complete {
-                    return Err(AudioError::Model(format!("incomplete {id:?} bundle")));
-                }
-                if cancel.load(Ordering::Relaxed) {
-                    return Err(AudioError::Cancelled);
-                }
-                let dest = self.root.join(directory);
-                if dest.exists() {
-                    fs::remove_dir_all(&dest).map_err(|e| AudioError::io(&dest, e))?;
-                }
-                fs::rename(&unpacked, &dest).map_err(|e| AudioError::io(&dest, e))?;
+            ModelId::KokoroRuntime => {
+                let package = sherpa_package().ok_or_else(|| {
+                    AudioError::Unsupported("no official sherpa-onnx build for this system".into())
+                })?;
+                self.install_bundle(
+                    &mut fetcher,
+                    package.url,
+                    Some(package.sha256),
+                    &self.sherpa_dir(),
+                    &|unpacked| sherpa_complete(&unpacked.join(package.dir)),
+                )?;
             }
+            ModelId::KokoroModel => self.install_bundle(
+                &mut fetcher,
+                KOKORO_MODEL_URL,
+                None,
+                &self.root.join("kokoro"),
+                &|unpacked| kokoro_model_complete(&unpacked.join(KOKORO_MODEL_DIR)),
+            )?,
+            ModelId::Parakeet => self.install_bundle(
+                &mut fetcher,
+                PARAKEET_URL,
+                None,
+                &self.root.join("parakeet"),
+                &|unpacked| parakeet_complete(&unpacked.join(PARAKEET_DIR)),
+            )?,
         }
         tracing::info!(?id, "model installed");
         Ok(())
+    }
+
+    /// Downloads an archive, checks it, and moves its contents to `dest`.
+    /// The bundle is staged first, so an interruption never leaves an
+    /// installed-looking tree.
+    fn install_bundle(
+        &self,
+        fetcher: &mut Fetcher<'_>,
+        url: &str,
+        sha256: Option<&str>,
+        dest: &Path,
+        complete: &dyn Fn(&Path) -> bool,
+    ) -> Result<(), AudioError> {
+        fs::create_dir_all(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+        let staging =
+            tempfile::tempdir_in(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+        let archive = staging.path().join("download");
+        fetcher.fetch(url, &archive)?;
+        if let Some(expected) = sha256 {
+            check_sha256(&archive, expected, url)?;
+        }
+        let unpacked = staging.path().join("unpacked");
+        unpack(&archive, ArchiveKind::of(url), &unpacked, fetcher.cancel)?;
+        if !complete(&unpacked) {
+            return Err(AudioError::Model(format!("incomplete bundle from {url}")));
+        }
+        if fetcher.cancel.load(Ordering::Relaxed) {
+            return Err(AudioError::Cancelled);
+        }
+        if dest.exists() {
+            fs::remove_dir_all(dest).map_err(|e| AudioError::io(dest, e))?;
+        }
+        fs::rename(&unpacked, dest).map_err(|e| AudioError::io(dest, e))
     }
 }
 
@@ -401,25 +520,115 @@ fn parakeet_complete(dir: &Path) -> bool {
         .all(|name| fs::metadata(dir.join(name)).is_ok_and(|m| m.is_file() && m.len() > 0))
 }
 
-fn unpack_bzip_tar(path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), AudioError> {
+/// The sherpa-onnx programs and the C library the app loads.
+fn sherpa_complete(dir: &Path) -> bool {
+    let bin = dir.join("bin");
+    let library = if cfg!(windows) {
+        "sherpa-onnx-c-api.dll"
+    } else if cfg!(target_os = "macos") {
+        "libsherpa-onnx-c-api.dylib"
+    } else {
+        "libsherpa-onnx-c-api.so"
+    };
+    bin.join(exe_name("sherpa-onnx-offline-tts")).is_file()
+        && bin
+            .join(exe_name("sherpa-onnx-offline-websocket-server"))
+            .is_file()
+        && dir.join("lib").join(library).is_file()
+}
+
+fn check_sha256(path: &Path, expected: &str, url: &str) -> Result<(), AudioError> {
+    use sha2::{Digest, Sha256};
+    let mut file = fs::File::open(path).map_err(|e| AudioError::io(path, e))?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| AudioError::io(path, e))?;
+    let actual = format!("{:x}", hasher.finalize());
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(AudioError::Download {
+            url: url.to_owned(),
+            reason: format!("checksum mismatch: expected {expected}, got {actual}"),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ArchiveKind {
+    Zip,
+    TarGz,
+    TarBz2,
+}
+
+impl ArchiveKind {
+    fn of(url: &str) -> Self {
+        if url.ends_with(".zip") {
+            Self::Zip
+        } else if url.ends_with(".tar.gz") || url.ends_with(".tgz") {
+            Self::TarGz
+        } else {
+            Self::TarBz2
+        }
+    }
+}
+
+fn unpack(
+    path: &Path,
+    kind: ArchiveKind,
+    dest: &Path,
+    cancel: &AtomicBool,
+) -> Result<(), AudioError> {
     fs::create_dir_all(dest).map_err(|e| AudioError::io(dest, e))?;
     let file = fs::File::open(path).map_err(|e| AudioError::io(path, e))?;
-    let mut archive = tar::Archive::new(bzip2::read::BzDecoder::new(file));
+    match kind {
+        ArchiveKind::Zip => zip::ZipArchive::new(file)
+            .and_then(|mut zip| zip.extract(dest))
+            .map_err(|e| AudioError::Model(format!("could not extract {}: {e}", path.display()))),
+        ArchiveKind::TarGz => unpack_tar(flate2::read::GzDecoder::new(file), path, dest, cancel),
+        ArchiveKind::TarBz2 => unpack_tar(bzip2::read::BzDecoder::new(file), path, dest, cancel),
+    }
+}
+
+fn unpack_tar(
+    reader: impl Read,
+    path: &Path,
+    dest: &Path,
+    cancel: &AtomicBool,
+) -> Result<(), AudioError> {
+    let mut archive = tar::Archive::new(reader);
     let entries = archive.entries().map_err(|e| AudioError::io(path, e))?;
     for entry in entries {
         if cancel.load(Ordering::Relaxed) {
             return Err(AudioError::Cancelled);
         }
         let mut entry = entry.map_err(|e| AudioError::io(path, e))?;
-        // Model/runtime bundles contain regular files and directories only.
-        if !entry.header().entry_type().is_file() && !entry.header().entry_type().is_dir() {
-            return Err(AudioError::Tts("unsupported link in model archive".into()));
+        let kind = entry.header().entry_type();
+        if kind.is_symlink() {
+            // Linux and macOS builds link `libx.so` to `libx.so.1.2` in the
+            // same folder; nothing may point anywhere else.
+            let target = entry.link_name().map_err(|e| AudioError::io(path, e))?;
+            if !target.as_deref().is_some_and(is_sibling_name) {
+                return Err(AudioError::Model("unsafe link in model archive".into()));
+            }
+        } else if !kind.is_file() && !kind.is_dir() {
+            return Err(AudioError::Model(
+                "unsupported entry in model archive".into(),
+            ));
         }
         if !entry.unpack_in(dest).map_err(|e| AudioError::io(dest, e))? {
-            return Err(AudioError::Tts("unsafe path in model archive".into()));
+            return Err(AudioError::Model("unsafe path in model archive".into()));
         }
     }
     Ok(())
+}
+
+/// A plain file name: no folders, no `..`, not absolute.
+fn is_sibling_name(target: &Path) -> bool {
+    let mut parts = target.components();
+    matches!(
+        (parts.next(), parts.next()),
+        (Some(std::path::Component::Normal(_)), None)
+    )
 }
 
 struct Fetcher<'a> {
@@ -491,14 +700,6 @@ impl<'a> Fetcher<'a> {
     }
 }
 
-fn unzip(archive: &Path, dest: &Path) -> Result<(), AudioError> {
-    let file = fs::File::open(archive).map_err(|e| AudioError::io(archive, e))?;
-    let mut zip = zip::ZipArchive::new(file)
-        .map_err(|e| AudioError::Tts(format!("bad piper archive: {e}")))?;
-    zip.extract(dest)
-        .map_err(|e| AudioError::Tts(format!("could not extract piper: {e}")))
-}
-
 fn disk_usage(path: &Path) -> u64 {
     match fs::metadata(path) {
         Ok(meta) if meta.is_file() => meta.len(),
@@ -534,16 +735,118 @@ mod tests {
             .unwrap();
         archive.into_inner().unwrap().finish().unwrap();
         let dest = root.path().join("not-yet-created");
-        unpack_bzip_tar(&archive_path, &dest, &AtomicBool::new(false)).unwrap();
+        let kind = ArchiveKind::of("bundle.tar.bz2");
+        unpack(&archive_path, kind, &dest, &AtomicBool::new(false)).unwrap();
         assert_eq!(fs::read(dest.join("bundle/model.onnx")).unwrap(), b"model");
         assert!(matches!(
-            unpack_bzip_tar(
+            unpack(
                 &archive_path,
+                kind,
                 &root.path().join("cancelled"),
                 &AtomicBool::new(true)
             ),
             Err(AudioError::Cancelled)
         ));
+    }
+
+    /// A gzip tar with `piper/libx.so -> <target>` and the file it names.
+    fn piper_like_archive(dir: &Path, target: &str) -> PathBuf {
+        let path = dir.join("piper.tar.gz");
+        let file = fs::File::create(&path).unwrap();
+        let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::fast());
+        let mut archive = tar::Builder::new(encoder);
+        let mut header = tar::Header::new_gnu();
+        header.set_size(3);
+        header.set_mode(0o755);
+        header.set_cksum();
+        archive
+            .append_data(&mut header, "piper/libx.so.1.2", b"lib".as_slice())
+            .unwrap();
+        let mut link = tar::Header::new_gnu();
+        link.set_entry_type(tar::EntryType::Symlink);
+        link.set_size(0);
+        link.set_mode(0o777);
+        archive
+            .append_link(&mut link, "piper/libx.so", target)
+            .unwrap();
+        archive.into_inner().unwrap().finish().unwrap();
+        path
+    }
+
+    #[test]
+    fn links_must_stay_in_their_folder() {
+        let root = tempfile::tempdir().unwrap();
+        for target in ["../../etc/passwd", "/etc/passwd", "sub/libx.so.1.2"] {
+            let archive = piper_like_archive(root.path(), target);
+            let result = unpack(
+                &archive,
+                ArchiveKind::TarGz,
+                &root.path().join("out"),
+                &AtomicBool::new(false),
+            );
+            assert!(matches!(result, Err(AudioError::Model(_))), "{target}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn library_links_next_to_their_file_are_kept() {
+        let root = tempfile::tempdir().unwrap();
+        let archive = piper_like_archive(root.path(), "libx.so.1.2");
+        let dest = root.path().join("out");
+        unpack(&archive, ArchiveKind::TarGz, &dest, &AtomicBool::new(false)).unwrap();
+        assert_eq!(fs::read(dest.join("piper/libx.so")).unwrap(), b"lib");
+        assert!(
+            fs::symlink_metadata(dest.join("piper/libx.so"))
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
+
+    #[test]
+    fn checksum_mismatch_is_a_download_error() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("file");
+        fs::write(&path, b"abc").unwrap();
+        let abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        check_sha256(&path, abc, "u").unwrap();
+        assert!(matches!(
+            check_sha256(&path, &"0".repeat(64), "u"),
+            Err(AudioError::Download { .. })
+        ));
+    }
+
+    #[test]
+    fn packages_are_pinned_and_match_their_archive() {
+        for package in [piper_package(), sherpa_package()].into_iter().flatten() {
+            assert_eq!(package.sha256.len(), 64, "{}", package.url);
+            assert!(package.url.starts_with("https://github.com/"));
+            assert!(package.url.contains(package.dir) || package.dir == "piper");
+        }
+        // Every desktop the app ships for can download its speech runtime.
+        if cfg!(any(
+            all(windows, target_arch = "x86_64"),
+            all(
+                target_os = "linux",
+                any(target_arch = "x86_64", target_arch = "aarch64")
+            ),
+            target_os = "macos"
+        )) {
+            assert!(ModelId::KokoroRuntime.downloadable());
+        }
+        if cfg!(any(windows, target_os = "linux")) && !cfg!(target_arch = "arm") {
+            assert!(ModelId::PiperRuntime.downloadable());
+        }
+        assert_eq!(
+            ArchiveKind::of("a/piper_windows_amd64.zip"),
+            ArchiveKind::Zip
+        );
+        assert_eq!(
+            ArchiveKind::of("a/piper_linux_x86_64.tar.gz"),
+            ArchiveKind::TarGz
+        );
+        assert_eq!(ArchiveKind::of("a/x.tar.bz2"), ArchiveKind::TarBz2);
     }
 
     #[test]

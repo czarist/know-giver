@@ -657,7 +657,7 @@ fn local_voice(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings) {
         widgets::hint(ui, &t!("settings.voice.none_installed"));
         let voice = Voice::ALL
             .into_iter()
-            .find(|voice| voice.gender() == gender);
+            .find(|voice| voice.gender() == gender && voice.runtime_id().downloadable());
         if let Some(voice) = voice {
             ui.label(
                 RichText::new(t!(
@@ -766,6 +766,11 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center),
                     |ui| match engine.model_status(id) {
+                        ModelStatus::Missing if !id.downloadable() => {
+                            ui.label(
+                                RichText::new(t!("settings.models.unavailable")).color(p.muted),
+                            );
+                        }
                         ModelStatus::Missing => {
                             if ui.button(t!("settings.models.download")).clicked() {
                                 actions.send(Command::DownloadModel(id));
@@ -798,14 +803,13 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
                 );
             });
         }
-        if cfg!(windows) {
-            ui.add_space(4.0);
-            ui.label(
-                RichText::new(t!("settings.models.piper_note"))
-                    .small()
-                    .color(p.muted),
-            );
-        }
+        let note = if ModelId::PiperRuntime.downloadable() {
+            t!("settings.models.piper_note")
+        } else {
+            t!("settings.models.piper_unavailable")
+        };
+        ui.add_space(4.0);
+        ui.label(RichText::new(note).small().color(p.muted));
     });
 }
 
