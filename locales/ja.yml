@@ -288,7 +288,7 @@ lesson:
   keys: "スペース長押しで話す · Esc で先生を止める"
   open_settings: "設定を開く"
   need_stt: "先生と話すには、設定で音声認識モデルをダウンロードしてください。"
-  need_tts: "先生の声を聞くには、設定で Piper と音声をダウンロードしてください。"
+  need_tts: "先生の声を聞くには、設定で音声とそのプログラムをダウンロードしてください。"
   voice_language: "この言語の音声レッスンはまだ使えません。答えを入力すると、先生は文字で答えます。"
   phase:
     idle: "準備完了"
@@ -753,6 +753,8 @@ settings:
     download: "ダウンロード"
     remove: "削除"
     piper_note: "Piper はプロジェクト公式の GitHub ページ（rhasspy/piper）からダウンロードします。"
+    piper_unavailable: "Piper には macOS で動作する公式ビルドがありません。sherpa-onnx で動く Kokoro の音声を使ってください。"
+    unavailable: "このシステムでは利用できません"
 
 models:
   kokoro_runtime: "Sherpa-ONNX（Kokoro と Parakeet）"

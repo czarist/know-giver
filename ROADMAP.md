@@ -330,6 +330,11 @@ and sound somewhat robotic. A female voice needs another engine.
 - [x] Resolve pinned runtime's accented-text crash on Windows before enabling Kokoro there
 - [x] Captions follow playback: a sentence appears when its audio starts (v0.26.1)
 - [x] Kokoro with up to four threads (v0.26.1); the int8 bundle was slower on CPU
+- [x] Voice programs download on Windows, Linux (x86_64, aarch64) and macOS, pinned
+      with checksums: Piper 2023.11.14-2 and sherpa-onnx v1.12.20 (Kokoro, Parakeet)
+- [ ] Piper on macOS: its official macOS archives are broken (an Intel binary without
+      its libraries), so macOS uses the Kokoro voices; Settings says so. Revisit when a
+      working build exists
 - [ ] Keep Kokoro loaded between sentences (today each sentence starts the runtime
       and loads the 325 MB model again, about 2 s)
 - [ ] English voices (Kokoro English speakers, Piper en_US/en_GB)

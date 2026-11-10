@@ -120,7 +120,8 @@ Ink portraits that breathe, blink, nod while you talk and move their lips with t
 human enough to talk to, drawn enough to stay out of the uncanny valley.
 
 Ten voices, half of them female, from **Piper** and **Kokoro**, all running locally,
-plus four English voices for English passages (US and UK accents).
+plus four English voices for English passages (US and UK accents). On macOS only the
+Kokoro voices are available: Piper has no official build that works there.
 
 <p align="center">
   <img src="docs/images/teachers.png" alt="The four teachers in their states: resting, listening, thinking and speaking" width="70%">

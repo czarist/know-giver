@@ -288,7 +288,7 @@ lesson:
   keys: "Hold Space to talk · Esc interrupts the tutor"
   open_settings: "Open settings"
   need_stt: "To talk to the tutor, download a speech recognition model in Settings."
-  need_tts: "To hear the tutor, download Piper and a voice in Settings."
+  need_tts: "To hear the tutor, download a voice and its program in Settings."
   voice_language: "Voice lessons are not available in this language yet. Type your answers; the tutor answers in writing."
   phase:
     idle: "Ready"
@@ -753,6 +753,8 @@ settings:
     download: "Download"
     remove: "Remove"
     piper_note: "Piper is downloaded from the project's official GitHub page (rhasspy/piper)."
+    piper_unavailable: "Piper has no official build that works on macOS. Use the Kokoro voices, which run on sherpa-onnx."
+    unavailable: "Not available on this system"
 
 models:
   kokoro_runtime: "Sherpa-ONNX (Kokoro and Parakeet)"
