@@ -1,5 +1,36 @@
 # Roadmap — Know Giver
 
+## Planned — Replace local transcription with Nemotron 3.5 0.6B
+
+Decision (2026-11-15): replace the current local STT pipeline with
+`nvidia/nemotron-3.5-asr-streaming-0.6b` to address inaccurate transcription and
+language confusion. Planned, not implemented; improved accuracy and speed must be
+verified on the target hardware before making it the default.
+
+- [ ] Integrate Nemotron through a suitable local runtime; evaluate
+      [NeMo-Speech.cpp](https://github.com/NVIDIA/NeMo-Speech.cpp) and quantized GGUF
+      weights, with Rust orchestration and an isolated child process where practical.
+      Rust is preferred, not mandatory: justified C/C++ dependencies are allowed.
+- [ ] Target entry-level Intel/AMD CPUs with 8 GB total system RAM and no dedicated
+      GPU. Keep CPU execution available; evaluate optional Vulkan acceleration on AMD
+      integrated and discrete GPUs, including shared-memory pressure.
+- [ ] Explicitly select the student's spoken language (pt-BR first), rather than
+      relying on automatic detection. Validate capture, resampling, silence handling
+      and utterance boundaries so existing audio problems do not carry over.
+- [ ] Compare the current pipeline and Nemotron on identical recordings: Brazilian
+      accents, exam terminology, numbers, noise, pauses and short answers. Record
+      transcription errors, language confusion, peak RAM/VRAM, cold-start time and
+      delay after speech on actual entry-level hardware; define release thresholds
+      from these measurements, not server GPU benchmarks.
+- [ ] Validate supported spoken languages and document gaps across all five app
+      locales; STT support alone does not enable unavailable TTS voices.
+- [ ] Pin the selected runtime/model versions and checksums in `local-ai.toml`;
+      review licences, downloads and packaging on Windows, Linux and macOS.
+      Keep the current pipeline as a fallback during migration; switch the default
+      after accuracy, latency and memory acceptance checks pass.
+
+Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>.
+
 ## Current Status
 
 Version 0.40.0. Everything an agent can build and check without a human ear, a
@@ -384,12 +415,13 @@ gpu-unlock (optional, boot time, Linux or Windows) ── prepares the GPU, neve
 - **gpu-unlock** belongs to hardware preparation. Local AI must work with it absent,
   unsupported or failed.
 
-### Exceptions to the pure-Rust preference
+### Rust preference and external runtimes
 
 The owner authorized these external projects. Each is integrated as published, not
-rewritten in Rust, and runs outside the app process; orchestration stays in Rust. This is
-not a general permission for dependencies in other languages: any further one needs its own
-recorded decision.
+rewritten in Rust, and runs outside the app process; orchestration stays in Rust.
+Rust is preferred, not mandatory. Further C/C++ or other non-Rust dependencies are
+allowed when technically justified; record their benefits and assess licensing,
+packaging and maintenance costs.
 
 - **LiteLLM** — <https://github.com/BerriAI/litellm>. Python, embedded in the installer
   and run as a managed child process bound to loopback. Use only the open-source part;
