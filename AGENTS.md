@@ -9,7 +9,7 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 
 ## Stack
 - **UI**: egui + eframe (native, no webview)
-- **Language**: pure Rust
+- **Language**: Rust preferred, not mandatory; use other languages when technically justified.
 - **STT**: Whisper on candle (pure Rust) + cpal
 - **TTS**: Piper binary as a child process (pt-BR voices), playback via rodio
 - **PDF**: pdf-extract / oxidize-pdf
@@ -61,9 +61,13 @@ The user uploads an exam notice (edital PDF), the AI generates a study plan and 
 - Pushing the tag runs `.github/workflows/packages.yml`: it tests and packages on Windows, macOS and Linux, then publishes a GitHub release with fixed asset names (`KnowGiver-setup.exe`, `KnowGiver-windows-x64.zip`, `KnowGiver-linux-x86_64.tar.gz`, `KnowGiver-macos-arm64.tar.gz`, `SHA256SUMS.txt`). The README one-line installs (`scripts/install.ps1`, `scripts/install.sh`) and the in-app updater (engine `update.rs`) depend on those names; change them together. Binaries are never committed to the repository.
 
 ## External programs
-The owner authorized these external projects, integrated as published and run outside the
-app process, with all orchestration in Rust. This is not a general permission for other
-non-Rust dependencies.
+Rust is preferred for application code and orchestration, not an absolute requirement.
+C/C++ and other non-Rust dependencies are allowed when they offer a concrete benefit in
+quality, performance, hardware support or maintainability. Record the rationale and
+check licensing, packaging and maintenance costs; do not rewrite a suitable runtime
+solely to keep the stack pure Rust. Prefer isolated child processes for external runtimes.
+
+The following external projects are integrated as published:
 
 Shipping today:
 - llama.cpp (<https://github.com/ggml-org/llama.cpp>): `llama-server` as a child process for
@@ -99,6 +103,6 @@ until they ship:
 New pinned components go in `local-ai.toml`.
 
 ## Do not
-- Unnecessary C/C++ dependencies
+- Unnecessary dependencies, regardless of language
 - unwrap/expect in production code
 - Generic “AI slop” UI
