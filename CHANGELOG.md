@@ -6,6 +6,12 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Changed
+- Lessons no longer stop when the student talks over the tutor: the microphone listens
+  only after the tutor finishes (hands-free) or when the student presses it. The
+  setting "I can interrupt the tutor" is gone. The transcript and chat panel now starts
+  open in lessons.
+
 ## [0.40.0] - 2026-11-10
 
 ### Added

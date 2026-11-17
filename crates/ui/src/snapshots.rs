@@ -509,6 +509,7 @@ ETAPA: 2",
             ));
         }
         harness.state_mut().ui.screen = Screen::Lesson;
+        harness.state_mut().ui.lesson_panel = false;
         render(
             &mut harness,
             out.as_deref(),

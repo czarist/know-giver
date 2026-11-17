@@ -246,7 +246,7 @@ impl KnowGiverApp {
                 settings_draft: None,
                 lesson_input: String::new(),
                 lesson_captions: true,
-                lesson_panel: false,
+                lesson_panel: true,
                 review_answer: String::new(),
                 confirm_delete: None,
                 confirm_delete_doc: None,

@@ -141,9 +141,6 @@ pub struct Settings {
     /// Quiet, in seconds, after a finished sentence before the student's
     /// turn ends. Longer pauses mid-thought always wait a bit more.
     pub turn_pause: f32,
-    /// Keep the microphone open while the tutor thinks or speaks, so the
-    /// student can go on talking or interrupt (needs live captions).
-    pub barge_in: bool,
     /// The tutor says "Hum." or "Entendi." right away while the answer is
     /// being written.
     pub fillers: bool,
@@ -210,7 +207,6 @@ impl Default for Settings {
             hands_free: true,
             auto_stop: true,
             turn_pause: DEFAULT_TURN_PAUSE,
-            barge_in: true,
             fillers: true,
             stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),

@@ -86,8 +86,8 @@ depois de uma pausa que você escolhe nas Configurações, para dar tempo de pen
 palavra.
 
 ### 🗣️ Fala
-O tutor começa a falar já na primeira frase da resposta, diz "Hum." enquanto pensa e para
-quando você interrompe. As legendas acompanham a voz, frase a frase. Mãos livres, apertar
+O tutor começa a falar já na primeira frase da resposta, diz "Hum." enquanto pensa e
+só escuta quando passa a vez para você ou quando você aperta o microfone. As legendas acompanham a voz, frase a frase. Mãos livres, apertar
 para falar (Espaço) ou digitando.
 
 ### 🧭 Uma aula com começo e fim
