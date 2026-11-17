@@ -363,8 +363,6 @@ pub(crate) fn voice_section(
                 .on_hover_text(t!("settings.voice.turn_pause_hint"));
             });
         });
-        ui.checkbox(&mut draft.barge_in, t!("settings.voice.barge_in"))
-            .on_hover_text(t!("settings.voice.barge_in_hint"));
         ui.checkbox(&mut draft.fillers, t!("settings.voice.fillers"));
         ui.checkbox(&mut draft.board_images, t!("settings.voice.board_images"))
             .on_hover_text(t!("settings.voice.board_images_hint"));
