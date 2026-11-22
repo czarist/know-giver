@@ -114,6 +114,13 @@ impl Engine {
         self.local_speech_language() && self.stt_job().is_some()
     }
 
+    /// True when what the student says always comes out in Portuguese
+    /// (Whisper chosen, or installed to read again what Parakeet heard as
+    /// another language).
+    pub fn stt_keeps_portuguese(&self) -> bool {
+        self.stt_job().is_none_or(|job| job.keeps_portuguese())
+    }
+
     /// The local voices and speech recognition handle the app's language.
     /// They are Portuguese (with English passages); Chinese and Japanese
     /// lessons are typed until voices for them exist.

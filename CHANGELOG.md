@@ -11,6 +11,9 @@ All notable changes to Know Giver. Format based on
   longer opens by itself when the tutor finishes: the student talks only by pressing the
   microphone (or holding Space). The settings "I can interrupt the tutor" and
   "Hands-free" are gone. The transcript and chat panel stays open for the whole lesson.
+- Speech recognition keeps lessons in Portuguese: when Parakeet writes any English word,
+  Whisper (told the language is Portuguese) reads the whole answer again. Without Whisper
+  installed, the lesson says to download it.
 
 ## [0.40.0] - 2026-11-10
 
