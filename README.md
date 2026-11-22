@@ -85,7 +85,7 @@ a pause you choose in Settings, so you can stop to think of a word.
 
 ### 🗣️ Speaking
 The tutor starts talking with the first sentence of its answer, says "Hum." while it
-thinks, and listens only when it hands you the floor or you press the microphone. Captions follow its voice, sentence by sentence. Hands-free, push-to-talk (Space) or typing.
+thinks, and listens only when you press the microphone (or hold Space). Captions follow its voice, sentence by sentence, and the transcript stays open beside the lesson, where you can also type.
 
 ### 🧭 A lesson with a beginning and an end
 Every lesson follows a plan built from the topic's handout (or written by the

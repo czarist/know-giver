@@ -87,8 +87,8 @@ palavra.
 
 ### 🗣️ Fala
 O tutor começa a falar já na primeira frase da resposta, diz "Hum." enquanto pensa e
-só escuta quando passa a vez para você ou quando você aperta o microfone. As legendas acompanham a voz, frase a frase. Mãos livres, apertar
-para falar (Espaço) ou digitando.
+só escuta quando você aperta o microfone (ou segura Espaço). As legendas acompanham a voz,
+frase a frase, e a transcrição fica aberta ao lado da aula, onde você também pode digitar.
 
 ### 🧭 Uma aula com começo e fim
 Cada aula segue um roteiro feito a partir da apostila do tópico (ou escrito pelo

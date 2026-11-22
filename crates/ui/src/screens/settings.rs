@@ -348,7 +348,6 @@ pub(crate) fn voice_section(
 ) {
     section(ui, &t!("settings.voice.title"), |ui| {
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
-        ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));
         ui.add_enabled_ui(draft.auto_stop, |ui| {
             ui.horizontal(|ui| {

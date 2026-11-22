@@ -740,7 +740,6 @@ settings:
     cloud_model: "Speech model"
     cloud_voice: "Voice identifier"
     enabled: "Read the tutor's answers out loud"
-    hands_free: "Hands-free: listen again when the tutor stops speaking"
     auto_stop: "Stop listening when I pause"
     turn_pause: "Pause before the tutor answers"
     turn_pause_hint: "How much quiet after a sentence ends your turn. Raise it if the tutor answers while you are still thinking; unfinished sentences wait 0.8 s more."

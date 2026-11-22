@@ -1,6 +1,6 @@
 //! Voice lesson as a meeting: the teacher on stage with captions, a
 //! whiteboard with key points, the student's tile with the mic level, and a
-//! control bar. The transcript and typed chat open in a side panel.
+//! control bar. The transcript and typed chat stay open in a side panel.
 
 use egui::{Color32, RichText, Stroke, pos2, vec2};
 use kg_engine::{Command, Engine, LessonPhase, LessonRecap, LessonSession, Speaker, TopicId};
@@ -57,18 +57,17 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     }
     model_warnings(ui, engine, &mut actions);
 
-    if state.lesson_panel {
-        egui::Panel::right("lesson_panel")
-            .resizable(false)
-            .exact_size(PANEL_WIDTH)
-            .frame(egui::Frame::new().inner_margin(egui::Margin {
-                left: 14,
-                ..Default::default()
-            }))
-            .show(ui, |ui| {
-                side_panel(ui, lesson, &mut state.lesson_input, &mut actions)
-            });
-    }
+    // The transcript and chat stay open for the whole lesson.
+    egui::Panel::right("lesson_panel")
+        .resizable(false)
+        .exact_size(PANEL_WIDTH)
+        .frame(egui::Frame::new().inner_margin(egui::Margin {
+            left: 14,
+            ..Default::default()
+        }))
+        .show(ui, |ui| {
+            side_panel(ui, lesson, &mut state.lesson_input, &mut actions)
+        });
 
     let stage_height = (ui.available_height() - CONTROLS_HEIGHT).max(260.0);
     let (stage, _) = ui.allocate_exact_size(
@@ -580,17 +579,6 @@ fn controls(
             .clicked()
         {
             state.lesson_captions = !state.lesson_captions;
-        }
-        let chat = if state.lesson_panel {
-            p.accent
-        } else {
-            p.muted
-        };
-        if round_button(ui, Icon::Edital, chat, p.surface, 46.0, true)
-            .on_hover_text(t!("lesson.transcript"))
-            .clicked()
-        {
-            state.lesson_panel = !state.lesson_panel;
         }
         ui.add_space(12.0);
         let end = egui::Button::new(

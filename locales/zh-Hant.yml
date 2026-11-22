@@ -740,7 +740,6 @@ settings:
     cloud_model: "語音模型"
     cloud_voice: "語音標識"
     enabled: "朗讀老師的回答"
-    hands_free: "擴音：老師說完後再次開始聽"
     auto_stop: "我停頓時停止收音"
     turn_pause: "老師回答前的停頓"
     turn_pause_hint: "一句話說完後安靜多久算你說完。如果你還在思考老師就開始回答，請調長一些；沒說完的句子會再多等 0.8 秒。"

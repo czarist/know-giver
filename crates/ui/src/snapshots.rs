@@ -509,19 +509,11 @@ ETAPA: 2",
             ));
         }
         harness.state_mut().ui.screen = Screen::Lesson;
-        harness.state_mut().ui.lesson_panel = false;
         render(
             &mut harness,
             out.as_deref(),
             &format!("{locale}-lesson-active"),
         );
-        harness.state_mut().ui.lesson_panel = true;
-        render(
-            &mut harness,
-            out.as_deref(),
-            &format!("{locale}-lesson-panel"),
-        );
-        harness.state_mut().ui.lesson_panel = false;
         if let Ok(engine) = harness.state_mut().engine.as_mut() {
             engine.simulate_tutor_text(tr(
                 locale,
