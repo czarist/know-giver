@@ -17,8 +17,6 @@ use crate::{Engine, EngineError, Event, Notice, Settings};
 
 /// Turns of conversation sent back to the tutor.
 const HISTORY_TURNS: usize = 24;
-/// In hands-free mode, stop waiting if the student says nothing.
-const HANDS_FREE_IDLE: Duration = Duration::from_secs(30);
 /// Longest student turn.
 const MAX_TURN: Duration = Duration::from_secs(90);
 /// The microphone stays open for the whole lesson, up to this long.
@@ -106,9 +104,6 @@ pub struct LessonSession {
     reply: u64,
     /// Where in the recording the current student turn starts.
     listen_from: usize,
-    /// When the current turn started, and how long to wait for speech.
-    listen_started: Option<std::time::Instant>,
-    idle_timeout: Option<Duration>,
     /// Beginning of a turn the student is continuing.
     carry: Option<String>,
     /// Quiet after a finished sentence that ends the turn.
@@ -440,8 +435,6 @@ impl Engine {
             carry: None,
             quiet_after_sentence: self.settings.sentence_pause(),
             noise_floor: None,
-            listen_started: None,
-            idle_timeout: None,
             turn_ended: None,
         });
         // A resumed lesson brings back its board pictures.
@@ -596,10 +589,6 @@ impl Engine {
         Ok(())
     }
 
-    pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
-        self.listen(None, false)
-    }
-
     /// How speech is recognized right now, if it can be.
     pub(crate) fn stt_job(&self) -> Option<SttJob> {
         SttJob::resolve(
@@ -610,13 +599,10 @@ impl Engine {
         )
     }
 
-    /// Starts the student's turn. `after_tutor`: the tutor just finished
-    /// speaking, so its echo is skipped.
-    fn listen(
-        &mut self,
-        idle_timeout: Option<Duration>,
-        after_tutor: bool,
-    ) -> Result<(), EngineError> {
+    /// Starts the student's turn. The microphone listens only when the
+    /// student presses it; pressing it while the tutor talks stops the voice
+    /// and skips its echo.
+    pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
         if !self.stt_ready() {
             return Err(EngineError::SpeechModelMissing(
                 match self.settings.stt_engine {
@@ -625,6 +611,10 @@ impl Engine {
                 },
             ));
         }
+        let after_tutor = self
+            .lesson
+            .as_ref()
+            .is_some_and(|lesson| lesson.phase == LessonPhase::Speaking);
         self.stop_speaking();
         if self.lesson.as_ref().is_none_or(|lesson| {
             matches!(
@@ -647,8 +637,6 @@ impl Engine {
             0
         };
         lesson.listen_from = mic.len() + echo;
-        lesson.listen_started = Some(std::time::Instant::now());
-        lesson.idle_timeout = idle_timeout;
         lesson.phase = LessonPhase::Listening;
         lesson.partial = None;
         lesson.partial_running = false;
@@ -749,14 +737,6 @@ impl Engine {
         let rate = recording.sample_rate();
         let quiet = recording.quiet_for().unwrap_or_default();
         let spoke = voice_end > lesson.listen_from;
-        let waited = lesson
-            .listen_started
-            .map_or(Duration::ZERO, |started| started.elapsed());
-        if !spoke && lesson.idle_timeout.is_some_and(|idle| waited >= idle) {
-            tracing::info!("no answer; stopped listening");
-            lesson.phase = LessonPhase::Idle;
-            return;
-        }
         let turn_secs =
             recording.len().saturating_sub(lesson.listen_from) as f32 / rate.max(1) as f32;
         if turn_secs >= MAX_TURN.as_secs_f32() {
@@ -991,15 +971,8 @@ impl Engine {
                 if !synthesizing && !playing {
                     lesson.phase = LessonPhase::Idle;
                     lesson.speech_job = None;
+                    // The student talks by pressing the microphone.
                     settle_reply(lesson);
-                    // After the closing words, the lesson waits for the student.
-                    let finished = lesson.finished;
-                    if self.settings.hands_free
-                        && !finished
-                        && let Err(err) = self.listen(Some(HANDS_FREE_IDLE), true)
-                    {
-                        self.notices.push(Notice::Error(err));
-                    }
                 }
             }
             _ => {}
@@ -1121,13 +1094,7 @@ impl Engine {
                     }
                     Ok(_) => {
                         self.set_phase(LessonPhase::Idle);
-                        if self.settings.hands_free {
-                            // A cough or a noise: go on waiting for the answer.
-                            tracing::info!("nothing understood; listening again");
-                            self.listen(Some(HANDS_FREE_IDLE), false)?;
-                        } else {
-                            self.notices.push(Notice::NothingHeard);
-                        }
+                        self.notices.push(Notice::NothingHeard);
                     }
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);

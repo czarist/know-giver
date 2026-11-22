@@ -740,7 +740,6 @@ settings:
     cloud_model: "语音模型"
     cloud_voice: "语音标识"
     enabled: "朗读老师的回答"
-    hands_free: "免提：老师说完后再次开始听"
     auto_stop: "我停顿时停止收音"
     turn_pause: "老师回答前的停顿"
     turn_pause_hint: "一句话说完后安静多久算你说完。如果你还在思考老师就开始回答，请调长一些；没说完的句子会再多等 0.8 秒。"

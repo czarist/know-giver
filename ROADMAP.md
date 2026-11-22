@@ -166,7 +166,7 @@ binaries passed `--version`. Vulkan still relies on the computer's compatible GP
 - [x] Microphone capture (cpal, end-of-speech detection)
 - [x] Local STT (Whisper on candle, pure Rust)
 - [x] TTS response (Piper pt-BR, run as a child process)
-- [x] Lesson conversation loop (STT → LLM → TTS, hands-free option)
+- [x] Lesson conversation loop (STT → LLM → TTS, press the microphone to talk)
 
 ## Phase 4 — Polish
 - [x] Settings (AI endpoint, per-task models, voice, models, language)
