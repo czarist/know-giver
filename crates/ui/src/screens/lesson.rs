@@ -878,6 +878,8 @@ fn model_warnings(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
     }
     if !engine.stt_ready() {
         warn(ui, &t!("lesson.need_stt"));
+    } else if !engine.stt_keeps_portuguese() {
+        warn(ui, &t!("lesson.need_whisper"));
     }
     if engine.settings().voice_enabled && !engine.tts_ready() {
         warn(ui, &t!("lesson.need_tts"));

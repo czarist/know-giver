@@ -288,6 +288,7 @@ lesson:
   keys: "Hold Space to talk · Esc interrupts the tutor"
   open_settings: "Open settings"
   need_stt: "To talk to the tutor, download a speech recognition model in Settings."
+  need_whisper: "To keep transcription always in Portuguese, also download Whisper in Settings."
   need_tts: "To hear the tutor, download a voice and its program in Settings."
   voice_language: "Voice lessons are not available in this language yet. Type your answers; the tutor answers in writing."
   phase:

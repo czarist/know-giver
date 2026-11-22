@@ -80,6 +80,13 @@ impl SttJob {
         })
     }
 
+    /// Whether every final transcript ends up in Portuguese: Whisper is told
+    /// the language, Parakeet is not and needs Whisper to read again what
+    /// came out in another language.
+    pub(crate) fn keeps_portuguese(&self) -> bool {
+        self.engine == SttEngine::Whisper || self.whisper_installed
+    }
+
     /// Whether live captions can be computed while the student speaks.
     pub(crate) fn live(&self) -> bool {
         self.engine == SttEngine::Parakeet
@@ -101,6 +108,15 @@ impl SttJob {
                     && let Some(checked) = self.retranscribe(clip, context)
                 {
                     tracing::info!(parakeet = %text, whisper = %checked, "wrong alphabet retranscribed");
+                    return Ok(checked);
+                }
+                // Parakeet guesses the language itself; Whisper is told it is
+                // Portuguese, so English it heard is read again in full.
+                if has_english(&text)
+                    && word_count(&text) > 1
+                    && let Some(checked) = self.retranscribe(clip, context)
+                {
+                    tracing::info!(parakeet = %text, whisper = %checked, "english retranscribed");
                     return Ok(checked);
                 }
                 if needs_second_opinion(&text)
@@ -294,6 +310,26 @@ pub(crate) fn needs_second_opinion(text: &str) -> bool {
     !SHORT_ANSWERS.contains(&word.as_str())
 }
 
+/// English words that are never Portuguese, even without accents ("to" is
+/// "tô", "so" is "só", "for" is a verb form, "no" and "do" are contractions,
+/// "ok" is used in Portuguese).
+const ONLY_ENGLISH_WORDS: [&str; 48] = [
+    "now", "how", "on", "in", "at", "he", "she", "if", "or", "up", "out", "all", "one", "the",
+    "that", "this", "not", "is", "it", "its", "you", "what", "yes", "and", "of", "yeah", "my",
+    "we", "dont", "im", "there", "they", "have", "are", "was", "be", "can", "just", "know", "like",
+    "right", "well", "thank", "thanks", "sorry", "hello", "but", "with",
+];
+
+/// True when Parakeet wrote English: a word that only exists in English,
+/// even among Portuguese ones ("eu acho que the lei"), or text that reads as
+/// English. Technical terms ("machine learning") do not count.
+pub(crate) fn has_english(text: &str) -> bool {
+    looks_english(text)
+        || content_words_all(text)
+            .iter()
+            .any(|w| ONLY_ENGLISH_WORDS.contains(&w.as_str()))
+}
+
 /// True when a letter is outside the Latin alphabet (Cyrillic, Greek, CJK,
 /// …): Parakeet guessed a language the student is not speaking.
 pub(crate) fn has_foreign_script(text: &str) -> bool {
@@ -387,6 +423,18 @@ mod tests {
         assert!(!needs_second_opinion("No caso, a LOA."));
         assert!(same_words("Sim, entendi.", "sim entendi"));
         assert!(!same_words("Sim", "Sim, entendi"));
+    }
+
+    #[test]
+    fn spots_english_among_portuguese() {
+        assert!(has_english("Eu acho que the lei é federal."));
+        assert!(has_english("Yeah, I know that."));
+        assert!(has_english("Ah now legal."));
+        assert!(!has_english("Não sei o que é machine learning."));
+        assert!(!has_english("No caso, a LOA."));
+        assert!(!has_english("Tô ok, só um pouco cansado."));
+        assert!(!has_english("Se ele for aprovado, do jeito que está."));
+        assert!(!has_english("Python é uma linguagem."));
     }
 
     #[test]

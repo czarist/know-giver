@@ -288,6 +288,7 @@ lesson:
   keys: "按住空格鍵說話 · Esc 打斷老師"
   open_settings: "開啟設定"
   need_stt: "要和老師對話，請在設定中下載語音識別模型。"
+  need_whisper: "要讓轉寫始終保持葡萄牙語，請在設定中同時下載 Whisper。"
   need_tts: "要聽老師說話，請在設定中下載一個語音及其程式。"
   voice_language: "這種語言暫不支援語音課堂。請輸入你的回答，老師會用文字回覆。"
   phase:
