@@ -112,10 +112,52 @@ begin
     and (not FileExists(ExpandConstant('{userappdata}\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe')));
 end;
 
+// A reinstall must not leave two desktop icons. Shortcuts to this app with
+// another name, or in another desktop folder (the local one from before the
+// desktop moved to OneDrive, or a OneDrive sync copy), are removed; the one
+// this setup manages stays. Shortcuts to anything else are never touched.
+procedure RemoveStrayShortcuts(Folder: String);
+var
+  Find: TFindRec;
+  Shell, Link: Variant;
+  Path, Target, Keep, LinkTarget: String;
+begin
+  if (Folder = '') or (not DirExists(Folder)) then
+    Exit;
+  Target := ExpandConstant('{app}\know-giver.exe');
+  Keep := ExpandConstant('{userdesktop}\Know Giver.lnk');
+  try
+    Shell := CreateOleObject('WScript.Shell');
+    if FindFirst(AddBackslash(Folder) + '*.lnk', Find) then
+    try
+      repeat
+        Path := AddBackslash(Folder) + Find.Name;
+        if CompareText(Path, Keep) <> 0 then
+        begin
+          Link := Shell.CreateShortcut(Path);
+          LinkTarget := Link.TargetPath;
+          if CompareText(LinkTarget, Target) = 0 then
+            DeleteFile(Path);
+        end;
+      until not FindNext(Find);
+    finally
+      FindClose(Find);
+    end;
+  except
+    Log('Could not check desktop shortcuts in ' + Folder + ': ' + GetExceptionMessage);
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   FlagFile: String;
 begin
+  if CurStep = ssPostInstall then
+  begin
+    RemoveStrayShortcuts(ExpandConstant('{userdesktop}'));
+    RemoveStrayShortcuts(ExpandConstant('{%USERPROFILE}\Desktop'));
+    RemoveStrayShortcuts(ExpandConstant('{%OneDrive|}\Desktop'));
+  end;
   if (CurStep = ssPostInstall) and WizardIsTaskSelected('studyreminders') then
   begin
     FlagFile := ExpandConstant('{app}\.study-reminders-enabled');
