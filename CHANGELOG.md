@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-22
+
 ### Changed
 - Lessons no longer stop when the student talks over the tutor, and the microphone no
   longer opens by itself when the tutor finishes: the student talks only by pressing the
