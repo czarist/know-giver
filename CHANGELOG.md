@@ -6,6 +6,15 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- Lessons: when the tutor finishes speaking with a question, the microphone opens by
+  itself for the answer, skipping the echo of its last words. Otherwise it listens only
+  when you press it (or hold Space); it never listens over the explanation. With no
+  answer within 30 seconds, it stops listening quietly, without the "nothing heard" notice.
+- Windows installer: reinstalling no longer leaves a second desktop icon. Other desktop
+  shortcuts to Know Giver (another name, the local desktop from before it moved to
+  OneDrive, or a OneDrive sync copy) are removed; shortcuts to other programs are untouched.
+
 ## [0.41.0] - 2026-11-22
 
 ### Changed
