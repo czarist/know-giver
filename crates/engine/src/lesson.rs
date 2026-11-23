@@ -12,16 +12,11 @@ use kg_audio::{
 use kg_study::{LessonRecap, TopicId, TopicStatus};
 use serde::{Deserialize, Serialize};
 
-use crate::stt::{
-    SttJob, ends_sentence, has_new_words, is_student_speech, needs_second_opinion, same_words,
-    word_count,
-};
+use crate::stt::{SttJob, ends_sentence, needs_second_opinion, same_words, word_count};
 use crate::{Engine, EngineError, Event, Notice, Settings};
 
 /// Turns of conversation sent back to the tutor.
 const HISTORY_TURNS: usize = 24;
-/// In hands-free mode, stop waiting if the student says nothing.
-const HANDS_FREE_IDLE: Duration = Duration::from_secs(30);
 /// Longest student turn.
 const MAX_TURN: Duration = Duration::from_secs(90);
 /// The microphone stays open for the whole lesson, up to this long.
@@ -33,13 +28,8 @@ const MIC_KEEP_SECS: f32 = 10.0;
 const ECHO_TAIL_SECS: f32 = 0.2;
 // How much quiet ends the student's turn is a setting (`turn_pause`): after
 // a finished sentence, and 0.8 s more without one, so a pause mid-thought does
-// not cut the student off. If the student goes on talking while the tutor
-// thinks, the turn continues and the wait grows for the rest of the lesson.
-const QUIET_STEP: Duration = Duration::from_millis(250);
-/// New sound needed before checking again whether the student is talking.
-const MONITOR_STEP_SECS: f32 = 0.6;
-/// Audio checked each time: enough for two or three words.
-const MONITOR_WINDOW_SECS: f32 = 2.0;
+// not cut the student off. The microphone listens only on the student's turn:
+// after the tutor finishes (hands-free) or when the student presses it.
 /// New audio needed before the live caption is refreshed (seconds).
 const PARTIAL_STEP_SECS: f32 = 0.25;
 /// What the tutor says right away while the answer is being written. Spoken
@@ -112,16 +102,8 @@ pub struct LessonSession {
     partial_running: bool,
     /// The tutor reply being received; sentences of older replies are ignored.
     reply: u64,
-    /// While the tutor thinks or speaks, the microphone is checked for the
-    /// student talking (continuing their turn, or interrupting), from here on.
-    monitor_from: usize,
-    monitor_checking: bool,
-    monitor_checked: usize,
     /// Where in the recording the current student turn starts.
     listen_from: usize,
-    /// When the current turn started, and how long to wait for speech.
-    listen_started: Option<std::time::Instant>,
-    idle_timeout: Option<Duration>,
     /// Beginning of a turn the student is continuing.
     carry: Option<String>,
     /// Quiet after a finished sentence that ends the turn.
@@ -334,13 +316,6 @@ pub(crate) enum LessonEvent {
         samples: usize,
         result: Result<String, EngineError>,
     },
-    /// What the microphone heard while the tutor was thinking or speaking.
-    Heard {
-        session: u64,
-        reply: u64,
-        from: usize,
-        result: Result<String, EngineError>,
-    },
     SpeechFailed {
         session: u64,
         error: AudioError,
@@ -456,15 +431,10 @@ impl Engine {
             partial: None,
             partial_running: false,
             reply,
-            monitor_from: 0,
-            monitor_checking: false,
-            monitor_checked: 0,
             listen_from: 0,
             carry: None,
             quiet_after_sentence: self.settings.sentence_pause(),
             noise_floor: None,
-            listen_started: None,
-            idle_timeout: None,
             turn_ended: None,
         });
         // A resumed lesson brings back its board pictures.
@@ -506,7 +476,6 @@ impl Engine {
             })
         });
         self.preload_stt();
-        self.start_monitor();
         Ok(())
     }
 
@@ -556,126 +525,6 @@ impl Engine {
         };
         lesson.mic = Some(Recording::start(options)?);
         Ok(())
-    }
-
-    /// The tutor has the floor: from now on, listen for the student going on
-    /// talking or interrupting.
-    fn start_monitor(&mut self) {
-        if !self.stt_ready() {
-            return;
-        }
-        if let Err(err) = self.open_mic() {
-            tracing::warn!(%err, "could not open the microphone");
-        }
-        let Some(lesson) = self.lesson.as_mut() else {
-            return;
-        };
-        let now = lesson.mic.as_ref().map_or(0, Recording::len);
-        lesson.monitor_from = now;
-        lesson.monitor_checked = now;
-        lesson.monitor_checking = false;
-    }
-
-    /// While the tutor thinks or speaks: every bit of new sound, check
-    /// whether it is the student talking (and not the tutor's own voice
-    /// coming back through the speakers).
-    fn tick_monitor(&mut self) {
-        if !self.settings.barge_in {
-            return;
-        }
-        let Some(stt) = self.stt_job().filter(SttJob::live) else {
-            return;
-        };
-        let Some(lesson) = self.lesson.as_mut() else {
-            return;
-        };
-        let Some(monitor) = lesson.mic.as_ref() else {
-            return;
-        };
-        let rate = monitor.sample_rate() as f32;
-        let len = monitor.len();
-        let sounding = monitor.voice_end() > lesson.monitor_from
-            && monitor
-                .quiet_for()
-                .is_some_and(|quiet| quiet < Duration::from_millis(250));
-        if lesson.monitor_checking
-            || !sounding
-            || len < lesson.monitor_checked + (MONITOR_STEP_SECS * rate) as usize
-        {
-            return;
-        }
-        let from = len
-            .saturating_sub((MONITOR_WINDOW_SECS * rate) as usize)
-            .max(lesson.monitor_from);
-        let clip = monitor.snapshot_from(from);
-        lesson.monitor_checking = true;
-        lesson.monitor_checked = len;
-        let (session, reply) = (lesson.id, lesson.reply);
-        self.spawn(move || {
-            Event::Lesson(LessonEvent::Heard {
-                session,
-                reply,
-                from,
-                result: stt.partial(&clip),
-            })
-        });
-    }
-
-    /// The student went on talking while the tutor was still thinking: drop
-    /// the reply being prepared and keep listening to the same turn.
-    fn continue_turn(&mut self, from: usize) {
-        let reply = self.next_id();
-        self.stop_speaking();
-        let Some(lesson) = self.lesson.as_mut() else {
-            return;
-        };
-        lesson.reply = reply;
-        lesson.speech_job = None;
-        lesson.pending_reply = None;
-        if std::mem::take(&mut lesson.streaming)
-            && lesson
-                .turns
-                .last()
-                .is_some_and(|t| t.speaker == Speaker::Tutor)
-        {
-            lesson.turns.pop();
-        }
-        let carry = match lesson.turns.last() {
-            Some(turn) if turn.speaker == Speaker::Student => lesson.turns.pop().map(|t| t.text),
-            _ => None,
-        };
-        lesson.quiet_after_sentence =
-            (lesson.quiet_after_sentence + QUIET_STEP).min(self.settings.long_pause());
-        tracing::info!(
-            wait_ms = lesson.quiet_after_sentence.as_millis() as u64,
-            "student kept talking; continuing the turn"
-        );
-        self.resume_listening(from, carry);
-    }
-
-    /// The student spoke over the tutor: stop talking and listen.
-    fn barge_in(&mut self, from: usize) {
-        tracing::info!("student interrupted the tutor");
-        self.stop_speaking();
-        self.resume_listening(from, None);
-    }
-
-    /// Turns the open monitor into the student's turn, starting at `from`.
-    fn resume_listening(&mut self, from: usize, carry: Option<String>) {
-        let Some(lesson) = self.lesson.as_mut() else {
-            return;
-        };
-        if lesson.mic.is_none() {
-            return;
-        }
-        lesson.listen_from = from;
-        lesson.listen_started = Some(std::time::Instant::now());
-        lesson.idle_timeout = None;
-        lesson.carry = carry;
-        lesson.partial = None;
-        lesson.partial_running = false;
-        lesson.monitor_checking = false;
-        lesson.phase = LessonPhase::Listening;
     }
 
     /// Ends the lesson. One the tutor did not close is kept to continue
@@ -740,10 +589,6 @@ impl Engine {
         Ok(())
     }
 
-    pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
-        self.listen(None, false)
-    }
-
     /// How speech is recognized right now, if it can be.
     pub(crate) fn stt_job(&self) -> Option<SttJob> {
         SttJob::resolve(
@@ -754,13 +599,10 @@ impl Engine {
         )
     }
 
-    /// Starts the student's turn. `after_tutor`: the tutor just finished
-    /// speaking, so its echo is skipped.
-    fn listen(
-        &mut self,
-        idle_timeout: Option<Duration>,
-        after_tutor: bool,
-    ) -> Result<(), EngineError> {
+    /// Starts the student's turn. The microphone listens only when the
+    /// student presses it; pressing it while the tutor talks stops the voice
+    /// and skips its echo.
+    pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
         if !self.stt_ready() {
             return Err(EngineError::SpeechModelMissing(
                 match self.settings.stt_engine {
@@ -769,6 +611,10 @@ impl Engine {
                 },
             ));
         }
+        let after_tutor = self
+            .lesson
+            .as_ref()
+            .is_some_and(|lesson| lesson.phase == LessonPhase::Speaking);
         self.stop_speaking();
         if self.lesson.as_ref().is_none_or(|lesson| {
             matches!(
@@ -791,8 +637,6 @@ impl Engine {
             0
         };
         lesson.listen_from = mic.len() + echo;
-        lesson.listen_started = Some(std::time::Instant::now());
-        lesson.idle_timeout = idle_timeout;
         lesson.phase = LessonPhase::Listening;
         lesson.partial = None;
         lesson.partial_running = false;
@@ -893,14 +737,6 @@ impl Engine {
         let rate = recording.sample_rate();
         let quiet = recording.quiet_for().unwrap_or_default();
         let spoke = voice_end > lesson.listen_from;
-        let waited = lesson
-            .listen_started
-            .map_or(Duration::ZERO, |started| started.elapsed());
-        if !spoke && lesson.idle_timeout.is_some_and(|idle| waited >= idle) {
-            tracing::info!("no answer; stopped listening");
-            lesson.phase = LessonPhase::Idle;
-            return;
-        }
         let turn_secs =
             recording.len().saturating_sub(lesson.listen_from) as f32 / rate.max(1) as f32;
         if turn_secs >= MAX_TURN.as_secs_f32() {
@@ -1008,7 +844,6 @@ impl Engine {
         if spoken && speaking_enabled {
             self.play_filler(turn);
         }
-        self.start_monitor();
     }
 
     /// Plays a short "Hum." right away, so the tutor reacts while the answer
@@ -1126,16 +961,8 @@ impl Engine {
             mic.forget_before(until);
         }
         match lesson.phase {
-            LessonPhase::Thinking => self.tick_monitor(),
             LessonPhase::Listening => self.tick_listening(),
             LessonPhase::Speaking => {
-                self.tick_monitor();
-                let Some(lesson) = self.lesson.as_mut() else {
-                    return;
-                };
-                if lesson.phase != LessonPhase::Speaking {
-                    return;
-                }
                 let synthesizing = lesson
                     .speech_job
                     .as_ref()
@@ -1144,15 +971,8 @@ impl Engine {
                 if !synthesizing && !playing {
                     lesson.phase = LessonPhase::Idle;
                     lesson.speech_job = None;
+                    // The student talks by pressing the microphone.
                     settle_reply(lesson);
-                    // After the closing words, the lesson waits for the student.
-                    let finished = lesson.finished;
-                    if self.settings.hands_free
-                        && !finished
-                        && let Err(err) = self.listen(Some(HANDS_FREE_IDLE), true)
-                    {
-                        self.notices.push(Notice::Error(err));
-                    }
                 }
             }
             _ => {}
@@ -1274,13 +1094,7 @@ impl Engine {
                     }
                     Ok(_) => {
                         self.set_phase(LessonPhase::Idle);
-                        if self.settings.hands_free {
-                            // A cough or a noise: go on waiting for the answer.
-                            tracing::info!("nothing understood; listening again");
-                            self.listen(Some(HANDS_FREE_IDLE), false)?;
-                        } else {
-                            self.notices.push(Notice::NothingHeard);
-                        }
+                        self.notices.push(Notice::NothingHeard);
                     }
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);
@@ -1310,55 +1124,6 @@ impl Engine {
                         Ok(_) => {}
                         Err(err) => tracing::warn!(%err, "live caption failed"),
                     }
-                }
-            }
-            LessonEvent::Heard {
-                session,
-                reply,
-                from,
-                result,
-            } if Some(session) == current => {
-                let Some(lesson) = self.lesson.as_mut() else {
-                    return Ok(());
-                };
-                lesson.monitor_checking = false;
-                if reply != lesson.reply {
-                    return Ok(());
-                }
-                let text = match result {
-                    Ok(text) => text,
-                    Err(err) => {
-                        tracing::warn!(%err, "could not check the microphone");
-                        return Ok(());
-                    }
-                };
-                match lesson.phase {
-                    // Only the short "Hum." may be playing, so any other word
-                    // is the student.
-                    LessonPhase::Thinking if has_new_words(&text, &FILLERS.join(" ")) => {
-                        if lesson
-                            .turns
-                            .last()
-                            .is_some_and(|t| t.speaker == Speaker::Student)
-                        {
-                            self.continue_turn(from);
-                        } else {
-                            self.barge_in(from);
-                        }
-                    }
-                    LessonPhase::Speaking => {
-                        let tutor = lesson
-                            .turns
-                            .iter()
-                            .rev()
-                            .find(|t| t.speaker == Speaker::Tutor)
-                            .map_or("", |t| t.text.as_str());
-                        if is_student_speech(&text, tutor) {
-                            tracing::info!(%text, "heard the student over the tutor");
-                            self.barge_in(from);
-                        }
-                    }
-                    _ => {}
                 }
             }
             LessonEvent::SpeechFailed { session, error } if Some(session) == current => {

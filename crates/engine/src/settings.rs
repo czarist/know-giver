@@ -134,16 +134,11 @@ pub struct Settings {
     pub manuscript_ocr: ManuscriptOcr,
     /// Read tutor answers aloud.
     pub voice_enabled: bool,
-    /// Start listening again after the tutor finishes speaking.
-    pub hands_free: bool,
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
     /// Quiet, in seconds, after a finished sentence before the student's
     /// turn ends. Longer pauses mid-thought always wait a bit more.
     pub turn_pause: f32,
-    /// Keep the microphone open while the tutor thinks or speaks, so the
-    /// student can go on talking or interrupt (needs live captions).
-    pub barge_in: bool,
     /// The tutor says "Hum." or "Entendi." right away while the answer is
     /// being written.
     pub fillers: bool,
@@ -207,10 +202,8 @@ impl Default for Settings {
             ai: AiConfig::default(),
             manuscript_ocr: ManuscriptOcr::default(),
             voice_enabled: true,
-            hands_free: true,
             auto_stop: true,
             turn_pause: DEFAULT_TURN_PAUSE,
-            barge_in: true,
             fillers: true,
             stt_engine: SttEngine::default(),
             whisper_model: WhisperModel::default(),

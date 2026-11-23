@@ -125,8 +125,6 @@ pub struct UiState {
     pub lesson_input: String,
     /// Captions over the teacher in the lesson.
     pub lesson_captions: bool,
-    /// Transcript / chat panel open in the lesson.
-    pub lesson_panel: bool,
     pub review_answer: String,
     pub confirm_delete: Option<PlanId>,
     pub confirm_delete_doc: Option<kg_engine::DocumentId>,
@@ -246,7 +244,6 @@ impl KnowGiverApp {
                 settings_draft: None,
                 lesson_input: String::new(),
                 lesson_captions: true,
-                lesson_panel: false,
                 review_answer: String::new(),
                 confirm_delete: None,
                 confirm_delete_doc: None,

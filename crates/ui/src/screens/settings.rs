@@ -348,7 +348,6 @@ pub(crate) fn voice_section(
 ) {
     section(ui, &t!("settings.voice.title"), |ui| {
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
-        ui.checkbox(&mut draft.hands_free, t!("settings.voice.hands_free"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));
         ui.add_enabled_ui(draft.auto_stop, |ui| {
             ui.horizontal(|ui| {
@@ -363,8 +362,6 @@ pub(crate) fn voice_section(
                 .on_hover_text(t!("settings.voice.turn_pause_hint"));
             });
         });
-        ui.checkbox(&mut draft.barge_in, t!("settings.voice.barge_in"))
-            .on_hover_text(t!("settings.voice.barge_in_hint"));
         ui.checkbox(&mut draft.fillers, t!("settings.voice.fillers"));
         ui.checkbox(&mut draft.board_images, t!("settings.voice.board_images"))
             .on_hover_text(t!("settings.voice.board_images_hint"));
