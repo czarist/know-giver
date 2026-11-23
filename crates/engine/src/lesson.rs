@@ -29,7 +29,9 @@ const ECHO_TAIL_SECS: f32 = 0.2;
 // How much quiet ends the student's turn is a setting (`turn_pause`): after
 // a finished sentence, and 0.8 s more without one, so a pause mid-thought does
 // not cut the student off. The microphone listens only on the student's turn:
-// after the tutor finishes (hands-free) or when the student presses it.
+// when they press it, or when the tutor finishes speaking with a question.
+/// After a question, stop listening if the student says nothing for this long.
+const QUESTION_WAIT: Duration = Duration::from_secs(30);
 /// New audio needed before the live caption is refreshed (seconds).
 const PARTIAL_STEP_SECS: f32 = 0.25;
 /// What the tutor says right away while the answer is being written. Spoken
@@ -112,6 +114,9 @@ pub struct LessonSession {
     noise_floor: Option<f32>,
     /// When the last student turn ended, for timing logs.
     turn_ended: Option<std::time::Instant>,
+    /// The current turn opened by itself after the tutor's question, not by
+    /// pressing the microphone: silence or a noise ends it quietly.
+    asked_turn: bool,
 }
 
 /// A live caption and how much of the recording it covers.
@@ -133,6 +138,14 @@ impl Partial {
 }
 
 impl LessonSession {
+    /// The tutor's last words are a question, so the student is expected to
+    /// answer.
+    fn ends_with_question(&self) -> bool {
+        self.turns
+            .last()
+            .is_some_and(|turn| turn.speaker == Speaker::Tutor && is_question(&turn.text))
+    }
+
     /// Microphone level while listening, `0.0..=1.0`.
     pub fn input_level(&self) -> f32 {
         if self.phase != LessonPhase::Listening {
@@ -436,6 +449,7 @@ impl Engine {
             quiet_after_sentence: self.settings.sentence_pause(),
             noise_floor: None,
             turn_ended: None,
+            asked_turn: false,
         });
         // A resumed lesson brings back its board pictures.
         let pictures: Vec<String> = match self.lesson.as_ref() {
@@ -599,10 +613,31 @@ impl Engine {
         )
     }
 
-    /// Starts the student's turn. The microphone listens only when the
-    /// student presses it; pressing it while the tutor talks stops the voice
-    /// and skips its echo.
+    /// The student pressed the microphone. Pressing it while the tutor talks
+    /// stops the voice and skips its echo.
     pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
+        self.begin_turn(false)
+    }
+
+    /// The tutor finished speaking with a question: the microphone opens for
+    /// the answer, skipping the echo of its last words.
+    fn listen_if_asked(&mut self) {
+        let asked = self
+            .lesson
+            .as_ref()
+            .is_some_and(|l| !l.finished && l.phase == LessonPhase::Idle && l.ends_with_question());
+        if !asked || !self.stt_ready() {
+            return;
+        }
+        tracing::info!("the tutor asked a question; listening");
+        if let Err(err) = self.begin_turn(true) {
+            self.notices.push(Notice::Error(err));
+        }
+    }
+
+    /// Starts the student's turn. `asked`: it opened by itself after the
+    /// tutor's question, right as its voice ended.
+    fn begin_turn(&mut self, asked: bool) -> Result<(), EngineError> {
         if !self.stt_ready() {
             return Err(EngineError::SpeechModelMissing(
                 match self.settings.stt_engine {
@@ -611,10 +646,11 @@ impl Engine {
                 },
             ));
         }
-        let after_tutor = self
-            .lesson
-            .as_ref()
-            .is_some_and(|lesson| lesson.phase == LessonPhase::Speaking);
+        let after_tutor = asked
+            || self
+                .lesson
+                .as_ref()
+                .is_some_and(|lesson| lesson.phase == LessonPhase::Speaking);
         self.stop_speaking();
         if self.lesson.as_ref().is_none_or(|lesson| {
             matches!(
@@ -637,6 +673,7 @@ impl Engine {
             0
         };
         lesson.listen_from = mic.len() + echo;
+        lesson.asked_turn = asked;
         lesson.phase = LessonPhase::Listening;
         lesson.partial = None;
         lesson.partial_running = false;
@@ -675,7 +712,7 @@ impl Engine {
                 self.answer_student(String::new(), true);
                 return;
             }
-            if by_student {
+            if by_student && !lesson.asked_turn {
                 self.notices.push(Notice::NothingHeard);
             }
             return;
@@ -741,6 +778,11 @@ impl Engine {
             recording.len().saturating_sub(lesson.listen_from) as f32 / rate.max(1) as f32;
         if turn_secs >= MAX_TURN.as_secs_f32() {
             self.end_turn(false);
+            return;
+        }
+        if lesson.asked_turn && !spoke && turn_secs >= QUESTION_WAIT.as_secs_f32() {
+            tracing::info!("no answer to the question; stopped listening");
+            lesson.phase = LessonPhase::Idle;
             return;
         }
         let (by_caption, by_level) = match &lesson.partial {
@@ -971,8 +1013,9 @@ impl Engine {
                 if !synthesizing && !playing {
                     lesson.phase = LessonPhase::Idle;
                     lesson.speech_job = None;
-                    // The student talks by pressing the microphone.
                     settle_reply(lesson);
+                    // Otherwise the student talks by pressing the microphone.
+                    self.listen_if_asked();
                 }
             }
             _ => {}
@@ -1084,6 +1127,7 @@ impl Engine {
                     }
                 } else {
                     self.set_phase(LessonPhase::Idle);
+                    self.listen_if_asked();
                 }
             }
             LessonEvent::Transcribed { session, result } if Some(session) == current => {
@@ -1094,7 +1138,10 @@ impl Engine {
                     }
                     Ok(_) => {
                         self.set_phase(LessonPhase::Idle);
-                        self.notices.push(Notice::NothingHeard);
+                        // A noise taken for speech ends quietly.
+                        if !self.lesson.as_ref().is_some_and(|l| l.asked_turn) {
+                            self.notices.push(Notice::NothingHeard);
+                        }
                     }
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);
@@ -1428,6 +1475,14 @@ fn relay_sentence(
     waker();
 }
 
+/// `text` ends with a question mark; closing quotes, brackets and emphasis
+/// after it do not matter.
+fn is_question(text: &str) -> bool {
+    text.trim_end()
+        .trim_end_matches(['"', '\'', ')', '”', '’', '」', '』', '）', '*', '_'])
+        .ends_with(['?', '？'])
+}
+
 /// Puts the finished reply in place of its streamed captions.
 fn settle_reply(lesson: &mut LessonSession) {
     let Some(text) = lesson.pending_reply.take() else {
@@ -1478,8 +1533,19 @@ fn tail_chars(text: &str, max: usize) -> &str {
 
 #[cfg(test)]
 mod stt_context_tests {
-    use super::{Partial, tail_chars};
+    use super::{Partial, is_question, tail_chars};
     use std::time::Duration;
+
+    #[test]
+    fn the_microphone_opens_only_after_a_question() {
+        assert!(is_question("E o que acontece com a pressão?"));
+        assert!(is_question("What does it mean?\" "));
+        assert!(is_question("これは何ですか？」"));
+        assert!(is_question("Pode me dizer o porquê?**"));
+        assert!(!is_question("A pressão aumenta. Vamos seguir."));
+        assert!(!is_question("Por quê? Porque o volume diminui."));
+        assert!(!is_question(""));
+    }
 
     #[test]
     fn stability_is_measured_in_recorded_audio() {
