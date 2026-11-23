@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.41.2] - 2026-11-23
+
 ### Fixed
 - Lessons: when the tutor finishes speaking with a question, the microphone opens by
   itself for the answer, skipping the echo of its last words. Otherwise it listens only
