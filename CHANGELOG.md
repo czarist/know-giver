@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.43.0] - 2026-11-24
+
 ### Changed
 - Local handwriting OCR picks its build by the dedicated graphics card, as speech
   recognition does: CUDA on NVIDIA cards, Vulkan on AMD and Intel Arc cards, the
