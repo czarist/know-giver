@@ -71,8 +71,10 @@ The following external projects are integrated as published:
 
 Shipping today:
 - llama.cpp (<https://github.com/ggml-org/llama.cpp>): `llama-server` as a child process for
-  local handwritten-answer OCR (engine `ocr.rs`), CPU builds everywhere and Vulkan on
-  Windows and Linux, with CPU fallback. Its version and the OCR model (PaddleOCR-VL 1.5) are
+  local handwritten-answer OCR (engine `ocr.rs`), picked by the dedicated card like
+  Nemotron: the official CUDA build on NVIDIA (Windows and Linux x86_64, downloaded with the
+  model), the bundled Vulkan build on AMD and Intel Arc (Windows and Linux), the bundled CPU
+  build without one, each falling back to the next. Its version and the OCR model (PaddleOCR-VL 1.5) are
   pinned with checksums in `local-ai.toml`, which the packaging scripts read and the app
   embeds; change them only there.
 - GitHub Copilot CLI, bundled by the official `github-copilot-sdk` crate

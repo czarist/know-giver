@@ -200,7 +200,7 @@ impl NemotronBackend {
 /// Whether an NVIDIA driver is installed, without starting anything:
 /// `nvcuda.dll` on Windows, `/proc/driver/nvidia` on Linux. It decides
 /// whether the CUDA build is downloaded (and counted in the download size).
-pub(crate) fn nvidia_driver_present() -> bool {
+pub fn nvidia_driver_present() -> bool {
     static PRESENT: OnceLock<bool> = OnceLock::new();
     *PRESENT.get_or_init(|| {
         if cfg!(windows) {

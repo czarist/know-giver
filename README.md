@@ -245,9 +245,12 @@ choose the configured vision API instead, which sends the photos to that provide
 Copilot is text-only, so it always uses local OCR. **Test image reading** checks the
 selected backend. One photo can hold one page or an open notebook with two pages side by
 side. Minimum hardware and handwriting accuracy have not yet been benchmarked; review
-every transcript before grading. Windows and Linux builds include a 🔺 [Vulkan](https://www.vulkan.org/)
-runtime and use a detected supported GPU when available, falling back to CPU if no device is found or
-GPU startup fails. macOS builds use CPU.
+every transcript before grading. The build follows the dedicated graphics card, as speech
+recognition does: CUDA on NVIDIA cards (the official llama.cpp CUDA build, about 590 MB,
+downloaded with the model, or later from the same screen), 🔺 [Vulkan](https://www.vulkan.org/)
+on AMD and Intel Arc cards (included in the Windows and Linux builds), and the CPU without a
+dedicated card. A GPU build that fails to start falls back to the next one and finally to the
+CPU. macOS builds use CPU.
 The Windows installer bundles the required C++ runtime and Vulkan loader; a compatible GPU
 driver is still needed for Vulkan.
 With a reasoning API model, keep **Fast responses** on so a dense page is not lost to long

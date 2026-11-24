@@ -179,7 +179,7 @@ app and CPU/Vulkan OCR runtimes were rebuilt and the portable package was verifi
 Planned, not started: managed local AI (Phase 8) — hardware diagnosis, model install,
 LiteLLM as a local proxy and optional gpu-unlock. Start with its investigation (8.1).
 Then proxy mode (Phase 9): several keys and models, including free plans, in a fallback
-order through the same LiteLLM proxy. The separately bundled CPU/Vulkan `llama-server`
+order through the same LiteLLM proxy. The bundled CPU/Vulkan (and downloaded CUDA) `llama-server`
 currently serves only written-answer OCR; general local AI is not available.
 
 Windows Kokoro voices are selectable (Dora, Sara, Heart, Emma, Alex, Santa), plus the
@@ -268,6 +268,26 @@ binaries passed `--version`. Vulkan still relies on the computer's compatible GP
 - [x] Include the pinned Vulkan runtime in Windows/Linux packages, prefer a detected
       compatible GPU for OCR, and retry with CPU if device discovery or GPU startup fails;
       macOS remains CPU-only.
+- [x] Pick the OCR build by the dedicated card, as Nemotron does (2026-11-24): CUDA on
+      NVIDIA (official llama.cpp b11960 CUDA 13.4 build and its CUDA libraries, about
+      590 MB, pinned in `local-ai.toml`, downloaded with the model only where a
+      dedicated NVIDIA card and driver are found, or later from the OCR screen),
+      Vulkan on AMD and Intel Arc (the Vulkan device of the dedicated card, not the
+      integrated one listed first on laptops), CPU without a dedicated card. Each GPU
+      build falls back to the next and finally to the CPU. Measured (2026-11-24, one
+      screenshot page, same 472-character transcript on every build):
+      - RTX 3060 (Windows): the CUDA build installs next to the model in 30 s and the
+        server is ready in 6.8 s (`cuda_runtime_installs_and_starts`, `#[ignore]`);
+      - RX 5500 + i7-4770 (Linux, RADV; the Intel HD 4600 is not listed by llama.cpp):
+        Vulkan ready in 2.9 s and the page read in 11.9 s, against 30.7 s and 59.6 s on
+        the CPU, with the b11960 Vulkan build and the app's arguments.
+      Still to check: the CUDA build on Linux, and an NVIDIA driver too old for CUDA 13
+      falling back to Vulkan.
+- [ ] Other local models stay on the CPU: Parakeet and Kokoro run on the sherpa-onnx
+      CPU library (its GPU builds are CUDA-only and need cuDNN installed separately; no
+      Vulkan), Whisper runs on candle's CPU build (its CUDA backend would have to be
+      compiled with the CUDA toolkit), and Piper is CPU-only. Revisit if one of them is
+      too slow on entry-level computers.
 - [x] Bundle Windows app and `llama-server` Visual C++ CRT/OpenMP dependencies and the
       Vulkan loader with the package; validate the required files during packaging and
       include the Vulkan SDK license registry. End users do not need the Visual C++

@@ -160,7 +160,7 @@ AI 決定；每個計劃的進度各自獨立。此功能推出前的學習同�
 - **核對讀取結果**：照片和轉寫並排顯示。你的書寫錯誤會保留，不確定的字詞不會扣分。
 - **形成性評分**：按標準估計的分數、經過核對的原文引用、優點、問題和建議、三個優先事項。
 
-預設由 PaddleOCR-VL 1.5（0.9B）透過隨應用程式提供的 [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 在本機讀取照片；首次需從 Hugging Face 下載約 1.82 GB 的模型。在設定 → AI 中明確選擇外部圖片 API 後，照片才會傳送給該服務商。Copilot 僅接受文字，因此一律使用本機 OCR。可透過**測試圖片讀取**確認所選方式。最低硬體需求和手寫辨識準確率尚未測試；評分前請務必核對轉寫。Windows/Linux 套件包含 🔺 [Vulkan](https://www.vulkan.org/) 執行環境，偵測到相容 GPU 時會優先使用；沒有裝置或 GPU 啟動失敗時退回 CPU。macOS 使用 CPU。按字數要求的中文作文，字數要求會寫在題目說明中。
+預設由 PaddleOCR-VL 1.5（0.9B）透過隨應用程式提供的 [🦙 llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` v0.8.0 在本機讀取照片；首次需從 Hugging Face 下載約 1.82 GB 的模型。在設定 → AI 中明確選擇外部圖片 API 後，照片才會傳送給該服務商。Copilot 僅接受文字，因此一律使用本機 OCR。可透過**測試圖片讀取**確認所選方式。最低硬體需求和手寫辨識準確率尚未測試；評分前請務必核對轉寫。與語音辨識一樣，依獨立顯示卡選擇版本：NVIDIA 顯示卡使用 CUDA（llama.cpp 官方 CUDA 版本，約 590 MB，隨模型下載，或之後在同一畫面下載），AMD 和 Intel Arc 顯示卡使用 🔺 [Vulkan](https://www.vulkan.org/)（Windows/Linux 已包含），沒有獨立顯示卡時使用 CPU。GPU 版本無法啟動時依序退回，最後使用 CPU。macOS 使用 CPU。按字數要求的中文作文，字數要求會寫在題目說明中。
 Windows 安裝程式包含所需的 C++ 執行階段和 Vulkan 載入器；使用 Vulkan 仍需安裝相容的顯示卡驅動程式。
 
 <table>
