@@ -1,10 +1,12 @@
-//! Speech recognition for lessons: Parakeet (fast, live captions) or
-//! Whisper, kept loaded between turns and shared with worker threads.
+//! Speech recognition for lessons: Parakeet (fast, live captions), Nemotron
+//! (told the language; being tested as Parakeet's replacement) or Whisper,
+//! kept loaded between turns and shared with worker threads.
 
 use std::sync::{Arc, Mutex};
 
 use kg_audio::{
-    AudioClip, AudioError, ModelId, ModelStore, ParakeetStt, SttEngine, WhisperModel, WhisperStt,
+    AudioClip, AudioError, ModelId, ModelStore, NemotronStt, ParakeetStt, SttEngine, WhisperModel,
+    WhisperStt,
 };
 
 use crate::EngineError;
@@ -17,6 +19,7 @@ const STT_LANGUAGE: &str = "pt";
 pub(crate) struct Recognizers {
     whisper: Arc<Mutex<Option<(WhisperModel, WhisperStt)>>>,
     parakeet: Arc<Mutex<Option<ParakeetStt>>>,
+    nemotron: Arc<Mutex<Option<NemotronStt>>>,
 }
 
 impl Recognizers {
@@ -33,6 +36,11 @@ impl Recognizers {
             ModelId::Parakeet | ModelId::KokoroRuntime => {
                 if let Ok(mut parakeet) = self.parakeet.lock() {
                     *parakeet = None;
+                }
+            }
+            ModelId::Nemotron | ModelId::NemoSpeechRuntime => {
+                if let Ok(mut nemotron) = self.nemotron.lock() {
+                    *nemotron = None;
                 }
             }
             _ => {}
@@ -63,12 +71,16 @@ impl SttJob {
         let parakeet = models.is_installed(ModelId::Parakeet)
             && models.is_installed(ModelId::KokoroRuntime)
             && models.asr_server_exe().is_some();
+        let nemotron = models.is_installed(ModelId::Nemotron)
+            && models.is_installed(ModelId::NemoSpeechRuntime);
         let whisper_installed = models.is_installed(ModelId::Whisper(whisper));
         let engine = match preferred {
             SttEngine::Parakeet if parakeet => SttEngine::Parakeet,
+            SttEngine::Nemotron if nemotron => SttEngine::Nemotron,
             SttEngine::Whisper if whisper_installed => SttEngine::Whisper,
             _ if parakeet => SttEngine::Parakeet,
             _ if whisper_installed => SttEngine::Whisper,
+            _ if nemotron => SttEngine::Nemotron,
             _ => return None,
         };
         Some(Self {
@@ -80,16 +92,16 @@ impl SttJob {
         })
     }
 
-    /// Whether every final transcript ends up in Portuguese: Whisper is told
-    /// the language, Parakeet is not and needs Whisper to read again what
-    /// came out in another language.
+    /// Whether every final transcript ends up in Portuguese: Whisper and
+    /// Nemotron are told the language, Parakeet is not and needs Whisper to
+    /// read again what came out in another language.
     pub(crate) fn keeps_portuguese(&self) -> bool {
-        self.engine == SttEngine::Whisper || self.whisper_installed
+        self.engine != SttEngine::Parakeet || self.whisper_installed
     }
 
     /// Whether live captions can be computed while the student speaks.
     pub(crate) fn live(&self) -> bool {
-        self.engine == SttEngine::Parakeet
+        matches!(self.engine, SttEngine::Parakeet | SttEngine::Nemotron)
     }
 
     /// Final transcription of a turn. `context` is what the tutor said last.
@@ -127,12 +139,18 @@ impl SttJob {
                 }
                 Ok(text)
             }
+            // Told the language, so no Whisper second opinion: the point of
+            // the test is to see how it does on its own.
+            SttEngine::Nemotron => self.nemotron(clip),
         }
     }
 
     /// Quick transcription of the audio so far, for live captions.
     pub(crate) fn partial(&self, clip: &AudioClip) -> Result<String, EngineError> {
-        self.parakeet(clip)
+        match self.engine {
+            SttEngine::Nemotron => self.nemotron(clip),
+            _ => self.parakeet(clip),
+        }
     }
 
     /// Loads the models in the background so the first answer is not delayed.
@@ -141,14 +159,19 @@ impl SttJob {
         let spawned = std::thread::Builder::new()
             .name("kg-stt-load".into())
             .spawn(move || {
-                if job.engine == SttEngine::Parakeet {
-                    let silence = AudioClip {
-                        samples: Vec::new(),
-                        sample_rate: kg_audio::STT_SAMPLE_RATE,
-                    };
-                    if let Err(err) = job.parakeet(&silence) {
-                        tracing::warn!(%err, "parakeet preload failed");
-                    }
+                let silence = AudioClip {
+                    samples: Vec::new(),
+                    sample_rate: kg_audio::STT_SAMPLE_RATE,
+                };
+                if job.engine == SttEngine::Parakeet
+                    && let Err(err) = job.parakeet(&silence)
+                {
+                    tracing::warn!(%err, "parakeet preload failed");
+                }
+                if job.engine == SttEngine::Nemotron
+                    && let Err(err) = job.nemotron(&silence)
+                {
+                    tracing::warn!(%err, "nemotron preload failed");
                 }
                 // Whisper also double-checks one-word answers.
                 if job.whisper_installed
@@ -225,6 +248,46 @@ impl SttJob {
                 Ok(text) => return Ok(text),
                 Err(err) if !retried => {
                     tracing::warn!(%err, "speech server failed; restarting it");
+                    *guard = None;
+                    retried = true;
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
+    }
+
+    /// Runs Nemotron, starting its server when needed and once more if it
+    /// stopped answering.
+    fn nemotron(&self, clip: &AudioClip) -> Result<String, EngineError> {
+        let runtimes = self.models.nemo_speech_runtimes();
+        if runtimes.is_empty() {
+            return Err(EngineError::SpeechModelMissing(ModelId::NemoSpeechRuntime));
+        }
+        let model = self
+            .models
+            .nemotron_model()
+            .ok_or(EngineError::SpeechModelMissing(ModelId::Nemotron))?;
+        let mut guard = self
+            .recognizers
+            .nemotron
+            .lock()
+            .map_err(|_| AudioError::Model("speech server lock poisoned".into()))?;
+        let mut retried = false;
+        loop {
+            if guard.as_mut().is_none_or(|n| !n.is_running()) {
+                *guard = None;
+                // Installed before builds were timed: time them once now.
+                self.models.ensure_nemotron_timed();
+                let runtimes = self.models.nemo_speech_runtimes();
+                *guard = Some(NemotronStt::start(&runtimes, &model)?);
+            }
+            let Some(nemotron) = guard.as_mut() else {
+                continue;
+            };
+            match nemotron.transcribe(clip) {
+                Ok(text) => return Ok(text),
+                Err(err) if !retried => {
+                    tracing::warn!(%err, "nemotron server failed; restarting it");
                     *guard = None;
                     retried = true;
                 }
@@ -400,6 +463,121 @@ pub(crate) fn ends_sentence(text: &str) -> bool {
 mod tests {
     use super::*;
 
+    /// 16-bit PCM WAV, any channel count, mixed to mono.
+    fn read_pcm16(path: &std::path::Path) -> AudioClip {
+        let bytes = std::fs::read(path).unwrap();
+        let channels = u16::from_le_bytes([bytes[22], bytes[23]]) as usize;
+        let sample_rate = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
+        let data = bytes.windows(4).position(|w| w == b"data").unwrap() + 8;
+        let samples: Vec<f32> = bytes[data..]
+            .chunks_exact(2 * channels)
+            .map(|frame| {
+                frame
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|s| f32::from(i16::from_le_bytes(*s)) / 32768.0)
+                    .sum::<f32>()
+                    / channels as f32
+            })
+            .collect();
+        AudioClip {
+            samples,
+            sample_rate,
+        }
+    }
+
+    /// Manual: a models folder with Nemotron and its runtime installed (it
+    /// is changed: the runtime is removed at the end) and the `rec` phrases.
+    /// KG_NEMOTRON_MODELS=<dir> cargo test -p kg-engine -- --ignored nemotron_end_to_end
+    #[test]
+    #[ignore = "needs a Nemotron install; removes its runtime"]
+    fn nemotron_end_to_end() {
+        let dir = std::env::var("KG_NEMOTRON_MODELS").expect("KG_NEMOTRON_MODELS");
+        let rec = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../rec");
+        let models = ModelStore::new(dir);
+        let recognizers = Recognizers::default();
+        let job = SttJob::resolve(
+            &recognizers,
+            &models,
+            SttEngine::Nemotron,
+            WhisperModel::default(),
+        )
+        .unwrap();
+        assert_eq!(job.engine, SttEngine::Nemotron);
+        assert!(job.live() && job.keeps_portuguese());
+
+        // Final transcript, with the server started on first use.
+        let clip = read_pcm16(&rec.join("07.wav"));
+        let text = job.transcribe(&clip, "").unwrap();
+        assert!(text.contains("legalidade"), "{text}");
+        // Short answer.
+        let text = job
+            .transcribe(&read_pcm16(&rec.join("01.wav")), "")
+            .unwrap();
+        assert!(text.starts_with("Sim"), "{text}");
+        // Live caption of the first half.
+        let half = AudioClip {
+            samples: clip.samples[..clip.samples.len() / 2].to_vec(),
+            sample_rate: clip.sample_rate,
+        };
+        let partial = job.partial(&half).unwrap();
+        assert!(partial.contains("princípio"), "{partial}");
+        // Silence gives nothing, without an error.
+        let silence = AudioClip {
+            samples: vec![0.0; 16_000],
+            sample_rate: 16_000,
+        };
+        assert_eq!(job.transcribe(&silence, "").unwrap(), "");
+        // Several turns at once share one server.
+        let threads: Vec<_> = (0..3)
+            .map(|_| {
+                let job = job.clone();
+                let clip = clip.clone();
+                std::thread::spawn(move || job.transcribe(&clip, ""))
+            })
+            .collect();
+        for thread in threads {
+            assert!(thread.join().unwrap().unwrap().contains("legalidade"));
+        }
+        // A server that died between turns is started again.
+        let pid = recognizers
+            .nemotron
+            .lock()
+            .unwrap()
+            .as_mut()
+            .map(|n| n.pid())
+            .unwrap();
+        let killed = if cfg!(windows) {
+            std::process::Command::new("taskkill")
+                .args(["/F", "/PID", &pid.to_string()])
+                .output()
+        } else {
+            std::process::Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .output()
+        };
+        assert!(killed.unwrap().status.success());
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(job.transcribe(&clip, "").unwrap().contains("legalidade"));
+        // The runtime can be removed while its server runs (Windows keeps
+        // running executables locked), as the settings screen does.
+        recognizers.unload(ModelId::NemoSpeechRuntime);
+        models.remove(ModelId::NemoSpeechRuntime).unwrap();
+        assert!(!models.is_installed(ModelId::NemoSpeechRuntime));
+        assert!(models.nemotron_fastest().is_none());
+        assert_eq!(
+            SttJob::resolve(
+                &recognizers,
+                &models,
+                SttEngine::Nemotron,
+                WhisperModel::default()
+            )
+            .map(|job| job.engine),
+            None
+        );
+    }
+
     #[test]
     fn counts_words_not_punctuation() {
         assert_eq!(word_count(" Sim. "), 1);
@@ -472,6 +650,7 @@ mod tests {
         }
         // Parakeet is not installed, so Whisper is used.
         assert_eq!(resolve(SttEngine::Parakeet), Some(SttEngine::Whisper));
+        assert_eq!(resolve(SttEngine::Nemotron), Some(SttEngine::Whisper));
         assert_eq!(resolve(SttEngine::Whisper), Some(SttEngine::Whisper));
     }
 }

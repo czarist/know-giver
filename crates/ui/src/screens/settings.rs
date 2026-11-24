@@ -426,6 +426,7 @@ pub(crate) fn voice_section(
                 ui.vertical(|ui| {
                     let selected = match draft.stt_engine {
                         SttEngine::Parakeet => i18n::model_name(ModelId::Parakeet),
+                        SttEngine::Nemotron => i18n::model_name(ModelId::Nemotron),
                         SttEngine::Whisper => i18n::whisper_model(draft.whisper_model),
                     };
                     egui::ComboBox::from_id_salt("stt_model")
@@ -440,6 +441,15 @@ pub(crate) fn voice_section(
                             {
                                 draft.stt_engine = SttEngine::Parakeet;
                             }
+                            if ui
+                                .selectable_label(
+                                    draft.stt_engine == SttEngine::Nemotron,
+                                    i18n::model_name(ModelId::Nemotron),
+                                )
+                                .clicked()
+                            {
+                                draft.stt_engine = SttEngine::Nemotron;
+                            }
                             for model in WhisperModel::ALL {
                                 let chosen = draft.stt_engine == SttEngine::Whisper
                                     && draft.whisper_model == model;
@@ -452,9 +462,20 @@ pub(crate) fn voice_section(
                                 }
                             }
                         });
-                    if draft.stt_engine == SttEngine::Parakeet {
-                        widgets::hint(ui, &t!("settings.voice.parakeet_hint"));
+                    match draft.stt_engine {
+                        SttEngine::Parakeet => {
+                            widgets::hint(ui, &t!("settings.voice.parakeet_hint"));
+                        }
+                        SttEngine::Nemotron => {
+                            widgets::hint(ui, &t!("settings.voice.nemotron_hint"));
+                        }
+                        SttEngine::Whisper => {}
                     }
+                    let recommended = match engine.recommended_stt() {
+                        SttEngine::Nemotron => t!("settings.voice.stt_recommended_nemotron"),
+                        _ => t!("settings.voice.stt_recommended_parakeet"),
+                    };
+                    widgets::hint(ui, &recommended);
                 });
                 ui.end_row();
 
@@ -758,10 +779,12 @@ fn models_section(ui: &mut egui::Ui, engine: &Engine, draft: &Settings, actions:
         widgets::hint(ui, &t!("settings.models.hint"));
         for id in ModelId::all() {
             let parakeet = draft.stt_engine == SttEngine::Parakeet;
+            let nemotron = draft.stt_engine == SttEngine::Nemotron;
             let in_use = match id {
                 ModelId::Whisper(m) => m == draft.whisper_model,
                 ModelId::Parakeet => parakeet,
                 ModelId::KokoroRuntime if parakeet => true,
+                ModelId::Nemotron | ModelId::NemoSpeechRuntime => nemotron,
                 _ => {
                     draft.tts_backend == TtsBackend::Local
                         && (id == draft.voice.model_id() || id == draft.voice.runtime_id())

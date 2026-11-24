@@ -92,6 +92,14 @@ uses OpenAI's *Sign in with ChatGPT* registration under the app's own name, neve
 client's ID or private tokens. Live check: `cargo run -p kg-ai --example account_check --
 <chatgpt|claude-code|copilot> [model]`.
 
+Shipping as the default on capable computers (ROADMAP "Replace local transcription with Nemotron 3.5 0.6B"):
+- NeMo-Speech.cpp (<https://github.com/NVIDIA/NeMo-Speech.cpp>, Apache-2.0): official CPU and
+  GPU (CUDA for NVIDIA, Vulkan for AMD and Intel, Metal) builds of `nemo-speech serve`, picked by the dedicated card (`crates/audio/src/hardware.rs`), else timed, with the CPU build as fallback, as a
+  child process on 127.0.0.1 for Nemotron 3.5 speech
+  recognition with an explicit language (`crates/audio/src/nemotron.rs`). The runtime and
+  the GGUF model (OpenMDW-1.1) are pinned with checksums in `local-ai.toml`. Nemotron is
+  the default from 8 GB of memory (recommended 16 GB and a 4 GB dedicated card); Parakeet stays the default below 8 GB.
+
 Planned for managed local AI (ROADMAP Phase 8), not built; do not describe them as available
 until they ship:
 - LiteLLM (<https://github.com/BerriAI/litellm>): local proxy, embedded in the installer

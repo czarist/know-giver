@@ -1,33 +1,91 @@
 # Roadmap — Know Giver
 
-## Planned — Replace local transcription with Nemotron 3.5 0.6B
+## In progress — Replace local transcription with Nemotron 3.5 0.6B
 
 Decision (2026-11-15): replace the current local STT pipeline with
 `nvidia/nemotron-3.5-asr-streaming-0.6b` to address inaccurate transcription and
-language confusion. Planned, not implemented; improved accuracy and speed must be
-verified on the target hardware before making it the default.
+language confusion. Shipped in 0.42.0 (2026-11-24). Decision (2026-11-23): Nemotron is the default from 8 GB of memory
+(the minimum); below that, Parakeet stays the default. Recommended: 16 GB and a
+dedicated card with 4 GB (`crates/audio/src/hardware.rs`, read from the registry,
+`/sys` or `sysctl`). Dedicated cards with 2 GB or more pick the build: CUDA on NVIDIA,
+Vulkan on AMD and Intel (CPU build as fallback); without one, the CPU build. Settings shows the recommendation; a recognizer the student
+picks there is kept (`stt_engine_chosen`). First results (2026-11-23, [docs/nemotron-evaluation.md](docs/nemotron-evaluation.md)):
+about half of Parakeet's word errors (13% against 26%), and "Sim / Não / Isso" no
+longer come out in English.
 
-- [ ] Integrate Nemotron through a suitable local runtime; evaluate
-      [NeMo-Speech.cpp](https://github.com/NVIDIA/NeMo-Speech.cpp) and quantized GGUF
-      weights, with Rust orchestration and an isolated child process where practical.
-      Rust is preferred, not mandatory: justified C/C++ dependencies are allowed.
+- [x] Integrate Nemotron through a suitable local runtime: the official
+      [NeMo-Speech.cpp](https://github.com/NVIDIA/NeMo-Speech.cpp) v0.3.0 builds run
+      `nemo-speech serve` as a child process on 127.0.0.1 with the official q8_0 GGUF
+      (742 MB); `crates/audio/src/nemotron.rs` starts it (`--no-warmup`: the server's
+      own warmup aborts the v0.3.0 Vulkan build with `GGML_ASSERT(ne1 == ne11)`), warms
+      it up with one second of faint noise, and posts each turn as a 16 kHz PCM16 WAV
+      to `/v1/audio/transcriptions`. sherpa-onnx also gained this model with a
+      `language` option (PR #3671), but upgrading it would touch the Kokoro runtime.
+      Run on the owner's PC and in a real lesson on 2026-11-23.
+- [x] Pick CPU or GPU per computer:
+      - builds: CUDA (NVIDIA, Windows and Linux x86_64, about 500 MB with CUDA 13,
+        downloaded only when an NVIDIA driver is installed — `nvcuda.dll`,
+        `/proc/driver/nvidia` — and counted in the size shown before downloading),
+        Vulkan (Windows, Linux; AMD and Intel GPUs) or Metal (Apple silicon), and CPU.
+        Intel Macs have no official GPU build;
+      - a GPU build is used only when `nemo-speech doctor --json` lists a GPU that is
+        not a software renderer (llvmpipe, SwiftShader, Microsoft Basic Render), has
+        1.5 GB free and a compatible driver (`driver_runtime_compatible`);
+      - right after installing (or on first use, for earlier installs) every usable
+        build is started and timed on four seconds of audio, best of two; the fastest
+        is saved in `models/nemo-speech/fastest.txt` and tried first, the others stay
+        as fallbacks. A GPU build must be 20% faster than the CPU build to win.
+        Reinstalling the runtime, or deleting the file, times them again;
+      - a GPU build that crashes while loading leaves `know-giver-gpu-failed.txt` beside
+        it and is skipped until it is reinstalled;
+      - timing and server starts share one lock, so parallel downloads or a lesson
+        preload never stop each other's servers;
+      - `KG_NEMOTRON_BACKEND=cpu|gpu|cuda` forces one build for measurements.
 - [ ] Target entry-level Intel/AMD CPUs with 8 GB total system RAM and no dedicated
-      GPU. Keep CPU execution available; evaluate optional Vulkan acceleration on AMD
-      integrated and discrete GPUs, including shared-memory pressure.
+      GPU, including shared-memory pressure on integrated GPUs. Measured so far:
+      - RTX 3060 + Ryzen 7 5700X (Windows): CUDA gives the CPU build's transcripts at
+        about 10x its speed (25 ms per phrase); picked by the timing;
+      - RX 5500 + i7-4770 (Linux, RADV): Vulkan is 1.6x faster than the CPU on real
+        clips but, as on NVIDIA, drops one-word answers ("Sim" empty) and never adds
+        punctuation; the timing keeps the CPU there;
+      - CPU build: about 0.8 GB peak RAM. Still to measure on an 8 GB machine without
+        a GPU, on an Intel GPU and on macOS.
+      Revisit Vulkan when a NeMo-Speech release fixes its output (the 2026-11-13
+      nightly has no Vulkan changes). ROCm/HIP and SYCL have no official build; not
+      worth building ourselves for this model's size.
 - [ ] Explicitly select the student's spoken language (pt-BR first), rather than
-      relying on automatic detection. Validate capture, resampling, silence handling
-      and utterance boundaries so existing audio problems do not carry over.
+      relying on automatic detection. Done in code: every request sends
+      `language=pt-BR` (from `local-ai.toml`), and Nemotron gets no Whisper second
+      opinion. Checked by `nemotron_end_to_end` (engine, `#[ignore]`): final transcript,
+      short answer, live caption, silence, three turns at once, a server killed between
+      turns, and removing the runtime while its server runs. Still to check: whether
+      live captions (one full request per partial) keep up on an entry-level CPU.
 - [ ] Compare the current pipeline and Nemotron on identical recordings: Brazilian
-      accents, exam terminology, numbers, noise, pauses and short answers. Record
-      transcription errors, language confusion, peak RAM/VRAM, cold-start time and
-      delay after speech on actual entry-level hardware; define release thresholds
-      from these measurements, not server GPU benchmarks.
-- [ ] Validate supported spoken languages and document gaps across all five app
-      locales; STT support alone does not enable unavailable TTS voices.
-- [ ] Pin the selected runtime/model versions and checksums in `local-ai.toml`;
-      review licences, downloads and packaging on Windows, Linux and macOS.
-      Keep the current pipeline as a fallback during migration; switch the default
-      after accuracy, latency and memory acceptance checks pass.
+      accents, exam terminology, numbers, noise, pauses and short answers. Done with
+      the 17 phrases in four Piper voices plus a noisy set, on two machines (table in
+      [docs/nemotron-evaluation.md](docs/nemotron-evaluation.md)). Still needed: real
+      voices through a real microphone, the owner's recordings, and release thresholds
+      from those measurements. Tooling: `nemotron_check` takes WAV files or folders and
+      prints WER against a `.txt` beside each WAV, time per clip, real-time factor, peak
+      memory and the fastest build here.
+- [x] Validate supported spoken languages and document gaps across all five app
+      locales; STT support alone does not enable unavailable TTS voices. From the model
+      card: pt-BR, en-US and ja-JP are transcription-ready, zh-CN (Mandarin) has broad
+      coverage, and there is no zh-TW locale. Voice lessons stay Portuguese, so the app
+      sends `pt-BR`.
+- [ ] Pin the selected runtime/model versions and checksums in `local-ai.toml`
+      (done: NeMo-Speech.cpp v0.3.0 `20999cc`, Apache-2.0, per-platform CPU, Vulkan or
+      Metal and CUDA archives with sizes; model revision `ea30d66`, OpenMDW-1.1;
+      credited in the READMEs). Downloads tested: Windows from scratch (CPU, Vulkan,
+      CUDA); Linux x86_64 CPU and Vulkan archives checked and run by hand. macOS and
+      the app's own download on Linux are untested. Parakeet stays installed as the
+      fallback and as the default on computers under 8 GB.
+- [x] Default per computer (2026-11-23): Nemotron from 8 GB of memory, Parakeet below.
+      A dedicated card (2 GB or more: NVIDIA; AMD not named "… Graphics"; Intel Arc
+      A/B) runs it on the GPU. Known cost: on AMD and Intel the v0.3.0 Vulkan build
+      drops some one-word answers and adds no punctuation; revisit with the next
+      NeMo-Speech release. Still to check on real machines: an AMD APU and an Intel
+      Arc card are classified right.
 
 Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>.
 

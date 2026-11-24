@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use chrono::NaiveDate;
 use kg_ai::{AiError, QuestionDraft, QuizFormat, ReviewFeedback, TopicContext};
-use kg_audio::{ModelId, RecordOptions, Recording};
+use kg_audio::{RecordOptions, Recording};
 use kg_study::{Quiz, QuizAttempt, QuizQuestion, QuizStyle, ReviewGrade, TopicId};
 
 /// Letters and digits only, to spot the same question twice.
@@ -488,7 +488,7 @@ impl Engine {
     /// Opens the microphone for a spoken answer.
     pub(crate) fn start_review_dictation(&mut self) -> Result<(), EngineError> {
         if self.stt_job().is_none() {
-            return Err(EngineError::SpeechModelMissing(ModelId::Parakeet));
+            return Err(EngineError::SpeechModelMissing(self.selected_stt_model()));
         }
         let Some(review) = self.review.as_ref() else {
             return Ok(());

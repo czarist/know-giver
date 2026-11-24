@@ -2,17 +2,20 @@
 //! and local model management.
 //!
 //! - Capture and playback: cpal / rodio (pure Rust on Windows, macOS, Linux).
-//! - STT: Parakeet through the sherpa-onnx runtime as a local server (fast), or
+//! - STT: Parakeet through the sherpa-onnx runtime as a local server (fast),
+//!   Nemotron 3.5 through the NeMo-Speech.cpp server (explicit language), or
 //!   Whisper running on candle (pure Rust, CPU), weights from Hugging Face.
 //! - TTS: Piper as a child process; Kokoro kept loaded through the downloaded
 //!   sherpa-onnx library (a child process when that fails); an optional HTTP
 //!   speech service. No C/C++ code is compiled into the app.
 
 mod capture;
+mod hardware;
 mod kokoro_ffi;
 mod kokoro_runtime;
 mod language;
 mod models;
+mod nemotron;
 mod parakeet;
 mod piper;
 mod playback;
@@ -23,10 +26,12 @@ mod voice;
 mod whisper;
 
 pub use capture::{RecordOptions, Recording};
+pub use hardware::{GpuVendor, SpeechHardware};
 pub use kokoro_ffi::release as release_kokoro;
 pub use kokoro_runtime::prepare_kokoro_executable;
 pub use language::{SpeechLang, language_runs, speech_pieces, strip_language_marks};
 pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel};
+pub use nemotron::{NemotronBackend, NemotronRuntime, NemotronStt};
 pub use parakeet::ParakeetStt;
 pub use piper::PiperTts;
 pub use playback::{OnStart, PlaybackLevel, Speaker};

@@ -417,9 +417,12 @@ fn lesson_without_speech_model_reports_missing_model() {
     let id = first_topic(&engine);
     engine.handle(Command::StartLesson(id)).unwrap();
     assert_eq!(topic(&engine, id).status, TopicStatus::Studying);
+    // The recognizer depends on this computer (Nemotron or Parakeet).
+    let missing = engine.selected_stt_model();
+    assert!(matches!(missing, ModelId::Parakeet | ModelId::Nemotron));
     assert!(matches!(
         engine.handle(Command::StartListening),
-        Err(EngineError::SpeechModelMissing(ModelId::Parakeet))
+        Err(EngineError::SpeechModelMissing(id)) if id == missing
     ));
     // Ending a lesson without any student turn does not count as studied.
     engine.handle(Command::EndLesson).unwrap();

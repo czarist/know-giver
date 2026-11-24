@@ -48,6 +48,10 @@ impl Engine {
         if id == ModelId::Parakeet {
             self.download_model(ModelId::KokoroRuntime);
         }
+        // Nemotron runs on the NeMo-Speech.cpp server.
+        if id == ModelId::Nemotron {
+            self.download_model(ModelId::NemoSpeechRuntime);
+        }
         let progress = Arc::new(AtomicU64::new(0));
         let cancel = Arc::new(AtomicBool::new(false));
         self.downloads.insert(
@@ -107,6 +111,12 @@ impl Engine {
         self.voice.reset_tts();
         self.models.remove(id)?;
         Ok(())
+    }
+
+    /// The recognizer for this computer: Nemotron with 8 GB of memory or
+    /// more, Parakeet otherwise.
+    pub fn recommended_stt(&self) -> kg_audio::SttEngine {
+        kg_audio::SpeechHardware::detect().recommended_stt()
     }
 
     /// True when speech recognition can run.

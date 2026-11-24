@@ -144,6 +144,9 @@ pub struct Settings {
     pub fillers: bool,
     /// Speech recognizer; falls back to whichever is installed.
     pub stt_engine: SttEngine,
+    /// The student picked the recognizer in Settings. Until then it follows
+    /// the computer ([`kg_audio::SpeechHardware::recommended_stt`]).
+    pub stt_engine_chosen: bool,
     /// Whisper model, used when Whisper is the recognizer and to double-check
     /// one-word answers with Parakeet.
     pub whisper_model: WhisperModel,
@@ -206,6 +209,7 @@ impl Default for Settings {
             turn_pause: DEFAULT_TURN_PAUSE,
             fillers: true,
             stt_engine: SttEngine::default(),
+            stt_engine_chosen: false,
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),
             english_voice: None,
@@ -256,7 +260,17 @@ impl Settings {
             settings.ai.api_key = env_ai.api_key.clone();
         }
         settings.normalize();
+        settings.follow_hardware(kg_audio::SpeechHardware::detect().recommended_stt());
         Ok(settings)
+    }
+
+    /// Until the student picks a recognizer, use the one for this computer:
+    /// Nemotron with 8 GB of memory or more, Parakeet otherwise. Whisper
+    /// was never a default, so it was picked on purpose.
+    fn follow_hardware(&mut self, recommended: SttEngine) {
+        if !self.stt_engine_chosen && self.stt_engine != SttEngine::Whisper {
+            self.stt_engine = recommended;
+        }
     }
 
     /// The required setup is missing, older than [`SETUP_VERSION`], or the
@@ -354,6 +368,30 @@ mod tests {
             api_key: "env-key".into(),
             ..AiConfig::default()
         }
+    }
+
+    #[test]
+    fn recognizer_follows_the_computer_until_picked() {
+        let old: Settings = serde_json::from_str(r#"{"stt_engine":"parakeet"}"#).unwrap();
+        assert!(!old.stt_engine_chosen);
+        let mut settings = old.clone();
+        settings.follow_hardware(SttEngine::Nemotron);
+        assert_eq!(settings.stt_engine, SttEngine::Nemotron);
+        settings.follow_hardware(SttEngine::Parakeet);
+        assert_eq!(settings.stt_engine, SttEngine::Parakeet);
+
+        let picked = Settings {
+            stt_engine: SttEngine::Parakeet,
+            stt_engine_chosen: true,
+            ..Settings::default()
+        };
+        let mut kept = picked.clone();
+        kept.follow_hardware(SttEngine::Nemotron);
+        assert_eq!(kept, picked);
+
+        let mut whisper: Settings = serde_json::from_str(r#"{"stt_engine":"whisper"}"#).unwrap();
+        whisper.follow_hardware(SttEngine::Nemotron);
+        assert_eq!(whisper.stt_engine, SttEngine::Whisper);
     }
 
     #[test]
