@@ -1166,6 +1166,9 @@ impl Engine {
 
     fn save_settings(&mut self, mut settings: Settings) -> Result<(), EngineError> {
         settings.normalize();
+        if settings.stt_engine != self.settings.stt_engine {
+            settings.stt_engine_chosen = true;
+        }
         let voice_changed = settings.voice != self.settings.voice
             || settings.tts_backend != self.settings.tts_backend
             || settings.cloud_speech != self.settings.cloud_speech

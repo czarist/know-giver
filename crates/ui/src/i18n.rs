@@ -205,6 +205,8 @@ pub fn model_name(id: ModelId) -> String {
         ModelId::KokoroRuntime => t!("models.kokoro_runtime").into_owned(),
         ModelId::KokoroModel => t!("models.kokoro_model").into_owned(),
         ModelId::Parakeet => t!("models.parakeet").into_owned(),
+        ModelId::NemoSpeechRuntime => t!("models.nemo_speech_runtime").into_owned(),
+        ModelId::Nemotron => t!("models.nemotron").into_owned(),
     }
 }
 
@@ -217,6 +219,8 @@ pub fn model_description(id: ModelId) -> String {
         ModelId::KokoroRuntime => t!("models.kokoro_runtime_description"),
         ModelId::KokoroModel => t!("models.kokoro_model_description"),
         ModelId::Parakeet => t!("models.parakeet_description"),
+        ModelId::NemoSpeechRuntime => t!("models.nemo_speech_runtime_description"),
+        ModelId::Nemotron => t!("models.nemotron_description"),
     }
     .into_owned()
 }

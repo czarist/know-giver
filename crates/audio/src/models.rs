@@ -176,6 +176,8 @@ pub enum SttEngine {
     #[default]
     Parakeet,
     Whisper,
+    /// Nemotron 3.5 through the NeMo-Speech.cpp server, told the language.
+    Nemotron,
 }
 
 /// Brazilian Portuguese Piper voices.
@@ -231,11 +233,16 @@ pub enum ModelId {
     /// NVIDIA Parakeet TDT 0.6B v3 speech recognition (needs the sherpa-onnx
     /// runtime, [`ModelId::KokoroRuntime`]).
     Parakeet,
+    /// Pinned NeMo-Speech.cpp runtime (`local-ai.toml`).
+    NemoSpeechRuntime,
+    /// NVIDIA Nemotron 3.5 ASR Streaming 0.6B, GGUF q8_0 (needs
+    /// [`ModelId::NemoSpeechRuntime`]).
+    Nemotron,
 }
 
 impl ModelId {
     pub fn all() -> Vec<Self> {
-        let mut all = vec![Self::Parakeet];
+        let mut all = vec![Self::Parakeet, Self::Nemotron, Self::NemoSpeechRuntime];
         all.extend(WhisperModel::ALL.into_iter().map(Self::Whisper));
         all.push(Self::PiperRuntime);
         all.extend(PiperVoice::ALL.into_iter().map(Self::Voice));
@@ -254,6 +261,14 @@ impl ModelId {
             Self::KokoroRuntime => 26_700_000,
             Self::KokoroModel => 350_000_000,
             Self::Parakeet => 487_200_000,
+            // CPU build plus the Vulkan/Metal one.
+            // Plus the CUDA build where an NVIDIA driver is installed.
+            Self::NemoSpeechRuntime if cfg!(windows) => {
+                31_100_000 + crate::nemotron::cuda_download_bytes()
+            }
+            Self::NemoSpeechRuntime if cfg!(target_os = "macos") => 14_100_000,
+            Self::NemoSpeechRuntime => 29_100_000 + crate::nemotron::cuda_download_bytes(),
+            Self::Nemotron => crate::nemotron::model_file().map_or(742_090_464, |m| m.bytes),
         }
     }
 
@@ -263,6 +278,9 @@ impl ModelId {
         match self {
             Self::PiperRuntime => piper_package().is_some(),
             Self::KokoroRuntime => sherpa_package().is_some(),
+            Self::NemoSpeechRuntime => {
+                crate::nemotron::runtime_package(crate::NemotronBackend::Cpu).is_some()
+            }
             _ => true,
         }
     }
@@ -306,6 +324,144 @@ impl ModelStore {
 
     pub fn parakeet_dir(&self) -> PathBuf {
         self.root.join("parakeet").join(PARAKEET_DIR)
+    }
+
+    fn nemotron_dir(&self) -> PathBuf {
+        self.root.join("nemotron")
+    }
+
+    /// The downloaded Nemotron GGUF file.
+    pub fn nemotron_model(&self) -> Option<PathBuf> {
+        let file = crate::nemotron::model_file().ok()?.file;
+        Some(self.nemotron_dir().join(file))
+    }
+
+    fn nemo_speech_dir(&self) -> PathBuf {
+        self.root.join("nemo-speech")
+    }
+
+    /// The downloaded `nemo-speech` executable of one build.
+    fn nemo_speech_build(&self, backend: crate::NemotronBackend) -> Option<PathBuf> {
+        let package = crate::nemotron::runtime_package(backend)?;
+        let exe = self
+            .nemo_speech_dir()
+            .join(backend.folder())
+            .join(package.dir)
+            .join("bin")
+            .join(exe_name("nemo-speech"));
+        exe.is_file().then_some(exe)
+    }
+
+    /// The downloaded CPU `nemo-speech` executable, or one installed on
+    /// `PATH` outside Windows.
+    pub fn nemo_speech_exe(&self) -> Option<PathBuf> {
+        find_program(
+            self.nemo_speech_build(crate::NemotronBackend::Cpu),
+            &exe_name("nemo-speech"),
+        )
+    }
+
+    /// The installed builds in the order to try them: the one for the
+    /// dedicated card (CUDA on NVIDIA, Vulkan on AMD and Intel) or else the
+    /// one measured fastest here first, then CUDA, Vulkan or Metal, CPU.
+    pub fn nemo_speech_runtimes(&self) -> Vec<crate::NemotronRuntime> {
+        let mut runtimes = self.nemo_speech_builds();
+        let installed =
+            |backend: &crate::NemotronBackend| runtimes.iter().any(|r| r.backend == *backend);
+        let first = crate::SpeechHardware::detect()
+            .preferred_backend()
+            .filter(installed)
+            .or_else(|| self.nemotron_fastest());
+        if let Some(first) = first
+            && let Some(at) = runtimes.iter().position(|r| r.backend == first)
+        {
+            let first = runtimes.remove(at);
+            runtimes.insert(0, first);
+        }
+        runtimes
+    }
+
+    /// The installed builds in the default order.
+    fn nemo_speech_builds(&self) -> Vec<crate::NemotronRuntime> {
+        crate::nemotron::backend_order()
+            .into_iter()
+            .filter_map(|backend| {
+                let exe = match backend {
+                    crate::NemotronBackend::Cpu => self.nemo_speech_exe(),
+                    _ => self.nemo_speech_build(backend),
+                }?;
+                Some(crate::NemotronRuntime { exe, backend })
+            })
+            .collect()
+    }
+
+    fn nemotron_fastest_file(&self) -> PathBuf {
+        self.nemo_speech_dir().join("fastest.txt")
+    }
+
+    /// The build measured fastest on this computer, if it was measured.
+    pub fn nemotron_fastest(&self) -> Option<crate::NemotronBackend> {
+        let text = fs::read_to_string(self.nemotron_fastest_file()).ok()?;
+        crate::NemotronBackend::parse(&text)
+    }
+
+    /// Times the builds once, unless a result is already saved. Safe to call
+    /// from several threads: the others wait and find the saved result.
+    pub fn ensure_nemotron_timed(&self) {
+        let _start = crate::nemotron::start_lock();
+        if self.nemotron_fastest().is_none() {
+            self.time_nemotron_builds();
+        }
+    }
+
+    /// Times every installed build that can run here (a few seconds each)
+    /// and remembers the fastest. `KG_NEMOTRON_BACKEND` skips the timing.
+    pub fn choose_nemotron_backend(&self) -> Option<crate::NemotronBackend> {
+        let _start = crate::nemotron::start_lock();
+        self.time_nemotron_builds()
+    }
+
+    /// A dedicated card skips the timing: CUDA on NVIDIA, Vulkan on AMD and
+    /// Intel, when that build is installed.
+    fn time_nemotron_builds(&self) -> Option<crate::NemotronBackend> {
+        if let Some(forced) = crate::nemotron::forced_backend() {
+            return Some(forced);
+        }
+        let model = self.nemotron_model()?;
+        let builds = self.nemo_speech_builds();
+        let preferred = crate::SpeechHardware::detect()
+            .preferred_backend()
+            .filter(|backend| builds.iter().any(|r| r.backend == *backend));
+        let fastest = match preferred {
+            Some(backend) => backend,
+            None => crate::nemotron::fastest_backend(&builds, &model)?,
+        };
+        let file = self.nemotron_fastest_file();
+        if let Err(err) = fs::write(&file, fastest.as_str()) {
+            tracing::warn!(%err, file = %file.display(), "could not save the fastest nemotron build");
+        }
+        tracing::info!(backend = fastest.as_str(), "fastest nemotron build");
+        Some(fastest)
+    }
+
+    fn install_nemo_speech(
+        &self,
+        fetcher: &mut Fetcher<'_>,
+        backend: crate::NemotronBackend,
+    ) -> Result<(), AudioError> {
+        let package = crate::nemotron::runtime_package(backend).ok_or_else(|| {
+            AudioError::Unsupported("no official nemo-speech build for this system".into())
+        })?;
+        let exe = Path::new(&package.dir)
+            .join("bin")
+            .join(exe_name("nemo-speech"));
+        self.install_bundle(
+            fetcher,
+            &package.url,
+            Some(&package.sha256),
+            &self.nemo_speech_dir().join(backend.folder()),
+            &|unpacked| unpacked.join(&exe).is_file(),
+        )
     }
 
     /// The downloaded sherpa-onnx runtime, or one installed on `PATH`
@@ -352,6 +508,10 @@ impl ModelStore {
             ModelId::KokoroRuntime => self.kokoro_exe().is_some(),
             ModelId::KokoroModel => kokoro_model_complete(&self.kokoro_dir()),
             ModelId::Parakeet => parakeet_complete(&self.parakeet_dir()),
+            ModelId::NemoSpeechRuntime => self.nemo_speech_exe().is_some(),
+            ModelId::Nemotron => self
+                .nemotron_model()
+                .is_some_and(|path| fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() > 0)),
         }
     }
 
@@ -367,14 +527,29 @@ impl ModelStore {
             ModelId::KokoroRuntime => vec![self.sherpa_dir()],
             ModelId::KokoroModel => vec![self.root.join("kokoro")],
             ModelId::Parakeet => vec![self.root.join("parakeet")],
+            ModelId::NemoSpeechRuntime => vec![self.nemo_speech_dir()],
+            ModelId::Nemotron => vec![self.nemotron_dir()],
         };
         paths.iter().map(|p| disk_usage(p)).sum()
     }
 
     pub fn remove(&self, id: ModelId) -> Result<(), AudioError> {
-        let remove_dir = |dir: PathBuf| match fs::remove_dir_all(&dir) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(AudioError::io(dir, e)),
-            _ => Ok(()),
+        // A program stopped a moment ago (a speech server unloaded just
+        // before) can keep its files locked briefly on Windows, while the
+        // system or an antivirus lets go of them; keep removing what is left.
+        let remove_dir = |dir: PathBuf| {
+            let mut tries = 0;
+            loop {
+                match fs::remove_dir_all(&dir) {
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+                    Err(_) if tries < 15 => {
+                        tries += 1;
+                        std::thread::sleep(Duration::from_millis(200));
+                    }
+                    Err(e) => return Err(AudioError::io(dir, e)),
+                    Ok(()) => return Ok(()),
+                }
+            }
         };
         match id {
             ModelId::Whisper(m) => remove_dir(self.whisper_dir(m)),
@@ -382,6 +557,8 @@ impl ModelStore {
             ModelId::KokoroRuntime => remove_dir(self.sherpa_dir()),
             ModelId::KokoroModel => remove_dir(self.root.join("kokoro")),
             ModelId::Parakeet => remove_dir(self.root.join("parakeet")),
+            ModelId::NemoSpeechRuntime => remove_dir(self.nemo_speech_dir()),
+            ModelId::Nemotron => remove_dir(self.nemotron_dir()),
             ModelId::Voice(v) => {
                 let (a, b) = self.voice_files(v);
                 for path in [a, b] {
@@ -459,9 +636,84 @@ impl ModelStore {
                 &self.root.join("parakeet"),
                 &|unpacked| parakeet_complete(&unpacked.join(PARAKEET_DIR)),
             )?,
+            ModelId::NemoSpeechRuntime => {
+                use crate::NemotronBackend;
+                // New builds are timed again below.
+                let _ = fs::remove_file(self.nemotron_fastest_file());
+                self.install_nemo_speech(&mut fetcher, NemotronBackend::Cpu)?;
+                // The GPU build only speeds things up; the CPU build works
+                // without it.
+                if crate::nemotron::runtime_package(NemotronBackend::Gpu).is_some()
+                    && let Err(err) = self.install_nemo_speech(&mut fetcher, NemotronBackend::Gpu)
+                {
+                    if matches!(err, AudioError::Cancelled) {
+                        return Err(err);
+                    }
+                    tracing::warn!(%err, "nemo-speech GPU build not installed; using the CPU build");
+                }
+                // The CUDA build is large (CUDA libraries included), so it is
+                // fetched only with an NVIDIA driver; it is already counted
+                // in `approx_bytes`. `doctor` still checks the GPU at start.
+                if crate::nemotron::cuda_download_bytes() > 0
+                    && let Err(err) = self.install_nemo_speech(&mut fetcher, NemotronBackend::Cuda)
+                {
+                    if matches!(err, AudioError::Cancelled) {
+                        return Err(err);
+                    }
+                    tracing::warn!(%err, "nemo-speech CUDA build not installed");
+                }
+            }
+            ModelId::Nemotron => {
+                let model = crate::nemotron::model_file()?;
+                self.install_file(
+                    &mut fetcher,
+                    &model.url,
+                    &model.sha256,
+                    &self.nemotron_dir(),
+                    &model.file,
+                )?;
+            }
         }
         tracing::info!(?id, "model installed");
+        // With both the runtime and the model in place, pick the fastest
+        // build for this computer (CPU or GPU).
+        if matches!(id, ModelId::NemoSpeechRuntime | ModelId::Nemotron)
+            && self.is_installed(ModelId::NemoSpeechRuntime)
+            && self.is_installed(ModelId::Nemotron)
+            && !cancel.load(Ordering::Relaxed)
+        {
+            self.ensure_nemotron_timed();
+        }
         Ok(())
+    }
+
+    /// Downloads one file, checks it, and moves it to `dest/name`. Staged
+    /// like a bundle, so a failed check never looks installed.
+    fn install_file(
+        &self,
+        fetcher: &mut Fetcher<'_>,
+        url: &str,
+        sha256: &str,
+        dest: &Path,
+        name: &str,
+    ) -> Result<(), AudioError> {
+        fs::create_dir_all(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+        let staging =
+            tempfile::tempdir_in(&self.root).map_err(|e| AudioError::io(&self.root, e))?;
+        let unpacked = staging.path().join("unpacked");
+        let file = unpacked.join(name);
+        fetcher.fetch(url, &file)?;
+        check_sha256(&file, sha256, url)?;
+        if fetcher.cancel.load(Ordering::Relaxed) {
+            return Err(AudioError::Cancelled);
+        }
+        if dest.exists() {
+            fs::remove_dir_all(dest).map_err(|e| AudioError::io(dest, e))?;
+        }
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| AudioError::io(parent, e))?;
+        }
+        fs::rename(&unpacked, dest).map_err(|e| AudioError::io(dest, e))
     }
 
     /// Downloads an archive, checks it, and moves its contents to `dest`.
@@ -493,6 +745,9 @@ impl ModelStore {
         }
         if dest.exists() {
             fs::remove_dir_all(dest).map_err(|e| AudioError::io(dest, e))?;
+        }
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| AudioError::io(parent, e))?;
         }
         fs::rename(&unpacked, dest).map_err(|e| AudioError::io(dest, e))
     }

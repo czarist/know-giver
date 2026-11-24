@@ -613,6 +613,15 @@ impl Engine {
         )
     }
 
+    /// The model of the recognizer in Settings, to name when it is missing.
+    pub(crate) fn selected_stt_model(&self) -> ModelId {
+        match self.settings.stt_engine {
+            SttEngine::Parakeet => ModelId::Parakeet,
+            SttEngine::Nemotron => ModelId::Nemotron,
+            SttEngine::Whisper => ModelId::Whisper(self.settings.whisper_model),
+        }
+    }
+
     /// The student pressed the microphone. Pressing it while the tutor talks
     /// stops the voice and skips its echo.
     pub(crate) fn start_listening(&mut self) -> Result<(), EngineError> {
@@ -639,12 +648,7 @@ impl Engine {
     /// tutor's question, right as its voice ended.
     fn begin_turn(&mut self, asked: bool) -> Result<(), EngineError> {
         if !self.stt_ready() {
-            return Err(EngineError::SpeechModelMissing(
-                match self.settings.stt_engine {
-                    SttEngine::Parakeet => ModelId::Parakeet,
-                    SttEngine::Whisper => ModelId::Whisper(self.settings.whisper_model),
-                },
-            ));
+            return Err(EngineError::SpeechModelMissing(self.selected_stt_model()));
         }
         let after_tutor = asked
             || self

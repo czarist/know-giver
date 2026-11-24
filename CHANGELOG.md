@@ -6,6 +6,60 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-24
+
+### Added
+- Speech recognition: **Nemotron 3.5** (NVIDIA Nemotron 3.5 ASR Streaming 0.6B,
+  GGUF q8_0) in Settings → Voice → Speech recognition, next to Parakeet and Whisper.
+  It is the default from 8 GB of memory (the minimum); below that, Parakeet stays the
+  default. Recommended: 16 GB of memory and a dedicated graphics card with 4 GB.
+  Settings shows which one fits the computer, and a recognizer picked there is kept.
+  - The app reads the installed memory and the graphics cards from the system
+    (registry on Windows, `/sys` on Linux; Macs count as having no dedicated card).
+    A dedicated card needs 2 GB of its own memory: NVIDIA cards, AMD cards not named
+    "… Graphics", and Intel Arc A and B cards.
+  - Dedicated cards pick the build directly: CUDA on NVIDIA, Vulkan on AMD and Intel,
+    with the CPU build as fallback if it fails to start. Without one, the builds are
+    still timed as below.
+  - README: system requirements (8 GB minimum, 16 GB and a 4 GB card recommended) and
+    up-to-date badges.
+  - It runs on the official NeMo-Speech.cpp server (`nemo-speech serve`, only on
+    127.0.0.1) and is told the language (pt-BR) instead of guessing it, so it gets no
+    Whisper second opinion. Live captions work with it too.
+  - First results (17 phrases, four synthetic voices and a noisy set, two machines):
+    about half of Parakeet's word errors, and "Sim / Não / Isso" no longer come out in
+    English.
+  - CPU or GPU, per computer: CUDA for NVIDIA GPUs (Windows and Linux x86_64; about
+    500 MB, downloaded only with an NVIDIA driver installed and counted in the size
+    shown before downloading), Vulkan for AMD and Intel GPUs (Windows, Linux), Metal on
+    Apple silicon, and the CPU build everywhere (Intel Macs have no GPU build). A GPU
+    build is used only when `nemo-speech doctor` reports a real GPU with room for the
+    model and a compatible driver; one that crashed is skipped afterwards.
+  - Without a dedicated card, right after installing (or on first use, for earlier
+    installs) the app times each usable build on four seconds of audio and uses the
+    fastest from then on; a GPU build (Metal on Apple silicon) must beat the CPU build
+    by 20%.
+  - Known gap: the v0.3.0 Vulkan build drops some one-word answers ("Sim" comes back
+    empty) and adds no punctuation; AMD and Intel cards use it anyway.
+  - The server's own warmup is off (it aborts the v0.3.0 Vulkan build); the app warms
+    it up with its first request.
+  - The runtime (v0.3.0) and the model are pinned with checksums in `local-ai.toml` and
+    downloaded from the model list.
+  - `cargo run --release -p kg-audio --example nemotron_check -- <models-dir> <wavs or
+    folders>` compares Nemotron and Parakeet on the same recordings (word error rate
+    against a `.txt` next to each WAV, time, peak memory, fastest build);
+    `docs/nemotron-evaluation.md` has the phrases, the procedure and the results.
+
+### Changed
+- When the chosen speech recognition is not installed, Nemotron is also tried before
+  voice input is turned off.
+
+### Fixed
+- Removing a model right after its speech server stopped no longer fails halfway on
+  Windows with "file in use": the files are removed again for up to three seconds.
+- A model archive that unpacks into a folder not created yet installs instead of
+  failing after the download.
+
 ## [0.41.2] - 2026-11-23
 
 ### Fixed
