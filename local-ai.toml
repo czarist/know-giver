@@ -15,3 +15,60 @@ model_sha256 = "299051d54faa065abc505cc39b8383ea338fd3020c775ea3e0ba514a7022328c
 mmproj_file = "PaddleOCR-VL-1.5-mmproj.gguf"
 mmproj_bytes = 881770496
 mmproj_sha256 = "e7f1a72400fba517046f90d964e2fa0f4dac7781ee3b1bc5d2022f5f8cecbd87"
+
+# NeMo-Speech.cpp runs NVIDIA's speech models from GGUF files. The app starts
+# `nemo-speech serve` on 127.0.0.1 for the Nemotron speech recognition test.
+# `file` is the CPU build; `gpu_file` the Vulkan (Windows, Linux) or Metal (Apple
+# silicon) build, tried first with a fallback to the CPU one.
+[nemo_speech]
+repository = "https://github.com/NVIDIA/NeMo-Speech.cpp"
+version = "v0.3.0"
+commit = "20999cc921d2b14aa58708f61756a8b2e787ba20"
+license = "Apache-2.0"
+
+[nemo_speech.builds.windows-x86_64]
+file = "nemo-speech-0.3.0-windows-x86_64-cpu.zip"
+sha256 = "4ed9740e361e4653f56c3dce7d1e81883a1c8b831c1bd7d01567fff1130b5b05"
+gpu_file = "nemo-speech-0.3.0-windows-x86_64-vulkan.zip"
+gpu_sha256 = "72b3b8b41bfe2be0320eff4e9d310594e4f99deefcde4a157799a039656963ce"
+# NVIDIA GPUs; bundles CUDA 13 (about 510 MB), so it is downloaded only when an
+# NVIDIA driver is installed (nvcuda.dll or /proc/driver/nvidia).
+cuda_file = "nemo-speech-0.3.0-windows-x86_64-cuda.zip"
+cuda_sha256 = "d0d32ae1bf6ee0534767a47b2aa0e9e2ff6fe39643465c0baae9301d04f6ed42"
+cuda_bytes = 508625181
+
+[nemo_speech.builds.linux-x86_64]
+file = "nemo-speech-0.3.0-linux-x86_64-cpu.tar.gz"
+sha256 = "255f12b722ab15b2a38a51cf125d56e3fa97058b528f7e895b39d6a473deb06e"
+gpu_file = "nemo-speech-0.3.0-linux-x86_64-vulkan.tar.gz"
+gpu_sha256 = "2a8b2ca4610b6ea5d659ba10794526f6e5a77fb1623d52c35272a9fd1f74abac"
+cuda_file = "nemo-speech-0.3.0-linux-x86_64-cuda.tar.gz"
+cuda_sha256 = "eca00a1f67d3ca200ddba11dd71c4f3d67e044cc0939d17d073978e40b995917"
+cuda_bytes = 703984313
+
+[nemo_speech.builds.linux-aarch64]
+file = "nemo-speech-0.3.0-linux-aarch64-cpu.tar.gz"
+sha256 = "56858eaf50d19b05902c043f65d0057352bdc107ae380c41053bfbddfc204bf1"
+gpu_file = "nemo-speech-0.3.0-linux-aarch64-vulkan.tar.gz"
+gpu_sha256 = "0de233655dd579117f8f0cfd6c9dc77fe53bf11673cc44b5c42017a1fb2b8140"
+
+[nemo_speech.builds.macos-aarch64]
+file = "nemo-speech-0.3.0-macos-aarch64-cpu.tar.gz"
+sha256 = "2c3a7a719b778daeb14f147e011891f16e4b2ac62388d8b8d8b365cc2eebdf15"
+gpu_file = "nemo-speech-0.3.0-macos-aarch64-metal.tar.gz"
+gpu_sha256 = "2b972ed8b5dba07492212acf8cb75cbf34ecb141198ffa1997febe84b7c4d9ed"
+
+[nemo_speech.builds.macos-x86_64]
+file = "nemo-speech-0.3.0-macos-x86_64-cpu.tar.gz"
+sha256 = "97e98aa5eb82dffa4f513f26336b5301d792c9fb43f720ac8f9520a0e92ffe3f"
+
+# Speech recognition with an explicit language (no automatic detection).
+[stt.nemotron_3_5]
+repository = "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b"
+revision = "ea30d66debe3740a08b573244286791d423d6b3e"
+license = "OpenMDW-1.1"
+parameters = "0.6B"
+model_file = "nemotron-3.5-asr-streaming-0.6b.q8_0.gguf"
+model_bytes = 742090464
+model_sha256 = "3fc991d3badad7277c11030a7519832cddaf2057aafed6d4b25147e953a070b1"
+language = "pt-BR"

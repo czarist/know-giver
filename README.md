@@ -20,12 +20,12 @@
   <a href="https://github.com/emilk/egui"><img alt="UI: egui" src="https://img.shields.io/badge/UI-egui%200.36-2c6b5c?style=flat-square"></a>
   <a href="https://www.sqlite.org"><img alt="Storage: SQLite" src="https://img.shields.io/badge/storage-SQLite-2c6b5c?style=flat-square&logo=sqlite&logoColor=white"></a>
   <a href="https://typst.app"><img alt="Handouts: Typst" src="https://img.shields.io/badge/handouts-Typst-2c6b5c?style=flat-square&logo=typst&logoColor=white"></a>
-  <img alt="Speech to text: Whisper and Parakeet" src="https://img.shields.io/badge/speech-Whisper%20%C2%B7%20Parakeet-2c6b5c?style=flat-square&logo=huggingface&logoColor=white">
+  <a href="https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b"><img alt="Speech to text: Nemotron, Parakeet and Whisper" src="https://img.shields.io/badge/speech-Nemotron%20%C2%B7%20Parakeet%20%C2%B7%20Whisper-2c6b5c?style=flat-square&logo=huggingface&logoColor=white"></a>
   <a href="https://github.com/rhasspy/piper"><img alt="Voices: Piper and Kokoro" src="https://img.shields.io/badge/voices-Piper%20%C2%B7%20Kokoro-2c6b5c?style=flat-square"></a>
   <img alt="AI: OpenAI-compatible APIs and GitHub Copilot" src="https://img.shields.io/badge/AI-OpenAI--compatible-2c6b5c?style=flat-square&logo=ollama&logoColor=white">
   <img alt="Sign in: ChatGPT, Claude Code, GitHub Copilot" src="https://img.shields.io/badge/Sign%20in-ChatGPT%20%C2%B7%20Claude%20Code%20%C2%B7%20Copilot-2c6b5c?style=flat-square&logo=openid&logoColor=white">
-  <a href="https://github.com/ggml-org/llama.cpp"><img alt="OCR runtime: llama.cpp" src="https://img.shields.io/badge/OCR-llama.cpp-2c6b5c?style=flat-square"></a>
-  <a href="https://www.vulkan.org/"><img alt="GPU acceleration: Vulkan" src="https://img.shields.io/badge/GPU-Vulkan-2c6b5c?style=flat-square&logo=vulkan&logoColor=white"></a>
+  <a href="https://github.com/ggml-org/llama.cpp"><img alt="Handwriting OCR: PaddleOCR-VL on llama.cpp" src="https://img.shields.io/badge/OCR-PaddleOCR--VL%20%C2%B7%20llama.cpp-2c6b5c?style=flat-square"></a>
+  <img alt="GPU acceleration: CUDA, Vulkan and Metal" src="https://img.shields.io/badge/GPU-CUDA%20%C2%B7%20Vulkan%20%C2%B7%20Metal-2c6b5c?style=flat-square&logo=vulkan&logoColor=white">
   <img alt="Windows" src="https://img.shields.io/badge/-Windows-2c6b5c?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D&logoColor=white&labelColor=111111">
   <img alt="macOS" src="https://img.shields.io/badge/-macOS-2c6b5c?style=flat-square&logo=apple&logoColor=white&labelColor=111111">
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
@@ -82,6 +82,11 @@ Local speech recognition: **Parakeet** for live captions while you talk, **Whisp
 as a second opinion on short or doubtful answers. The microphone stays open for the
 whole lesson, soft voices are brought up before recognition, and your turn ends after
 a pause you choose in Settings, so you can stop to think of a word.
+
+**Nemotron 3.5** (NVIDIA) recognizes speech by default from 8 GB of memory; below that,
+Parakeet stays the default. You can change it in Settings → Voice. Nemotron is told the language instead
+of guessing it, and in the first tests it made about half of Parakeet's mistakes. It runs
+with CUDA on NVIDIA cards, Vulkan on AMD and Intel cards, and on the CPU otherwise.
 
 ### 🗣️ Speaking
 The tutor starts talking with the first sentence of its answer, says "Hum." while it
@@ -331,6 +336,8 @@ bar and mark schemes. The exam notice and past exams always come first.
 
 Each version is published as a [GitHub release](https://github.com/czarist/know-giver/releases/latest) with packages for Windows (x64), macOS (Apple silicon) and Linux (x86_64). One command downloads the latest, checks it against the release's checksums and installs it for your user, without administrator rights. Your plans and progress are kept.
 
+**System requirements:** 8 GB of memory minimum. Recommended: 16 GB and a dedicated graphics card with 4 GB. From 8 GB, speech is recognized by Nemotron (on a dedicated card of 2 GB or more with CUDA on NVIDIA and Vulkan on AMD and Intel, otherwise on the processor); below 8 GB, by Parakeet. About 2 GB of disk for the voice and speech models, downloaded when you first need them.
+
 **Windows** (PowerShell):
 
 ```powershell
@@ -393,7 +400,7 @@ crates/
   engine/   # app state, commands, background work, voice loop
   study/    # plans, reviews (SM-2), quizzes, SQLite storage
   ai/       # OpenAI-compatible client, Copilot SDK adapter + prompts
-  audio/    # mic capture, Parakeet/Whisper STT, Piper/Kokoro TTS, playback, downloads
+  audio/    # mic capture, Parakeet/Nemotron/Whisper STT, Piper/Kokoro TTS, playback, downloads
   pdf/      # edital text extraction, roles
   handout/  # study handouts rendered to PDF with Typst
 locales/    # UI translations (pt-BR, en)
@@ -419,6 +426,7 @@ Manual checks against real services (need `.env` and network):
 cargo run -p kg-ai --example live_check                          # every AI task (KG_PROMPT_LANG=en for English prompts)
 cargo run -p kg-engine --example e2e -- edital.pdf                # import → plan → quiz → review → handout
 cargo run --release -p kg-audio --example parakeet_check -- <models-dir> fala.wav
+cargo run --release -p kg-audio --example nemotron_check -- <models-dir> rec/   # Nemotron (pt-BR) vs Parakeet, WAVs or folders
 KG_SNAPSHOT_DIR=shots cargo test -p kg-ui snapshots -- --ignored  # renders every screen to PNG
 ```
 
@@ -438,6 +446,8 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
   `python tools/teachers.py`.
 - Dii voice (downloaded on demand): [OpenVoiceOS/pipertts_pt-BR_dii](https://huggingface.co/OpenVoiceOS/pipertts_pt-BR_dii),
   CC BY-NC-ND 4.0, personal non-commercial use.
+- Nemotron speech recognition (downloaded on demand): [nvidia/nemotron-3.5-asr-streaming-0.6b](https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b),
+  OpenMDW-1.1, run by NVIDIA's [NeMo-Speech.cpp](https://github.com/NVIDIA/NeMo-Speech.cpp), Apache-2.0.
 - Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
   caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
