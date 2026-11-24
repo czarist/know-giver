@@ -135,8 +135,9 @@ fn local_ocr_controls(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions)
     let p = theme::palette(ui.ctx());
     match engine.ocr_model_status() {
         Ok(kg_engine::OcrModelStatus::Missing) => {
-            widgets::hint(ui, &t!("discursive.ocr_download_hint"));
-            if ui.button(t!("discursive.ocr_download")).clicked() {
+            let mb = widgets::megabytes(engine.ocr_download_bytes());
+            widgets::hint(ui, &t!("discursive.ocr_download_hint", mb = mb));
+            if ui.button(t!("discursive.ocr_download", mb = mb)).clicked() {
                 actions.send(Command::InstallOcrModel);
             }
         }
@@ -159,6 +160,18 @@ fn local_ocr_controls(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions)
             if !engine.ocr_runtime_available() {
                 ui.colored_label(p.warning, t!("discursive.ocr_runtime_missing"));
                 return;
+            }
+            // Installed before this computer's NVIDIA card got its CUDA build.
+            let cuda_bytes = engine.ocr_cuda_download_bytes();
+            if cuda_bytes > 0 {
+                let mb = widgets::megabytes(cuda_bytes);
+                widgets::hint(ui, &t!("discursive.ocr_cuda_hint", mb = mb));
+                if ui
+                    .button(t!("discursive.ocr_cuda_download", mb = mb))
+                    .clicked()
+                {
+                    actions.send(Command::InstallOcrModel);
+                }
             }
             vision_test(ui, engine, actions);
         }
