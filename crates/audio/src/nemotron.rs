@@ -916,7 +916,12 @@ mod tests {
         let source = if cfg!(windows) {
             PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32/whoami.exe")
         } else {
-            PathBuf::from("/bin/false")
+            // macOS has it only in /usr/bin; most Linux systems have both.
+            ["/usr/bin/false", "/bin/false"]
+                .into_iter()
+                .map(PathBuf::from)
+                .find(|path| path.is_file())
+                .unwrap()
         };
         std::fs::copy(source, &exe).unwrap();
         exe
