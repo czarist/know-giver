@@ -20,6 +20,12 @@ const MODEL_ID: &str = "paddleocr-vl-1.5";
 const COMPLETIONS_PATH: &str = "/v1/chat/completions";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
+const VERIFIED_FILE: &str = "verified.sha256";
+const SERVER_NAME: &str = if cfg!(windows) {
+    "llama-server.exe"
+} else {
+    "llama-server"
+};
 static MANIFEST: std::sync::OnceLock<Result<Manifest, String>> = std::sync::OnceLock::new();
 
 #[derive(Debug, Deserialize)]
@@ -34,6 +40,33 @@ struct LlamaManifest {
     version: String,
     commit: String,
     license: String,
+    /// Release tag of the same commit, where the official builds live.
+    release: String,
+    /// Official CUDA builds by platform (`windows-x86_64`, `linux-x86_64`).
+    #[serde(default)]
+    cuda: std::collections::HashMap<String, CudaBuild>,
+}
+
+/// An official llama.cpp CUDA build: llama-server and the CUDA libraries it
+/// loads, two archives unpacked into one folder.
+#[derive(Debug, Deserialize)]
+struct CudaBuild {
+    file: String,
+    sha256: String,
+    bytes: u64,
+    runtime_file: String,
+    runtime_sha256: String,
+    runtime_bytes: u64,
+}
+
+impl CudaBuild {
+    fn total_bytes(&self) -> u64 {
+        self.bytes + self.runtime_bytes
+    }
+
+    fn marker(&self) -> String {
+        format!("{}\n{}\n", self.sha256, self.runtime_sha256)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,7 +182,7 @@ pub(crate) fn model_status(paths: &AppPaths) -> Result<OcrModelStatus, OcrError>
     let model = &manifest.ocr.paddleocr_vl_1_5;
     let dir = model_dir(paths);
     let marker_matches =
-        fs::read_to_string(dir.join("verified.sha256")).is_ok_and(|value| value == marker(model));
+        fs::read_to_string(dir.join(VERIFIED_FILE)).is_ok_and(|value| value == marker(model));
     Ok(installed_status(
         marker_matches,
         file_size(&dir.join(&model.model_file)),
@@ -183,6 +216,10 @@ fn installed_status(
     }
 }
 
+/// Downloads what local OCR still lacks here: the model, and on a computer
+/// with a dedicated NVIDIA card the official CUDA build of llama-server.
+/// A CUDA build that fails to install next to a new model is only logged:
+/// the bundled Vulkan or CPU build still reads the pages.
 pub(crate) fn download_model(
     paths: &AppPaths,
     progress: &dyn Fn(u64, u64),
@@ -190,16 +227,45 @@ pub(crate) fn download_model(
 ) -> Result<(), OcrError> {
     let manifest = manifest()?;
     let model = &manifest.ocr.paddleocr_vl_1_5;
-    let total = model.model_bytes + model.mmproj_bytes;
+    let need_model = model_status(paths)? == OcrModelStatus::Missing;
+    let cuda = missing_cuda_build(paths, manifest);
+    let model_bytes = if need_model {
+        model.model_bytes + model.mmproj_bytes
+    } else {
+        0
+    };
+    let total = model_bytes + cuda.map_or(0, CudaBuild::total_bytes);
     let root = paths.models_dir();
     fs::create_dir_all(&root).map_err(|source| OcrError::Io {
         path: root.clone(),
         source,
     })?;
+    let mut fetcher = Fetcher::new(total, progress, cancel);
+    let mut done = 0;
+    if need_model {
+        done = install_model_files(paths, model, &mut fetcher)?;
+    }
+    if let Some(build) = cuda {
+        match install_cuda(paths, manifest, build, &mut fetcher, done) {
+            Ok(()) => {}
+            Err(error) if need_model && !matches!(error, OcrError::Cancelled) => {
+                tracing::warn!(%error, "CUDA OCR runtime not installed; Vulkan or CPU will run");
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+fn install_model_files(
+    paths: &AppPaths,
+    model: &ModelManifest,
+    fetcher: &mut Fetcher<'_>,
+) -> Result<u64, OcrError> {
+    let root = paths.models_dir();
     let staging =
         tempfile::tempdir_in(&root).map_err(|source| OcrError::Io { path: root, source })?;
     let mut done = 0;
-    let mut fetcher = Fetcher::new(total, progress, cancel);
     for (name, bytes, checksum) in [
         (&model.model_file, model.model_bytes, &model.model_sha256),
         (&model.mmproj_file, model.mmproj_bytes, &model.mmproj_sha256),
@@ -207,27 +273,164 @@ pub(crate) fn download_model(
         let url = format!("{}/resolve/{}/{}", model.repository, model.revision, name);
         done = fetcher.fetch(&url, &staging.path().join(name), bytes, checksum, done)?;
     }
-    if cancel.load(Ordering::Relaxed) {
+    if fetcher.cancel.load(Ordering::Relaxed) {
         return Err(OcrError::Cancelled);
     }
-    fs::write(staging.path().join("verified.sha256"), marker(model)).map_err(|source| {
-        OcrError::Io {
-            path: staging.path().join("verified.sha256"),
-            source,
-        }
+    write_marker(staging.path(), &marker(model))?;
+    replace_dir(staging.path(), &model_dir(paths))?;
+    Ok(done)
+}
+
+/// Downloads both CUDA archives, unpacks llama-server and puts the CUDA
+/// libraries next to it, where it looks for them.
+fn install_cuda(
+    paths: &AppPaths,
+    manifest: &Manifest,
+    build: &CudaBuild,
+    fetcher: &mut Fetcher<'_>,
+    mut done: u64,
+) -> Result<(), OcrError> {
+    let root = paths.models_dir();
+    let staging = tempfile::tempdir_in(&root).map_err(|source| OcrError::Io {
+        path: root.clone(),
+        source,
     })?;
-    let destination = model_dir(paths);
-    if destination.exists() {
-        fs::remove_dir_all(&destination).map_err(|source| OcrError::Io {
-            path: destination.clone(),
+    let base = format!(
+        "{}/releases/download/{}",
+        manifest.llama_cpp.repository, manifest.llama_cpp.release
+    );
+    let server_archive = staging.path().join(&build.file);
+    let libs_archive = staging.path().join(&build.runtime_file);
+    done = fetcher.fetch(
+        &format!("{base}/{}", build.file),
+        &server_archive,
+        build.bytes,
+        &build.sha256,
+        done,
+    )?;
+    fetcher.fetch(
+        &format!("{base}/{}", build.runtime_file),
+        &libs_archive,
+        build.runtime_bytes,
+        &build.runtime_sha256,
+        done,
+    )?;
+    let runtime = staging.path().join("runtime");
+    let libs = staging.path().join("libs");
+    unpack(&server_archive, &runtime, fetcher.cancel)?;
+    unpack(&libs_archive, &libs, fetcher.cancel)?;
+    let server = find_server(&runtime)
+        .ok_or_else(|| OcrError::Runtime("the CUDA build has no llama-server".into()))?;
+    let server_dir = server.parent().unwrap_or(&runtime).to_path_buf();
+    move_files_into(&libs, &server_dir)?;
+    write_marker(&runtime, &build.marker())?;
+    replace_dir(&runtime, &cuda_dir(paths, manifest))
+}
+
+fn unpack(archive: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), OcrError> {
+    kg_audio::unpack_archive(archive, dest, cancel).map_err(|error| match error {
+        kg_audio::AudioError::Cancelled => OcrError::Cancelled,
+        other => OcrError::Runtime(format!("could not unpack {}: {other}", archive.display())),
+    })
+}
+
+/// Moves every file under `from` (any depth) into `dest`, keeping files
+/// already there.
+fn move_files_into(from: &Path, dest: &Path) -> Result<(), OcrError> {
+    let io = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| OcrError::Io { path, source }
+    };
+    for entry in fs::read_dir(from).map_err(io(from))? {
+        let path = entry.map_err(io(from))?.path();
+        let kind = fs::symlink_metadata(&path).map_err(io(&path))?.file_type();
+        if kind.is_dir() {
+            move_files_into(&path, dest)?;
+        } else if let Some(name) = path.file_name() {
+            let target = dest.join(name);
+            if !target.exists() {
+                fs::rename(&path, &target).map_err(io(&target))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn write_marker(dir: &Path, text: &str) -> Result<(), OcrError> {
+    let path = dir.join(VERIFIED_FILE);
+    fs::write(&path, text).map_err(|source| OcrError::Io { path, source })
+}
+
+fn replace_dir(from: &Path, to: &Path) -> Result<(), OcrError> {
+    if to.exists() {
+        fs::remove_dir_all(to).map_err(|source| OcrError::Io {
+            path: to.to_path_buf(),
             source,
         })?;
     }
-    fs::rename(staging.path(), &destination).map_err(|source| OcrError::Io {
-        path: destination,
+    fs::rename(from, to).map_err(|source| OcrError::Io {
+        path: to.to_path_buf(),
         source,
-    })?;
-    Ok(())
+    })
+}
+
+/// The platform name of the CUDA builds in `local-ai.toml`.
+fn platform_key() -> Option<&'static str> {
+    if cfg!(all(windows, target_arch = "x86_64")) {
+        Some("windows-x86_64")
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        Some("linux-x86_64")
+    } else {
+        None
+    }
+}
+
+/// Whether this computer runs OCR on CUDA: a dedicated NVIDIA card with its
+/// driver installed.
+fn has_nvidia_card() -> bool {
+    kg_audio::SpeechHardware::detect().dedicated_gpu == Some(kg_audio::GpuVendor::Nvidia)
+        && kg_audio::nvidia_driver_present()
+}
+
+/// The CUDA build this computer should have, while it is not installed.
+fn missing_cuda_build<'m>(paths: &AppPaths, manifest: &'m Manifest) -> Option<&'m CudaBuild> {
+    if !has_nvidia_card() || cuda_server_executable(paths).is_some() {
+        return None;
+    }
+    manifest.llama_cpp.cuda.get(platform_key()?)
+}
+
+fn cuda_dir(paths: &AppPaths, manifest: &Manifest) -> PathBuf {
+    paths
+        .models_dir()
+        .join(format!("llama-cuda-{}", manifest.llama_cpp.release))
+}
+
+/// The installed and verified CUDA llama-server, if any.
+fn cuda_server_executable(paths: &AppPaths) -> Option<PathBuf> {
+    let manifest = manifest().ok()?;
+    let build = manifest.llama_cpp.cuda.get(platform_key()?)?;
+    let dir = cuda_dir(paths, manifest);
+    let verified = fs::read_to_string(dir.join(VERIFIED_FILE)).ok()?;
+    if verified != build.marker() {
+        return None;
+    }
+    find_server(&dir)
+}
+
+/// llama-server in `dir` or a folder below it (the Linux archives keep their
+/// files in one top folder).
+fn find_server(dir: &Path) -> Option<PathBuf> {
+    let direct = dir.join(SERVER_NAME);
+    if direct.is_file() {
+        return Some(direct);
+    }
+    fs::read_dir(dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .find_map(|path| find_server(&path))
 }
 
 struct Fetcher<'a> {
@@ -341,8 +544,19 @@ pub(crate) struct Server {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RuntimeBackend {
+    Cuda,
     Vulkan,
     Cpu,
+}
+
+impl RuntimeBackend {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Cuda => "CUDA",
+            Self::Vulkan => "Vulkan",
+            Self::Cpu => "CPU",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -375,7 +589,7 @@ impl Server {
         if model_status(paths)? == OcrModelStatus::Missing {
             return Err(OcrError::ModelMissing);
         }
-        let candidates = runtime_candidates();
+        let candidates = runtime_candidates(paths);
         start_with_fallback(&candidates, |candidate| {
             Self::start_with_runtime(paths, model, manifest, candidate)
         })
@@ -439,9 +653,22 @@ impl Server {
             .arg("4096")
             .arg("--n-gpu-layers")
             .arg(match candidate.backend {
-                RuntimeBackend::Vulkan => "99",
+                RuntimeBackend::Cuda | RuntimeBackend::Vulkan => "99",
                 RuntimeBackend::Cpu => "0",
             });
+        // The Linux CUDA build loads its libraries from its own folder.
+        if candidate.backend == RuntimeBackend::Cuda
+            && cfg!(target_os = "linux")
+            && let Some(dir) = executable.parent()
+        {
+            let mut search = vec![dir.to_path_buf()];
+            if let Some(existing) = std::env::var_os("LD_LIBRARY_PATH") {
+                search.extend(std::env::split_paths(&existing));
+            }
+            if let Ok(joined) = std::env::join_paths(search) {
+                command.env("LD_LIBRARY_PATH", joined);
+            }
+        }
         if let Some(device) = &candidate.device {
             command.arg("--device").arg(device);
         } else {
@@ -639,7 +866,32 @@ impl Engine {
 
     /// Whether this installation includes or can find `llama-server`.
     pub fn ocr_runtime_available(&self) -> bool {
-        cpu_server_executable().is_some() || vulkan_server_executable().is_some()
+        cpu_server_executable().is_some()
+            || vulkan_server_executable().is_some()
+            || cuda_server_executable(&self.paths).is_some()
+    }
+
+    /// Bytes the local OCR download takes here: the model when missing, plus
+    /// the CUDA build on a computer with a dedicated NVIDIA card.
+    pub fn ocr_download_bytes(&self) -> u64 {
+        let Ok(manifest) = manifest() else {
+            return 0;
+        };
+        let model = &manifest.ocr.paddleocr_vl_1_5;
+        let model_bytes = match model_status(&self.paths) {
+            Ok(OcrModelStatus::Installed { .. }) => 0,
+            _ => model.model_bytes + model.mmproj_bytes,
+        };
+        model_bytes + self.ocr_cuda_download_bytes()
+    }
+
+    /// Bytes of the CUDA build still to download; zero without a dedicated
+    /// NVIDIA card or once it is installed.
+    pub fn ocr_cuda_download_bytes(&self) -> u64 {
+        manifest()
+            .ok()
+            .and_then(|manifest| missing_cuda_build(&self.paths, manifest))
+            .map_or(0, CudaBuild::total_bytes)
     }
 
     /// Whether the local OCR model server is starting in the background.
@@ -712,7 +964,8 @@ impl Engine {
 
     pub(crate) fn install_ocr_model(&mut self) -> Result<(), crate::EngineError> {
         if self.ocr_download.is_some()
-            || matches!(model_status(&self.paths)?, OcrModelStatus::Installed { .. })
+            || (matches!(model_status(&self.paths)?, OcrModelStatus::Installed { .. })
+                && self.ocr_cuda_download_bytes() == 0)
         {
             return Ok(());
         }
@@ -742,17 +995,26 @@ impl Engine {
     }
 }
 
-fn runtime_candidates() -> Vec<RuntimeCandidate> {
+/// The builds to try, in order, chosen by the dedicated card: CUDA on NVIDIA,
+/// Vulkan on AMD and Intel, the CPU build without one. A GPU build that fails
+/// to start falls back to the next one and finally to the CPU build.
+fn runtime_candidates(paths: &AppPaths) -> Vec<RuntimeCandidate> {
     let has_runtime_override = std::env::var_os("KG_LLAMA_SERVER")
         .map(PathBuf::from)
         .is_some_and(|path| path.is_file());
-    let vulkan = (!has_runtime_override)
-        .then(vulkan_server_executable)
-        .flatten()
-        .and_then(|executable| match detect_vulkan_device(&executable) {
+    if has_runtime_override {
+        return ordered_candidates(None, None, cpu_server_executable());
+    }
+    let card = kg_audio::SpeechHardware::detect().dedicated_gpu;
+    let cuda = has_nvidia_card()
+        .then(|| cuda_server_executable(paths))
+        .flatten();
+    let vulkan = card.and_then(|card| {
+        let executable = vulkan_server_executable()?;
+        match detect_vulkan_device(&executable, card) {
             Ok(Some(device)) => Some((executable, device)),
             Ok(None) => {
-                tracing::debug!(path = %executable.display(), "no hardware Vulkan device found");
+                tracing::debug!(?card, "no Vulkan device for the dedicated card");
                 None
             }
             Err(error) => {
@@ -763,15 +1025,24 @@ fn runtime_candidates() -> Vec<RuntimeCandidate> {
                 );
                 None
             }
-        });
-    ordered_candidates(vulkan, cpu_server_executable())
+        }
+    });
+    ordered_candidates(cuda, vulkan, cpu_server_executable())
 }
 
 fn ordered_candidates(
+    cuda: Option<PathBuf>,
     vulkan: Option<(PathBuf, String)>,
     cpu: Option<PathBuf>,
 ) -> Vec<RuntimeCandidate> {
-    let mut candidates = Vec::with_capacity(2);
+    let mut candidates = Vec::with_capacity(3);
+    if let Some(executable) = cuda {
+        candidates.push(RuntimeCandidate {
+            executable,
+            backend: RuntimeBackend::Cuda,
+            device: Some("CUDA0".to_owned()),
+        });
+    }
     if let Some((executable, device)) = vulkan {
         candidates.push(RuntimeCandidate {
             executable,
@@ -793,33 +1064,30 @@ fn start_with_fallback<T>(
     candidates: &[RuntimeCandidate],
     mut start: impl FnMut(&RuntimeCandidate) -> Result<T, OcrError>,
 ) -> Result<T, OcrError> {
-    let mut vulkan_error = None;
+    let mut failures = Vec::new();
+    let mut last = None;
     for candidate in candidates {
         match start(candidate) {
             Ok(server) => return Ok(server),
-            Err(error) if candidate.backend == RuntimeBackend::Vulkan => {
-                tracing::warn!(%error, "Vulkan OCR startup failed; trying the CPU runtime");
-                vulkan_error = Some(error);
-            }
-            Err(cpu_error) => {
-                return Err(match vulkan_error {
-                    Some(vulkan_error) => OcrError::Runtime(format!(
-                        "Vulkan startup failed ({vulkan_error}); CPU fallback failed: {cpu_error}"
-                    )),
-                    None => cpu_error,
-                });
+            Err(error) => {
+                let backend = candidate.backend.name();
+                tracing::warn!(%error, backend, "local OCR runtime failed to start");
+                failures.push(format!("{backend} startup failed ({error})"));
+                last = Some(error);
             }
         }
     }
-    match vulkan_error {
-        Some(error) => Err(OcrError::Runtime(format!(
-            "Vulkan startup failed and no CPU runtime is available: {error}"
-        ))),
+    match last {
         None => Err(OcrError::RuntimeMissing),
+        Some(error) if failures.len() == 1 => Err(error),
+        Some(_) => Err(OcrError::Runtime(failures.join("; "))),
     }
 }
 
-fn detect_vulkan_device(executable: &Path) -> Result<Option<String>, String> {
+fn detect_vulkan_device(
+    executable: &Path,
+    card: kg_audio::GpuVendor,
+) -> Result<Option<String>, String> {
     let output = Command::new(executable)
         .arg("--list-devices")
         .output()
@@ -829,31 +1097,52 @@ fn detect_vulkan_device(executable: &Path) -> Result<Option<String>, String> {
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
-    Ok(parse_vulkan_device(&format!("{stdout}\n{stderr}")))
+    Ok(parse_vulkan_device(&format!("{stdout}\n{stderr}"), card))
 }
 
-fn parse_vulkan_device(output: &str) -> Option<String> {
+/// The Vulkan device of the dedicated card, skipping software renderers and
+/// integrated graphics (laptops often list both).
+fn parse_vulkan_device(output: &str, card: kg_audio::GpuVendor) -> Option<String> {
     output.lines().find_map(|line| {
         let (device, name) = line.trim().split_once(':')?;
         let index = device.strip_prefix("Vulkan")?;
         if index.is_empty() || !index.chars().all(|character| character.is_ascii_digit()) {
             return None;
         }
-        let name = name.trim();
-        let normalized_name = name.to_ascii_lowercase();
-        let is_software_device = ["llvmpipe", "lavapipe", "swiftshader", "software rasterizer"]
-            .iter()
-            .any(|marker| normalized_name.contains(marker));
-        (!name.is_empty() && !is_software_device).then(|| device.to_owned())
+        is_dedicated_device(name, card).then(|| device.to_owned())
     })
 }
 
+fn is_dedicated_device(name: &str, card: kg_audio::GpuVendor) -> bool {
+    let name = name.trim().to_ascii_lowercase();
+    let is_software_device = ["llvmpipe", "lavapipe", "swiftshader", "software rasterizer"]
+        .iter()
+        .any(|marker| name.contains(marker));
+    if name.is_empty() || is_software_device {
+        return false;
+    }
+    // Drivers append details: "AMD Radeon RX 5500 XT (RADV NAVI14)".
+    let mut base = name.as_str();
+    while base.ends_with(')')
+        && let Some(open) = base.rfind('(')
+    {
+        base = base[..open].trim_end();
+    }
+    match card {
+        kg_audio::GpuVendor::Nvidia => ["nvidia", "geforce", "quadro", "rtx"]
+            .iter()
+            .any(|marker| base.contains(marker)),
+        // Radeon integrated graphics are named "... Graphics".
+        kg_audio::GpuVendor::Amd => {
+            (base.contains("amd") || base.contains("radeon")) && !base.ends_with("graphics")
+        }
+        // Intel's dedicated cards are the Arc series.
+        kg_audio::GpuVendor::Intel => base.contains("intel") && base.contains("arc"),
+    }
+}
+
 fn cpu_server_executable() -> Option<PathBuf> {
-    let name = if cfg!(windows) {
-        "llama-server.exe"
-    } else {
-        "llama-server"
-    };
+    let name = SERVER_NAME;
     if let Some(path) = std::env::var_os("KG_LLAMA_SERVER").map(PathBuf::from)
         && path.is_file()
     {
@@ -874,11 +1163,7 @@ fn cpu_server_executable() -> Option<PathBuf> {
 }
 
 fn vulkan_server_executable() -> Option<PathBuf> {
-    let name = if cfg!(windows) {
-        "llama-server.exe"
-    } else {
-        "llama-server"
-    };
+    let name = SERVER_NAME;
     bundled_runtime_dirs()
         .into_iter()
         .map(|directory| directory.join("vulkan").join(name))
@@ -1035,6 +1320,41 @@ mod tests {
         assert!(text.chars().count() > 200, "{text}");
     }
 
+    /// Installs the CUDA build next to the installed model and starts the OCR
+    /// server on it. Needs a dedicated NVIDIA card; downloads about 590 MB once.
+    /// `cargo test -p kg-engine cuda_runtime_installs -- --ignored --nocapture`
+    #[test]
+    #[ignore = "downloads the CUDA build; needs an NVIDIA card and the installed OCR model"]
+    fn cuda_runtime_installs_and_starts() {
+        let paths = AppPaths::detect();
+        let manifest = manifest().unwrap();
+        assert!(has_nvidia_card(), "no dedicated NVIDIA card here");
+        let start = Instant::now();
+        download_model(&paths, &|_, _| {}, &AtomicBool::new(false)).unwrap();
+        let executable = cuda_server_executable(&paths).expect("CUDA build installed");
+        println!(
+            "installed in {:.0}s: {}",
+            start.elapsed().as_secs_f32(),
+            executable.display()
+        );
+        let candidate = RuntimeCandidate {
+            executable,
+            backend: RuntimeBackend::Cuda,
+            device: Some("CUDA0".to_owned()),
+        };
+        let start = Instant::now();
+        let server = Server::start_with_runtime(
+            &paths,
+            &manifest.ocr.paddleocr_vl_1_5,
+            manifest,
+            &candidate,
+        )
+        .unwrap();
+        println!("CUDA server ready in {:.1}s", start.elapsed().as_secs_f32());
+        assert_eq!(runtime_candidates(&paths)[0].backend, RuntimeBackend::Cuda);
+        drop(server);
+    }
+
     #[test]
     fn manifest_pins_the_official_model_and_runtime() {
         let manifest = manifest().unwrap();
@@ -1048,6 +1368,7 @@ mod tests {
             "8642541b255bfb5dc39cd351a178be09013a55d6"
         );
         assert_eq!(manifest.llama_cpp.license, "MIT");
+        assert_eq!(manifest.llama_cpp.release, "b11960");
         assert_eq!(
             manifest.ocr.paddleocr_vl_1_5.repository,
             "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5-GGUF"
@@ -1140,39 +1461,75 @@ mod tests {
     }
 
     #[test]
-    fn device_probe_selects_hardware_vulkan_devices_and_ignores_software_renderers() {
+    fn device_probe_picks_the_dedicated_card_and_skips_integrated_and_software() {
+        use kg_audio::GpuVendor::{Amd, Intel, Nvidia};
         let cases = [
             (
                 "NVIDIA",
                 "Available devices:\n  Vulkan0: NVIDIA GeForce RTX 4090\n  CPU: x86\n",
+                Nvidia,
                 Some("Vulkan0"),
             ),
             (
                 "AMD",
                 "Available devices:\n  Vulkan0: AMD Radeon RX 7900 XTX\n",
+                Amd,
                 Some("Vulkan0"),
             ),
             (
-                "Intel",
-                "Available devices:\n  Vulkan1: Intel Arc A770\n",
+                "AMD on RADV",
+                "Available devices:\n  Vulkan0: AMD Radeon RX 5500 XT (RADV NAVI14)\n",
+                Amd,
+                Some("Vulkan0"),
+            ),
+            (
+                "RX 5500 on Linux, as llama.cpp lists it",
+                "MESA-INTEL: warning: Haswell Vulkan support is incomplete\nAvailable devices:\n  Vulkan0: AMD Radeon RX 5500 (RADV NAVI14) (8192 MiB, 7879 MiB free)\n",
+                Amd,
+                Some("Vulkan0"),
+            ),
+            (
+                "AMD laptop with integrated graphics first",
+                "Available devices:\n  Vulkan0: AMD Radeon(TM) Graphics (RADV RENOIR)\n  Vulkan1: AMD Radeon RX 6600M (RADV NAVI23)\n",
+                Amd,
                 Some("Vulkan1"),
             ),
-            ("CPU only", "Available devices:\n  CPU: x86\n", None),
+            (
+                "Intel Arc after Intel UHD",
+                "Available devices:\n  Vulkan0: Intel(R) UHD Graphics 770\n  Vulkan1: Intel(R) Arc(TM) A770 Graphics\n",
+                Intel,
+                Some("Vulkan1"),
+            ),
+            (
+                "NVIDIA laptop with Intel graphics first",
+                "Available devices:\n  Vulkan0: Intel(R) Iris(R) Xe Graphics\n  Vulkan1: NVIDIA GeForce RTX 3050 Laptop GPU\n",
+                Nvidia,
+                Some("Vulkan1"),
+            ),
+            (
+                "only integrated graphics",
+                "Available devices:\n  Vulkan0: AMD Radeon(TM) Graphics\n",
+                Amd,
+                None,
+            ),
+            ("CPU only", "Available devices:\n  CPU: x86\n", Nvidia, None),
             (
                 "software renderer",
                 "Available devices:\n  Vulkan0: llvmpipe (LLVM 17.0.6, 256 bits)\n",
+                Amd,
                 None,
             ),
             (
                 "backend mention without device entry",
                 "Vulkan backend is unavailable\n  CPU: x86\n",
+                Intel,
                 None,
             ),
         ];
 
-        for (case, output, expected) in cases {
+        for (case, output, card, expected) in cases {
             assert_eq!(
-                parse_vulkan_device(output).as_deref(),
+                parse_vulkan_device(output, card).as_deref(),
                 expected,
                 "case: {case}"
             );
@@ -1180,10 +1537,12 @@ mod tests {
     }
 
     #[test]
-    fn runtime_candidates_prefer_detected_vulkan_and_keep_cpu_fallback() {
+    fn runtime_candidates_go_cuda_then_vulkan_then_cpu() {
+        let cuda_path = PathBuf::from("cuda/llama-server");
         let vulkan_path = PathBuf::from("vulkan/llama-server");
         let cpu_path = PathBuf::from("cpu/llama-server");
         let candidates = ordered_candidates(
+            Some(cuda_path.clone()),
             Some((vulkan_path.clone(), "Vulkan0".to_owned())),
             Some(cpu_path.clone()),
         );
@@ -1191,6 +1550,11 @@ mod tests {
         assert_eq!(
             candidates,
             [
+                RuntimeCandidate {
+                    executable: cuda_path,
+                    backend: RuntimeBackend::Cuda,
+                    device: Some("CUDA0".to_owned()),
+                },
                 RuntimeCandidate {
                     executable: vulkan_path,
                     backend: RuntimeBackend::Vulkan,
@@ -1206,9 +1570,9 @@ mod tests {
     }
 
     #[test]
-    fn runtime_candidates_use_cpu_when_no_vulkan_device_is_detected() {
+    fn runtime_candidates_use_cpu_without_a_dedicated_card() {
         let cpu_path = PathBuf::from("cpu/llama-server");
-        let candidates = ordered_candidates(None, Some(cpu_path.clone()));
+        let candidates = ordered_candidates(None, None, Some(cpu_path.clone()));
 
         assert_eq!(
             candidates,
@@ -1221,8 +1585,9 @@ mod tests {
     }
 
     #[test]
-    fn failed_vulkan_startup_retries_with_cpu_runtime() {
+    fn failed_gpu_startups_fall_back_down_to_the_cpu_runtime() {
         let candidates = ordered_candidates(
+            Some(PathBuf::from("cuda/llama-server")),
             Some((PathBuf::from("vulkan/llama-server"), "Vulkan0".to_owned())),
             Some(PathBuf::from("cpu/llama-server")),
         );
@@ -1230,32 +1595,81 @@ mod tests {
         let result: Result<&str, OcrError> = start_with_fallback(&candidates, |candidate| {
             attempted.push(candidate.backend);
             match candidate.backend {
+                RuntimeBackend::Cuda => Err(OcrError::Runtime("driver too old".into())),
                 RuntimeBackend::Vulkan => Err(OcrError::Runtime("driver unavailable".into())),
                 RuntimeBackend::Cpu => Ok("cpu server"),
             }
         });
 
         assert_eq!(result.unwrap(), "cpu server");
-        assert_eq!(attempted, [RuntimeBackend::Vulkan, RuntimeBackend::Cpu]);
+        assert_eq!(
+            attempted,
+            [
+                RuntimeBackend::Cuda,
+                RuntimeBackend::Vulkan,
+                RuntimeBackend::Cpu
+            ]
+        );
     }
 
     #[test]
-    fn failed_cpu_fallback_reports_both_backend_errors() {
+    fn failed_cpu_fallback_reports_every_backend_error() {
         let candidates = ordered_candidates(
+            Some(PathBuf::from("cuda/llama-server")),
             Some((PathBuf::from("vulkan/llama-server"), "Vulkan0".to_owned())),
             Some(PathBuf::from("cpu/llama-server")),
         );
         let result: Result<(), OcrError> = start_with_fallback(&candidates, |candidate| {
-            Err(OcrError::Runtime(match candidate.backend {
-                RuntimeBackend::Vulkan => "Vulkan failed".into(),
-                RuntimeBackend::Cpu => "CPU failed".into(),
-            }))
+            Err(OcrError::Runtime(format!(
+                "{} failed",
+                candidate.backend.name()
+            )))
         });
 
         assert!(matches!(
             result,
             Err(OcrError::Runtime(message))
-                if message.contains("Vulkan failed") && message.contains("CPU failed")
+                if message.contains("CUDA failed")
+                    && message.contains("Vulkan failed")
+                    && message.contains("CPU failed")
         ));
+    }
+
+    #[test]
+    fn cuda_builds_are_pinned_for_windows_and_linux() {
+        let manifest = manifest().unwrap();
+        assert_eq!(manifest.llama_cpp.release, "b11960");
+        for key in ["windows-x86_64", "linux-x86_64"] {
+            let build = &manifest.llama_cpp.cuda[key];
+            for (file, sha) in [
+                (&build.file, &build.sha256),
+                (&build.runtime_file, &build.runtime_sha256),
+            ] {
+                assert!(file.contains("cuda"), "{file}");
+                assert_eq!(sha.len(), 64, "{file}");
+                assert!(sha.chars().all(|c| c.is_ascii_hexdigit()), "{file}");
+            }
+            assert!(build.file.contains(&manifest.llama_cpp.release), "{key}");
+            assert!(build.bytes > 100_000_000 && build.runtime_bytes > 100_000_000);
+        }
+    }
+
+    #[test]
+    fn cuda_libraries_land_next_to_llama_server() {
+        let directory = tempfile::tempdir().unwrap();
+        let runtime = directory.path().join("runtime");
+        let nested = runtime.join("llama-b11960");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join(SERVER_NAME), b"server").unwrap();
+        let libs = directory.path().join("libs");
+        fs::create_dir_all(libs.join("lib")).unwrap();
+        fs::write(libs.join("cudart.dll"), b"a").unwrap();
+        fs::write(libs.join("lib").join("cublas.dll"), b"b").unwrap();
+
+        let server = find_server(&runtime).unwrap();
+        assert_eq!(server, nested.join(SERVER_NAME));
+        move_files_into(&libs, &nested).unwrap();
+        assert!(nested.join("cudart.dll").is_file());
+        assert!(nested.join("cublas.dll").is_file());
     }
 }

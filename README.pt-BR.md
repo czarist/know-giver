@@ -252,9 +252,12 @@ pode escolher explicitamente a API externa do modelo de visão configurado, que 
 as fotos. O Copilot aceita apenas texto, então sempre usa o OCR local. **Testar leitura de
 imagem** confere o backend selecionado. Ainda não medimos os requisitos mínimos de hardware
 nem a precisão em manuscritos; confira toda transcrição antes da correção. Uma foto pode
-ter uma página ou um caderno aberto com duas páginas lado a lado. No Windows e Linux, o
-pacote inclui 🔺 [Vulkan](https://www.vulkan.org/) e usa uma GPU compatível detectada quando disponível; volta para CPU
-se não houver dispositivo ou se a inicialização da GPU falhar. No macOS, usa CPU.
+ter uma página ou um caderno aberto com duas páginas lado a lado. O build segue a placa de
+vídeo dedicada, como no reconhecimento de fala: CUDA nas placas NVIDIA (o build CUDA oficial
+do llama.cpp, cerca de 590 MB, baixado com o modelo ou depois na mesma tela), 🔺
+[Vulkan](https://www.vulkan.org/) nas placas AMD e Intel Arc (incluído nos pacotes de Windows e
+Linux) e o processador sem placa dedicada. Um build de GPU que não inicia passa para o
+próximo e, por fim, para o processador. No macOS, usa CPU.
 O instalador do Windows inclui as bibliotecas C++ e o carregador Vulkan; para usar a GPU,
 é necessário ter o driver compatível instalado.
 

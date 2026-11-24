@@ -827,6 +827,14 @@ impl ArchiveKind {
     }
 }
 
+/// Unpacks a downloaded `.zip`, `.tar.gz` or `.tar.bz2` into `dest`, with the
+/// same safety rules as the model archives: no paths outside `dest`, and
+/// links only to files in their own folder.
+pub fn unpack_archive(path: &Path, dest: &Path, cancel: &AtomicBool) -> Result<(), AudioError> {
+    let kind = ArchiveKind::of(&path.to_string_lossy());
+    unpack(path, kind, dest, cancel)
+}
+
 fn unpack(
     path: &Path,
     kind: ArchiveKind,
