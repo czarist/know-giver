@@ -6,6 +6,12 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.42.1] - 2026-11-24
+
+### Fixed
+- Tests: the Nemotron crash test finds `false` in `/usr/bin` on macOS, so the release
+  packages build again (0.42.0 was not published).
+
 ## [0.42.0] - 2026-11-24
 
 ### Added
