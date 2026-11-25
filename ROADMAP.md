@@ -91,7 +91,7 @@ Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>
 
 ## Current Status
 
-Version 0.43.0. Everything an agent can build and check without a human ear, a
+Version 0.43.1. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -106,7 +106,7 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
 
-On `dev` after 0.43.0: an `OPENAI_API_KEY` from `.env` or the system applies only to its
+In 0.43.1: an `OPENAI_API_KEY` from `.env` or the system applies only to its
 own server (it was sent to Z.ai after a provider switch and refused), Settings keeps Save
 in a fixed bottom bar, and a refused key shows the server's message and code.
 
