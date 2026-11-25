@@ -6,6 +6,8 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.43.1] - 2026-11-25
+
 ### Fixed
 - AI key: the `OPENAI_API_KEY` from `.env` or a system variable is used only for the
   server it came with. After switching provider (for example to Z.ai), a key meant for
