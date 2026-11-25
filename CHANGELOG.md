@@ -6,6 +6,21 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+### Fixed
+- AI key: the `OPENAI_API_KEY` from `.env` or a system variable is used only for the
+  server it came with. After switching provider (for example to Z.ai), a key meant for
+  another server (such as a LiteLLM one) is no longer sent and refused with "the AI
+  server refused the key"; the key field stays empty until the student types one.
+- Settings: Save and Discard stay in a fixed bar at the bottom of the screen, with an
+  "unsaved changes" note. At the end of the long page they were easy to miss, and
+  leaving without saving dropped every change.
+- Settings: the note under an inherited API key names its real source, `OPENAI_API_KEY`
+  in `.env` or a system variable.
+
+### Changed
+- A refused AI key (HTTP 401/403) shows the server's own message and error code, so a
+  wrong key, an expired one and a blocked account can be told apart.
+
 ## [0.43.0] - 2026-11-24
 
 ### Changed

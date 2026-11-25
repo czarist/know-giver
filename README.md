@@ -382,7 +382,9 @@ screens follows. Plans made before are kept.
 Closing the window keeps the app in the system tray: double-click the icon to reopen it, or click it once for the menu (open or quit). Opening Know Giver again while it runs brings back the same window; there is only ever one copy and one tray icon. During installation, you can choose whether it starts with the system and whether to receive study reminders (every 3 hours by default, from 30 minutes to 8 hours in Settings); both are off by default. The reminder is a small Know Giver window in the corner of the screen, with the subjects furthest behind and a button to start studying. Reminders come while you are away from the app (in the tray, minimized or behind other windows), not during a lesson, quiz or review, and only while the active plan has unfinished subjects.
 
 For development, `.env` (copy `.env.example`) can still set the endpoint and models;
-`.env` overrides global variables with the same name. Download the speech models in
+`.env` overrides global variables with the same name. `OPENAI_API_KEY` is only used with
+the endpoint it comes with (`OPENAI_API_BASE`); for another provider, type its key in
+Settings and save. Download the speech models in
 Settings. Rust 1.95 or newer.
 
 **Windows package:**

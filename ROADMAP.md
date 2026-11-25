@@ -106,6 +106,10 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
 
+On `dev` after 0.43.0: an `OPENAI_API_KEY` from `.env` or the system applies only to its
+own server (it was sent to Z.ai after a provider switch and refused), Settings keeps Save
+in a fixed bottom bar, and a refused key shows the server's message and code.
+
 Know Giver credits its maker, Trentin Software (https://trentin.software): a faint
 watermark and a footer link on handout PDFs, a faint mark on the lesson whiteboard, and a
 link in the sidebar and in Settings → About.
