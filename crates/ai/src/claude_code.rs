@@ -376,7 +376,10 @@ impl Reader {
                 return Err(AiError::PlanLimit);
             }
             if lower.contains("log in") || lower.contains("login") || lower.contains("auth") {
-                return Err(AiError::Auth { status: 401 });
+                return Err(AiError::Auth {
+                    status: 401,
+                    message: String::new(),
+                });
             }
             return Err(error(format!(
                 "{}: {result}",

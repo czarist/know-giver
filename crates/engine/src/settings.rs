@@ -256,7 +256,7 @@ impl Settings {
             ai: env_ai.clone(),
             ..Self::default()
         });
-        if settings.ai.api_key.is_empty() {
+        if settings.ai.api_key.is_empty() && same_server(&settings.ai, env_ai) {
             settings.ai.api_key = env_ai.api_key.clone();
         }
         settings.normalize();
@@ -356,6 +356,14 @@ impl Settings {
         let json = serde_json::to_string(&to_save).unwrap_or_default();
         store.set_setting(SETTINGS_KEY, &json)
     }
+}
+
+/// True when `ai` points at the server the environment configures. The
+/// `OPENAI_API_KEY` from `.env` or the system belongs to that server only:
+/// sending it to another one (a LiteLLM key to Z.ai, say) is always refused.
+pub(crate) fn same_server(ai: &AiConfig, env_ai: &AiConfig) -> bool {
+    let trim = |url: &str| url.trim().trim_end_matches('/').to_ascii_lowercase();
+    trim(&ai.base_url) == trim(&env_ai.base_url)
 }
 
 #[cfg(test)]
@@ -471,13 +479,32 @@ mod tests {
         );
         let loaded = Settings::load(&store, &env_ai()).unwrap();
         assert_eq!(loaded.ai.base_url, "http://localhost:11434/v1");
-        assert_eq!(loaded.ai.api_key, "env-key");
+        // The `.env` key belongs to the `.env` server, not to this one.
+        assert_eq!(loaded.ai.api_key, "");
 
         settings.ai.api_key = "typed-key".into();
         settings.save(&mut store, &env_ai()).unwrap();
         assert_eq!(
             Settings::load(&store, &env_ai()).unwrap().ai.api_key,
             "typed-key"
+        );
+    }
+
+    #[test]
+    fn env_key_is_never_sent_to_another_server() {
+        let mut store = Store::open_in_memory().unwrap();
+        let mut settings = Settings::load(&store, &env_ai()).unwrap();
+        assert_eq!(settings.ai.api_key, "env-key");
+        settings.ai.base_url = "https://api.z.ai/api/paas/v4".into();
+        settings.save(&mut store, &env_ai()).unwrap();
+        assert_eq!(Settings::load(&store, &env_ai()).unwrap().ai.api_key, "");
+
+        // Back on the `.env` server (any spelling), its key applies again.
+        settings.ai.base_url = "https://API.example/v4/ ".into();
+        settings.save(&mut store, &env_ai()).unwrap();
+        assert_eq!(
+            Settings::load(&store, &env_ai()).unwrap().ai.api_key,
+            "env-key"
         );
     }
 }
