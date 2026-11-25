@@ -24,6 +24,12 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         .get_or_insert_with(|| engine.settings().clone());
     widgets::header(ui, &t!("settings.title"), &t!("settings.subtitle"));
 
+    // Save stays in view: at the end of a long page it was easy to miss,
+    // and leaving without it dropped every change.
+    egui::Panel::bottom("settings_save_bar")
+        .frame(egui::Frame::NONE.inner_margin(egui::Margin::symmetric(0, 8)))
+        .show(ui, |ui| save_bar(ui, engine, draft, &mut actions));
+
     egui::ScrollArea::vertical().show(ui, |ui| {
         section(ui, &t!("settings.you.title"), |ui| {
             name_field(ui, &mut draft.student_name);
@@ -70,22 +76,6 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         legal_section(ui, engine, &mut actions);
         ui.add_space(12.0);
 
-        let changed = draft != engine.settings();
-        ui.horizontal(|ui| {
-            if ui
-                .add_enabled(changed, egui::Button::new(t!("settings.save")))
-                .clicked()
-            {
-                actions.send(Command::SaveSettings(draft.clone()));
-            }
-            if ui
-                .add_enabled(changed, egui::Button::new(t!("settings.discard")))
-                .clicked()
-            {
-                *draft = engine.settings().clone();
-            }
-        });
-        ui.add_space(8.0);
         widgets::hint(
             ui,
             &t!(
@@ -95,6 +85,31 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         );
     });
     actions.run(app);
+}
+
+fn save_bar(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &mut Actions) {
+    let changed = draft != engine.settings();
+    ui.horizontal(|ui| {
+        if ui
+            .add_enabled(changed, egui::Button::new(t!("settings.save")))
+            .clicked()
+        {
+            actions.send(Command::SaveSettings(draft.clone()));
+        }
+        if ui
+            .add_enabled(changed, egui::Button::new(t!("settings.discard")))
+            .clicked()
+        {
+            *draft = engine.settings().clone();
+        }
+        if changed {
+            ui.label(
+                RichText::new(t!("settings.unsaved"))
+                    .small()
+                    .color(theme::palette(ui.ctx()).muted),
+            );
+        }
+    });
 }
 
 /// "What should we call you?", shared with the welcome screen. Returns the

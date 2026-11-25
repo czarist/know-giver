@@ -281,7 +281,7 @@ impl Client {
         let status = response.status().as_u16();
         match status {
             200..=299 => {}
-            401 | 403 => return Err(AiError::Auth { status }),
+            401 | 403 => return Err(auth_error(status, &read_error_body(&mut response))),
             429 => return Err(AiError::RateLimited),
             _ => {
                 return Err(AiError::Http {
@@ -410,7 +410,7 @@ impl Client {
         let status = response.status().as_u16();
         match status {
             200..=299 => {}
-            401 | 403 => return Err(AiError::Auth { status }),
+            401 | 403 => return Err(auth_error(status, &read_error_body(&mut response))),
             429 => return Err(AiError::RateLimited),
             _ => {
                 return Err(AiError::Http {
@@ -528,7 +528,7 @@ impl Client {
 
         match status {
             200..=299 => {}
-            401 | 403 => return Err((AiError::Auth { status }, None)),
+            401 | 403 => return Err((auth_error(status, &text), None)),
             429 => return Err((AiError::RateLimited, hint)),
             _ => {
                 return Err((
@@ -562,6 +562,48 @@ impl Client {
             )));
         }
         Ok(content)
+    }
+}
+
+/// Reads at most 16 KiB of an error response, for its message.
+fn read_error_body(response: &mut ureq::http::Response<ureq::Body>) -> String {
+    response
+        .body_mut()
+        .with_config()
+        .limit(16 * 1024)
+        .read_to_string()
+        .unwrap_or_default()
+}
+
+/// An authentication error carrying the server's own message (for example
+/// Z.ai's `{"error":{"code":"1000","message":"..."}}`), so a wrong key, an
+/// expired one and a blocked account can be told apart.
+pub(crate) fn auth_error(status: u16, body: &str) -> AiError {
+    let message = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|json| {
+            let error = &json["error"];
+            let text = error["message"]
+                .as_str()
+                .or_else(|| error.as_str())
+                .or_else(|| json["message"].as_str())?
+                .trim()
+                .to_owned();
+            let code = match &error["code"] {
+                serde_json::Value::String(code) => Some(code.clone()),
+                serde_json::Value::Number(code) => Some(code.to_string()),
+                _ => None,
+            }
+            .filter(|code| code != &status.to_string());
+            Some(match code {
+                Some(code) => format!("{text} [{code}]"),
+                None => text,
+            })
+        })
+        .unwrap_or_else(|| body.trim().to_owned());
+    AiError::Auth {
+        status,
+        message: message.chars().take(200).collect(),
     }
 }
 
@@ -650,6 +692,24 @@ fn read_sse(mut reader: impl BufRead, mut on_delta: impl FnMut(&str)) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn auth_error_keeps_the_server_message() {
+        let zai = r#"{"error":{"code":"1000","message":"Authentication failed"}}"#;
+        assert!(matches!(
+            auth_error(401, zai),
+            AiError::Auth { status: 401, message } if message == "Authentication failed [1000]"
+        ));
+        let same_code = r#"{"error":{"code":"401","message":"token expired or incorrect"}}"#;
+        assert!(matches!(
+            auth_error(401, same_code),
+            AiError::Auth { message, .. } if message == "token expired or incorrect"
+        ));
+        assert!(matches!(
+            auth_error(403, "  "),
+            AiError::Auth { message, .. } if message.is_empty()
+        ));
+    }
 
     #[test]
     fn an_answer_cut_by_the_token_limit_is_reported_as_such() {
