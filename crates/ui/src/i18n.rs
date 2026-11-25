@@ -312,6 +312,9 @@ pub fn error_message(err: &EngineError) -> String {
         EngineError::Store(StoreError::PlanNotFound(_)) => t!("error.store.not_found"),
         EngineError::Store(_) => t!("error.store.generic"),
         EngineError::Ai(AiError::Connection { url, .. }) => t!("error.ai.connection", url = url),
+        EngineError::Ai(AiError::Auth { message, .. }) if !message.is_empty() => {
+            t!("error.ai.auth_detail", detail = message)
+        }
         EngineError::Ai(AiError::Auth { .. }) => t!("error.ai.auth"),
         EngineError::Ai(AiError::Copilot(_)) => t!("error.ai.copilot"),
         EngineError::Ai(AiError::ChatGpt(_)) => t!("error.ai.chatgpt"),

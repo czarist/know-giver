@@ -703,9 +703,12 @@ impl Engine {
         &self.settings
     }
 
-    /// True when the API key comes from `.env`.
+    /// True when the API key comes from `OPENAI_API_KEY` (`.env` or a
+    /// system variable) rather than from Settings.
     pub fn api_key_from_env(&self) -> bool {
-        !self.env_ai.api_key.is_empty() && self.settings.ai.api_key == self.env_ai.api_key
+        !self.env_ai.api_key.is_empty()
+            && self.settings.ai.api_key == self.env_ai.api_key
+            && settings::same_server(&self.settings.ai, &self.env_ai)
     }
 
     pub fn paths(&self) -> &AppPaths {

@@ -485,7 +485,10 @@ fn post_form(agent: &ureq::Agent, url: &str, form: &[(&str, &str)]) -> Result<Va
     let json: Value = serde_json::from_str(&text).unwrap_or_default();
     match status {
         200..=299 => Ok(json),
-        400 | 401 if json["error"] == "invalid_grant" => Err(AiError::Auth { status }),
+        400 | 401 if json["error"] == "invalid_grant" => Err(AiError::Auth {
+            status,
+            message: String::new(),
+        }),
         _ => Err(AiError::Http {
             status,
             body: json["error"]
@@ -644,7 +647,10 @@ fn get_json(agent: &ureq::Agent, url: &str) -> Result<Value, AiError> {
 fn access_token(force_refresh: bool) -> Result<String, AiError> {
     let session = current()
         .filter(ChatGptSession::signed_in)
-        .ok_or(AiError::Auth { status: 401 })?;
+        .ok_or(AiError::Auth {
+            status: 401,
+            message: String::new(),
+        })?;
     if !force_refresh && session.expires_at > now() + REFRESH_MARGIN {
         return Ok(session.access_token);
     }
@@ -654,7 +660,10 @@ fn access_token(force_refresh: bool) -> Result<String, AiError> {
     // Another request may have refreshed while this one waited.
     let mut session = current()
         .filter(ChatGptSession::signed_in)
-        .ok_or(AiError::Auth { status: 401 })?;
+        .ok_or(AiError::Auth {
+            status: 401,
+            message: String::new(),
+        })?;
     if !force_refresh && session.expires_at > now() + REFRESH_MARGIN {
         return Ok(session.access_token);
     }
@@ -670,12 +679,12 @@ fn access_token(force_refresh: bool) -> Result<String, AiError> {
     );
     let json = match json {
         Ok(json) => json,
-        Err(AiError::Auth { status }) => {
+        Err(AiError::Auth { status, message }) => {
             // The refresh token is gone: the student must sign in again.
             session.access_token.clear();
             session.refresh_token.clear();
             update(Some(session));
-            return Err(AiError::Auth { status });
+            return Err(AiError::Auth { status, message });
         }
         Err(err) => return Err(err),
     };
@@ -740,7 +749,12 @@ pub(crate) fn list_models() -> Result<Vec<String>, AiError> {
     let status = response.status().as_u16();
     match status {
         200..=299 => {}
-        401 | 403 => return Err(AiError::Auth { status }),
+        401 | 403 => {
+            return Err(AiError::Auth {
+                status,
+                message: String::new(),
+            });
+        }
         _ => {
             return Err(AiError::Http {
                 status,
@@ -862,7 +876,12 @@ fn send(body: &Value, token: String, on_delta: &mut impl FnMut(&str)) -> Result<
     let status = response.status().as_u16();
     match status {
         200..=299 => {}
-        401 | 403 => return Err(AiError::Auth { status }),
+        401 | 403 => {
+            return Err(AiError::Auth {
+                status,
+                message: String::new(),
+            });
+        }
         429 => return Err(AiError::PlanLimit),
         _ => {
             let text = response.body_mut().read_to_string().unwrap_or_default();

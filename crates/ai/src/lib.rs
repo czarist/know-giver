@@ -60,6 +60,15 @@ pub use tasks::{
 };
 pub use throttle::Throttle;
 
+/// `": {message}"` for an error message, or nothing when it is empty.
+fn detail_suffix(message: &str) -> String {
+    if message.is_empty() {
+        String::new()
+    } else {
+        format!(": {message}")
+    }
+}
+
 /// Errors from talking to the model.
 ///
 /// Messages are English and meant for logs; the UI shows translated text.
@@ -67,8 +76,9 @@ pub use throttle::Throttle;
 pub enum AiError {
     #[error("could not connect to {url}: {reason}")]
     Connection { url: String, reason: String },
-    #[error("authentication rejected by the AI server (HTTP {status})")]
-    Auth { status: u16 },
+    /// `message` is what the server said, when it said something readable.
+    #[error("authentication rejected by the AI server (HTTP {status}){}", detail_suffix(.message))]
+    Auth { status: u16, message: String },
     #[error("rate limited by the AI server")]
     RateLimited,
     #[error("AI server returned HTTP {status}: {body}")]
