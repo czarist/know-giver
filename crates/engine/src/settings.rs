@@ -16,7 +16,7 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-11-03.4";
+pub const TERMS_VERSION: &str = "2026-11-25.1";
 
 /// Where the student uses the app; the terms follow its law. The app is
 /// offered to the public only in the listed regions; elsewhere ("other"),
@@ -29,6 +29,8 @@ pub enum Region {
     Eu,
     Uk,
     Jp,
+    /// South Korea.
+    Kr,
     Tw,
     Hk,
     Sg,
@@ -48,6 +50,7 @@ impl Region {
             Self::Eu => C::EuropeanUnion,
             Self::Uk => C::UnitedKingdom,
             Self::Jp => C::Japan,
+            Self::Kr => C::SouthKorea,
             Self::Tw => C::Taiwan,
             Self::Hk => C::HongKong,
             Self::Sg => C::Singapore,
@@ -56,12 +59,13 @@ impl Region {
         })
     }
 
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Br,
         Self::Us,
         Self::Eu,
         Self::Uk,
         Self::Jp,
+        Self::Kr,
         Self::Tw,
         Self::Hk,
         Self::Sg,
@@ -84,6 +88,7 @@ impl Region {
         match locale {
             "pt-BR" => Some(Self::Br),
             "ja" => Some(Self::Jp),
+            "ko" => Some(Self::Kr),
             "zh-Hant" => Some(Self::Tw),
             "zh-Hans" => Some(Self::Sg),
             _ => None,
