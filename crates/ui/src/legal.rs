@@ -44,6 +44,7 @@ impl LegalDoc {
             return match locale {
                 "pt-BR" => "pt-BR",
                 "ja" => "ja",
+                "ko" => "ko",
                 "zh-Hans" => "zh-Hans",
                 "zh-Hant" => "zh-Hant",
                 _ => "en",
@@ -52,6 +53,7 @@ impl LegalDoc {
         match (locale, region) {
             ("pt-BR", Region::Br) => "pt-BR",
             ("ja", Region::Jp) => "ja",
+            ("ko", Region::Kr) => "ko",
             ("zh-Hant", Region::Tw | Region::Hk) => "zh-Hant",
             ("zh-Hans", Region::Sg) => "zh-Hans",
             _ => "en",
@@ -62,16 +64,19 @@ impl LegalDoc {
         match (self, self.language(locale, region)) {
             (Self::Terms, "pt-BR") => doc!("terms-of-use.pt-BR"),
             (Self::Terms, "ja") => doc!("terms-of-use.ja"),
+            (Self::Terms, "ko") => doc!("terms-of-use.ko"),
             (Self::Terms, "zh-Hant") => doc!("terms-of-use.zh-Hant"),
             (Self::Terms, "zh-Hans") => doc!("terms-of-use.zh-Hans"),
             (Self::Terms, _) => doc!("terms-of-use.en"),
             (Self::Privacy, "pt-BR") => doc!("privacy-policy.pt-BR"),
             (Self::Privacy, "ja") => doc!("privacy-policy.ja"),
+            (Self::Privacy, "ko") => doc!("privacy-policy.ko"),
             (Self::Privacy, "zh-Hant") => doc!("privacy-policy.zh-Hant"),
             (Self::Privacy, "zh-Hans") => doc!("privacy-policy.zh-Hans"),
             (Self::Privacy, _) => doc!("privacy-policy.en"),
             (Self::Partner, "pt-BR") => doc!("partner-access.pt-BR"),
             (Self::Partner, "ja") => doc!("partner-access.ja"),
+            (Self::Partner, "ko") => doc!("partner-access.ko"),
             (Self::Partner, "zh-Hant") => doc!("partner-access.zh-Hant"),
             (Self::Partner, "zh-Hans") => doc!("partner-access.zh-Hans"),
             (Self::Partner, _) => doc!("partner-access.en"),
@@ -270,6 +275,8 @@ mod tests {
         // English one, which covers every public region.
         assert_eq!(LegalDoc::Terms.language("ja", Region::Jp), "ja");
         assert_eq!(LegalDoc::Terms.language("ja", Region::Br), "en");
+        assert_eq!(LegalDoc::Terms.language("ko", Region::Kr), "ko");
+        assert_eq!(LegalDoc::Terms.language("ko", Region::Us), "en");
         assert_eq!(LegalDoc::Terms.language("zh-Hant", Region::Hk), "zh-Hant");
         assert_eq!(LegalDoc::Terms.language("zh-Hans", Region::Sg), "zh-Hans");
         assert_eq!(LegalDoc::Terms.language("pt-BR", Region::Eu), "en");
@@ -279,7 +286,15 @@ mod tests {
             LegalDoc::Privacy.text("en", Region::Us),
         ]
         .concat();
-        for law in ["LGPD", "APPI", "Taiwan", "Hong Kong", "Singapore", "GDPR"] {
+        for law in [
+            "LGPD",
+            "APPI",
+            "PIPA",
+            "Taiwan",
+            "Hong Kong",
+            "Singapore",
+            "GDPR",
+        ] {
             assert!(en.contains(law), "{law}");
         }
     }
@@ -307,12 +322,22 @@ mod tests {
             assert!(
                 says(
                     text,
-                    &["podem conter erros", "may be wrong", "誤り", "错误", "錯誤"]
+                    &[
+                        "podem conter erros",
+                        "may be wrong",
+                        "誤り",
+                        "오류",
+                        "错误",
+                        "錯誤"
+                    ]
                 ),
                 "{at}: AI errors"
             );
             assert!(
-                says(text, &["limites da IA", "limits of the AI", "限界", "限制"]),
+                says(
+                    text,
+                    &["limites da IA", "limits of the AI", "限界", "한계", "限制"]
+                ),
                 "{at}: limits of the chosen AI"
             );
         }

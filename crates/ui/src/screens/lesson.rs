@@ -872,7 +872,7 @@ fn model_warnings(ui: &mut egui::Ui, engine: &Engine, actions: &mut Actions) {
         });
     };
     if !engine.local_speech_language() {
-        // Chinese and Japanese: typed lessons until voices exist.
+        // Chinese, Japanese and Korean: typed lessons until voices exist.
         warn(ui, &t!("lesson.voice_language"));
         return;
     }

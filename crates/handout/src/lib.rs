@@ -214,7 +214,7 @@ impl HandoutWorld {
         };
         let mut fonts = FontStore::new();
         fonts.extend(typst_kit::fonts::embedded());
-        // Chinese and Japanese handouts use the system's fonts for those
+        // Chinese, Japanese and Korean handouts use the system's fonts for those
         // scripts, the handout's own script first.
         if let Some(first) = CjkScript::of_locale(lang)
             .or_else(|| lang.starts_with("zh").then_some(CjkScript::Simplified))

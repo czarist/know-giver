@@ -1284,10 +1284,10 @@ fn connection_test_and_model_list_are_kept_per_config() {
 }
 
 #[test]
-fn chinese_and_japanese_lessons_have_no_local_voice() {
+fn chinese_japanese_and_korean_lessons_have_no_local_voice() {
     let (mut engine, _dir) = engine();
     assert!(engine.local_speech_language());
-    for locale in ["ja", "zh-Hans", "zh-Hant"] {
+    for locale in ["ja", "ko", "zh-Hans", "zh-Hant"] {
         engine.settings.locale = locale.into();
         assert!(!engine.local_speech_language(), "{locale}");
         assert!(!engine.stt_ready(), "{locale}");

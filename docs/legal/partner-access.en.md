@@ -1,14 +1,14 @@
 # Know Giver Partner Access Terms
 
-Version of November 3, 2026 (2026-11-03.4). These terms apply to every country and region
+Version of November 25, 2026 (2026-11-25.1). These terms apply to every country and region
 where Know Giver is not offered to the public.
 
 ## 1. Not offered to the public
 
 Know Giver, developed by TRENTIN SOLUCOES EM SOFTWARE LTDA – ME (Brazil, CNPJ
 36.154.590/0001-54, "Trentin"), is offered to the public only in Brazil, the United States,
-the European Union, the United Kingdom, Japan, Taiwan, Hong Kong and Singapore. In every
-other country and region it is **not offered, sold or made available to the public**.
+the European Union, the United Kingdom, Japan, South Korea, Taiwan, Hong Kong and
+Singapore. In every other country and region it is **not offered, sold or made available to the public**.
 
 ## 2. Authorized partners only
 

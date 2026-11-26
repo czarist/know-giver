@@ -132,10 +132,13 @@ impl Engine {
     }
 
     /// The local voices and speech recognition handle the app's language.
-    /// They are Portuguese (with English passages); Chinese and Japanese
-    /// lessons are typed until voices for them exist.
+    /// They are Portuguese (with English passages); Chinese, Japanese and
+    /// Korean lessons are typed until voices for them exist.
     pub fn local_speech_language(&self) -> bool {
-        !self.prompt_language().is_cjk()
+        matches!(
+            self.prompt_language(),
+            kg_ai::PromptLanguage::Portuguese | kg_ai::PromptLanguage::English
+        )
     }
 
     /// True when the tutor can speak.

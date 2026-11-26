@@ -29,7 +29,8 @@ impl Teacher {
 
     /// The name in the lesson's language. Chinese teachers keep a surname
     /// with the same initial in pinyin (何 He, 李 Li, 任 Ren, 欧阳 Ouyang);
-    /// Japanese ones a given name (Haruka, Riko, Ryō, Osamu).
+    /// Japanese ones a given name (Haruka, Riko, Ryō, Osamu), and Korean
+    /// ones too (Ha-eun, Ria, Ra-on, O-hyeon).
     pub fn name_in(self, language: kg_ai::PromptLanguage) -> &'static str {
         use kg_ai::PromptLanguage as L;
         match (language, self) {
@@ -39,6 +40,10 @@ impl Teacher {
             (L::Japanese, Self::Lia) => "莉子",
             (L::Japanese, Self::Rafael) => "涼",
             (L::Japanese, Self::Otavio) => "修",
+            (L::Korean, Self::Helena) => "하은",
+            (L::Korean, Self::Lia) => "리아",
+            (L::Korean, Self::Rafael) => "라온",
+            (L::Korean, Self::Otavio) => "오현",
             (L::ChineseSimplified, Self::Helena) => "何静",
             (L::ChineseSimplified, Self::Lia) => "李悦",
             (L::ChineseSimplified, Self::Rafael) => "任浩",

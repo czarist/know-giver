@@ -6,6 +6,20 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-11-26
+
+### Added
+- Korean: UI texts, AI prompts and README in Korean (한국어), and South Korea as a region
+  with its own terms of use and privacy policy (under the Personal Information Protection
+  Act) and its exam culture for teaching tasks (civil service exams, the 수능, 논술).
+  Korean lessons are typed until a Korean voice exists, like Chinese and Japanese.
+- Korean text uses the system's Hangul font (Malgun Gothic, Apple SD Gothic Neo, Noto
+  Sans CJK KR) in the app and in handouts.
+
+### Changed
+- Terms of use and privacy policy dated 2026-11-25: they list South Korea; every student
+  is asked to agree again.
+
 ## [0.43.1] - 2026-11-25
 
 ### Fixed
