@@ -7,7 +7,7 @@
 <h3 align="center">Sua prova. Seu plano. Um professor que conversa com você.</h3>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
   <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
   <a href="https://github.com/czarist/know-giver/tags"><img alt="Latest version" src="https://img.shields.io/github/v/tag/czarist/know-giver?sort=semver&label=version&color=2c6b5c&style=flat-square&logo=github&logoColor=white"></a>
-  <img alt="Languages: Portuguese, English, Japanese, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
+  <img alt="Languages: Portuguese, English, Japanese, Korean, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20ko%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
   <a href="https://github.com/czarist/know-giver/actions/workflows/packages.yml"><img alt="Native packages build" src="https://img.shields.io/github/actions/workflow/status/czarist/know-giver/packages.yml?label=packages&style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
@@ -304,7 +304,8 @@ grátis treinam modelos com isso) e um link para os limites e as regras.
 **O jeito de estudar da sua região.** Aulas, quizzes, apostilas e discursivas seguem como se
 estuda para provas onde você mora: no Brasil, itens certo/errado do Cebraspe e questões de
 cinco alternativas da FCC e da FGV, e redação contada em linhas; no Japão, cinco
-alternativas e o 小論文 contado em caracteres; na China continental, o 行测 e o 申论; em
+alternativas e o 小論文 contado em caracteres; na Coreia do Sul, as quatro alternativas
+dos concursos públicos e as cinco do 수능, com redação; na China continental, o 行测 e o 申论; em
 Taiwan e Hong Kong, os formatos dos concursos de lá; nos EUA e no Reino Unido, testes
 padronizados, o bar exam e os mark schemes. O edital e as provas anteriores sempre vêm
 primeiro.

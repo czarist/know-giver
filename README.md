@@ -7,7 +7,7 @@
 <h3 align="center">Your exam. Your plan. A teacher who talks back.</h3>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
   <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
   <a href="https://github.com/czarist/know-giver/tags"><img alt="Latest version" src="https://img.shields.io/github/v/tag/czarist/know-giver?sort=semver&label=version&color=2c6b5c&style=flat-square&logo=github&logoColor=white"></a>
-  <img alt="Languages: Portuguese, English, Japanese, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
+  <img alt="Languages: Portuguese, English, Japanese, Korean, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20ko%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
   <a href="https://github.com/czarist/know-giver/actions/workflows/packages.yml"><img alt="Native packages build" src="https://img.shields.io/github/actions/workflow/status/czarist/know-giver/packages.yml?label=packages&style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
@@ -299,7 +299,8 @@ it) and a link to its limits and rules.
 **Your region's way of studying.** Lessons, quizzes, handouts and written answers follow
 how people prepare for exams where you live: in Brazil, Cebraspe true/false items and
 five-option questions from FCC and FGV, and an essay counted in lines; in Japan, five-option
-questions and a 小論文 counted in characters; in mainland China, the 行测 and the 申论; in
+questions and a 小論文 counted in characters; in South Korea, the civil service exams'
+four-option questions and the CSAT (수능); in mainland China, the 行测 and the 申论; in
 Taiwan and Hong Kong, their civil service formats; in the US and UK, standardized tests, the
 bar and mark schemes. The exam notice and past exams always come first.
 

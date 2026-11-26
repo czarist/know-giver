@@ -7,7 +7,7 @@
 <h3 align="center">你的考試。你的計劃。一位會和你對話的老師。</h3>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
   <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
   <a href="https://github.com/czarist/know-giver/tags"><img alt="Latest version" src="https://img.shields.io/github/v/tag/czarist/know-giver?sort=semver&label=version&color=2c6b5c&style=flat-square&logo=github&logoColor=white"></a>
-  <img alt="Languages: Portuguese, English, Japanese, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
+  <img alt="Languages: Portuguese, English, Japanese, Korean, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20ko%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
   <a href="https://github.com/czarist/know-giver/actions/workflows/packages.yml"><img alt="Native packages build" src="https://img.shields.io/github/actions/workflow/status/czarist/know-giver/packages.yml?label=packages&style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
@@ -191,7 +191,7 @@ GitHub Copilot 可透過官方 Copilot CLI 使用 GitHub 帳戶登入，不需�
 
 **免費或付費。** 除了「使用帳號登入」，AI 步驟還有兩個分頁。「付費」顯示推薦的服務（CP 值高的 Z.ai、準確度高的 Claude）；「免費」列出有免費方案的服務（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models，以及在你電腦上執行的 Ollama 或 LM Studio），每項顯示方案包含的模型、如何使用你傳送的內容（有些免費方案會用於訓練）以及限額與規則的連結。
 
-**你所在地區的備考方式。** 課堂、測驗、講義與申論題會依照你所在地區的備考方式進行：臺灣是國家考試的測驗題與申論題；香港是 HKDSE 與公務員考試的形式；中國大陸是行测與申论；日本是五選一與按字數寫的小論文；巴西、美國與英國也各有其題型。考試簡章與歷屆試題始終優先。
+**你所在地區的備考方式。** 課堂、測驗、講義與申論題會依照你所在地區的備考方式進行：臺灣是國家考試的測驗題與申論題；香港是 HKDSE 與公務員考試的形式；中國大陸是行测與申论；日本是五選一與按字數寫的小論文；韓國是公務員考試的四選一與修能（大學入學考試）的五選一；巴西、美國與英國也各有其題型。考試簡章與歷屆試題始終優先。
 
 <p align="center">
   <img src="docs/images/zh-Hant/setup-ai-free.png" alt="AI 步驟的「免費」分頁：有免費方案的服務、包含的模型與資料使用方式" width="60%">
@@ -216,7 +216,7 @@ GitHub Copilot 可透過官方 Copilot CLI 使用 GitHub 帳戶登入，不需�
 - 開啟時，程式會向 GitHub 查詢最新版本；只傳送這個請求，可在 設定 → 關於與更新 中關閉。
 - 沒有賬戶、遙測或廣告。
 
-Know Giver 在臺灣、香港、新加坡、巴西、美國、歐盟、英國和日本向公眾提供；臺灣與香港的條款見[使用條款](docs/legal/terms-of-use.zh-Hant.md)和[隱私權政策](docs/legal/privacy-policy.zh-Hant.md)，也會在程式中顯示。在其他國家和地區，僅限經書面授權的合作夥伴依[合作夥伴存取條款](docs/legal/partner-access.zh-Hant.md)使用。
+Know Giver 在臺灣、香港、新加坡、巴西、美國、歐盟、英國、日本和韓國向公眾提供；臺灣與香港的條款見[使用條款](docs/legal/terms-of-use.zh-Hant.md)和[隱私權政策](docs/legal/privacy-policy.zh-Hant.md)，也會在程式中顯示。在其他國家和地區，僅限經書面授權的合作夥伴依[合作夥伴存取條款](docs/legal/partner-access.zh-Hant.md)使用。
 
 ## 安裝
 
