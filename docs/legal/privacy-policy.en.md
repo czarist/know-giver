@@ -1,10 +1,10 @@
 # Know Giver Privacy Policy
 
-Version of November 3, 2026 (2026-11-03.4). This international version applies in every
+Version of November 25, 2026 (2026-11-25.1). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
-Brazil (LGPD), Japan (APPI), Taiwan, Hong Kong and Singapore.
+Brazil (LGPD), Japan (APPI), South Korea (PIPA), Taiwan, Hong Kong and Singapore.
 
 ## 1. Summary
 
@@ -169,6 +169,16 @@ Trentin does not acquire personal information through the app under the Act on t
 Protection of Personal Information (APPI). The external transmissions listed in section 4
 are disclosed as required for information sent from your device to outside services. The
 Japanese version of this Policy is the authoritative text for users in Japan.
+
+### South Korea
+
+Trentin does not collect personal information through the app under the Personal
+Information Protection Act (PIPA). Content you send to the AI provider you chose may be
+transferred overseas to that provider; the Korean version of this Policy lists what is
+sent, to whom and when. You can contact the Personal Information Protection Commission
+(PIPC), its Personal Information Dispute Mediation Committee, or the Personal
+Information Infringement Report Center run by KISA (privacy.kisa.or.kr, call 118).
+The Korean version of this Policy is the authoritative text for users in South Korea.
 
 ### Taiwan
 

@@ -91,7 +91,7 @@ Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>
 
 ## Current Status
 
-Version 0.43.1. Everything an agent can build and check without a human ear, a
+Version 0.44.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -105,6 +105,10 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 (30 minutes to 8 hours in Settings), while the student is away from the app and the
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
+
+In 0.44.0: Korean (UI, prompts, README) and South Korea as a public region, with its own
+terms, privacy policy and exam culture; Korean lessons are typed until a Korean voice
+exists.
 
 In 0.43.1: an `OPENAI_API_KEY` from `.env` or the system applies only to its
 own server (it was sent to Z.ai after a provider switch and refused), Settings keeps Save
@@ -984,8 +988,8 @@ the app; the grade matches a hand count.
   - The Inno Setup task that installs Claude Code (compiled in CI, not run).
 - Exam culture by region (v0.34.0): someone who studied for exams in each region should
   review its note (`crates/ai/src/culture.rs`): boards, question formats, written-test
-  conventions and grading scales. Notes are in Portuguese and English only; Japanese and
-  Chinese prompts get the English note.
+  conventions and grading scales. Notes are in Portuguese and English only; Japanese,
+  Korean and Chinese prompts get the English note.
 - Free plans (v0.34.0): checked on 2026-10-30 from public pages and third-party summaries.
   Confirm each with a real free key: Gemini, Mistral Experiment, Groq, NVIDIA, GitHub
   Models (`models.github.ai/inference`), OpenRouter `:free` models, Zhipu GLM-4.7-Flash and
@@ -1005,6 +1009,10 @@ the app; the grade matches a hand count.
     differs in places.
   - Lessons, quizzes, handouts and grades with a real model in each language.
   - Fonts on macOS and Linux (the font paths there are not tested).
+- Korean (v0.44.0): a native speaker should review the UI texts, prompts and README;
+  lessons, quizzes, handouts and grades with a real model in Korean; the Hangul font
+  paths on macOS and Linux. The legal texts for South Korea are drafts that need review
+  by a Korean lawyer before a public launch there.
 - Mainland China AI services (v0.32.0): endpoints, key pages and model names of Zhipu
   BigModel, Alibaba Bailian, Moonshot (mainland), Baidu Qianfan, Tencent Hunyuan and
   Volcano Engine Ark were written from memory; confirm each with a real key.
@@ -1052,10 +1060,13 @@ the app; the grade matches a hand count.
   - Cantonese through a cloud voice;
   - turn end on `。？！`; per-language fillers (「えーと」, 「嗯」);
   - Traditional to Simplified before a Mandarin voice.
+- [ ] Voices in Korean: speech recognition and a Korean voice; until then Korean lessons
+      are typed.
 - [ ] Count characters instead of words for Chinese and Japanese written answers (字数,
-      原稿用紙): unreadable threshold, rewrite detection, line limits.
+      原稿用紙), and 원고지 character counts for Korean: unreadable threshold, rewrite
+      detection, line limits.
 - [ ] Whiteboard pictures from the Wikipedia of the app's language (today Portuguese).
-- [ ] Code-side prompt snippets (`PromptLanguage::pick`) in Chinese and Japanese; today
+- [ ] Code-side prompt snippets (`PromptLanguage::pick`) in Chinese, Japanese and Korean; today
       they fall back to English inside prompts that are otherwise translated.
 - [ ] Native Anthropic Messages API client for Claude: Anthropic calls its
       OpenAI-compatible endpoint a testing aid, not a production path (`response_format`

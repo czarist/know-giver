@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of November 3, 2026 (2026-11-03.4). This international version applies in every
+Version of November 25, 2026 (2026-11-25.1). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are
@@ -19,8 +19,8 @@ or the Apache License 2.0, at your option.
 ## 3. Where the app is offered
 
 Know Giver is offered to the public in Brazil, the United States, the European Union, the
-United Kingdom, Japan, Taiwan, Hong Kong and Singapore. In any other country or region it
-is not offered to the public: use there is limited to partners Trentin authorized in a
+United Kingdom, Japan, South Korea, Taiwan, Hong Kong and Singapore. In any other country
+or region it is not offered to the public: use there is limited to partners Trentin authorized in a
 written agreement, under the Partner Access Terms. You tell the app where you use it, and
 the terms of that region apply.
 
@@ -177,6 +177,17 @@ cannot be waived. Courts: the user's domicile, when a consumer.
   information, as described in the Privacy Policy.
 - These Terms are governed by the laws of Japan, and Japanese courts have jurisdiction.
   The Japanese version is the authoritative text for users in Japan.
+
+### South Korea
+
+- The Act on the Regulation of Terms and Conditions and the Framework Act on Consumers
+  apply, and any clause they make void does not apply. No clause of these Terms releases
+  Trentin from liability for damage caused by its intent or gross negligence.
+- The Personal Information Protection Act (PIPA) applies to personal information, as
+  described in the Privacy Policy.
+- These Terms are governed by the laws of the Republic of Korea, and Korean courts have
+  jurisdiction, without prejudice to the court that has jurisdiction over a consumer under
+  Korean law. The Korean version is the authoritative text for users in South Korea.
 
 ### Taiwan
 

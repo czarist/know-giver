@@ -18,6 +18,7 @@ pub enum ExamCulture {
     EuropeanUnion,
     UnitedKingdom,
     Japan,
+    SouthKorea,
     Taiwan,
     HongKong,
     Singapore,
@@ -25,12 +26,13 @@ pub enum ExamCulture {
 }
 
 impl ExamCulture {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Brazil,
         Self::UnitedStates,
         Self::EuropeanUnion,
         Self::UnitedKingdom,
         Self::Japan,
+        Self::SouthKorea,
         Self::Taiwan,
         Self::HongKong,
         Self::Singapore,
@@ -45,6 +47,9 @@ impl ExamCulture {
             Self::Brazil => 5,
             // Japanese civil service and qualification exams: five options.
             Self::Japan => 5,
+            // Korean civil service exams (9급, 7급) use four options; the
+            // 수능 and most licensing exams use five, but the notice decides.
+            Self::SouthKorea => 4,
             _ => 4,
         }
     }
@@ -57,6 +62,7 @@ impl ExamCulture {
             Self::EuropeanUnion => (EU_PT, EU_EN),
             Self::UnitedKingdom => (UK_PT, UK_EN),
             Self::Japan => (JAPAN_PT, JAPAN_EN),
+            Self::SouthKorea => (KOREA_PT, KOREA_EN),
             Self::Taiwan => (TAIWAN_PT, TAIWAN_EN),
             Self::HongKong => (HONG_KONG_PT, HONG_KONG_EN),
             Self::Singapore => (SINGAPORE_PT, SINGAPORE_EN),
@@ -142,6 +148,20 @@ The student's exam culture (Japan). Follow it unless the exam notice or past exa
 - Writing: a 小論文 or 論文 with a character limit (for example 800 to 1,200 characters) on 原稿用紙 squared paper, in the plain である style, with introduction, body and conclusion (序論・本論・結論); graded by criteria or points (for example out of 100).
 - Manner: a polite teacher speaking in です・ます, methodical, built on past papers (過去問) and the points that come up most (頻出).";
 
+const KOREA_PT: &str = "Cultura de estudo do aluno (Coreia do Sul). Siga-a quando o edital e as provas não disserem outra coisa:
+- Provas: concursos públicos (국가직·지방직 9급 e 7급, 5급 공채), o vestibular nacional (수능), exames de qualificação (공인중개사, 변호사시험, 한국사능력검정시험) e certificações.
+- Múltipla escolha: quatro alternativas nos concursos públicos (4지선다) e cinco no 수능 e em muitos exames de qualificação (5지선다); perguntas como “escolha a correta”, “escolha a incorreta” (옳지 않은 것) e combinações (ㄱ, ㄴ, ㄷ).
+- Use leis e instituições coreanas (대한민국 헌법, 민법, 행정법, 헌법재판소) e exemplos da Coreia.
+- Escrita: 논술 ou 서술형 com limite de caracteres no 원고지, estrutura 서론·본론·결론 e argumento claro; nota por critérios ou pontos (por exemplo, 100점).
+- Tom: professor de cursinho (학원 강사) educado, em linguagem polida (존댓말), com 기출문제, resumos de pontos-chave e os temas que mais caem (빈출).";
+
+const KOREA_EN: &str = "The student's exam culture (South Korea). Follow it unless the exam notice or past exams say otherwise:
+- Exams: civil service exams (national and local grade 9 and grade 7, the grade 5 open competition), the national university entrance exam (수능, CSAT), qualification exams (licensed real estate agent, the bar exam 변호사시험, the Korean History Proficiency Test) and certifications.
+- Multiple choice: four options in civil service exams (4지선다) and five in the 수능 and many qualification exams (5지선다); items such as “choose the correct one”, “choose the incorrect one” (옳지 않은 것) and combinations (ㄱ, ㄴ, ㄷ).
+- Use Korean laws and institutions (the Constitution of the Republic of Korea, the Civil Act, administrative law, the Constitutional Court) and Korean examples.
+- Writing: a 논술 or short written answers (서술형) with a character limit on 원고지 squared paper, structured as introduction, body and conclusion (서론·본론·결론) with a clear argument; graded by criteria or points (for example out of 100).
+- Manner: a polite cram-school teacher (학원 강사) speaking in honorific Korean (존댓말), built on past questions (기출문제), key-point summaries and the topics that come up most (빈출).";
+
 const TAIWAN_PT: &str = "\
 Cultura de estudo do aluno (Taiwan). Siga-a quando o edital e as provas não disserem outra coisa:
 - Provas: concursos públicos (高普考, 地方特考, 司法特考), exames profissionais e vestibulares (學測, 分科測驗).
@@ -217,8 +237,9 @@ mod tests {
             let en = culture.note(PromptLanguage::English);
             assert!(pt.starts_with("Cultura de estudo do aluno"), "{culture:?}");
             assert!(en.starts_with("The student's exam culture"), "{culture:?}");
-            // Japanese and Chinese prompts get the English note.
+            // Japanese, Korean and Chinese prompts get the English note.
             assert_eq!(culture.note(PromptLanguage::Japanese), en);
+            assert_eq!(culture.note(PromptLanguage::Korean), en);
             assert!((2..=6).contains(&culture.quiz_options()));
         }
         assert_eq!(ExamCulture::Brazil.quiz_options(), 5);

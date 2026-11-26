@@ -1,6 +1,6 @@
 # Termos de Uso do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.4). Esta é a versão para quem usa o
+Versão de 25 de novembro de 2026 (2026-11-25.1). Esta é a versão para quem usa o
 aplicativo no Brasil.
 
 ## 1. Quem somos
@@ -18,8 +18,8 @@ licença MIT ou a Apache 2.0, à sua escolha.
 ## 3. Onde o aplicativo é oferecido
 
 O Know Giver é oferecido ao público no Brasil, nos Estados Unidos, na União Europeia, no
-Reino Unido, no Japão, em Taiwan, em Hong Kong e em Singapura. Em qualquer outro país ou
-região, ele não é oferecido ao público: o uso é restrito a parceiros autorizados pela
+Reino Unido, no Japão, na Coreia do Sul, em Taiwan, em Hong Kong e em Singapura. Em
+qualquer outro país ou região, ele não é oferecido ao público: o uso é restrito a parceiros autorizados pela
 Trentin por acordo escrito, segundo os Termos de Acesso de Parceiros. Você informa o país
 ou região no aplicativo, e os termos dessa região se aplicam.
 

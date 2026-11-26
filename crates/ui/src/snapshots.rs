@@ -16,20 +16,21 @@ use kg_study::{
 use crate::app::{KnowGiverApp, Screen};
 
 /// Demo content in the screenshots' language. Portuguese and English are
-/// written in place; Japanese and Chinese come from [`ASIAN_DEMO`], found by
-/// the English text.
+/// written in place; Japanese, Korean and Chinese come from [`ASIAN_DEMO`],
+/// found by the English text.
 fn tr(locale: &str, pt: &'static str, en: &'static str) -> &'static str {
     let column = match locale {
         "pt-BR" => return pt,
         "en" => return en,
         "ja" => 0,
-        "zh-Hans" => 1,
-        _ => 2,
+        "ko" => 1,
+        "zh-Hans" => 2,
+        _ => 3,
     };
     ASIAN_DEMO
         .iter()
         .find(|row| row.0 == en)
-        .map(|row| [row.1, row.2, row.3][column])
+        .map(|row| [row.1, row.2, row.3, row.4][column])
         .unwrap_or_else(|| panic!("no {locale} demo text for {en:?}"))
 }
 
@@ -40,8 +41,8 @@ const NOTICE: &str = "EDITAL
 12.2 Serão avaliados a apresentação e a estrutura textual (5 pontos) e o desenvolvimento do tema (15 pontos).";
 
 fn seed(paths: &AppPaths, locale: &'static str) {
-    // Japanese and Chinese students get the English grammar demo, explained
-    // in their language.
+    // Japanese, Korean and Chinese students get the English grammar demo,
+    // explained in their language.
     let english = locale != "pt-BR";
     let tr = |pt, en| tr(locale, pt, en);
     std::fs::create_dir_all(&paths.data_dir).unwrap();
@@ -1231,214 +1232,276 @@ fn writing_snapshots() {
 /// The English demo edital with several roles.
 const ROLES_EN: &str = "2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: AUDIT\n\n2.1.2 CARGO 2: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – DATA SCIENCE\n\n2.1.3 CARGO 3: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – IT INFRASTRUCTURE\n";
 
-/// Japanese, Simplified and Traditional Chinese demo text, by the English
-/// text it replaces: (English, ja, zh-Hans, zh-Hant). English example
-/// sentences stay in English, as the demo plan studies English grammar.
-const ASIAN_DEMO: &[(&str, &str, &str, &str)] = &[
+/// Japanese, Korean, Simplified and Traditional Chinese demo text, by the
+/// English text it replaces: (English, ja, ko, zh-Hans, zh-Hant). English
+/// example sentences stay in English, as the demo plan studies English
+/// grammar.
+const ASIAN_DEMO: &[(&str, &str, &str, &str, &str)] = &[
     (
         "State Court – Court Clerk",
         "裁判所事務官 – 一般職",
+        "법원직 – 법원사무 9급",
         "法院书记员 – 公务员考试",
         "法院書記官 – 司法特考",
     ),
     (
         "Ceará State Court – Court Clerk – Judicial Area",
         "裁判所職員採用試験 – 裁判所事務官 – 一般職",
+        "법원공무원 공개경쟁채용시험 – 법원사무직 – 9급",
         "省级法院 – 书记员 – 审判辅助岗位",
         "司法人員特考 – 法院書記官 – 三等",
     ),
-    ("Language and Writing", "英語", "英语", "英文"),
-    ("Reading comprehension", "長文読解", "阅读理解", "閱讀測驗"),
+    ("Language and Writing", "英語", "영어", "英语", "英文"),
+    (
+        "Reading comprehension",
+        "長文読解",
+        "독해",
+        "阅读理解",
+        "閱讀測驗",
+    ),
     (
         "Subject–verb agreement",
         "主語と動詞の一致",
+        "주어와 동사의 수 일치",
         "主谓一致",
         "主詞與動詞一致",
     ),
     (
         "Verbs and prepositions",
         "動詞と前置詞",
+        "동사와 전치사",
         "动词与介词",
         "動詞與介系詞",
     ),
-    ("Punctuation", "句読法", "标点符号", "標點符號"),
-    ("Constitutional Law", "憲法", "宪法", "憲法"),
-    ("Fundamental principles", "基本原理", "基本原则", "基本原則"),
+    ("Punctuation", "句読法", "구두점", "标点符号", "標點符號"),
+    ("Constitutional Law", "憲法", "헌법", "宪法", "憲法"),
+    (
+        "Fundamental principles",
+        "基本原理",
+        "기본 원리",
+        "基本原则",
+        "基本原則",
+    ),
     (
         "Fundamental rights",
         "基本的人権",
+        "기본권",
         "公民的基本权利",
         "基本權利",
     ),
-    ("The Judiciary", "司法", "审判机关", "司法"),
+    ("The Judiciary", "司法", "사법부", "审判机关", "司法"),
     (
         "exam-notice.pdf",
         "受験案内.pdf",
+        "시험공고.pdf",
         "招考公告.pdf",
         "考試簡章.pdf",
     ),
     (
         "Which is right: \"The list of names is\" or \"are\"?",
         "“The list of names is” と “are”、正しいのはどちら？",
+        "“The list of names is”와 “are” 중 어느 것이 맞을까요?",
         "“The list of names is” 和 “are”，哪个正确？",
         "“The list of names is” 和 “are”，哪個正確？",
     ),
-    ("is", "is", "is", "is"),
-    ("are", "are", "are", "are"),
+    ("is", "is", "is", "is", "is"),
+    ("are", "are", "are", "are", "are"),
     (
         "The verb agrees with \"list\", the head noun.",
         "動詞は中心の名詞 “list” に一致する。",
+        "동사는 중심 명사 “list”에 일치한다.",
         "动词与中心词 “list” 保持一致。",
         "動詞與中心詞 “list” 一致。",
     ),
-    ("True", "正", "正确", "正確"),
-    ("False", "誤", "错误", "錯誤"),
+    ("True", "正", "참", "正确", "正確"),
+    ("False", "誤", "거짓", "错误", "錯誤"),
     (
         "past-exam-2024.pdf",
         "過去問-2024.pdf",
+        "기출-2024.pdf",
         "2024真题.pdf",
         "2024考古題.pdf",
     ),
     (
         "In “The list of candidates were published”, the verb agrees correctly with its subject.",
         "“The list of candidates were published” では、動詞は主語に正しく一致している。",
+        "“The list of candidates were published”에서 동사는 주어와 올바르게 일치한다.",
         "在 “The list of candidates were published” 中，动词与主语的一致是正确的。",
         "在 “The list of candidates were published” 中，動詞與主詞的一致是正確的。",
     ),
     (
         "In “Neither the judge nor the clerks was present”, the verb should agree with “clerks”.",
         "“Neither the judge nor the clerks was present” では、動詞は “clerks” に一致させるべきである。",
+        "“Neither the judge nor the clerks was present”에서 동사는 “clerks”에 일치해야 한다.",
         "在 “Neither the judge nor the clerks was present” 中，动词应与 “clerks” 保持一致。",
         "在 “Neither the judge nor the clerks was present” 中，動詞應與 “clerks” 一致。",
     ),
     (
         "Under the civil service statute, a public servant may not act as an agent before public offices.",
         "国家公務員法上、公務員は官公署に対して他人の代理人となってはならない。",
+        "국가공무원법상 공무원은 관공서에 대하여 타인의 대리인이 될 수 없다.",
         "根据《公务员法》，公务员不得在国家机关担任他人的代理人。",
         "依公務員服務法，公務員不得擔任他人在公務機關的代理人。",
     ),
     (
         "The civil service statute is not in the exam notice",
         "国家公務員法は受験案内の範囲外",
+        "국가공무원법은 시험 공고 범위에 없음",
         "《公务员法》不在招考公告范围内",
         "公務員服務法不在考試簡章範圍內",
     ),
-    ("Anna", "さくら", "林晓", "林曉"),
+    ("Anna", "さくら", "지민", "林晓", "林曉"),
     (
         "Hi! Today we look at subject–verb agreement. The verb follows the head of the subject, not the nearest noun. Which is right: “The list of names is” or “are”?",
         "こんにちは！今日は主語と動詞の一致を学びます。動詞は、すぐ前の名詞ではなく主語の中心となる名詞に合わせます。“The list of names is” と “are”、正しいのはどちら？",
+        "안녕하세요! 오늘은 주어와 동사의 수 일치를 배워요. 동사는 바로 앞의 명사가 아니라 주어의 중심 명사에 맞춥니다. “The list of names is”와 “are” 중 어느 것이 맞을까요?",
         "你好！今天我们学习主谓一致。动词要和主语的中心词保持一致，而不是和离它最近的名词。“The list of names is” 和 “are”，哪个正确？",
         "你好！今天我們學習主詞與動詞一致。動詞要和主詞的中心詞一致，而不是和離它最近的名詞。“The list of names is” 和 “are”，哪個正確？",
     ),
     (
         "The verb agrees with the head noun",
         "動詞は主語の中心の名詞に一致",
+        "동사는 주어의 중심 명사에 일치",
         "动词与主语中心词保持一致",
         "動詞與主詞中心詞一致",
     ),
     (
         "Test: drop the “of …” phrase",
         "コツ：“of …” を外して考える",
+        "요령: “of …” 구를 빼고 생각하기",
         "技巧：先去掉 “of …” 短语",
         "技巧：先拿掉 “of …” 片語",
     ),
     (
         "ROTEIRO: Find the head noun | Tricky subjects | Collective nouns | Exam traps\nETAPA: 2",
         "ROTEIRO: 中心の名詞を探す | まぎらわしい主語 | 集合名詞 | 試験のひっかけ\nETAPA: 2",
+        "ROTEIRO: 중심 명사 찾기 | 헷갈리는 주어 | 집합 명사 | 시험 함정\nETAPA: 2",
         "ROTEIRO: 找出中心词 | 容易混淆的主语 | 集体名词 | 考试陷阱\nETAPA: 2",
         "ROTEIRO: 找出中心詞 | 容易混淆的主詞 | 集合名詞 | 考試陷阱\nETAPA: 2",
     ),
     (
         "Well done, you closed the topic!\nFIM",
         "よくできました。このトピックは完了です！\nFIM",
+        "잘했어요. 이 주제를 마쳤어요!\nFIM",
         "做得好，这个知识点学完了！\nFIM",
         "做得好，這個單元完成了！\nFIM",
     ),
     (
         "2.1.1 CARGO 1: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: AUDIT\n\n2.1.2 CARGO 2: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – DATA SCIENCE\n\n2.1.3 CARGO 3: FEDERAL FINANCE AND CONTROL AUDITOR – SPECIALTY: INFORMATION\nTECHNOLOGY – IT INFRASTRUCTURE\n",
         "2.1.1 CARGO 1: 財務監査官 – 専門：監査\n\n2.1.2 CARGO 2: 財務監査官 – 専門：情報技術・データサイエンス\n\n2.1.3 CARGO 3: 財務監査官 – 専門：情報技術・ITインフラ\n\n",
+        "2.1.1 CARGO 1: 감사원 감사관 – 전문 분야: 감사\n\n2.1.2 CARGO 2: 감사원 감사관 – 전문 분야: 정보기술 – 데이터 과학\n\n2.1.3 CARGO 3: 감사원 감사관 – 전문 분야: 정보기술 – IT 인프라\n\n",
         "2.1.1 CARGO 1: 审计署审计员 – 专业：审计\n\n2.1.2 CARGO 2: 审计署审计员 – 专业：信息技术 – 数据科学\n\n2.1.3 CARGO 3: 审计署审计员 – 专业：信息技术 – IT 基础设施\n\n",
         "2.1.1 CARGO 1: 審計部審計員 – 專業：審計\n\n2.1.2 CARGO 2: 審計部審計員 – 專業：資訊科技 – 資料科學\n\n2.1.3 CARGO 3: 審計部審計員 – 專業：資訊科技 – IT 基礎設施\n\n",
     ),
     (
         "exam-notice-cgu.pdf",
         "受験案内-財務監査官.pdf",
+        "시험공고-감사원.pdf",
         "招考公告-审计署.pdf",
         "考試簡章-審計部.pdf",
     ),
     (
         "Federal Finance and Control Auditor – Specialty: Information Technology – Data Science",
         "財務監査官 – 専門：情報技術・データサイエンス",
+        "감사원 감사관 – 전문 분야: 정보기술 – 데이터 과학",
         "审计署审计员 – 专业：信息技术 – 数据科学",
         "審計部審計員 – 專業：資訊科技 – 資料科學",
     ),
-    ("Study handout", "テキスト", "讲义", "講義"),
-    ("Contents", "目次", "目录", "目錄"),
-    ("Key points", "要点", "要点", "重點"),
-    ("Examples", "例", "例子", "範例"),
-    ("Exam pitfalls", "試験のひっかけ", "考试陷阱", "考試陷阱"),
-    ("Summary", "まとめ", "小结", "摘要"),
-    ("Exercises", "練習問題", "练习", "練習題"),
-    ("Answer key", "解答と解説", "答案解析", "解答與解析"),
+    ("Study handout", "テキスト", "교재", "讲义", "講義"),
+    ("Contents", "目次", "목차", "目录", "目錄"),
+    ("Key points", "要点", "핵심 정리", "要点", "重點"),
+    ("Examples", "例", "예시", "例子", "範例"),
+    (
+        "Exam pitfalls",
+        "試験のひっかけ",
+        "시험 함정",
+        "考试陷阱",
+        "考試陷阱",
+    ),
+    ("Summary", "まとめ", "요약", "小结", "摘要"),
+    ("Exercises", "練習問題", "연습 문제", "练习", "練習題"),
+    (
+        "Answer key",
+        "解答と解説",
+        "정답 및 해설",
+        "答案解析",
+        "解答與解析",
+    ),
     (
         "Picture: Wikipedia",
         "画像：Wikipedia",
+        "그림: Wikipedia",
         "图片：Wikipedia",
         "圖片：Wikipedia",
     ),
-    ("Quick answers", "解答一覧", "速查答案", "答案速查"),
+    (
+        "Quick answers",
+        "解答一覧",
+        "빠른 정답",
+        "速查答案",
+        "答案速查",
+    ),
     (
         "Generated on Oct 28, 2026",
         "2026年10月28日作成",
+        "2026년 10월 28일 생성",
         "生成于 2026年10月28日",
         "產生於 2026年10月28日",
     ),
     (
         "A verb agrees with the head of its subject, not with the noun closest to it. Exams test this with long subjects whose last noun has the other number.",
         "動詞は、すぐ近くの名詞ではなく、主語の中心となる名詞に一致します。試験では、最後の名詞の数が中心の名詞と違う長い主語でよく問われます。",
+        "동사는 바로 옆의 명사가 아니라 주어의 중심 명사에 일치합니다. 시험에서는 마지막 명사의 수가 중심 명사와 다른 긴 주어로 자주 묻습니다.",
         "动词与主语的中心词保持一致，而不是与离它最近的名词一致。考试常用很长的主语来考查，其最后一个名词的单复数与中心词不同。",
         "動詞與主詞的中心詞一致，而不是與離它最近的名詞一致。考試常用很長的主詞來考，其最後一個名詞的單複數與中心詞不同。",
     ),
     (
         "Find the head noun",
         "中心の名詞を探す",
+        "중심 명사 찾기",
         "找出中心词",
         "找出中心詞",
     ),
     (
         "Strip the phrases that start with of, with or in. What is left is the head noun, and the verb follows it: the list of names is long, the boxes on the shelf are heavy.",
         "まず of、with、in で始まる句を外してみましょう。残ったものが中心の名詞で、動詞はそれに合わせます。the list of names is long、the boxes on the shelf are heavy のように。",
+        "먼저 of, with, in으로 시작하는 구를 빼 봅시다. 남는 것이 중심 명사이고, 동사는 그것을 따릅니다. the list of names is long, the boxes on the shelf are heavy처럼요.",
         "先去掉以 of、with 或 in 开头的短语，剩下的就是中心词，动词跟着它变：the list of names is long，the boxes on the shelf are heavy。",
         "先拿掉以 of、with 或 in 開頭的片語，剩下的就是中心詞，動詞跟著它變：the list of names is long，the boxes on the shelf are heavy。",
     ),
-    ("Strip the", "まず", "先去掉", "先拿掉"),
+    ("Strip the", "まず", "먼저", "先去掉", "先拿掉"),
     (
         "Drop the of-phrase to find the head.",
         "of の句を外すと中心の名詞が見える。",
+        "of 구를 빼면 중심 명사가 보인다.",
         "去掉 of 短语，就能找到中心词。",
         "拿掉 of 片語，就能找到中心詞。",
     ),
     (
         "Tricky subjects",
         "まぎらわしい主語",
+        "헷갈리는 주어",
         "容易混淆的主语",
         "容易混淆的主詞",
     ),
     (
         "Each and every take a singular verb. Neither ... nor and either ... or agree with the nearer part of the subject.",
         "each と every は単数の動詞をとります。neither ... nor と either ... or は、動詞に近いほうの主語に一致します。",
+        "each와 every는 단수 동사를 씁니다. neither ... nor와 either ... or는 동사에 가까운 쪽 주어에 일치합니다.",
         "each 和 every 后接单数动词。neither ... nor 和 either ... or 与离动词较近的主语保持一致。",
         "each 和 every 後接單數動詞。neither ... nor 與 either ... or 和離動詞較近的主詞一致。",
     ),
     (
         "A number of takes a plural verb; the number of takes a singular one.",
         "a number of は複数扱い、the number of は単数扱い。",
+        "a number of는 복수, the number of는 단수 취급.",
         "a number of 接复数动词，the number of 接单数动词。",
         "a number of 接複數動詞，the number of 接單數動詞。",
     ),
     (
         "Choose the correct sentence.",
         "正しい文を選びなさい。",
+        "올바른 문장을 고르시오.",
         "选出正确的句子。",
         "選出正確的句子。",
     ),
@@ -1447,8 +1510,10 @@ const ASIAN_DEMO: &[(&str, &str, &str, &str)] = &[
         "The list of names are long.",
         "The list of names are long.",
         "The list of names are long.",
+        "The list of names are long.",
     ),
     (
+        "The list of names is long.",
         "The list of names is long.",
         "The list of names is long.",
         "The list of names is long.",
@@ -1457,122 +1522,148 @@ const ASIAN_DEMO: &[(&str, &str, &str, &str)] = &[
     (
         "The head noun is list, singular.",
         "中心の名詞は list で、単数。",
+        "중심 명사는 list이며 단수이다.",
         "中心词是 list，为单数。",
         "中心詞是 list，為單數。",
     ),
     (
         "Shows up in every exam.",
         "毎回の試験に出る。",
+        "매번 시험에 나온다.",
         "每次考试都会考。",
         "每次考試都會考。",
     ),
     (
         "Presentation and text structure: 5\nDevelopment of the theme: 15",
         "構成と表現: 5\nテーマの展開: 15",
+        "구성과 표현: 5\n주제 전개: 15",
         "结构与表达: 5\n主题展开: 15",
         "結構與表達: 5\n主題發揮: 15",
     ),
     (
         "Civic participation and fundamental rights",
         "市民参加と基本的人権",
+        "시민 참여와 기본권",
         "公民参与与基本权利",
         "公民參與與基本權利",
     ),
     (
         "Write an argumentative essay on how civic participation helps secure fundamental rights, with a thesis, two arguments and a conclusion.",
         "市民参加が基本的人権の保障にどう役立つかについて、主張、二つの根拠、結論を示して論述しなさい。",
+        "시민 참여가 기본권 보장에 어떻게 기여하는지에 대해 주장, 두 가지 근거, 결론을 갖추어 논술하시오.",
         "请以公民参与如何保障基本权利为题，写一篇议论文，包括论点、两个论据和结论。",
         "請以公民參與如何保障基本權利為題，寫一篇論說文，包含論點、兩個論據與結論。",
     ),
     (
         "Use standard written language and do not copy the prompt.",
         "常体で書き、問題文をそのまま写さないこと。",
+        "표준 문어체로 쓰고 문제를 그대로 옮겨 쓰지 마시오.",
         "使用规范书面语，不要照抄题目。",
         "使用標準書面語，不要照抄題目。",
     ),
     (
         "Define civic participation and its channels (councils, hearings, voting).",
         "市民参加とその手段（審議会、公聴会、選挙）を定義する。",
+        "시민 참여와 그 수단(위원회, 공청회, 선거)을 정의한다.",
         "界定公民参与及其渠道（议事会、听证会、选举）。",
         "界定公民參與及其管道（審議會、公聽會、選舉）。",
     ),
     (
         "Link participation to rights being honoured in practice.",
         "参加と権利の実際の保障を結びつける。",
+        "참여와 권리의 실질적 보장을 연결한다.",
         "把参与和权利的切实保障联系起来。",
         "將參與和權利的實際保障連結起來。",
     ),
     (
         "Civic participation is what takes fundamental rights\noff the page. When citizens follows public\npolicy, ask for results and report abuse,\nthe State answers better.",
         "市民参加は、基本的人権を紙の上から\n現実のものにする条件である。市民を政策を\n見守り、成果を求め、不正を告発すれば、\n国はよりよく応えるようになる。",
+        "시민 참여는 기본권을 종이 위에서\n현실로 만드는 조건이다. 시민을 정책을\n지켜보고, 성과를 요구하고, 부정을 고발하면\n국가는 더 잘 응답한다.",
         "公民参与是让基本权利\n真正落到实处得条件。当公民关注\n公共政策、要求结果、举报滥用时，\n国家就会作出更好的回应。",
         "公民參與是讓基本權利\n真正落到實處得條件。當公民關注\n公共政策、要求結果、檢舉濫用時，\n國家就會做出更好的回應。",
     ),
-    ("ask", "求め", "要求", "要求"),
-    ("smudged", "にじんでいる", "字迹模糊", "字跡模糊"),
+    ("ask", "求め", "요구", "要求", "要求"),
+    (
+        "smudged",
+        "にじんでいる",
+        "번져 있음",
+        "字迹模糊",
+        "字跡模糊",
+    ),
     (
         "The right margin is shaded.",
         "右の余白に影がある。",
+        "오른쪽 여백에 그림자가 있다.",
         "右侧页边有阴影。",
         "右側邊界有陰影。",
     ),
     (
         "One single paragraph: introduction, body and conclusion are not separated.",
         "一段落のみで、序論・本論・結論が分かれていない。",
+        "한 문단뿐이며 서론, 본론, 결론이 나뉘어 있지 않다.",
         "全文只有一段，开头、主体和结尾没有分开。",
         "全文只有一段，開頭、主體與結尾沒有分開。",
     ),
     (
         "Clear, relevant thesis; the second argument is only announced.",
         "主張は明確で適切。二つ目の根拠は示されただけで展開されていない。",
+        "주장은 명확하고 적절하다. 두 번째 근거는 제시만 되고 전개되지 않았다.",
         "论点清晰切题；第二个论据只提出而未展开。",
         "論點清楚切題；第二個論據只提出而未展開。",
     ),
     (
         "Civic participation is what takes fundamental rights",
         "市民参加は、基本的人権を紙の上から",
+        "시민 참여는 기본권을 종이 위에서",
         "公民参与是让基本权利",
         "公民參與是讓基本權利",
     ),
     (
         "Thesis stated in the first sentence.",
         "最初の文で主張を示している。",
+        "첫 문장에서 주장을 밝히고 있다.",
         "第一句就亮明论点。",
         "第一句就點出論點。",
     ),
     (
         "Subject–verb agreement.",
         "助詞の誤り。",
+        "조사 오류.",
         "“的”“得”误用。",
         "「的」「得」誤用。",
     ),
     (
         "Write \"citizens follow\".",
         "「市民が政策を」と書く。",
+        "“시민이 정책을”으로 쓴다.",
         "应写作“实处的条件”。",
         "應寫作「實處的條件」。",
     ),
     (
         "citizens follows",
         "市民を政策を",
+        "시민을 정책을",
         "实处得条件",
         "實處得條件",
     ),
     (
         "Split the text into paragraphs.",
         "段落に分ける。",
+        "문단을 나눈다.",
         "分段写作。",
         "分段書寫。",
     ),
     (
         "Develop the second argument with an example.",
         "二つ目の根拠を例で展開する。",
+        "두 번째 근거를 예시로 전개한다.",
         "用例子展开第二个论据。",
         "用例子展開第二個論據。",
     ),
     (
         "Check agreement.",
         "助詞を見直す。",
+        "조사를 다시 확인한다.",
         "检查“的”“地”“得”的用法。",
         "檢查「的」「地」「得」的用法。",
     ),
@@ -1597,6 +1688,14 @@ fn board_demo(locale: &str) -> [&'static str; 6] {
             "LINHA DO TEMPO: 1889: 大日本帝国憲法 | 1947: 日本国憲法 | 1947: 財政法 | 1999: 情報公開法",
             "MAPA: 国の予算: 一般会計 | 特別会計 | 政府関係機関 | 補正予算",
             "DESTAQUE: 内閣は、毎会計年度の予算を作成し、国会に提出して、その審議を受け議決を経なければならない。",
+        ],
+        "ko" => [
+            "FORMULA: 이자 = 원금 × 이율 × 기간",
+            "DIAGRAMA: 시험 공고 -> 학습 계획 -> 복습",
+            "TABELA: 구분 | 기간 | 의결 ; 예산안 | 1년 | 국회 ; 추가경정예산 | 연도 중 | 국회 ; 결산 | 1년 | 국회 심의",
+            "LINHA DO TEMPO: 1948: 제헌 헌법 | 1961: 예산회계법 | 1987: 현행 헌법 | 2006: 국가재정법",
+            "MAPA: 정부 예산: 일반회계 | 특별회계 | 기금 | 추가경정예산",
+            "DESTAQUE: 정부는 회계연도마다 예산안을 편성하여 회계연도 개시 90일 전까지 국회에 제출하고, 국회는 회계연도 개시 30일 전까지 이를 의결하여야 한다.",
         ],
         "zh-Hans" => [
             "FORMULA: 利息 = 本金 × 利率 × 时间",
@@ -1703,15 +1802,16 @@ fn update_bar_snapshots() {
     crate::i18n::set(crate::i18n::DEFAULT_LOCALE);
 }
 
-/// Demo text of the mock exam: Portuguese, English, Japanese, Simplified
-/// and Traditional Chinese.
-fn pick(locale: &str, texts: [&'static str; 5]) -> &'static str {
+/// Demo text of the mock exam: Portuguese, English, Japanese, Korean,
+/// Simplified and Traditional Chinese.
+fn pick(locale: &str, texts: [&'static str; 6]) -> &'static str {
     match locale {
         "pt-BR" => texts[0],
         "en" => texts[1],
         "ja" => texts[2],
-        "zh-Hans" => texts[3],
-        _ => texts[4],
+        "ko" => texts[3],
+        "zh-Hans" => texts[4],
+        _ => texts[5],
     }
 }
 
@@ -1758,6 +1858,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
             "Confira a regra no material do tópico.",
             "Check the rule in the handout of the topic.",
             "トピックのテキストで規則を確認しましょう。",
+            "주제 교재에서 규칙을 확인하세요.",
             "请在该主题的讲义中核对规则。",
             "請在該主題的講義中核對規則。",
         ],
@@ -1778,6 +1879,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "Segundo o texto, a principal função da linguagem no primeiro parágrafo é:",
                 "According to the text, the first paragraph mainly aims to:",
                 "本文によれば、第1段落の主な目的は何か。",
+                "본문에 따르면 첫 번째 문단의 주된 목적은 무엇인가?",
                 "根据短文，第一段的主要目的是：",
                 "根據短文，第一段的主要目的是：",
             ],
@@ -1794,6 +1896,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "Assinale a frase em que o acento indicativo de crase está correto.",
                 "Which is right: “The list of names ___ on the desk.”",
                 "正しいものを選べ：“The list of names ___ on the desk.”",
+                "옳은 것을 고르시오: “The list of names ___ on the desk.”",
                 "选出正确的一项：“The list of names ___ on the desk.”",
                 "選出正確的一項：“The list of names ___ on the desk.”",
             ],
@@ -1816,6 +1919,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "A vírgula está empregada corretamente em:",
                 "Choose the sentence with correct punctuation.",
                 "句読点が正しい文を選べ。",
+                "문장 부호가 올바른 문장을 고르시오.",
                 "选出标点正确的句子。",
                 "選出標點正確的句子。",
             ],
@@ -1843,6 +1947,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "É fundamento da República Federativa do Brasil:",
                 "Which of these is a founding principle of the constitution?",
                 "憲法の基本原理はどれか。",
+                "헌법의 기본 원리는 무엇인가?",
                 "下列哪一项是宪法的基本原则？",
                 "下列哪一項是憲法的基本原則？",
             ],
@@ -1870,6 +1975,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "O habeas corpus protege, em regra, o direito de:",
                 "Habeas corpus protects, as a rule, the right to:",
                 "人身保護令が原則として保護する権利は何か。",
+                "인신보호영장이 원칙적으로 보호하는 권리는 무엇인가?",
                 "人身保护令原则上保护的权利是：",
                 "人身保護令原則上保護的權利是：",
             ],
@@ -1893,6 +1999,7 @@ fn seed_mock(paths: &AppPaths, locale: &'static str) -> kg_engine::MockAttemptId
                 "Simulado 1",
                 "Mock exam 1",
                 "模擬試験 1",
+                "모의고사 1",
                 "模拟考试 1",
                 "模擬考試 1",
             ],

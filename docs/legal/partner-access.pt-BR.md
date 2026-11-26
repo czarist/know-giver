@@ -1,14 +1,14 @@
 # Termos de Acesso de Parceiros do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.4). Estes termos valem para todos os países e
+Versão de 25 de novembro de 2026 (2026-11-25.1). Estes termos valem para todos os países e
 regiões onde o Know Giver não é oferecido ao público.
 
 ## 1. Não oferecido ao público
 
 O Know Giver, desenvolvido por TRENTIN SOLUÇÕES EM SOFTWARE LTDA – ME (Brasil, CNPJ
 36.154.590/0001-54, "Trentin"), é oferecido ao público apenas no Brasil, nos Estados
-Unidos, na União Europeia, no Reino Unido, no Japão, em Taiwan, em Hong Kong e em
-Singapura. Em todos os outros países e regiões, ele **não é oferecido, vendido nem
+Unidos, na União Europeia, no Reino Unido, no Japão, na Coreia do Sul, em Taiwan, em
+Hong Kong e em Singapura. Em todos os outros países e regiões, ele **não é oferecido, vendido nem
 disponibilizado ao público**.
 
 ## 2. Somente parceiros autorizados

@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 3 de novembro de 2026 (2026-11-03.4), de acordo com a Lei Geral de Proteção de
+Versão de 25 de novembro de 2026 (2026-11-25.1), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo

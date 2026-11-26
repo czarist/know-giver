@@ -23,6 +23,7 @@ pub enum PromptLanguage {
     Portuguese,
     English,
     Japanese,
+    Korean,
     /// Simplified Chinese (mainland, Singapore).
     ChineseSimplified,
     /// Traditional Chinese (Taiwan, Hong Kong).
@@ -30,7 +31,8 @@ pub enum PromptLanguage {
 }
 
 impl PromptLanguage {
-    /// From a locale such as "pt-BR", "en", "ja", "zh-Hans" or "zh-Hant";
+    /// From a locale such as "pt-BR", "en", "ja", "ko", "zh-Hans" or
+    /// "zh-Hant";
     /// anything else is Portuguese.
     pub fn from_locale(locale: &str) -> Self {
         let locale = locale.trim().to_ascii_lowercase().replace('_', "-");
@@ -38,6 +40,8 @@ impl PromptLanguage {
             Self::English
         } else if locale.starts_with("ja") {
             Self::Japanese
+        } else if locale.starts_with("ko") {
+            Self::Korean
         } else if ["zh-hant", "zh-tw", "zh-hk", "zh-mo"]
             .iter()
             .any(|t| locale.starts_with(t))
@@ -50,7 +54,7 @@ impl PromptLanguage {
         }
     }
 
-    /// From `KG_PROMPT_LANG` ("pt", "en", "ja", "zh-Hans", "zh-Hant"), for the examples.
+    /// From `KG_PROMPT_LANG` ("pt", "en", "ja", "ko", "zh-Hans", "zh-Hant"), for the examples.
     pub fn from_env() -> Self {
         Self::from_locale(&std::env::var("KG_PROMPT_LANG").unwrap_or_default())
     }
@@ -60,6 +64,7 @@ impl PromptLanguage {
             Self::Portuguese => "pt",
             Self::English => "en",
             Self::Japanese => "ja",
+            Self::Korean => "ko",
             Self::ChineseSimplified => "zh-Hans",
             Self::ChineseTraditional => "zh-Hant",
         }
