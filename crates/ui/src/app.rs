@@ -151,7 +151,8 @@ pub struct KnowGiverApp {
     shown_since: f64,
     /// Where each sidebar entry was drawn last frame, for the tour.
     pub(crate) nav_rects: Vec<(Screen, egui::Rect)>,
-    /// UI language the fonts were set for (Chinese and Japanese need their own).
+    /// UI language the fonts were set for (Chinese, Japanese and Korean need
+    /// their own).
     fonts_locale: String,
     tray: Option<crate::tray::SystemTray>,
     tray_initialized: bool,

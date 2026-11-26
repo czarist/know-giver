@@ -7,7 +7,7 @@
 <h3 align="center">あなたの試験。あなたのプラン。対話できる先生。</h3>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português (Brasil)</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.zh-Hans.md">简体中文</a> · <a href="README.zh-Hant.md">繁體中文</a>
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/-Linux-2c6b5c?style=flat-square&logo=linux&logoColor=white&labelColor=111111">
   <a href="#license"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-2c6b5c?style=flat-square&logo=opensourceinitiative&logoColor=white"></a>
   <a href="https://github.com/czarist/know-giver/tags"><img alt="Latest version" src="https://img.shields.io/github/v/tag/czarist/know-giver?sort=semver&label=version&color=2c6b5c&style=flat-square&logo=github&logoColor=white"></a>
-  <img alt="Languages: Portuguese, English, Japanese, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
+  <img alt="Languages: Portuguese, English, Japanese, Korean, Simplified and Traditional Chinese" src="https://img.shields.io/badge/languages-pt--BR%20%C2%B7%20en%20%C2%B7%20ja%20%C2%B7%20ko%20%C2%B7%20zh--Hans%20%C2%B7%20zh--Hant-2c6b5c?style=flat-square">
   <img alt="Local-first voice" src="https://img.shields.io/badge/voice-local--first-2c6b5c?style=flat-square">
   <a href="https://github.com/czarist/know-giver/actions/workflows/packages.yml"><img alt="Native packages build" src="https://img.shields.io/github/actions/workflow/status/czarist/know-giver/packages.yml?label=packages&style=flat-square&logo=githubactions&logoColor=white"></a>
 </p>
@@ -196,7 +196,7 @@ GitHub Copilot は公式 Copilot CLI を通じて GitHub アカウントで接�
 
 **無料と有料。** 「アカウントでサインイン」のほかに、AIのステップには2つのタブがあります。「有料」はおすすめのサービス（コスパの Z.ai、正確さの Claude）、「無料」は無料プランのあるサービス（Gemini、Mistral、OpenRouter、Groq、NVIDIA、GitHub Models、お使いのコンピューターで動く Ollama や LM Studio）です。それぞれ対象のモデル、送った内容の扱い（学習に使う無料プランもあります）、上限と規約へのリンクを表示します。
 
-**地域の勉強のしかた。** レッスン、クイズ、テキスト、記述・小論文は、お住まいの地域の試験の勉強のしかたに合わせます。日本では五肢択一と字数で書く小論文、中国大陸では行测と申论、台湾と香港ではそれぞれの公務員試験の形式、ブラジルでは Cebraspe の正誤問題と5択、米国と英国では標準テスト、司法試験、採点基準（mark scheme）です。試験要項と過去問が常に優先されます。
+**地域の勉強のしかた。** レッスン、クイズ、テキスト、記述・小論文は、お住まいの地域の試験の勉強のしかたに合わせます。日本では五肢択一と字数で書く小論文、韓国では公務員試験の四肢択一と修能（スヌン）、中国大陸では行测と申论、台湾と香港ではそれぞれの公務員試験の形式、ブラジルでは Cebraspe の正誤問題と5択、米国と英国では標準テスト、司法試験、採点基準（mark scheme）です。試験要項と過去問が常に優先されます。
 
 <p align="center">
   <img src="docs/images/ja/setup-ai-free.png" alt="AIのステップの「無料」タブ：無料プランのあるサービス、対象のモデル、データの扱い" width="60%">
@@ -221,7 +221,7 @@ GitHub Copilot は公式 Copilot CLI を通じて GitHub アカウントで接�
 - 起動時に、最新のバージョンを GitHub に問い合わせます。送られるのはこの問い合わせだけで、設定 → アプリについて・アップデート でオフにできます。
 - アカウント、テレメトリー、広告はありません。[利用規約](docs/legal/terms-of-use.ja.md)と[プライバシーポリシー](docs/legal/privacy-policy.ja.md)（日本法）をお読みください。アプリ内でも表示されます。
 
-Know Giver は日本、ブラジル、アメリカ合衆国、欧州連合、イギリス、台湾、香港、シンガポールで一般に提供しています。その他の国・地域では、書面で認めたパートナーだけが[パートナーアクセス規約](docs/legal/partner-access.ja.md)に基づいて利用できます。
+Know Giver は日本、韓国、ブラジル、アメリカ合衆国、欧州連合、イギリス、台湾、香港、シンガポールで一般に提供しています。その他の国・地域では、書面で認めたパートナーだけが[パートナーアクセス規約](docs/legal/partner-access.ja.md)に基づいて利用できます。
 
 ## インストール
 

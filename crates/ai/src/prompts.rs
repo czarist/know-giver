@@ -79,6 +79,7 @@ macro_rules! prompts {
 static PORTUGUESE: Prompts = prompts!("pt");
 static ENGLISH: Prompts = prompts!("en");
 static JAPANESE: Prompts = prompts!("ja");
+static KOREAN: Prompts = prompts!("ko");
 static CHINESE_SIMPLIFIED: Prompts = prompts!("zh-Hans");
 static CHINESE_TRADITIONAL: Prompts = prompts!("zh-Hant");
 
@@ -88,6 +89,7 @@ pub fn get(language: PromptLanguage) -> &'static Prompts {
         PromptLanguage::Portuguese => &PORTUGUESE,
         PromptLanguage::English => &ENGLISH,
         PromptLanguage::Japanese => &JAPANESE,
+        PromptLanguage::Korean => &KOREAN,
         PromptLanguage::ChineseSimplified => &CHINESE_SIMPLIFIED,
         PromptLanguage::ChineseTraditional => &CHINESE_TRADITIONAL,
     }
@@ -163,10 +165,11 @@ mod tests {
             .collect()
     }
 
-    const ALL: [PromptLanguage; 5] = [
+    const ALL: [PromptLanguage; 6] = [
         PromptLanguage::Portuguese,
         PromptLanguage::English,
         PromptLanguage::Japanese,
+        PromptLanguage::Korean,
         PromptLanguage::ChineseSimplified,
         PromptLanguage::ChineseTraditional,
     ];

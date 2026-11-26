@@ -21,6 +21,7 @@ language:
   pt-BR: "Português (Brasil)"
   en: "English"
   ja: "日本語"
+  ko: "한국어"
   zh-Hans: "简体中文"
   zh-Hant: "繁體中文"
 
@@ -30,6 +31,7 @@ region:
   eu: "歐盟"
   uk: "英國"
   jp: "日本"
+  kr: "韓國"
   tw: "臺灣"
   hk: "香港"
   sg: "新加坡"

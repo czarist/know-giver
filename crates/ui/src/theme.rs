@@ -104,9 +104,10 @@ pub fn apply(ctx: &egui::Context) {
     });
 }
 
-/// Sets the fonts for a UI language: Chinese and Japanese text uses the
-/// system's font for that script first (Han characters differ between
-/// Japan, mainland China and Taiwan), the others after it.
+/// Sets the fonts for a UI language: Chinese, Japanese and Korean text uses
+/// the system's font for that script first (Han characters differ between
+/// Japan, mainland China and Taiwan; Korean needs Hangul), the others after
+/// it.
 /// How far Japanese glyphs move down, as a fraction of the font size.
 const JAPANESE_Y_OFFSET: f32 = 0.22;
 
@@ -135,8 +136,8 @@ fn fonts(locale: &str) -> FontDefinitions {
         include_bytes!("../assets/fonts/IBMPlexMono-Regular.ttf"),
     );
 
-    // Chinese and Japanese: the UI language's script first. Other languages
-    // load one, so language names like 日本語 still show.
+    // Chinese, Japanese and Korean: the UI language's script first. Other
+    // languages load two, so language names like 日本語 and 한국어 still show.
     let first = kg_engine::CjkScript::of_locale(locale);
     let scripts: Vec<kg_engine::CjkScript> = match first {
         Some(first) => std::iter::once(first)
@@ -146,7 +147,10 @@ fn fonts(locale: &str) -> FontDefinitions {
                     .filter(|s| *s != first),
             )
             .collect(),
-        None => vec![kg_engine::CjkScript::Simplified],
+        None => vec![
+            kg_engine::CjkScript::Simplified,
+            kg_engine::CjkScript::Korean,
+        ],
     };
     let mut cjk = Vec::new();
     for script in scripts {

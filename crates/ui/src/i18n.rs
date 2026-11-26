@@ -16,7 +16,7 @@ use rust_i18n::t;
 pub const DEFAULT_LOCALE: &str = "pt-BR";
 
 /// Locales offered in Settings, in display order.
-pub const LOCALES: [&str; 5] = ["pt-BR", "en", "ja", "zh-Hans", "zh-Hant"];
+pub const LOCALES: [&str; 6] = ["pt-BR", "en", "ja", "ko", "zh-Hans", "zh-Hant"];
 
 pub fn current() -> String {
     rust_i18n::locale().to_string()
@@ -41,6 +41,7 @@ pub fn region_name(region: kg_engine::Region) -> String {
         Region::Eu => t!("region.eu"),
         Region::Uk => t!("region.uk"),
         Region::Jp => t!("region.jp"),
+        Region::Kr => t!("region.kr"),
         Region::Tw => t!("region.tw"),
         Region::Hk => t!("region.hk"),
         Region::Sg => t!("region.sg"),
