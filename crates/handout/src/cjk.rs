@@ -1,27 +1,36 @@
-//! Chinese and Japanese fonts. They are large (10–20 MB each), so instead of
-//! embedding them the app uses the ones every desktop system ships: Yu
-//! Gothic and Microsoft YaHei / JhengHei on Windows, Hiragino and PingFang on
-//! macOS, Noto Sans CJK on Linux. Each is read once and kept for the session.
+//! Chinese, Japanese and Korean fonts. They are large (10–20 MB each), so
+//! instead of embedding them the app uses the ones every desktop system
+//! ships: Yu Gothic, Malgun Gothic and Microsoft YaHei / JhengHei on Windows,
+//! Hiragino, Apple SD Gothic Neo and PingFang on macOS, Noto Sans CJK on
+//! Linux. Each is read once and kept for the session.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
 /// Han characters are drawn differently in Japan, mainland China and
-/// Taiwan/Hong Kong, so each script has its own font.
+/// Taiwan/Hong Kong, so each script has its own font; Korean needs one with
+/// Hangul.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CjkScript {
     Japanese,
+    Korean,
     Simplified,
     Traditional,
 }
 
 impl CjkScript {
-    pub const ALL: [Self; 3] = [Self::Japanese, Self::Simplified, Self::Traditional];
+    pub const ALL: [Self; 4] = [
+        Self::Japanese,
+        Self::Korean,
+        Self::Simplified,
+        Self::Traditional,
+    ];
 
     /// The script of a UI language, if it is one of these.
     pub fn of_locale(locale: &str) -> Option<Self> {
         match locale {
             "ja" => Some(Self::Japanese),
+            "ko" => Some(Self::Korean),
             "zh-Hans" => Some(Self::Simplified),
             "zh-Hant" => Some(Self::Traditional),
             _ => None,
@@ -56,6 +65,14 @@ impl CjkScript {
             .into_iter()
             .chain(noto(0))
             .collect(),
+            Self::Korean => [
+                win("malgun.ttf"),
+                win("gulim.ttc"),
+                path("/System/Library/Fonts/AppleSDGothicNeo.ttc", 0),
+            ]
+            .into_iter()
+            .chain(noto(1))
+            .collect(),
             Self::Simplified => [
                 win("msyh.ttc"),
                 win("simsun.ttc"),
@@ -83,14 +100,20 @@ pub struct CjkFont {
     pub index: u32,
 }
 
-static FONTS: [OnceLock<Option<CjkFont>>; 3] = [OnceLock::new(), OnceLock::new(), OnceLock::new()];
+static FONTS: [OnceLock<Option<CjkFont>>; 4] = [
+    OnceLock::new(),
+    OnceLock::new(),
+    OnceLock::new(),
+    OnceLock::new(),
+];
 
 /// The system font for `script`, or `None` when none is installed.
 pub fn cjk_font(script: CjkScript) -> Option<&'static CjkFont> {
     let slot = match script {
         CjkScript::Japanese => &FONTS[0],
-        CjkScript::Simplified => &FONTS[1],
-        CjkScript::Traditional => &FONTS[2],
+        CjkScript::Korean => &FONTS[1],
+        CjkScript::Simplified => &FONTS[2],
+        CjkScript::Traditional => &FONTS[3],
     };
     slot.get_or_init(|| {
         script.candidates().into_iter().find_map(|(path, index)| {
@@ -108,6 +131,7 @@ mod tests {
     #[test]
     fn locales_map_to_scripts() {
         assert_eq!(CjkScript::of_locale("ja"), Some(CjkScript::Japanese));
+        assert_eq!(CjkScript::of_locale("ko"), Some(CjkScript::Korean));
         assert_eq!(
             CjkScript::of_locale("zh-Hant"),
             Some(CjkScript::Traditional)
