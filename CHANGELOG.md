@@ -6,6 +6,30 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.45.1] - 2026-11-26
+
+### Added
+- Interface sounds, synthesized in the app (no sound files): a soft tick on hover and a
+  different sound for each kind of button (main buttons, ordinary buttons and links,
+  sidebar, boxes ticked and unticked), a chime for right and wrong quiz answers and a
+  small fanfare when a quiz or lesson ends or a challenge is won. Low and rounded, on
+  their own output over the tutor's voice, and silent while the microphone takes the
+  student's words.
+- Celebrations and motion: the quiz verdict slides in, the right answer pulses, a wrong
+  one shakes, the quiz progress bar glides, and confetti falls when a quiz (60% or more)
+  or a lesson ends or a challenge is won.
+- Settings → Sounds and animations: sounds on or off, volume with a preview, each sound
+  group on or off (hover, buttons, sidebar, boxes, answers, celebrations) and animations
+  on or off, in all six languages.
+- Lesson pause: ⏸ holds the tutor's voice mid-sentence without dropping the rest of the
+  reply, and ▶, lit only while paused, continues from there. ■ and Esc still interrupt.
+
+### Changed
+- The student's turn waits longer before the tutor answers: 1.6 s of quiet after a
+  finished sentence (was 1 s) and 1.5 s more for an unfinished one (was 0.8 s); the
+  setting now goes up to 5 s. Settings saved with the old 1 s default move to 1.6 s once;
+  a pause the student chose stays.
+
 ## [0.44.0] - 2026-11-26
 
 ### Added

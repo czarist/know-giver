@@ -1,13 +1,13 @@
 //! Quiz, one question at a time: multiple choice or Certo/Errado items.
 
 use egui::{RichText, Stroke};
-use kg_engine::{Command, Engine, Mistake, QuizQuestion, QuizSession, QuizStep, TopicId};
+use kg_engine::{Command, Cue, Engine, Mistake, QuizQuestion, QuizSession, QuizStep, TopicId};
 use rust_i18n::t;
 
 use super::Actions;
 use crate::app::{KnowGiverApp, Screen};
 use crate::icons::Icon;
-use crate::{i18n, theme, widgets};
+use crate::{i18n, motion, sounds, theme, widgets};
 
 pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
     let mut actions = Actions::default();
@@ -70,7 +70,16 @@ fn question_view(
             .small()
             .color(p.muted),
     );
-    ui.add(egui::ProgressBar::new(index as f32 / total.max(1) as f32).desired_height(4.0));
+    // The bar glides to the next question instead of jumping.
+    let fraction = index as f32 / total.max(1) as f32;
+    let fraction = if motion::enabled(ui.ctx()) {
+        ui.ctx()
+            .animate_value_with_time(egui::Id::new("quiz_progress"), fraction, 0.35)
+    } else {
+        fraction
+    };
+    ui.add(egui::ProgressBar::new(fraction).desired_height(4.0));
+    let answer_id = egui::Id::new(("quiz_answer", index, &question.prompt));
     ui.horizontal(|ui| {
         if question.from_board {
             widgets::chip(ui, &t!("quiz.from_board"), p.accent);
@@ -104,15 +113,21 @@ fn question_view(
             .stroke(Stroke::new(1.0, stroke))
             .wrap()
             .min_size(egui::vec2(ui.available_width(), 40.0));
-        if ui
-            .add_enabled(
-                chosen.is_none() || chosen == Some(i) || i == question.correct,
-                button,
-            )
-            .clicked()
-            && chosen.is_none()
-        {
+        let response = ui.add_enabled(
+            chosen.is_none() || chosen == Some(i) || i == question.correct,
+            button,
+        );
+        if response.clicked() && chosen.is_none() {
+            let cue = if i == question.correct {
+                Cue::Correct
+            } else {
+                Cue::Wrong
+            };
+            sounds::play(ui.ctx(), cue);
             actions.send(Command::AnswerQuiz(i));
+        }
+        if chosen.is_some() && i == question.correct {
+            motion::pulse(ui, answer_id, response.rect, p.success);
         }
     }
 
@@ -123,12 +138,19 @@ fn question_view(
         } else {
             (p.danger, t!("quiz.wrong"))
         };
-        widgets::callout(ui, color, |ui| {
-            ui.label(RichText::new(verdict).strong().color(color));
-            if !question.explanation.is_empty() {
-                ui.label(&question.explanation);
-            }
-        });
+        let verdict_box = |ui: &mut egui::Ui| {
+            widgets::callout(ui, color, |ui| {
+                ui.label(RichText::new(verdict).strong().color(color));
+                if !question.explanation.is_empty() {
+                    ui.label(&question.explanation);
+                }
+            });
+        };
+        if choice == question.correct {
+            motion::appear(ui, answer_id, verdict_box);
+        } else {
+            motion::shake(ui, answer_id, verdict_box);
+        }
         ui.add_space(8.0);
         let next = if index + 1 < total {
             t!("quiz.next")
@@ -256,25 +278,35 @@ fn finished(
     actions: &mut Actions,
 ) {
     let p = theme::palette(ui.ctx());
-    widgets::card(ui, |ui| {
-        ui.label(
-            RichText::new(t!("quiz.score", correct = correct, total = total))
-                .size(28.0)
-                .color(p.accent),
-        );
-        let ratio = correct as f32 / total.max(1) as f32;
-        let message = if ratio >= 0.9 {
-            t!("quiz.result.great")
-        } else if ratio >= 0.6 {
-            t!("quiz.result.good")
-        } else {
-            t!("quiz.result.keep_going")
-        };
-        ui.label(message);
-        if let Some(net) = session.net_score(correct, total) {
-            ui.add_space(4.0);
-            widgets::hint(ui, &t!("quiz.net_score", score = net, total = total));
+    let ratio = correct as f32 / total.max(1) as f32;
+    let first_prompt = session.questions().first().map(|q| q.prompt.as_str());
+    let done_id = egui::Id::new(("quiz_done", session.topic_id, first_prompt, correct, total));
+    if motion::first_time(ui.ctx(), done_id) {
+        sounds::play(ui.ctx(), Cue::Complete);
+        if ratio >= 0.6 {
+            motion::celebrate(ui.ctx(), if ratio >= 0.9 { 110 } else { 70 });
         }
+    }
+    motion::appear(ui, done_id, |ui| {
+        widgets::card(ui, |ui| {
+            ui.label(
+                RichText::new(t!("quiz.score", correct = correct, total = total))
+                    .size(28.0)
+                    .color(p.accent),
+            );
+            let message = if ratio >= 0.9 {
+                t!("quiz.result.great")
+            } else if ratio >= 0.6 {
+                t!("quiz.result.good")
+            } else {
+                t!("quiz.result.keep_going")
+            };
+            ui.label(message);
+            if let Some(net) = session.net_score(correct, total) {
+                ui.add_space(4.0);
+                widgets::hint(ui, &t!("quiz.net_score", score = net, total = total));
+            }
+        })
     });
     ui.add_space(8.0);
     ui.horizontal(|ui| {
