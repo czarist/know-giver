@@ -91,7 +91,7 @@ Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>
 
 ## Current Status
 
-Version 0.44.0. Everything an agent can build and check without a human ear, a
+Version 0.45.1. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -105,6 +105,11 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 (30 minutes to 8 hours in Settings), while the student is away from the app and the
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
+
+In 0.45.1: interface sounds (a different one for each kind of button, chimes for answers,
+a fanfare for finished work and won challenges), celebrations (confetti, pulse, shake),
+both with switches in Settings; a pause and play for the tutor's voice in lessons; and a
+longer wait before the tutor answers (1.6 s, +1.5 s for an unfinished sentence).
 
 In 0.44.0: Korean (UI, prompts, README) and South Korea as a public region, with its own
 terms, privacy policy and exam culture; Korean lessons are typed until a Korean voice
@@ -142,7 +147,7 @@ app and CPU/Vulkan OCR runtimes were rebuilt and the portable package was verifi
 1. Student turns (v0.26.2): the log of 2026-10-28 showed every turn ending after
    about 450 ms of quiet (`quiet_ms=453`), because Parakeet ends almost every partial
    with a full stop. The wait is now a setting (`turn_pause`, 1 s default, +0.8 s
-   without a finished sentence), speech counts from level 0.0025, and any English
+   without a finished sentence; 1.6 s and +1.5 s since v0.45.1, up to 5 s), speech counts from level 0.0025, and any English
    word without a Portuguese one asks Whisper. The owner's recording was exactly 0.0
    between words and about 0.005 during speech: a driver noise suppressor and a low
    microphone gain. Check new logs (`end of turn ... quiet_ms`) before tuning more.
@@ -411,6 +416,10 @@ binaries passed `--version`. Vulkan still relies on the computer's compatible GP
 - [x] Vector illustrations for empty states
 - [x] Streaks and gentle milestones (no gamified noise)
 - [x] Micro-animations: screen transitions, progress filling, toast entry
+- [x] Interface sounds synthesized in code, one per kind of button, chimes for answers and
+      a fanfare for finished work; celebrations (confetti, pulse, shake); every sound
+      group and the animations can be turned off in Settings
+- [x] Pause and play for the tutor's voice in lessons, keeping the rest of the reply
 - [x] Review the whole flow for clicks saved (start a lesson straight from Today)
 - [x] System tray: closing the window hides the app; a double-click reopens it and a
       single click opens the menu (open or quit)
@@ -905,8 +914,9 @@ to do.
       student's pace. Progress on the home screen, a gentle note when a week is missed.
 - [ ] Profile screen: level and experience from study time and results (not from clicks),
       showcase of chosen medals, calendar heat map of study days, history per subject.
-- [ ] Quiet unlock notice (a small toast with the medal and a sound that can be turned
-      off), never in the middle of a lesson; collected at the end.
+- [x] Quiet unlock notice (a small toast with the medal and a sound that can be turned
+      off), never in the middle of a lesson; collected at the end. Sound and confetti
+      since v0.45.1.
 - [ ] Streaks forgive: one rest day per week keeps the streak, and travel or illness can
       be marked so it does not break.
 - [ ] Everything local in SQLite, kept per plan and in total; export with the rest of
@@ -1009,6 +1019,10 @@ the app; the grade matches a hand count.
     differs in places.
   - Lessons, quizzes, handouts and grades with a real model in each language.
   - Fonts on macOS and Linux (the font paths there are not tested).
+- Interface sounds and lesson pause (v0.45.1): listen to every cue on real speakers and
+  headphones (volume against the tutor's voice, whether the hover tick tires over a long
+  session); check that a cue never reaches the transcription; pause and play mid-reply
+  with Kokoro, Piper and a cloud voice; whether 1.6 s still cuts students off.
 - Korean (v0.44.0): a native speaker should review the UI texts, prompts and README;
   lessons, quizzes, handouts and grades with a real model in Korean; the Hangul font
   paths on macOS and Linux. The legal texts for South Korea are drafts that need review
