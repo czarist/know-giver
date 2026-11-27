@@ -8,8 +8,10 @@
 //! - TTS: Piper as a child process; Kokoro kept loaded through the downloaded
 //!   sherpa-onnx library (a child process when that fails); an optional HTTP
 //!   speech service. No C/C++ code is compiled into the app.
+//! - Interface sounds: short cues synthesized in code, mixed over speech.
 
 mod capture;
+mod cues;
 mod hardware;
 mod kokoro_ffi;
 mod kokoro_runtime;
@@ -26,6 +28,7 @@ mod voice;
 mod whisper;
 
 pub use capture::{RecordOptions, Recording};
+pub use cues::{Cue, CueGroup, CuePlayer};
 pub use hardware::{GpuVendor, SpeechHardware};
 pub use kokoro_ffi::release as release_kokoro;
 pub use kokoro_runtime::prepare_kokoro_executable;

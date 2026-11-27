@@ -125,6 +125,9 @@ pub enum ManuscriptOcr {
     ExternalVision,
 }
 
+/// Default volume of the interface sounds.
+pub const DEFAULT_UI_SOUND_VOLUME: f32 = 0.6;
+
 /// Default time between study reminders: three hours.
 pub const DEFAULT_REMINDER_MINUTES: u32 = 180;
 
@@ -172,6 +175,15 @@ pub struct Settings {
     /// Ask GitHub for a newer version when the app opens (only that request
     /// is sent).
     pub check_updates: bool,
+    /// Short interface sounds: clicks, hover ticks, chimes for answers and
+    /// finished work.
+    pub ui_sounds: bool,
+    /// Volume of the interface sounds, `0.0..=1.0`.
+    pub ui_sound_volume: f32,
+    /// Kinds of interface sound turned off one by one (e.g. only hover).
+    pub muted_sound_groups: Vec<kg_audio::CueGroup>,
+    /// Celebrations and small motion on answers (confetti, pulses).
+    pub animations: bool,
     /// Show a study reminder while the student is away from the app.
     pub study_reminders: bool,
     /// Minutes between study reminders.
@@ -225,6 +237,10 @@ impl Default for Settings {
             speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
             board_images: true,
             check_updates: true,
+            ui_sounds: true,
+            ui_sound_volume: DEFAULT_UI_SOUND_VOLUME,
+            muted_sound_groups: Vec::new(),
+            animations: true,
             study_reminders: false,
             reminder_minutes: DEFAULT_REMINDER_MINUTES,
             teacher: None,

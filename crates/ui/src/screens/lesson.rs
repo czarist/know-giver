@@ -157,6 +157,11 @@ fn outline_list(ui: &mut egui::Ui, lesson: &LessonSession) {
 /// Shown when the tutor closed the lesson: take the quiz or end here.
 fn finished_card(ui: &mut egui::Ui, lesson: &LessonSession, actions: &mut Actions) {
     let p = theme::palette(ui.ctx());
+    let done_id = egui::Id::new(("lesson_done", lesson.topic_id, lesson.turns.len()));
+    if crate::motion::first_time(ui.ctx(), done_id) {
+        crate::sounds::play(ui.ctx(), kg_engine::Cue::Complete);
+        crate::motion::celebrate(ui.ctx(), 80);
+    }
     egui::Frame::new()
         .fill(p.surface)
         .stroke(Stroke::new(2.0, p.accent))
@@ -544,7 +549,7 @@ fn controls(
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         // Center the round buttons.
-        let group_width = 5.0 * 52.0 + 130.0;
+        let group_width = 7.0 * 52.0 + 130.0;
         ui.add_space(((ui.available_width() - group_width) / 2.0).max(0.0));
 
         let can_talk = engine.stt_ready() && !busy;
@@ -563,6 +568,32 @@ fn controls(
             }
         }
         let speaking = lesson.phase == LessonPhase::Speaking;
+        let paused = engine.speech_paused();
+        if round_button(
+            ui,
+            Icon::Pause,
+            p.text,
+            p.surface,
+            46.0,
+            speaking && !paused,
+        )
+        .on_hover_text(t!("lesson.pause"))
+        .clicked()
+        {
+            actions.send(Command::PauseSpeaking);
+        }
+        // Lit only while paused: the way back to the rest of the reply.
+        let (play_tint, play_fill) = if paused {
+            (Color32::WHITE, p.success)
+        } else {
+            (p.text, p.surface)
+        };
+        if round_button(ui, Icon::Play, play_tint, play_fill, 46.0, paused)
+            .on_hover_text(t!("lesson.resume"))
+            .clicked()
+        {
+            actions.send(Command::ResumeSpeaking);
+        }
         if round_button(ui, Icon::Stop, p.text, p.surface, 46.0, speaking)
             .on_hover_text(t!("lesson.interrupt"))
             .clicked()

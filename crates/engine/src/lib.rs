@@ -25,6 +25,7 @@ mod progress;
 mod reader;
 mod settings;
 mod setup;
+mod sounds;
 mod stt;
 mod study_time;
 mod teacher;
@@ -52,8 +53,8 @@ pub use kg_ai::{
     provider as ai_provider, provider_for_url,
 };
 pub use kg_audio::{
-    AudioError, CloudSpeechConfig, EnglishVoice, KokoroVoice, ModelId, PiperVoice, SttEngine,
-    TtsBackend, Voice, VoiceGender, WhisperModel,
+    AudioError, CloudSpeechConfig, Cue, CueGroup, EnglishVoice, KokoroVoice, ModelId, PiperVoice,
+    SttEngine, TtsBackend, Voice, VoiceGender, WhisperModel,
 };
 pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
 pub use kg_handout::{
@@ -95,8 +96,8 @@ pub use prepare::{PrepareJob, PrepareRequest, PrepareSummary, slug};
 pub use progress::Milestone;
 pub use reader::{ContentsEntry, ReaderState};
 pub use settings::{
-    DEFAULT_REMINDER_MINUTES, DEFAULT_TURN_PAUSE, ManuscriptOcr, Region, SETUP_VERSION, Settings,
-    TERMS_VERSION, TURN_PAUSE_RANGE, TermsAcceptance,
+    DEFAULT_REMINDER_MINUTES, DEFAULT_TURN_PAUSE, DEFAULT_UI_SOUND_VOLUME, ManuscriptOcr, Region,
+    SETUP_VERSION, Settings, TERMS_VERSION, TURN_PAUSE_RANGE, TermsAcceptance,
 };
 pub use setup::ModelList;
 pub use study_time::StudyPresence;
@@ -135,6 +136,9 @@ pub enum Command {
     StopListening,
     SendMessage(String),
     StopSpeaking,
+    /// Holds the tutor's voice; [`Command::ResumeSpeaking`] goes on from there.
+    PauseSpeaking,
+    ResumeSpeaking,
     PreviewVoice {
         settings: Settings,
         text: String,
@@ -537,6 +541,7 @@ pub struct Engine {
     quiz: Option<QuizSession>,
     review: Option<ReviewSession>,
     voice: lesson::VoiceRuntime,
+    cues: kg_audio::CuePlayer,
     stt: stt::Recognizers,
     illustrations: illustrations::Illustrations,
     downloads: HashMap<ModelId, models::Download>,
@@ -653,6 +658,7 @@ impl Engine {
             quiz: None,
             review: None,
             voice: lesson::VoiceRuntime::default(),
+            cues: kg_audio::CuePlayer::new(),
             stt: stt::Recognizers::default(),
             illustrations: illustrations::Illustrations::default(),
             downloads: HashMap::new(),
@@ -890,6 +896,14 @@ impl Engine {
             }
             Command::StopSpeaking => {
                 self.stop_speaking();
+                Ok(())
+            }
+            Command::PauseSpeaking => {
+                self.pause_speaking();
+                Ok(())
+            }
+            Command::ResumeSpeaking => {
+                self.resume_speaking();
                 Ok(())
             }
             Command::PreviewVoice { settings, text } => self.preview_voice(settings, text),
