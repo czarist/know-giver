@@ -90,7 +90,7 @@ with CUDA on NVIDIA cards, Vulkan on AMD and Intel cards, and on the CPU otherwi
 
 ### 🗣️ Speaking
 The tutor starts talking with the first sentence of its answer, says "Hum." while it
-thinks, and listens when you press the microphone (or hold Space), or by itself when it finishes with a question. Pressing the microphone while it talks stops it. Captions follow its voice, sentence by sentence, and the transcript stays open beside the lesson, where you can also type.
+thinks, and listens when you press the microphone (or hold Space), or by itself when it finishes with a question. Pressing the microphone while it talks stops it. Captions follow its voice, sentence by sentence, and the transcript stays open beside the lesson, where you can also type. Pause (⏸) holds the tutor mid-sentence without losing the rest of the answer, and play (▶), lit only while paused, picks up where it stopped.
 
 ### 🧭 A lesson with a beginning and an end
 Every lesson follows a plan built from the topic's handout (or written by the
@@ -213,6 +213,8 @@ no ranking, no streak to lose.
     <td><img src="docs/images/showcase.png" alt="The achievement showcase: achievements won in colour with the date, locked ones in grey with their progress"></td>
   </tr>
 </table>
+
+**Sounds and celebrations.** Soft, low interface sounds, a different one for each kind of button, a chime for right answers and a small fanfare with confetti when you finish a quiz or a lesson or win a challenge. Turn them all off, or one group at a time (hover, buttons, sidebar…), in Settings → Sounds and animations; animations turn off there too. Sounds stay silent while the microphone is taking your words.
 
 ## Written answers
 
