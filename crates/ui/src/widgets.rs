@@ -206,11 +206,15 @@ pub fn primary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
     } else {
         Color32::WHITE
     };
-    ui.add(
+    let response = ui.add(
         egui::Button::new(RichText::new(text).color(on_accent).strong())
             .fill(p.accent)
             .stroke(Stroke::new(1.5, p.ink)),
-    )
+    );
+    if response.clicked() {
+        crate::sounds::play(ui.ctx(), kg_engine::Cue::Confirm);
+    }
+    response
 }
 
 /// Bytes as megabytes, e.g. "290".

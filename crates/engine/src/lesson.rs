@@ -146,6 +146,12 @@ impl LessonSession {
             .is_some_and(|turn| turn.speaker == Speaker::Tutor && is_question(&turn.text))
     }
 
+    /// The student's turn is being recorded. The microphone stays open for
+    /// the whole lesson, but only this stretch becomes text.
+    pub fn listening(&self) -> bool {
+        self.mic.is_some() && self.phase == LessonPhase::Listening
+    }
+
     /// Microphone level while listening, `0.0..=1.0`.
     pub fn input_level(&self) -> f32 {
         if self.phase != LessonPhase::Listening {
@@ -969,6 +975,34 @@ impl Engine {
                 lesson.reply = 0;
             }
         }
+    }
+
+    /// Holds the tutor's voice mid-sentence. The rest of the reply keeps
+    /// being prepared and waits; nothing is dropped.
+    pub(crate) fn pause_speaking(&mut self) {
+        if self
+            .lesson
+            .as_ref()
+            .is_some_and(|l| l.phase == LessonPhase::Speaking)
+            && let Some(speaker) = &self.voice.speaker
+        {
+            speaker.pause();
+        }
+    }
+
+    /// Goes on from where [`Engine::pause_speaking`] stopped.
+    pub(crate) fn resume_speaking(&mut self) {
+        if let Some(speaker) = &self.voice.speaker {
+            speaker.resume();
+        }
+    }
+
+    /// The tutor's voice is paused in the middle of a reply.
+    pub fn speech_paused(&self) -> bool {
+        self.lesson
+            .as_ref()
+            .is_some_and(|l| l.phase == LessonPhase::Speaking)
+            && self.voice.speaker.as_ref().is_some_and(|s| s.is_paused())
     }
 
     /// Stops all lesson audio: speech and microphone.

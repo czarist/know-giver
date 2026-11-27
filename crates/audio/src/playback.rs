@@ -16,6 +16,8 @@ pub type OnStart = Box<dyn FnOnce() + Send>;
 enum Command {
     Play(AudioClip, Option<OnStart>),
     Stop,
+    Pause,
+    Resume,
 }
 
 /// Loudness of what a [`Speaker`] is playing right now, readable from any
@@ -41,6 +43,8 @@ impl PlaybackLevel {
 pub struct Speaker {
     tx: mpsc::Sender<Command>,
     playing: Arc<AtomicBool>,
+    /// Held by [`Speaker::pause`]: the queue waits, nothing is dropped.
+    paused: Arc<AtomicBool>,
     /// Loudness of what is playing right now (f32 bits), for lip-sync.
     level: Arc<AtomicU32>,
 }
@@ -61,7 +65,12 @@ impl Speaker {
         ready_rx
             .recv()
             .map_err(|_| AudioError::NoOutputDevice("playback thread ended early".into()))??;
-        Ok(Self { tx, playing, level })
+        Ok(Self {
+            tx,
+            playing,
+            paused: Arc::new(AtomicBool::new(false)),
+            level,
+        })
     }
 
     /// Queues a clip after whatever is already playing.
@@ -83,11 +92,29 @@ impl Speaker {
         let _ = self.tx.send(Command::Play(clip, on_start));
     }
 
-    /// Stops playback and drops anything queued.
+    /// Stops playback and drops anything queued. Also ends a pause.
     pub fn stop(&self) {
         let _ = self.tx.send(Command::Stop);
         self.playing.store(false, Ordering::Relaxed);
+        self.paused.store(false, Ordering::Relaxed);
         self.level.store(0, Ordering::Relaxed);
+    }
+
+    /// Holds playback where it is; clips queued meanwhile wait too.
+    pub fn pause(&self) {
+        self.paused.store(true, Ordering::Relaxed);
+        self.level.store(0, Ordering::Relaxed);
+        let _ = self.tx.send(Command::Pause);
+    }
+
+    /// Goes on from where [`Speaker::pause`] held it.
+    pub fn resume(&self) {
+        self.paused.store(false, Ordering::Relaxed);
+        let _ = self.tx.send(Command::Resume);
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Ordering::Relaxed)
     }
 
     pub fn is_playing(&self) -> bool {
@@ -235,13 +262,20 @@ fn playback_thread(
                     on_start,
                 };
                 player.append(Metered::new(source, Arc::clone(&level)));
-                player.play();
+                if !player.is_paused() {
+                    player.play();
+                }
             }
             Ok(Command::Stop) => {
                 player.clear();
                 player.play();
                 level.store(0, Ordering::Relaxed);
             }
+            Ok(Command::Pause) => {
+                player.pause();
+                level.store(0, Ordering::Relaxed);
+            }
+            Ok(Command::Resume) => player.play(),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
