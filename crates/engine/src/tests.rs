@@ -1802,3 +1802,92 @@ fn a_mock_exam_prints_with_its_answer_card() {
     poll_until(&mut engine, |e| !e.printing_mock());
     assert!(std::fs::read(&path).unwrap().starts_with(b"%PDF"));
 }
+
+#[test]
+fn backup_moves_study_to_another_computer_without_its_ai() {
+    // Computer A: a plan, a handout file, an AI service and an account session.
+    let (mut a, dir_a) = engine_with_plan();
+    let plan = a.active_plan().unwrap().id;
+    let handouts = dir_a.path().join("handouts");
+    std::fs::create_dir_all(&handouts).unwrap();
+    let pdf = handouts.join("crase.pdf");
+    std::fs::write(&pdf, b"%PDF-1.4 crase").unwrap();
+    a.store
+        .insert_reading(
+            plan,
+            "Crase",
+            &pdf.display().to_string(),
+            "{}",
+            Engine::today(),
+        )
+        .unwrap();
+    a.settings.student_name = "Ana".into();
+    a.settings.quiz_size = 8;
+    a.settings.ai.api_key = "secret-key".into();
+    a.settings.ai.models.tutor = "tutor-model".into();
+    a.settings.save(&mut a.store, &AiConfig::default()).unwrap();
+    a.store.set_setting("chatgpt_session", "a-token").unwrap();
+
+    let file = dir_a.path().join(backup_file_name(Engine::today()));
+    a.handle(Command::ExportBackup(file.clone())).unwrap();
+    poll_until(&mut a, |e| !e.backup_busy());
+    assert!(
+        a.take_notices()
+            .iter()
+            .any(|n| matches!(n, Notice::Exported(p) if p == &file))
+    );
+    let bytes = std::fs::read(&file).unwrap();
+    assert!(!bytes.windows(10).any(|w| w == b"secret-key"));
+    assert!(!bytes.windows(7).any(|w| w == b"a-token"));
+
+    // Computer B: its own account session, no AI yet.
+    let dir_b = tempfile::tempdir().unwrap();
+    let paths_b = AppPaths::new(dir_b.path());
+    let mut b = Engine::new(paths_b.clone(), AiConfig::default()).unwrap();
+    b.store.set_setting("chatgpt_session", "b-token").unwrap();
+    b.handle(Command::ImportBackup(file)).unwrap();
+    poll_until(&mut b, |e| !e.backup_busy());
+    assert!(b.take_notices().is_empty());
+    assert!(b.take_reload_request());
+    drop(b);
+    finish_import(&paths_b).unwrap();
+
+    let b = Engine::new(paths_b, AiConfig::default()).unwrap();
+    assert_eq!(b.plans().len(), 1);
+    let plan_b = b.plans()[0].id;
+    let readings = b.store.readings(plan_b).unwrap();
+    let moved = std::path::PathBuf::from(&readings[0].path);
+    assert!(moved.starts_with(dir_b.path()), "{moved:?}");
+    assert_eq!(std::fs::read(&moved).unwrap(), b"%PDF-1.4 crase");
+    let settings = b.settings();
+    assert_eq!(settings.student_name, "Ana");
+    assert_eq!(settings.quiz_size, 8);
+    assert!(settings.ai.api_key.is_empty());
+    assert!(settings.ai_setup_pending);
+    assert!(b.needs_setup());
+    assert_eq!(
+        b.store.setting("chatgpt_session").unwrap().as_deref(),
+        Some("b-token")
+    );
+    // B's own study before the import was kept as a backup.
+    let kept = std::fs::read_dir(dir_b.path().join("backups"))
+        .unwrap()
+        .count();
+    assert_eq!(kept, 1);
+}
+
+#[test]
+fn a_file_that_is_not_a_backup_is_refused_and_nothing_changes() {
+    let (mut engine, dir) = engine_with_plan();
+    let file = dir.path().join("notes.kgbackup");
+    std::fs::write(&file, b"not a zip").unwrap();
+    engine.handle(Command::ImportBackup(file)).unwrap();
+    poll_until(&mut engine, |e| !e.backup_busy());
+    assert!(!engine.take_reload_request());
+    assert!(engine.take_notices().iter().any(|n| matches!(
+        n,
+        Notice::Error(EngineError::Backup(BackupProblem::NotABackup))
+    )));
+    assert_eq!(engine.plans().len(), 1);
+    assert!(!dir.path().join("import-staging").exists());
+}

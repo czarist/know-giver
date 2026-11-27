@@ -6,6 +6,7 @@
 //! that [`Engine::poll`] applies on the UI thread.
 
 mod accounts;
+mod backup;
 mod board;
 mod challenges;
 mod child_job;
@@ -39,6 +40,7 @@ use std::time::Instant;
 use chrono::NaiveDate;
 
 pub use accounts::AccountAction;
+pub use backup::{BACKUP_EXTENSION, BackupProblem, backup_file_name, finish_import};
 pub use board::{BoardItem, BoardJob};
 pub use discursive::{
     AttemptProblems, EvolutionGroup, EvolutionRow, ImageProblem, NOTE_INTERRUPTED, NOTE_UNREADABLE,
@@ -331,6 +333,13 @@ pub enum Command {
         path: PathBuf,
         content: String,
     },
+
+    /// Writes the student's study and preferences, without this computer's
+    /// AI, to a backup file for another computer.
+    ExportBackup(PathBuf),
+    /// Replaces this computer's study with a backup file (a backup of the
+    /// current study is kept first).
+    ImportBackup(PathBuf),
 }
 
 /// Top-level error, wrapping each layer's error.
@@ -394,6 +403,8 @@ pub enum EngineError {
     MockShort,
     #[error("the first-run setup is missing a choice")]
     SetupIncomplete,
+    #[error("backup refused: {0}")]
+    Backup(BackupProblem),
 }
 
 /// Something the UI should tell the user about.
@@ -486,6 +497,7 @@ pub(crate) enum Event {
     },
     HandoutFinished(Result<reader::SavedHandout, EngineError>),
     Reader(reader::ReaderEvent),
+    Backup(backup::BackupEvent),
     Prepare(prepare::PrepareEvent),
     BoardImported(Result<board::BoardImport, EngineError>),
     AnswerKeyRead {
@@ -571,6 +583,7 @@ pub struct Engine {
     events_rx: mpsc::Receiver<Event>,
     waker: Waker,
     next_session_id: u64,
+    backup: backup::BackupState,
 }
 
 impl std::fmt::Debug for Engine {
@@ -602,6 +615,7 @@ impl Engine {
                 Store::open_in_memory()?
             }
         };
+        backup::discard_staging(&paths);
         Ok(Self::with_store(store, paths, env_ai, notices))
     }
 
@@ -685,6 +699,7 @@ impl Engine {
             events_rx,
             waker: Arc::new(|| {}),
             next_session_id: 1,
+            backup: backup::BackupState::default(),
         };
         engine.restore_chatgpt_session();
         engine.recover_writing();
@@ -1084,6 +1099,8 @@ impl Engine {
             Command::MarkMockAnswer { question, answer } => self.mark_mock_answer(question, answer),
             Command::FinishMock(true_false) => self.finish_mock(true_false),
             Command::DeleteMockAttempt(id) => self.delete_mock_attempt(id),
+            Command::ExportBackup(path) => self.export_backup(path),
+            Command::ImportBackup(path) => self.import_backup(path),
             Command::ExportProgress { path, content } => {
                 std::fs::write(&path, content).map_err(|source| EngineError::Export {
                     path: path.clone(),
@@ -1155,6 +1172,7 @@ impl Engine {
                 Event::HandoutTopic { topic, json } => self.on_handout_topic(topic, &json),
                 Event::HandoutFinished(result) => self.on_handout_finished(result),
                 Event::Reader(event) => self.on_reader_event(event),
+                Event::Backup(event) => self.on_backup_event(event),
                 Event::Prepare(event) => self.on_prepare_event(event),
                 Event::BoardImported(result) => self.on_board_imported(result),
                 Event::AnswerKeyRead { exam, result } => self.on_answer_key_read(exam, result),

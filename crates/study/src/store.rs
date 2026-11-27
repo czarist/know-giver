@@ -1306,7 +1306,63 @@ impl Store {
             .execute("DELETE FROM settings WHERE key = ?1", [key])?;
         Ok(())
     }
+
+    /// Schema version of this database: how many migrations have run.
+    pub fn schema_version(&self) -> Result<u32> {
+        let version: i64 = self
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        u32::try_from(version).map_err(|_| StoreError::Corrupt {
+            column: "user_version",
+            value: version.to_string(),
+        })
+    }
+
+    /// Writes a consistent copy of the whole database to `path`, which must
+    /// not exist yet. Safe while the app keeps using this connection.
+    pub fn copy_to(&self, path: &Path) -> Result<()> {
+        self.conn
+            .execute("VACUUM INTO ?1", [path.to_string_lossy().as_ref()])?;
+        Ok(())
+    }
+
+    /// Paths of files the database points at (handout PDFs, photos of
+    /// written answers), each replaced by `rewrite` when it returns a new one.
+    /// Returns how many changed.
+    pub fn rewrite_file_paths(
+        &mut self,
+        rewrite: impl Fn(&str) -> Option<String>,
+    ) -> Result<usize> {
+        const COLUMNS: [(&str, &str); 3] = [
+            ("readings", "path"),
+            ("discursive_pages", "original_path"),
+            ("discursive_pages", "processed_path"),
+        ];
+        let tx = self.conn.transaction()?;
+        let mut changed = 0;
+        for (table, column) in COLUMNS {
+            let rows: Vec<(i64, String)> = {
+                let mut stmt = tx.prepare(&format!("SELECT rowid, {column} FROM {table}"))?;
+                let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+                rows.collect::<std::result::Result<_, _>>()?
+            };
+            for (rowid, path) in rows {
+                if let Some(new_path) = rewrite(&path).filter(|p| *p != path) {
+                    tx.execute(
+                        &format!("UPDATE {table} SET {column} = ?1 WHERE rowid = ?2"),
+                        params![new_path, rowid],
+                    )?;
+                    changed += 1;
+                }
+            }
+        }
+        tx.commit()?;
+        Ok(changed)
+    }
 }
+
+/// Number of schema migrations this version of the app knows.
+pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;
 
 struct RawTopic {
     id: i64,
@@ -1382,6 +1438,47 @@ mod tests {
 
     fn today() -> NaiveDate {
         NaiveDate::from_ymd_opt(2026, 5, 1).unwrap()
+    }
+
+    #[test]
+    fn copy_keeps_everything_and_paths_can_follow_a_new_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = Store::open(&dir.path().join("live.db")).unwrap();
+        let plan = store
+            .insert_plan(&sample_plan(), "edital.pdf", "texto", today())
+            .unwrap();
+        store
+            .insert_reading(
+                plan.id,
+                "Crase",
+                r"C:\Old\KnowGiver\handouts\crase.pdf",
+                "{}",
+                today(),
+            )
+            .unwrap();
+        store.set_setting("k", "v").unwrap();
+
+        let copy_path = dir.path().join("copy.db");
+        store.copy_to(&copy_path).unwrap();
+        let mut copy = Store::open(&copy_path).unwrap();
+        assert_eq!(copy.schema_version().unwrap(), SCHEMA_VERSION);
+        assert_eq!(copy.setting("k").unwrap().as_deref(), Some("v"));
+
+        let changed = copy
+            .rewrite_file_paths(|p| {
+                p.strip_prefix(r"C:\Old\KnowGiver\")
+                    .map(|rest| format!("/home/me/KnowGiver/{}", rest.replace('\\', "/")))
+            })
+            .unwrap();
+        assert_eq!(changed, 1);
+        let readings = copy.readings(plan.id).unwrap();
+        assert_eq!(readings[0].path, "/home/me/KnowGiver/handouts/crase.pdf");
+        // The live database is untouched.
+        assert!(
+            store.readings(plan.id).unwrap()[0]
+                .path
+                .starts_with(r"C:\Old")
+        );
     }
 
     fn sample_plan() -> NewPlan {

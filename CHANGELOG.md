@@ -6,6 +6,19 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.46.0] - 2026-11-27
+
+### Added
+- Move to another computer: Settings exports the study plans, progress, handouts, photos
+  of written answers and preferences to one `.kgbackup` file, and imports it on another
+  computer, also from the first screen of the setup. The AI service, its key and models,
+  account sessions, the cloud voice service and the handwriting-reading choice belong to
+  each computer and never go into the file; after an import on a computer without an AI,
+  the setup opens on the AI step with everything else filled in. An import replaces that
+  computer's study after keeping a backup of it in `backups/`; file paths follow the new
+  data folder, also between Windows, macOS and Linux. A backup from a newer version is
+  refused.
+
 ## [0.45.1] - 2026-11-26
 
 ### Added

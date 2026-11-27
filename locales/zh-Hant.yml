@@ -436,6 +436,9 @@ setup:
   language:
     title: "選擇語言 · Choose your language"
     hint: "程式、老師和給 AI 的指令都會使用這種語言。之後可以在設定中更改。"
+    moving: "已經在另一台電腦上使用 Know Giver？匯入你的計劃和偏好設定，這裡只需設定 AI。"
+    import: "匯入備份"
+    importing: "正在匯入…"
   name:
     title: "我們該怎麼稱呼你？"
     hint: "老師上課時會用這個名字。"
@@ -654,6 +657,17 @@ settings:
     true_false: "是非題（Cebraspe）"
     now_true_false: "本考試：是非題。"
     now_choice: "本考試：選擇題。"
+  transfer:
+    title: "移轉到另一台電腦"
+    hint: "把學習計劃、學習紀錄、講義、主觀題作答和偏好設定儲存到一個檔案中，在另一台電腦上開啟。AI（服務、金鑰、模型和已連接的帳號）不包含在檔案中，請在每台電腦上分別設定。"
+    export: "匯出備份…"
+    import: "匯入備份…"
+    working: "正在準備檔案…"
+    file_kind: "Know Giver 備份"
+    confirm: "匯入 %{file}？"
+    confirm_hint: "這台電腦上的學習計劃和學習紀錄將被檔案中的內容取代。在此之前，目前內容的副本會儲存在應用程式資料中的 backups 資料夾裡。這裡設定的 AI 保持不變。"
+    confirm_button: "匯入並取代"
+    cancel: "取消"
   feedback:
     title: "音效與動畫"
     sounds: "介面音效（點擊、答對、成就）"
@@ -829,6 +843,8 @@ working:
   minutes: "%{minutes} 分鐘"
 
 notice:
+  backup_imported: "備份已匯入：學習計劃、學習紀錄和偏好設定都在這裡了。"
+  backup_imported_ai: "備份已匯入。只剩下這台電腦的 AI 需要設定。"
   exam_format_read: "已從簡章讀取考試形式。產生前請核對數字。"
   exam_format_missing: "簡章沒有寫明每科的題數。請手動調整形式。"
   mock_created: "模擬考試已產生。可以在螢幕上作答或列印。"
@@ -1051,6 +1067,9 @@ discursive:
     case_language_hint: "規範的書面中文：語法、用詞、用字和標點。"
 
 error:
+  backup:
+    not_a_backup: "這個檔案不是 Know Giver 備份，或者已損毀。"
+    too_new: "這個備份由較新版本的 Know Giver 建立。請更新應用程式後再試。"
   mock:
     format: "此形式無法使用：請檢查時間（10～600 分鐘）、選項數（2～5）和總題數（1～200 題）。"
     questions: "模型沒有寫出足夠的有效題目。請重試或換一個模型。"

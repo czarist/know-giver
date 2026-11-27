@@ -329,6 +329,8 @@ primeiro.
   <img src="docs/images/pt-BR/tour.png" alt="O tour guiado: o item Aula marcado na barra lateral com um cartão explicando a tela" width="80%">
 </p>
 
+**Trocando de computador.** Configurações → *Levar para outro computador* salva seus planos, desempenho, apostilas, discursivas e preferências num único arquivo `.kgbackup`. No computador novo, abra-o já na primeira tela da configuração (*Importar backup*) ou nas Configurações: só falta configurar a IA, porque o serviço de IA, a chave, os modelos e as contas conectadas nunca vão no arquivo. Importar substitui os estudos daquele computador, depois de guardar uma cópia deles na pasta `backups` dos dados do app.
+
 ## Privado por padrão
 
 - O reconhecimento de fala e as vozes rodam no seu computador. As gravações nunca saem
