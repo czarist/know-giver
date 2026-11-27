@@ -49,7 +49,7 @@ pub use quiz::{
 };
 pub use reading::{Highlight, HighlightColor, HighlightId, Reading, ReadingId};
 pub use review::{ReviewGrade, ReviewState};
-pub use store::{Store, StoreError};
+pub use store::{SCHEMA_VERSION, Store, StoreError};
 
 /// Errors raised by study rules.
 ///

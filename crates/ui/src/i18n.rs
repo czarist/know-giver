@@ -389,6 +389,10 @@ pub fn error_message(err: &EngineError) -> String {
         }
         EngineError::Rubric(_) => t!("error.writing.rubric"),
         EngineError::SetupIncomplete => t!("error.setup_incomplete"),
+        EngineError::Backup(kg_engine::BackupProblem::NotABackup) => {
+            t!("error.backup.not_a_backup")
+        }
+        EngineError::Backup(kg_engine::BackupProblem::TooNew) => t!("error.backup.too_new"),
         EngineError::ExamFormat(_) => t!("error.mock.format"),
         EngineError::MockExam(_) | EngineError::MockShort => t!("error.mock.questions"),
         EngineError::MockSubject(subject) => t!("error.mock.subject", subject = subject),

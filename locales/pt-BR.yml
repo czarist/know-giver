@@ -436,6 +436,9 @@ setup:
   language:
     title: "Escolha o idioma · Choose your language"
     hint: "O app, o tutor e os prompts da IA seguem este idioma. Dá para trocar depois nas Configurações."
+    moving: "Já usa o Know Giver em outro computador? Traga seus planos e preferências; aqui você só configura a IA."
+    import: "Importar backup"
+    importing: "Importando…"
   name:
     title: "Como você quer ser chamado?"
     hint: "O tutor usa esse nome nas aulas."
@@ -654,6 +657,17 @@ settings:
     true_false: "Certo e errado (Cebraspe)"
     now_true_false: "Para este concurso: certo e errado."
     now_choice: "Para este concurso: múltipla escolha."
+  transfer:
+    title: "Levar para outro computador"
+    hint: "Salve seus planos, desempenho, apostilas, discursivas e preferências num único arquivo e abra-o no outro computador. A IA (serviço, chave, modelos e contas conectadas) não vai no arquivo: configure-a em cada computador."
+    export: "Exportar backup…"
+    import: "Importar backup…"
+    working: "Preparando o arquivo…"
+    file_kind: "Backup do Know Giver"
+    confirm: "Importar %{file}?"
+    confirm_hint: "Os planos e o desempenho deste computador serão substituídos pelos do arquivo. Antes disso, uma cópia do que existe agora fica na pasta backups, dentro dos dados do app. A IA configurada aqui continua a mesma."
+    confirm_button: "Importar e substituir"
+    cancel: "Cancelar"
   feedback:
     title: "Sons e animações"
     sounds: "Sons da interface (cliques, acertos, conquistas)"
@@ -829,6 +843,8 @@ working:
   minutes: "%{minutes} min"
 
 notice:
+  backup_imported: "Backup importado: planos, desempenho e preferências estão aqui."
+  backup_imported_ai: "Backup importado. Falta só configurar a IA deste computador."
   exam_format_read: "Formato da prova lido do edital. Confira os números antes de gerar."
   exam_format_missing: "O edital não diz quantas questões a prova tem por matéria. Ajuste o formato à mão."
   mock_created: "Simulado pronto. Faça na tela ou imprima."
@@ -1051,6 +1067,9 @@ discursive:
     case_language_hint: "Norma-padrão: concordância, regência, ortografia, acentuação e pontuação."
 
 error:
+  backup:
+    not_a_backup: "Este arquivo não é um backup do Know Giver ou está danificado."
+    too_new: "Este backup foi feito por uma versão mais nova do Know Giver. Atualize o app e tente de novo."
   mock:
     format: "O formato não serve: confira o tempo (10 a 600 min), as alternativas (2 a 5) e o total (1 a 200 questões)."
     questions: "O modelo não escreveu questões válidas suficientes. Tente de novo ou use outro modelo."

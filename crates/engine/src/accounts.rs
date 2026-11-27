@@ -10,6 +10,9 @@ use crate::{Engine, Event, Notice};
 
 /// Settings key of the saved ChatGPT session (tokens and registration).
 const CHATGPT_SESSION_KEY: &str = "chatgpt_session";
+/// Account sessions saved by the app; they belong to one computer and never
+/// go into a backup.
+pub(crate) const SESSION_KEYS: [&str; 1] = [CHATGPT_SESSION_KEY];
 
 /// What is running for an account service.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

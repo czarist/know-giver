@@ -221,6 +221,9 @@ pub struct Settings {
     pub ai_provider: String,
     /// The guided tour of the screens was finished or skipped.
     pub tour_done: bool,
+    /// Study was imported from another computer and this one has no AI
+    /// service yet: the first-run setup opens on the AI step.
+    pub ai_setup_pending: bool,
     /// Where the app is used; chosen with the terms.
     pub region: Option<Region>,
 }
@@ -265,6 +268,7 @@ impl Default for Settings {
             terms_accepted: None,
             ai_provider: String::new(),
             tour_done: false,
+            ai_setup_pending: false,
             region: None,
         }
     }
@@ -309,6 +313,7 @@ impl Settings {
     /// terms changed since the student agreed.
     pub fn needs_setup(&self) -> bool {
         self.setup_version < SETUP_VERSION
+            || self.ai_setup_pending
             || self.region.is_none()
             || self
                 .terms_accepted
