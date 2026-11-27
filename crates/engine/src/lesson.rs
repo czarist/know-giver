@@ -27,7 +27,7 @@ const MIC_KEEP_SECS: f32 = 10.0;
 /// right after it stops; sound this soon does not start the student's turn.
 const ECHO_TAIL_SECS: f32 = 0.2;
 // How much quiet ends the student's turn is a setting (`turn_pause`): after
-// a finished sentence, and 0.8 s more without one, so a pause mid-thought does
+// a finished sentence, and 1.5 s more without one, so a pause mid-thought does
 // not cut the student off. The microphone listens only on the student's turn:
 // when they press it, or when the tutor finishes speaking with a question.
 /// After a question, stop listening if the student says nothing for this long.

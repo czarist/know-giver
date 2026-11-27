@@ -761,7 +761,7 @@ settings:
     enabled: "Ler as respostas do tutor em voz alta"
     auto_stop: "Parar de ouvir quando eu fizer uma pausa"
     turn_pause: "Pausa antes de o tutor responder"
-    turn_pause_hint: "Quanto silêncio, depois de uma frase, encerra a sua vez. Aumente se o tutor responde enquanto você ainda pensa; frases sem final esperam 0,8 s a mais."
+    turn_pause_hint: "Quanto silêncio, depois de uma frase, encerra a sua vez. Aumente se o tutor responde enquanto você ainda pensa; frases sem final esperam 1,5 s a mais."
     fillers: "O tutor reage na hora (\"hum\", \"entendi\") enquanto prepara a resposta"
     board_images: "Mostrar imagens da Wikipédia na lousa"
     board_images_hint: "Busca na Wikipédia em português uma imagem do tópico e das coisas que o tutor citar. Só o termo pesquisado sai do computador; as imagens ficam guardadas para as próximas aulas."
