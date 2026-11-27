@@ -109,8 +109,14 @@ pub struct TermsAcceptance {
 }
 
 /// Seconds of quiet that end the student's turn (see [`Settings::turn_pause`]).
-pub const DEFAULT_TURN_PAUSE: f32 = 1.0;
-pub const TURN_PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
+pub const DEFAULT_TURN_PAUSE: f32 = 1.6;
+pub const TURN_PAUSE_RANGE: std::ops::RangeInclusive<f32> = 0.5..=5.0;
+/// Extra quiet a sentence without an ending gets (see [`Settings::long_pause`]).
+const UNFINISHED_EXTRA: f32 = 1.5;
+/// The default before 1 s cut students off mid-answer.
+const OLD_DEFAULT_TURN_PAUSE: f32 = 1.0;
+/// Bumped when saved turn pauses are moved to a new default.
+const TURN_PAUSE_VERSION: u32 = 1;
 
 use crate::Teacher;
 
@@ -124,6 +130,9 @@ pub enum ManuscriptOcr {
     /// Send photos to the configured vision model (never available with Copilot).
     ExternalVision,
 }
+
+/// Default volume of the interface sounds.
+pub const DEFAULT_UI_SOUND_VOLUME: f32 = 0.6;
 
 /// Default time between study reminders: three hours.
 pub const DEFAULT_REMINDER_MINUTES: u32 = 180;
@@ -144,6 +153,10 @@ pub struct Settings {
     /// Quiet, in seconds, after a finished sentence before the student's
     /// turn ends. Longer pauses mid-thought always wait a bit more.
     pub turn_pause: f32,
+    /// Last [`TURN_PAUSE_VERSION`] applied; 0 in settings saved before it, so
+    /// the old default is raised once and a pause the student chose stays.
+    #[serde(default)]
+    pub turn_pause_version: u32,
     /// The tutor says "Hum." or "Entendi." right away while the answer is
     /// being written.
     pub fillers: bool,
@@ -172,6 +185,15 @@ pub struct Settings {
     /// Ask GitHub for a newer version when the app opens (only that request
     /// is sent).
     pub check_updates: bool,
+    /// Short interface sounds: clicks, hover ticks, chimes for answers and
+    /// finished work.
+    pub ui_sounds: bool,
+    /// Volume of the interface sounds, `0.0..=1.0`.
+    pub ui_sound_volume: f32,
+    /// Kinds of interface sound turned off one by one (e.g. only hover).
+    pub muted_sound_groups: Vec<kg_audio::CueGroup>,
+    /// Celebrations and small motion on answers (confetti, pulses).
+    pub animations: bool,
     /// Show a study reminder while the student is away from the app.
     pub study_reminders: bool,
     /// Minutes between study reminders.
@@ -212,6 +234,7 @@ impl Default for Settings {
             voice_enabled: true,
             auto_stop: true,
             turn_pause: DEFAULT_TURN_PAUSE,
+            turn_pause_version: TURN_PAUSE_VERSION,
             fillers: true,
             stt_engine: SttEngine::default(),
             stt_engine_chosen: false,
@@ -225,6 +248,10 @@ impl Default for Settings {
             speech_rhythm_variation: kg_audio::DEFAULT_RHYTHM_VARIATION,
             board_images: true,
             check_updates: true,
+            ui_sounds: true,
+            ui_sound_volume: DEFAULT_UI_SOUND_VOLUME,
+            muted_sound_groups: Vec::new(),
+            animations: true,
             study_reminders: false,
             reminder_minutes: DEFAULT_REMINDER_MINUTES,
             teacher: None,
@@ -311,11 +338,17 @@ impl Settings {
     /// Quiet that ends the turn without a finished sentence: a pause to
     /// think of a word should not cut the student off.
     pub(crate) fn long_pause(&self) -> std::time::Duration {
-        std::time::Duration::from_secs_f32(self.turn_pause + 0.8)
+        std::time::Duration::from_secs_f32(self.turn_pause + UNFINISHED_EXTRA)
     }
 
     pub(crate) fn normalize(&mut self) {
         self.quiz_size = self.quiz_size.clamp(3, 10);
+        if self.turn_pause_version < TURN_PAUSE_VERSION {
+            if (self.turn_pause - OLD_DEFAULT_TURN_PAUSE).abs() < 0.05 {
+                self.turn_pause = DEFAULT_TURN_PAUSE;
+            }
+            self.turn_pause_version = TURN_PAUSE_VERSION;
+        }
         self.turn_pause = if self.turn_pause.is_finite() {
             self.turn_pause
                 .clamp(*TURN_PAUSE_RANGE.start(), *TURN_PAUSE_RANGE.end())
@@ -381,6 +414,25 @@ mod tests {
             api_key: "env-key".into(),
             ..AiConfig::default()
         }
+    }
+
+    #[test]
+    fn old_default_turn_pause_is_raised_once_and_a_chosen_one_stays() {
+        let mut old: Settings = serde_json::from_str(r#"{"turn_pause":1.0}"#).unwrap();
+        assert_eq!(old.turn_pause_version, 0);
+        old.normalize();
+        assert_eq!(old.turn_pause, DEFAULT_TURN_PAUSE);
+        assert_eq!(old.turn_pause_version, TURN_PAUSE_VERSION);
+
+        let mut chosen: Settings = serde_json::from_str(r#"{"turn_pause":2.4}"#).unwrap();
+        chosen.normalize();
+        assert_eq!(chosen.turn_pause, 2.4);
+
+        // Once moved, picking 1 s again is respected.
+        let mut again = old.clone();
+        again.turn_pause = 1.0;
+        again.normalize();
+        assert_eq!(again.turn_pause, 1.0);
     }
 
     #[test]

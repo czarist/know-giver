@@ -27,7 +27,7 @@ const MIC_KEEP_SECS: f32 = 10.0;
 /// right after it stops; sound this soon does not start the student's turn.
 const ECHO_TAIL_SECS: f32 = 0.2;
 // How much quiet ends the student's turn is a setting (`turn_pause`): after
-// a finished sentence, and 0.8 s more without one, so a pause mid-thought does
+// a finished sentence, and 1.5 s more without one, so a pause mid-thought does
 // not cut the student off. The microphone listens only on the student's turn:
 // when they press it, or when the tutor finishes speaking with a question.
 /// After a question, stop listening if the student says nothing for this long.
@@ -144,6 +144,12 @@ impl LessonSession {
         self.turns
             .last()
             .is_some_and(|turn| turn.speaker == Speaker::Tutor && is_question(&turn.text))
+    }
+
+    /// The student's turn is being recorded. The microphone stays open for
+    /// the whole lesson, but only this stretch becomes text.
+    pub fn listening(&self) -> bool {
+        self.mic.is_some() && self.phase == LessonPhase::Listening
     }
 
     /// Microphone level while listening, `0.0..=1.0`.
@@ -969,6 +975,34 @@ impl Engine {
                 lesson.reply = 0;
             }
         }
+    }
+
+    /// Holds the tutor's voice mid-sentence. The rest of the reply keeps
+    /// being prepared and waits; nothing is dropped.
+    pub(crate) fn pause_speaking(&mut self) {
+        if self
+            .lesson
+            .as_ref()
+            .is_some_and(|l| l.phase == LessonPhase::Speaking)
+            && let Some(speaker) = &self.voice.speaker
+        {
+            speaker.pause();
+        }
+    }
+
+    /// Goes on from where [`Engine::pause_speaking`] stopped.
+    pub(crate) fn resume_speaking(&mut self) {
+        if let Some(speaker) = &self.voice.speaker {
+            speaker.resume();
+        }
+    }
+
+    /// The tutor's voice is paused in the middle of a reply.
+    pub fn speech_paused(&self) -> bool {
+        self.lesson
+            .as_ref()
+            .is_some_and(|l| l.phase == LessonPhase::Speaking)
+            && self.voice.speaker.as_ref().is_some_and(|s| s.is_paused())
     }
 
     /// Stops all lesson audio: speech and microphone.

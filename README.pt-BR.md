@@ -96,6 +96,8 @@ O tutor começa a falar já na primeira frase da resposta, diz "Hum." enquanto p
 escuta quando você aperta o microfone (ou segura Espaço), ou sozinho quando termina com uma
 pergunta. Apertar o microfone enquanto ele fala faz ele parar. As legendas acompanham a voz,
 frase a frase, e a transcrição fica aberta ao lado da aula, onde você também pode digitar.
+O botão de pausa (⏸) segura o tutor no meio da frase sem perder o resto da resposta, e o
+play (▶), aceso só enquanto está pausado, continua de onde parou.
 
 ### 🧭 Uma aula com começo e fim
 Cada aula segue um roteiro feito a partir da apostila do tópico (ou escrito pelo
@@ -220,6 +222,8 @@ pontos, sem ranking, sem sequência a perder.
     <td><img src="docs/images/pt-BR/showcase.png" alt="A vitrine de conquistas: as obtidas em cores com a data; as bloqueadas em cinza com o progresso"></td>
   </tr>
 </table>
+
+**Sons e comemorações.** Sons de interface suaves e graves, um diferente para cada tipo de botão, um toque para acertos e uma pequena fanfarra com confete ao terminar um quiz ou uma aula ou ganhar um desafio. Desligue todos, ou um grupo de cada vez (ao passar o mouse, botões, menu lateral…), em Configurações → Sons e animações; as animações também se desligam ali. Os sons ficam em silêncio enquanto o microfone ouve você.
 
 ## Discursivas
 
