@@ -436,6 +436,9 @@ setup:
   language:
     title: "Escolha o idioma · Choose your language"
     hint: "The app, the tutor and the AI prompts follow this language. You can change it later in Settings."
+    moving: "Already use Know Giver on another computer? Bring your plans and preferences; here you only set up the AI."
+    import: "Import backup"
+    importing: "Importing…"
   name:
     title: "What should we call you?"
     hint: "The tutor uses this name in lessons."
@@ -654,6 +657,17 @@ settings:
     true_false: "True/false (Cebraspe)"
     now_true_false: "For this exam: true/false."
     now_choice: "For this exam: multiple choice."
+  transfer:
+    title: "Move to another computer"
+    hint: "Save your plans, progress, handouts, written answers and preferences in one file and open it on the other computer. The AI (service, key, models and connected accounts) is not in the file: set it up on each computer."
+    export: "Export backup…"
+    import: "Import backup…"
+    working: "Preparing the file…"
+    file_kind: "Know Giver backup"
+    confirm: "Import %{file}?"
+    confirm_hint: "This computer's plans and progress will be replaced by the file's. First, a copy of what is here now is kept in the backups folder inside the app's data. The AI set up here stays as it is."
+    confirm_button: "Import and replace"
+    cancel: "Cancel"
   feedback:
     title: "Sounds and animations"
     sounds: "Interface sounds (clicks, right answers, achievements)"
@@ -829,6 +843,8 @@ working:
   minutes: "%{minutes} min"
 
 notice:
+  backup_imported: "Backup imported: your plans, progress and preferences are here."
+  backup_imported_ai: "Backup imported. Only this computer's AI is left to set up."
   exam_format_read: "Exam format read from the notice. Check the numbers before you generate."
   exam_format_missing: "The notice does not say how many questions each subject has. Adjust the format by hand."
   mock_created: "Mock exam ready. Take it on screen or print it."
@@ -1051,6 +1067,9 @@ discursive:
     case_language_hint: "Standard Portuguese: agreement, verb government, spelling, accents and punctuation."
 
 error:
+  backup:
+    not_a_backup: "This file is not a Know Giver backup, or it is damaged."
+    too_new: "This backup was made by a newer version of Know Giver. Update the app and try again."
   mock:
     format: "This format will not work: check the time (10 to 600 min), the options (2 to 5) and the total (1 to 200 questions)."
     questions: "The model did not write enough valid questions. Try again or use another model."

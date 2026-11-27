@@ -139,6 +139,9 @@ pub struct UiState {
     pub tour_step: usize,
     pub reader: crate::screens::reader::ReaderUi,
     pub discursive: crate::screens::discursive::DiscursiveUi,
+    /// A backup picked in Settings, waiting for the student to confirm that
+    /// it replaces this computer's study.
+    pub backup_to_import: Option<std::path::PathBuf>,
 }
 
 /// The eframe application.
@@ -256,6 +259,7 @@ impl KnowGiverApp {
                 tour_step: 0,
                 reader: Default::default(),
                 discursive: Default::default(),
+                backup_to_import: None,
             },
             toasts: Vec::new(),
             shown_screen: screen,
@@ -298,6 +302,50 @@ impl KnowGiverApp {
     #[cfg(test)]
     pub(crate) fn clear_toasts(&mut self) {
         self.toasts.clear();
+    }
+
+    /// Closes the study data, puts the imported backup in its place and opens
+    /// it again. Without an AI on this computer the setup opens on that step.
+    fn reload_after_import(&mut self, ctx: &egui::Context) {
+        let Ok(engine) = &self.engine else {
+            return;
+        };
+        let paths = engine.paths().clone();
+        let env_ai = engine.env_ai().clone();
+        // The database file must be closed before it is replaced.
+        self.engine = Err(String::new());
+        let finished = kg_engine::finish_import(&paths);
+        self.engine = match Engine::new(paths, env_ai) {
+            Ok(mut engine) => {
+                let waker_ctx = ctx.clone();
+                engine.set_waker(Arc::new(move || waker_ctx.request_repaint()));
+                i18n::set(&engine.settings().locale);
+                Ok(engine)
+            }
+            Err(err) => {
+                tracing::error!(%err, "engine failed to reopen after an import");
+                Err(i18n::error_message(&err))
+            }
+        };
+        self.ui.settings_draft = None;
+        self.ui.setup = Default::default();
+        self.ui.backup_to_import = None;
+        let needs_setup = self.engine.as_ref().is_ok_and(Engine::needs_setup);
+        self.ui.screen = if needs_setup {
+            Screen::Setup
+        } else {
+            Screen::Today
+        };
+        match finished {
+            Ok(()) if needs_setup => {
+                self.push_toast(t!("notice.backup_imported_ai").into_owned(), false);
+            }
+            Ok(()) => self.push_toast(t!("notice.backup_imported").into_owned(), false),
+            Err(err) => {
+                tracing::error!(%err, "could not put the imported backup in place");
+                self.push_toast(i18n::error_message(&err), true);
+            }
+        }
     }
 
     fn push_toast(&mut self, text: String, is_error: bool) {
@@ -698,6 +746,13 @@ impl eframe::App for KnowGiverApp {
             }
             Err(_) => Vec::new(),
         };
+        if self
+            .engine
+            .as_mut()
+            .is_ok_and(|engine| engine.take_reload_request())
+        {
+            self.reload_after_import(ctx);
+        }
         let mut go_to_reader = false;
         for notice in &notices {
             if let kg_engine::Notice::HandoutSaved(_) = notice {

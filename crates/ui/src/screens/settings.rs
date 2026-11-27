@@ -22,6 +22,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         .ui
         .settings_draft
         .get_or_insert_with(|| engine.settings().clone());
+    let backup_to_import = &mut app.ui.backup_to_import;
     widgets::header(ui, &t!("settings.title"), &t!("settings.subtitle"));
 
     // Save stays in view: at the end of a long page it was easy to miss,
@@ -75,6 +76,10 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
             feedback_section(ui, draft);
         });
         ui.add_space(12.0);
+        section(ui, &t!("settings.transfer.title"), |ui| {
+            transfer_section(ui, engine, backup_to_import, &mut actions);
+        });
+        ui.add_space(12.0);
         about_section(ui, draft);
         ui.add_space(12.0);
         legal_section(ui, engine, &mut actions);
@@ -89,6 +94,75 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         );
     });
     actions.run(app);
+}
+
+/// Export the study to a file, or import one from another computer. An
+/// import replaces this computer's study, so it asks once more.
+fn transfer_section(
+    ui: &mut egui::Ui,
+    engine: &Engine,
+    pending: &mut Option<std::path::PathBuf>,
+    actions: &mut Actions,
+) {
+    widgets::hint(ui, &t!("settings.transfer.hint"));
+    ui.add_space(6.0);
+    if engine.backup_busy() {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label(t!("settings.transfer.working"));
+        });
+        return;
+    }
+    ui.horizontal(|ui| {
+        if ui.button(t!("settings.transfer.export")).clicked()
+            && let Some(path) = rfd::FileDialog::new()
+                .set_file_name(kg_engine::backup_file_name(Engine::today()))
+                .add_filter(
+                    t!("settings.transfer.file_kind"),
+                    &[kg_engine::BACKUP_EXTENSION],
+                )
+                .save_file()
+        {
+            actions.send(Command::ExportBackup(path));
+        }
+        if ui.button(t!("settings.transfer.import")).clicked()
+            && let Some(path) = pick_backup()
+        {
+            *pending = Some(path);
+        }
+    });
+    let Some(path) = pending.clone() else {
+        return;
+    };
+    ui.add_space(6.0);
+    let p = theme::palette(ui.ctx());
+    let file = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    widgets::callout(ui, p.warning, |ui| {
+        ui.label(RichText::new(t!("settings.transfer.confirm", file = file)).strong());
+        ui.label(t!("settings.transfer.confirm_hint"));
+        ui.horizontal(|ui| {
+            if widgets::primary_button(ui, &t!("settings.transfer.confirm_button")).clicked() {
+                actions.send(Command::ImportBackup(path.clone()));
+                *pending = None;
+            }
+            if ui.button(t!("settings.transfer.cancel")).clicked() {
+                *pending = None;
+            }
+        });
+    });
+}
+
+/// Asks for a backup file to import.
+pub(crate) fn pick_backup() -> Option<std::path::PathBuf> {
+    rfd::FileDialog::new()
+        .add_filter(
+            t!("settings.transfer.file_kind"),
+            &[kg_engine::BACKUP_EXTENSION],
+        )
+        .pick_file()
 }
 
 /// Interface sounds and motion. The volume is heard as it is chosen, before

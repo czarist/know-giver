@@ -63,6 +63,7 @@ impl Engine {
         }
         settings.student_name = settings.student_name.trim().to_owned();
         settings.setup_version = SETUP_VERSION;
+        settings.ai_setup_pending = false;
         settings.terms_accepted = Some(TermsAcceptance {
             version: TERMS_VERSION.to_owned(),
             accepted_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),

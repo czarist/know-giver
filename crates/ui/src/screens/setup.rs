@@ -153,7 +153,7 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
             widgets::card(ui, |ui| {
                 ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
                     match setup.step {
-                        0 => language_step(ui, setup),
+                        0 => language_step(ui, engine, setup, &mut actions),
                         1 => name_step(ui, setup),
                         2 => teacher_step(ui, engine, setup),
                         3 => ai_step(ui, engine, setup, &mut actions),
@@ -225,7 +225,7 @@ fn step_title(ui: &mut egui::Ui, title: &str, hint: &str) {
     ui.add_space(8.0);
 }
 
-fn language_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
+fn language_step(ui: &mut egui::Ui, engine: &Engine, setup: &mut SetupUi, actions: &mut Actions) {
     // Both languages, so anyone can read the question.
     step_title(ui, &t!("setup.language.title"), &t!("setup.language.hint"));
     let current = i18n::current();
@@ -254,6 +254,21 @@ fn language_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
     });
     ui.add_space(12.0);
     region_select(ui, setup);
+    // Moving from another computer: bring the study, set up only the AI.
+    ui.add_space(16.0);
+    widgets::rule(ui, 1.0);
+    ui.add_space(8.0);
+    widgets::hint(ui, &t!("setup.language.moving"));
+    if engine.backup_busy() {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label(t!("setup.language.importing"));
+        });
+    } else if ui.button(t!("setup.language.import")).clicked()
+        && let Some(path) = super::settings::pick_backup()
+    {
+        actions.send(Command::ImportBackup(path));
+    }
 }
 
 fn name_step(ui: &mut egui::Ui, setup: &mut SetupUi) {
@@ -832,7 +847,9 @@ fn start(setup: &mut SetupUi, settings: &Settings) {
         setup.api_key = settings.ai.api_key.clone();
         setup.base_url = settings.ai.base_url.clone();
         setup.original_ai = Some(settings.ai.clone());
-        setup.step = if settings.region.is_some() {
+        setup.step = if settings.ai_setup_pending {
+            3
+        } else if settings.region.is_some() {
             STEPS - 1
         } else {
             0
