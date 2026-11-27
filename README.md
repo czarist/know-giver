@@ -321,6 +321,8 @@ bar and mark schemes. The exam notice and past exams always come first.
   <img src="docs/images/tour.png" alt="The guided tour: the Lesson entry marked in the sidebar with a card explaining the screen" width="80%">
 </p>
 
+**Moving to another computer.** Settings → *Move to another computer* saves your plans, progress, handouts, written answers and preferences in one `.kgbackup` file. On the new computer, open it from the first screen of the setup (*Import backup*) or from Settings: only the AI is left to set up, since the AI service, its key, models and connected accounts never go into the file. Importing replaces that computer's study, after keeping a copy of it in the `backups` folder of the app's data.
+
 ## Private by default
 
 - Speech recognition and the voices run on your machine. Recordings never leave it.

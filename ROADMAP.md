@@ -91,7 +91,7 @@ Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>
 
 ## Current Status
 
-Version 0.45.1. Everything an agent can build and check without a human ear, a
+Version 0.46.0. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -105,6 +105,11 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 (30 minutes to 8 hours in Settings), while the student is away from the app and the
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
+
+In 0.46.0: moving to another computer through one `.kgbackup` file (plans,
+progress, handouts, written answers and preferences; never the AI, its key or account
+sessions), exported and imported in Settings or from the first screen of the setup, which
+then opens on the AI step.
 
 In 0.45.1: interface sounds (a different one for each kind of button, chimes for answers,
 a fanfare for finished work and won challenges), celebrations (confetti, pulse, shake),
@@ -972,6 +977,11 @@ student fixes it in a minute); a generated exam prints cleanly; a sitting surviv
 the app; the grade matches a hand count.
 
 ## Not yet verified
+- Move to another computer (v0.46.0): checked by engine tests (a backup carried between
+  two data folders with a handout, without the AI key or the account session, the
+  receiving computer's session and a backup of its study kept, a damaged file refused).
+  Not yet tried between two real computers, between Windows and macOS or Linux, or with a
+  large backup (many photos of written answers).
 - Mock exams (0.39.0): checked by unit tests (format bounds, the notice's numbers,
   batches, question checks, grade with and without wrong-cancels-right), engine tests (a
   sitting graded with mistakes to the notebook, a sitting kept across a restart, the PDF

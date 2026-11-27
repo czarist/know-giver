@@ -436,6 +436,9 @@ setup:
   language:
     title: "언어 선택 · Choose your language"
     hint: "앱, 선생님, AI 프롬프트가 이 언어를 따라요. 나중에 설정에서 바꿀 수 있어요."
+    moving: "다른 컴퓨터에서 Know Giver를 쓰고 있나요? 계획과 설정을 가져오면 여기서는 AI만 설정하면 됩니다."
+    import: "백업 가져오기"
+    importing: "가져오는 중…"
   name:
     title: "어떻게 불러 드릴까요?"
     hint: "선생님이 수업에서 이 이름을 불러요."
@@ -654,6 +657,17 @@ settings:
     true_false: "O/X (Cebraspe)"
     now_true_false: "이 시험: O/X."
     now_choice: "이 시험: 객관식."
+  transfer:
+    title: "다른 컴퓨터로 옮기기"
+    hint: "계획, 학습 기록, 교재, 서술형 답안, 설정을 파일 하나에 저장하고 다른 컴퓨터에서 엽니다. AI(서비스, 키, 모델, 연결한 계정)는 파일에 들어가지 않습니다. 컴퓨터마다 설정하세요."
+    export: "백업 내보내기…"
+    import: "백업 가져오기…"
+    working: "파일을 준비하는 중…"
+    file_kind: "Know Giver 백업"
+    confirm: "%{file}을(를) 가져올까요?"
+    confirm_hint: "이 컴퓨터의 계획과 학습 기록이 파일의 내용으로 바뀝니다. 그 전에 지금 내용의 사본을 앱 데이터 안의 backups 폴더에 보관합니다. 여기서 설정한 AI는 그대로입니다."
+    confirm_button: "가져와서 바꾸기"
+    cancel: "취소"
   feedback:
     title: "효과음과 애니메이션"
     sounds: "인터페이스 소리(클릭, 정답, 업적)"
@@ -829,6 +843,8 @@ working:
   minutes: "%{minutes}분"
 
 notice:
+  backup_imported: "백업을 가져왔습니다. 계획, 학습 기록, 설정이 모두 있습니다."
+  backup_imported_ai: "백업을 가져왔습니다. 이 컴퓨터의 AI 설정만 남았습니다."
   exam_format_read: "공고에서 시험 형식을 읽었어요. 만들기 전에 숫자를 확인하세요."
   exam_format_missing: "공고에 과목별 문항 수가 나와 있지 않아요. 형식을 직접 조정하세요."
   mock_created: "모의고사가 준비됐어요. 화면에서 풀거나 인쇄하세요."
@@ -1051,6 +1067,9 @@ discursive:
     case_language_hint: "표준 한국어: 문법, 어휘 사용, 맞춤법, 띄어쓰기, 문장 부호."
 
 error:
+  backup:
+    not_a_backup: "이 파일은 Know Giver 백업이 아니거나 손상되었습니다."
+    too_new: "이 백업은 더 새로운 버전의 Know Giver로 만들어졌습니다. 앱을 업데이트한 뒤 다시 시도하세요."
   mock:
     format: "이 형식은 사용할 수 없습니다. 시간(10~600분), 선택지(2~5개), 총 문항 수(1~200문항)를 확인하세요."
     questions: "모델이 유효한 문제를 충분히 만들지 못했습니다. 다시 시도하거나 다른 모델을 사용하세요."
