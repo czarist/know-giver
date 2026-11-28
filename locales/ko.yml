@@ -292,6 +292,7 @@ lesson:
   interrupt: "선생님 말 끊기 (Esc)"
   captions: "자막"
   emoji: "이모지"
+  send_keys: "Enter로 보내기 · Shift+Enter로 줄 바꿈"
   react: "반응하기"
   reaction_remove: "반응 취소"
   transcript: "대화 기록과 채팅"

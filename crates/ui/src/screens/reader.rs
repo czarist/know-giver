@@ -149,12 +149,24 @@ fn reading_card(ui: &mut egui::Ui, reading: &Reading, actions: &mut Actions) {
         .inner_margin(12)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
+            // The buttons' width from the last frame: long titles wrap
+            // before them, with room to breathe, instead of running under.
+            let buttons_id = ui.id().with(("reading_buttons", reading.id));
+            let buttons_width = ui
+                .ctx()
+                .data(|d| d.get_temp::<f32>(buttons_id))
+                .unwrap_or(480.0);
             ui.horizontal(|ui| {
+                let text_width = (ui.available_width() - buttons_width - 32.0).max(220.0);
                 ui.vertical(|ui| {
-                    ui.label(
-                        RichText::new(&reading.title)
-                            .family(theme::strong_family())
-                            .size(16.0),
+                    ui.set_max_width(text_width);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(&reading.title)
+                                .family(theme::strong_family())
+                                .size(16.0),
+                        )
+                        .wrap(),
                     );
                     let status = if reading.page_count == 0 {
                         t!("reader.not_opened").into_owned()
@@ -180,40 +192,45 @@ fn reading_card(ui: &mut egui::Ui, reading: &Reading, actions: &mut Actions) {
                             .fill(p.accent),
                     );
                 });
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(t!("reader.delete")).clicked() {
-                        actions.send(Command::DeleteReading(reading.id));
-                    }
-                    if ui.button(t!("reader.export_pdf")).clicked()
-                        && let Some(path) = rfd::FileDialog::new()
-                            .set_title(t!("reader.export_pdf_title"))
-                            .set_file_name(format!(
-                                "{}-{}.pdf",
-                                t!("handout.file_prefix"),
-                                kg_engine::slug(&reading.title)
-                            ))
-                            .add_filter(t!("handout.pdf_filter"), &["pdf"])
-                            .save_file()
-                    {
-                        actions.send(Command::ExportSavedReading {
-                            reading: reading.id,
-                            path,
-                        });
-                    }
-                    if ui.button(t!("reader.open_pdf")).clicked() {
-                        crate::app::open_file(std::path::Path::new(&reading.path));
-                    }
-                    let label = if reading.page_count == 0 {
-                        t!("reader.read")
-                    } else {
-                        t!("reader.continue")
-                    };
-                    let read = egui::Button::new(RichText::new(label).color(Color32::WHITE))
-                        .fill(p.accent);
-                    if ui.add(read).clicked() {
-                        actions.send(Command::OpenReading(reading.id));
-                    }
-                });
+                ui.add_space(32.0);
+                let buttons =
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button(t!("reader.delete")).clicked() {
+                            actions.send(Command::DeleteReading(reading.id));
+                        }
+                        if ui.button(t!("reader.export_pdf")).clicked()
+                            && let Some(path) = rfd::FileDialog::new()
+                                .set_title(t!("reader.export_pdf_title"))
+                                .set_file_name(format!(
+                                    "{}-{}.pdf",
+                                    t!("handout.file_prefix"),
+                                    kg_engine::slug(&reading.title)
+                                ))
+                                .add_filter(t!("handout.pdf_filter"), &["pdf"])
+                                .save_file()
+                        {
+                            actions.send(Command::ExportSavedReading {
+                                reading: reading.id,
+                                path,
+                            });
+                        }
+                        if ui.button(t!("reader.open_pdf")).clicked() {
+                            crate::app::open_file(std::path::Path::new(&reading.path));
+                        }
+                        let label = if reading.page_count == 0 {
+                            t!("reader.read")
+                        } else {
+                            t!("reader.continue")
+                        };
+                        let read = egui::Button::new(RichText::new(label).color(Color32::WHITE))
+                            .fill(p.accent);
+                        if ui.add(read).clicked() {
+                            actions.send(Command::OpenReading(reading.id));
+                        }
+                        ui.min_rect().width()
+                    });
+                ui.ctx()
+                    .data_mut(|d| d.insert_temp(buttons_id, buttons.inner));
             });
         });
 }

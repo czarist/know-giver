@@ -292,6 +292,7 @@ lesson:
   interrupt: "Interrupt the tutor (Esc)"
   captions: "Captions"
   emoji: "Emoji"
+  send_keys: "Enter sends · Shift+Enter for a new line"
   react: "React"
   reaction_remove: "Remove reaction"
   transcript: "Transcript and chat"

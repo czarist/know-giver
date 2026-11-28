@@ -707,7 +707,7 @@ fn controls(
                 let settings = engine.settings();
                 let mut input = settings.input_device.clone();
                 let mut output = settings.output_device.clone();
-                crate::audio_devices::pickers(ui, &mut input, &mut output, actions);
+                crate::audio_devices::lists_inline(ui, &mut input, &mut output, actions);
             });
         ui.add_space(12.0);
         let end = egui::Button::new(
@@ -772,7 +772,7 @@ fn side_panel(
         lesson.phase,
         LessonPhase::Thinking | LessonPhase::Transcribing
     );
-    let input_height = 46.0;
+    let input_height = 104.0;
     egui::ScrollArea::vertical()
         .max_height((ui.available_height() - input_height).max(100.0))
         .stick_to_bottom(true)
@@ -803,31 +803,75 @@ fn side_panel(
                 });
             }
         });
-    ui.horizontal(|ui| {
-        let emoji = ui
-            .add_enabled(!busy, crate::emoji::picker_button())
-            .on_hover_text(t!("lesson.emoji"));
-        egui::Popup::from_toggle_button_response(&emoji)
-            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-            .show(|ui| crate::emoji::picker(ui, input));
-        let field = ui.add_enabled(
-            !busy,
-            egui::TextEdit::singleline(input)
-                .hint_text(t!("lesson.type_hint"))
-                .desired_width((ui.available_width() - 80.0).max(120.0)),
-        );
-        let enter = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-        let send = ui
-            .add_enabled(
-                !busy && !input.trim().is_empty(),
-                egui::Button::new(t!("lesson.send")),
-            )
-            .clicked();
-        if (enter || send) && !input.trim().is_empty() {
-            actions.send(Command::SendMessage(std::mem::take(input)));
-            field.request_focus();
-        }
-    });
+    chat_box(ui, input, busy, actions);
+}
+
+/// The message box under the chat: two lines that grow, the emoji picker
+/// and the send button. Enter sends; Shift+Enter starts a new line.
+fn chat_box(ui: &mut egui::Ui, input: &mut String, busy: bool, actions: &mut Actions) {
+    let p = theme::palette(ui.ctx());
+    let id = ui.make_persistent_id("lesson_chat_input");
+    // Taken before the field sees it, so Enter sends instead of breaking
+    // the line.
+    let enter = !busy
+        && ui.memory(|m| m.has_focus(id))
+        && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+    let mut send = false;
+    egui::Frame::new()
+        .fill(p.surface)
+        .stroke(Stroke::new(1.0, p.muted.gamma_multiply(0.5)))
+        .inner_margin(egui::Margin::symmetric(10, 8))
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            let field = ui.add_enabled(
+                !busy,
+                egui::TextEdit::multiline(input)
+                    .id(id)
+                    .hint_text(t!("lesson.type_hint"))
+                    .frame(egui::Frame::NONE)
+                    .desired_rows(2)
+                    .desired_width(f32::INFINITY),
+            );
+            ui.horizontal(|ui| {
+                let emoji = ui
+                    .add_enabled(!busy, crate::emoji::picker_button(p.muted))
+                    .on_hover_text(t!("lesson.emoji"));
+                egui::Popup::from_toggle_button_response(&emoji)
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                    .show(|ui| crate::emoji::picker(ui, input));
+                // The button first, from the right; the hint takes what is
+                // left and is cut short in a narrow panel, never widening it.
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let can_send = !busy && !input.trim().is_empty();
+                    let button =
+                        egui::Button::new(RichText::new(t!("lesson.send")).color(if can_send {
+                            Color32::WHITE
+                        } else {
+                            p.muted
+                        }))
+                        .fill(if can_send {
+                            p.accent
+                        } else {
+                            p.surface
+                        });
+                    send = ui.add_enabled(can_send, button).clicked();
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(t!("lesson.send_keys")).small().color(p.muted),
+                            )
+                            .truncate(),
+                        );
+                    });
+                });
+            });
+            if (enter || send) && !input.trim().is_empty() {
+                actions.send(Command::SendMessage(
+                    std::mem::take(input).trim().to_owned(),
+                ));
+                field.request_focus();
+            }
+        });
 }
 
 /// A taken lesson, looked back at: its plan, the board and the closing
