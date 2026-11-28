@@ -168,6 +168,16 @@ fn fonts(locale: &str) -> FontDefinitions {
         }
     }
 
+    // The system's emoji font draws the emoji egui's own lacks (🤙, 🤔, 🧠),
+    // in one color like the rest of the text.
+    let emoji = system_emoji_font().map(|bytes| {
+        let name = "system-emoji".to_owned();
+        fonts
+            .font_data
+            .insert(name.clone(), Arc::new(FontData::from_static(bytes)));
+        name
+    });
+
     // egui's default fonts stay as fallbacks for symbols the new fonts lack.
     let defaults: Vec<String> = fonts
         .families
@@ -176,6 +186,7 @@ fn fonts(locale: &str) -> FontDefinitions {
         .unwrap_or_default()
         .into_iter()
         .chain(cjk)
+        .chain(emoji)
         .collect();
     let with_defaults = |first: &str| {
         std::iter::once(first.to_owned())
@@ -195,6 +206,29 @@ fn fonts(locale: &str) -> FontDefinitions {
         .families
         .insert(strong_family(), with_defaults("inter-semibold"));
     fonts
+}
+
+/// A system emoji font with outlines egui can draw, read once: Segoe UI
+/// Emoji on Windows, Noto Emoji on Linux. macOS ships only bitmap emoji,
+/// which egui cannot draw, so egui's own set is used there.
+fn system_emoji_font() -> Option<&'static [u8]> {
+    static FONT: std::sync::OnceLock<Option<Vec<u8>>> = std::sync::OnceLock::new();
+    FONT.get_or_init(|| {
+        let windows = std::env::var_os("WINDIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::PathBuf::from(r"C:\Windows"))
+            .join("Fonts")
+            .join("seguiemj.ttf");
+        [
+            windows,
+            "/usr/share/fonts/truetype/noto/NotoEmoji-Regular.ttf".into(),
+            "/usr/share/fonts/noto/NotoEmoji-Regular.ttf".into(),
+            "/usr/share/fonts/google-noto-emoji/NotoEmoji-Regular.ttf".into(),
+        ]
+        .into_iter()
+        .find_map(|path| std::fs::read(path).ok())
+    })
+    .as_deref()
 }
 
 fn visuals(mut v: Visuals, p: &Palette) -> Visuals {

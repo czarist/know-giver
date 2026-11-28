@@ -362,20 +362,33 @@ fn open() -> Option<mpsc::Sender<(Cue, f32)>> {
 }
 
 fn cue_thread(rx: mpsc::Receiver<(Cue, f32)>) {
-    let mut sink = match rodio::DeviceSinkBuilder::open_default_sink() {
-        Ok(sink) => sink,
+    let open = || match crate::devices::open_output() {
+        Ok(mut sink) => {
+            sink.log_on_drop(false);
+            Some(sink)
+        }
         Err(err) => {
             tracing::warn!(%err, "no output device for interface sounds");
-            return;
+            None
         }
     };
-    sink.log_on_drop(false);
+    let mut generation = crate::devices::output_generation();
+    let mut sink = open();
     let clips: Vec<(Cue, AudioClip)> = Cue::ALL.iter().map(|&c| (c, c.render())).collect();
     let (Some(channels), Some(rate)) = (NonZero::new(1u16), NonZero::new(CUE_RATE)) else {
         return;
     };
     while let Ok((cue, volume)) = rx.recv() {
         let Some((_, clip)) = clips.iter().find(|(c, _)| *c == cue) else {
+            continue;
+        };
+        // Follow a change of output.
+        let now = crate::devices::output_generation();
+        if now != generation {
+            generation = now;
+            sink = open();
+        }
+        let Some(sink) = sink.as_ref() else {
             continue;
         };
         let source = rodio::buffer::SamplesBuffer::new(channels, rate, clip.samples.clone());

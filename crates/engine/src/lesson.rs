@@ -37,8 +37,10 @@ const PARTIAL_STEP_SECS: f32 = 0.25;
 /// What the tutor says right away while the answer is being written. Spoken
 /// Portuguese, like the prompts; neutral, so they fit right and wrong answers.
 const FILLERS: [&str; 4] = ["Hum.", "Entendi.", "Hum, tá.", "Tá."];
-/// Whiteboard points kept on screen (the newest ones).
-const BOARD_POINTS: usize = 6;
+/// Whiteboard entries kept for the whole lesson (the newest ones): the board
+/// shows the latest and the student can page back through the rest; drafts
+/// and the recap keep them all.
+const BOARD_POINTS: usize = 80;
 /// Shorter clips are treated as accidental clicks.
 const MIN_CLIP_SECS: f32 = 0.4;
 /// How much of the tutor's last turn is given to Whisper as context.
@@ -67,6 +69,9 @@ pub enum Speaker {
 pub struct LessonTurn {
     pub speaker: Speaker,
     pub text: String,
+    /// The student's emoji reaction to a tutor turn, Teams-style.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reaction: Option<String>,
 }
 
 /// An ongoing lesson about one topic.
@@ -242,6 +247,7 @@ impl LessonSession {
                 _ if !text.trim().is_empty() => turns.push(LessonTurn {
                     speaker: Speaker::Tutor,
                     text: text.clone(),
+                    reaction: None,
                 }),
                 _ => {}
             }
@@ -285,18 +291,40 @@ impl LessonSession {
         self.turns.iter().any(|t| t.speaker == Speaker::Student)
     }
 
-    fn history(&self) -> Vec<ChatMessage> {
+    /// The conversation for the tutor. A reaction to a tutor turn travels
+    /// with the student's next message, so the tutor can take it into
+    /// account (😕 asks for another explanation, 👍 says it landed).
+    fn history(&self, lang: kg_ai::PromptLanguage) -> Vec<ChatMessage> {
         let skip = self.turns.len().saturating_sub(HISTORY_TURNS);
-        self.turns
-            .iter()
-            .skip(skip)
-            .map(|turn| match turn.speaker {
-                Speaker::Tutor => ChatMessage::assistant(turn.text.clone()),
-                Speaker::Student => ChatMessage::user(turn.text.clone()),
-            })
-            .collect()
+        let mut reaction: Option<&str> = None;
+        let mut out = Vec::new();
+        for turn in self.turns.iter().skip(skip) {
+            match turn.speaker {
+                Speaker::Tutor => {
+                    reaction = turn.reaction.as_deref();
+                    out.push(ChatMessage::assistant(turn.text.clone()));
+                }
+                Speaker::Student => {
+                    let text = match reaction.take() {
+                        Some(emoji) => format!(
+                            "{} {}",
+                            lang.pick(REACTION_NOTE, REACTION_NOTE_EN)
+                                .replace("{emoji}", emoji),
+                            turn.text
+                        ),
+                        None => turn.text.clone(),
+                    };
+                    out.push(ChatMessage::user(text));
+                }
+            }
+        }
+        out
     }
 }
+
+/// How a reaction reaches the tutor, before the student's next message.
+const REACTION_NOTE: &str = "(O aluno reagiu à sua última fala com {emoji}.)";
+const REACTION_NOTE_EN: &str = "(The student reacted to your last turn with {emoji}.)";
 
 /// An unfinished lesson, saved to pick it up where it stopped.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -474,10 +502,11 @@ impl Engine {
         self.warm_up_voice();
         let speech = self.open_speech_stream(reply);
         let (tx, waker) = self.sender();
+        let lang = self.prompt_language();
         let mut history = self
             .lesson
             .as_ref()
-            .map_or_else(Vec::new, LessonSession::history);
+            .map_or_else(Vec::new, |lesson| lesson.history(lang));
         self.spawn(move || {
             let relay = |sentence: &str| {
                 relay_sentence(&tx, &waker, speech.as_ref(), reply, sentence);
@@ -692,6 +721,22 @@ impl Engine {
     }
 
     /// The student pressed stop.
+    /// Sets or takes back the student's reaction to a tutor turn.
+    pub(crate) fn react_to_turn(&mut self, index: usize, reaction: Option<String>) {
+        let Some(turn) = self
+            .lesson
+            .as_mut()
+            .and_then(|lesson| lesson.turns.get_mut(index))
+            .filter(|turn| turn.speaker == Speaker::Tutor)
+        else {
+            return;
+        };
+        turn.reaction = reaction.filter(|r| !r.trim().is_empty());
+        if let Err(err) = self.save_lesson_draft() {
+            tracing::warn!(%err, "could not keep the reaction");
+        }
+    }
+
     pub(crate) fn stop_listening(&mut self) {
         self.end_turn(true);
     }
@@ -728,6 +773,7 @@ impl Engine {
             return;
         }
         let last_recording = self.paths.last_recording();
+        let unrecognized = self.paths.unrecognized_recording();
         if let Some(text) = ready_text {
             // The live caption already has every word: answer right away.
             tracing::info!(%text, "using the live caption as the transcript");
@@ -759,10 +805,17 @@ impl Engine {
                 rate = clip.sample_rate,
                 "transcribing recording"
             );
-            Event::Lesson(LessonEvent::Transcribed {
-                session,
-                result: stt.transcribe(&clip, &context),
-            })
+            let result = stt.transcribe(&clip, &context);
+            if result.as_ref().is_ok_and(|text| text.trim().is_empty()) {
+                tracing::warn!(
+                    secs = clip.duration_secs(),
+                    "speech heard but no words recognized"
+                );
+                if let Err(error) = std::fs::copy(&last_recording, &unrecognized) {
+                    tracing::debug!(%error, "could not keep the unrecognized recording");
+                }
+            }
+            Event::Lesson(LessonEvent::Transcribed { session, result })
         });
     }
 
@@ -864,6 +917,7 @@ impl Engine {
         }
         self.stop_speaking();
         let reply = self.next_id();
+        let lang = self.prompt_language();
         let Some(lesson) = self.lesson.as_mut() else {
             return;
         };
@@ -874,6 +928,7 @@ impl Engine {
         lesson.turns.push(LessonTurn {
             speaker: Speaker::Student,
             text,
+            reaction: None,
         });
         lesson.phase = LessonPhase::Thinking;
         lesson.reply = reply;
@@ -882,7 +937,7 @@ impl Engine {
         let turn = lesson.turns.len();
         let session = reply;
         let ctx = lesson.context.clone();
-        let history = lesson.history();
+        let history = lesson.history(lang);
         let client = self.ai_client();
         let speech = self.open_speech_stream(session);
         let speaking_enabled = speech.is_some();
@@ -1104,6 +1159,7 @@ impl Engine {
                         lesson.turns.push(LessonTurn {
                             speaker: Speaker::Tutor,
                             text,
+                            reaction: None,
                         });
                     }
                     if lesson.speech_job.is_some() && lesson.phase == LessonPhase::Thinking {
@@ -1112,7 +1168,7 @@ impl Engine {
                 }
             }
             LessonEvent::Reply { session, result } if Some(session) == current_reply => {
-                let reply = match result {
+                let mut reply = match result {
                     Ok(reply) => reply,
                     Err(err) => {
                         if let Some(lesson) = self.lesson.as_mut() {
@@ -1122,9 +1178,11 @@ impl Engine {
                         return Err(err.into());
                     }
                 };
-                let text = reply.speech;
+                let text = std::mem::take(&mut reply.speech);
+                let said_step = kg_ai::spoken_step(&text);
                 let mut spoken_live = false;
                 let mut pictures: Vec<String> = Vec::new();
+                let mut noticed: Vec<String> = Vec::new();
                 if let Some(lesson) = self.lesson.as_mut() {
                     spoken_live = lesson.speech_job.is_some();
                     // The full reply replaces the streamed captions; while it
@@ -1140,7 +1198,22 @@ impl Engine {
                         .map(|query| query.trim().to_owned())
                         .collect();
                     lesson.board.extend(reply.board);
-                    lesson.follow_plan(&reply.outline, reply.step, reply.finished);
+                    noticed = reply.notes;
+                    // The tutor sometimes says it moves on without the
+                    // ETAPA: line; the bar follows what the student heard.
+                    let step = reply.step.or_else(|| {
+                        if said_step.is_some() {
+                            tracing::info!(?said_step, "step taken from the tutor's words");
+                        }
+                        said_step
+                    });
+                    tracing::info!(
+                        ?step,
+                        notes = noticed.len(),
+                        finished = reply.finished,
+                        "tutor reply parsed"
+                    );
+                    lesson.follow_plan(&reply.outline, step, reply.finished);
                     let excess = lesson.board.len().saturating_sub(BOARD_POINTS);
                     lesson.board.drain(..excess);
                     if spoken_live && lesson.phase == LessonPhase::Thinking {
@@ -1150,6 +1223,7 @@ impl Engine {
                 for query in &pictures {
                     self.request_illustration(query);
                 }
+                self.add_student_notes(&noticed);
                 self.save_finished_lesson()?;
                 if let Err(err) = self.save_lesson_draft() {
                     tracing::warn!(%err, "could not keep the lesson to continue later");
@@ -1175,11 +1249,11 @@ impl Engine {
                         self.answer_student(String::new(), true);
                     }
                     Ok(_) => {
+                        // The recorder heard speech (shorter sounds never get
+                        // here), so say so instead of going quiet: the
+                        // student would otherwise wait for an answer.
                         self.set_phase(LessonPhase::Idle);
-                        // A noise taken for speech ends quietly.
-                        if !self.lesson.as_ref().is_some_and(|l| l.asked_turn) {
-                            self.notices.push(Notice::NothingHeard);
-                        }
+                        self.notices.push(Notice::NotUnderstood);
                     }
                     Err(err) => {
                         self.set_phase(LessonPhase::Idle);
@@ -1539,6 +1613,7 @@ fn settle_reply(lesson: &mut LessonSession) {
         lesson.turns.push(LessonTurn {
             speaker: Speaker::Tutor,
             text,
+            reaction: None,
         });
     }
 }

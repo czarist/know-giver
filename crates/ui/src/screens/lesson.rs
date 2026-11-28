@@ -377,12 +377,25 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, engine: &Engine, lesson: &Lesso
         BOARD_INK.gamma_multiply(0.16),
     );
 
+    // Paging back: how many of the newest entries are skipped. New content
+    // brings the board back to the latest page.
+    let page_id = ui.id().with(("board_page", lesson.id));
+    let (mut back, seen_len) = ui
+        .ctx()
+        .data(|d| d.get_temp::<(usize, usize)>(page_id))
+        .unwrap_or((0, lesson.board.len()));
+    if seen_len != lesson.board.len() {
+        back = 0;
+    }
+    back = back.min(lesson.board.len().saturating_sub(1));
+
     let now = ui.input(|i| i.time);
     let width = board.width() - 52.0;
     let mut y = board.top() + 46.0;
-    let newest = lesson.board.len().saturating_sub(1);
+    let top = lesson.board.len().saturating_sub(1 + back);
     let mut drawn = 0;
-    for (i, point) in lesson.board.iter().enumerate().rev().take(5) {
+    let visible = lesson.board.len() - back;
+    for (i, point) in lesson.board.iter().enumerate().take(visible).rev().take(5) {
         // Remember when each point first appeared, to animate its writing.
         let id = ui.id().with(("board_point", lesson.id, i, point.as_str()));
         let first_seen = ui
@@ -425,7 +438,7 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, engine: &Engine, lesson: &Lesso
         }
         drawn += 1;
         let text: String = point.chars().take(shown.max(1)).collect();
-        let alpha = if i == newest { 1.0 } else { 0.7 };
+        let alpha = if i == top { 1.0 } else { 0.7 };
         let galley = painter.layout(
             format!("•  {text}"),
             // Chalk text stays proportional: monospace would not fit the board.
@@ -449,6 +462,74 @@ fn paint_board(ui: &egui::Ui, board: egui::Rect, engine: &Engine, lesson: &Lesso
             BOARD_INK.gamma_multiply(0.45),
         );
     }
+
+    // Older and newer pages, top right, once there is more than one page.
+    let older = visible.saturating_sub(drawn.max(1)) > 0;
+    let newer = back > 0;
+    if older || newer {
+        let step = drawn.max(1);
+        let size = vec2(26.0, 22.0);
+        let right = board.right_top() + vec2(-20.0, 14.0);
+        let next_rect = egui::Rect::from_min_size(right - vec2(size.x, 0.0), size);
+        let prev_rect = next_rect.translate(vec2(-size.x - 6.0, 0.0));
+        let arrow = |rect: egui::Rect, text: &str, enabled: bool, salt: &str, hint: String| {
+            let response = ui
+                .interact(
+                    rect,
+                    ui.id().with(("board_arrow", salt)),
+                    egui::Sense::click(),
+                )
+                .on_hover_text(hint);
+            let alpha = match (enabled, response.hovered()) {
+                (false, _) => 0.2,
+                (true, true) => 1.0,
+                (true, false) => 0.65,
+            };
+            painter.rect_stroke(
+                rect,
+                0.0,
+                Stroke::new(1.2, BOARD_INK.gamma_multiply(alpha * 0.6)),
+                egui::StrokeKind::Inside,
+            );
+            painter.text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                text,
+                egui::FontId::proportional(13.0),
+                BOARD_INK.gamma_multiply(alpha),
+            );
+            enabled && response.clicked()
+        };
+        if arrow(
+            prev_rect,
+            "◀",
+            older,
+            "older",
+            t!("lesson.board_older").into_owned(),
+        ) {
+            back = (back + step).min(lesson.board.len().saturating_sub(1));
+        }
+        if arrow(
+            next_rect,
+            "▶",
+            newer,
+            "newer",
+            t!("lesson.board_newer").into_owned(),
+        ) {
+            back = back.saturating_sub(step);
+        }
+        if newer {
+            painter.text(
+                pos2(prev_rect.left() - 10.0, prev_rect.center().y),
+                egui::Align2::RIGHT_CENTER,
+                t!("lesson.board_earlier"),
+                egui::FontId::proportional(11.5),
+                BOARD_INK.gamma_multiply(0.6),
+            );
+        }
+    }
+    ui.ctx()
+        .data_mut(|d| d.insert_temp(page_id, (back, lesson.board.len())));
 }
 
 /// Loader URI and caption of a board picture that finished loading.
@@ -549,7 +630,7 @@ fn controls(
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         // Center the round buttons.
-        let group_width = 7.0 * 52.0 + 130.0;
+        let group_width = 8.0 * 52.0 + 130.0;
         ui.add_space(((ui.available_width() - group_width) / 2.0).max(0.0));
 
         let can_talk = engine.stt_ready() && !busy;
@@ -611,6 +692,23 @@ fn controls(
         {
             state.lesson_captions = !state.lesson_captions;
         }
+        // Switching to a headset mid-lesson: the voice and the microphone
+        // move over without stopping the lesson.
+        let devices = round_button(ui, Icon::Headphones, p.text, p.surface, 46.0, true)
+            .on_hover_text(t!("audio_devices.button"));
+        // The device lists open popups of their own; a click in them must
+        // not close this one. It closes with its button or Esc.
+        egui::Popup::from_toggle_button_response(&devices)
+            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+            .show(|ui| {
+                ui.set_min_width(380.0);
+                ui.strong(t!("audio_devices.title"));
+                ui.add_space(6.0);
+                let settings = engine.settings();
+                let mut input = settings.input_device.clone();
+                let mut output = settings.output_device.clone();
+                crate::audio_devices::pickers(ui, &mut input, &mut output, actions);
+            });
         ui.add_space(12.0);
         let end = egui::Button::new(
             RichText::new(t!("lesson.end"))
@@ -680,13 +778,22 @@ fn side_panel(
         .stick_to_bottom(true)
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            for turn in &lesson.turns {
+            for (index, turn) in lesson.turns.iter().enumerate() {
                 let (who, color) = match turn.speaker {
                     Speaker::Tutor => (t!("lesson.tutor"), p.accent),
                     Speaker::Student => (t!("lesson.you"), p.highlight),
                 };
                 ui.label(RichText::new(who).small().color(color));
-                ui.label(&turn.text);
+                crate::emoji::label(ui, &turn.text);
+                if turn.speaker == Speaker::Tutor {
+                    ui.push_id(("reaction", index), |ui| {
+                        if let Some(reaction) =
+                            crate::emoji::reactions(ui, turn.reaction.as_deref())
+                        {
+                            actions.send(Command::ReactToTurn(index, reaction));
+                        }
+                    });
+                }
                 ui.add_space(4.0);
             }
             if busy {
@@ -697,6 +804,12 @@ fn side_panel(
             }
         });
     ui.horizontal(|ui| {
+        let emoji = ui
+            .add_enabled(!busy, crate::emoji::picker_button())
+            .on_hover_text(t!("lesson.emoji"));
+        egui::Popup::from_toggle_button_response(&emoji)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+            .show(|ui| crate::emoji::picker(ui, input));
         let field = ui.add_enabled(
             !busy,
             egui::TextEdit::singleline(input)

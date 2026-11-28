@@ -27,9 +27,13 @@ pub enum Entry<'a> {
     Example(&'a str),
     /// A Wikipedia picture, by search term.
     Image(&'a str),
+    /// A short piece of code, one item per line, indentation kept.
+    Code(Vec<&'a str>),
 }
 
 const CELL_CHARS: usize = 60;
+/// Most lines of code shown on the board.
+const CODE_LINES: usize = 14;
 const ITEM_CHARS: usize = 80;
 
 fn short(text: &str, max: usize) -> bool {
@@ -37,6 +41,13 @@ fn short(text: &str, max: usize) -> bool {
 }
 
 pub fn parse(text: &str) -> Entry<'_> {
+    if let Some(code) = text.strip_prefix("CODIGO: ") {
+        // Lines are separated by a literal "\n" (see the tutor prompt).
+        let lines: Vec<&str> = code.split("\\n").map(str::trim_end).collect();
+        if !code.trim().is_empty() && lines.len() <= CODE_LINES {
+            return Entry::Code(lines);
+        }
+    }
     let field = |marker: &str| text.strip_prefix(marker).map(str::trim);
     if let Some(expression) = field("FORMULA:")
         && short(expression, 240)
@@ -134,6 +145,7 @@ impl Entry<'_> {
             Self::MindMap { center, branches } => format!("{center}: {}", branches.join(", ")),
             Self::Tip(text) => format!("{}: {text}", t!("lesson.board_tip")),
             Self::Example(text) => format!("{}: {text}", t!("lesson.board_example")),
+            Self::Code(lines) => lines.join("\n"),
             Self::Image(_) => return None,
         })
     }
@@ -208,6 +220,7 @@ pub fn paint(
                 false,
             ) + gap
         }
+        Entry::Code(lines) => code(ui, painter, area, lines) + gap,
         Entry::Image(_) => match picture {
             Some(picture) => image(ui, painter, area, &picture, ink).map_or(0.0, |h| h + gap),
             None => 0.0,
@@ -444,6 +457,47 @@ fn mind_map(
     bottom - area.top()
 }
 
+/// Code on a dark slate, in monospace with line numbers, so indentation
+/// and symbols read exactly as written.
+fn code(ui: &egui::Ui, painter: &egui::Painter, area: Rect, lines: &[&str]) -> f32 {
+    let p = theme::palette(ui.ctx());
+    let pad = 10.0;
+    let number_width = 22.0;
+    let font = FontId::monospace(14.5);
+    let text_color = Color32::from_rgb(0xE8, 0xE6, 0xE0);
+    let wrap = (area.width() - pad * 2.0 - number_width).max(40.0);
+    let mut y = area.top() + pad;
+    let mut rows = Vec::with_capacity(lines.len());
+    for (n, line) in lines.iter().enumerate() {
+        let galley = painter.layout_job(crate::code_colors::layout(line, font.clone(), wrap, 1.0));
+        let height = galley.size().y.max(font.size * 1.2);
+        rows.push((n + 1, galley, y));
+        y += height;
+    }
+    let rect = Rect::from_min_max(area.min, pos2(area.right(), y + pad));
+    painter.rect_filled(rect, 0.0, Color32::from_rgb(0x1E, 0x24, 0x2B));
+    painter.rect_filled(
+        Rect::from_min_size(rect.min, vec2(3.0, rect.height())),
+        0.0,
+        p.accent,
+    );
+    for (number, galley, top) in rows {
+        painter.text(
+            pos2(area.left() + pad + number_width - 8.0, top),
+            egui::Align2::RIGHT_TOP,
+            number.to_string(),
+            FontId::monospace(12.0),
+            text_color.gamma_multiply(0.4),
+        );
+        painter.galley(
+            pos2(area.left() + pad + number_width, top),
+            galley,
+            text_color,
+        );
+    }
+    rect.height()
+}
+
 /// A text box with a small capital label above it.
 fn labeled_box(
     painter: &egui::Painter,
@@ -553,6 +607,16 @@ fn image(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn code_keeps_its_lines_and_indentation() {
+        assert_eq!(
+            parse("CODIGO: if x == 1:\\n    y = 2"),
+            Entry::Code(vec!["if x == 1:", "    y = 2"])
+        );
+        let long = format!("CODIGO: {}", vec!["x"; CODE_LINES + 1].join("\\n"));
+        assert!(matches!(parse(&long), Entry::Text(_)));
+    }
 
     #[test]
     fn diagrams_accept_unicode_and_reject_unbounded_or_empty_nodes() {

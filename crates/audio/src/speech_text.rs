@@ -124,10 +124,24 @@ fn apply<R: regex::Replacer>(rule: Option<&Regex>, text: String, replacement: R)
     }
 }
 
+/// Emoji are seen, not read: the voice would spell out their names or stumble.
+fn strip_emoji(text: &str) -> String {
+    text.chars()
+        .filter(|c| {
+            !matches!(u32::from(*c),
+                0x1F000..=0x1FAFF // pictographs, faces, hands, flags
+                | 0x2600..=0x27BF // symbols and dingbats (☕ ✅ ✌)
+                | 0x2B50 | 0x2B55 // ⭐ ⭕
+                | 0xFE0F | 0x200D) // emoji style and joiner
+        })
+        .collect()
+}
+
 /// Rewrites `text` for speech. Safe to call on any text.
 pub fn normalize_for_speech(text: &str) -> String {
     let r = &*RULES;
-    let mut out = apply(r.date.as_ref(), text.to_owned(), |c: &Captures<'_>| {
+    let text = strip_emoji(text);
+    let mut out = apply(r.date.as_ref(), text, |c: &Captures<'_>| {
         let day: u32 = c[1].parse().unwrap_or(0);
         let month: usize = c[2].parse().unwrap_or(0);
         let year = expand_year(&c[3]);
@@ -331,5 +345,10 @@ mod tests {
         assert_eq!(roman_to_int("XIV"), Some(14));
         assert_eq!(roman_to_int("XL"), Some(40));
         assert_eq!(roman_to_int("ABC"), None);
+    }
+
+    #[test]
+    fn emoji_are_not_read() {
+        assert_eq!(normalize_for_speech("Boa! 🤙👍🏽 Vamos ✅"), "Boa! Vamos");
     }
 }

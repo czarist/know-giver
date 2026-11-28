@@ -1,9 +1,10 @@
-//! Speech playback on the default output device.
+//! Speech playback on the chosen output device (see [`crate::devices`]).
 
+use std::collections::VecDeque;
 use std::num::NonZero;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use rodio::Source;
@@ -50,7 +51,7 @@ pub struct Speaker {
 }
 
 impl Speaker {
-    /// Opens the default output device.
+    /// Opens the chosen output device, following later changes of it.
     pub fn open() -> Result<Self, AudioError> {
         let (tx, rx) = mpsc::channel::<Command>();
         let (ready_tx, ready_rx) = mpsc::channel::<Result<(), AudioError>>();
@@ -156,18 +157,36 @@ impl<S: Source> Metered<S> {
     }
 }
 
+/// A clip's start callback, shared so a clip replayed on a new device does
+/// not call it twice.
+type StartSlot = Arc<Mutex<Option<OnStart>>>;
+
 /// Wraps a source and calls a function when its first sample is pulled.
 struct Announced<S> {
     inner: S,
-    on_start: Option<OnStart>,
+    on_start: StartSlot,
+    announced: bool,
+}
+
+impl<S> Announced<S> {
+    fn new(inner: S, on_start: StartSlot) -> Self {
+        Self {
+            inner,
+            on_start,
+            announced: false,
+        }
+    }
 }
 
 impl<S: Source> Iterator for Announced<S> {
     type Item = rodio::Sample;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(on_start) = self.on_start.take() {
-            on_start();
+        if !self.announced {
+            self.announced = true;
+            if let Some(on_start) = self.on_start.lock().ok().and_then(|mut s| s.take()) {
+                on_start();
+            }
         }
         self.inner.next()
     }
@@ -231,59 +250,132 @@ impl<S: Source> Source for Metered<S> {
     }
 }
 
+/// A clip handed to the device and not finished yet, kept to replay it when
+/// the output changes.
+struct Queued {
+    clip: AudioClip,
+    on_start: StartSlot,
+}
+
+/// The open output device and the player feeding it.
+struct Output {
+    _sink: rodio::MixerDeviceSink,
+    player: rodio::Player,
+}
+
+fn open_output() -> Result<Output, AudioError> {
+    let mut sink = crate::devices::open_output()?;
+    sink.log_on_drop(false);
+    let player = rodio::Player::connect_new(sink.mixer());
+    Ok(Output {
+        _sink: sink,
+        player,
+    })
+}
+
+fn append(player: &rodio::Player, queued: &Queued, level: &Arc<AtomicU32>) {
+    let (Some(channels), Some(rate)) = (NonZero::new(1u16), NonZero::new(queued.clip.sample_rate))
+    else {
+        return;
+    };
+    let source = rodio::buffer::SamplesBuffer::new(channels, rate, queued.clip.samples.clone());
+    let source = Announced::new(source, Arc::clone(&queued.on_start));
+    player.append(Metered::new(source, Arc::clone(level)));
+}
+
 fn playback_thread(
     rx: mpsc::Receiver<Command>,
     ready: mpsc::Sender<Result<(), AudioError>>,
     playing: Arc<AtomicBool>,
     level: Arc<AtomicU32>,
 ) {
-    let mut sink = match rodio::DeviceSinkBuilder::open_default_sink() {
-        Ok(sink) => sink,
+    let mut generation = crate::devices::output_generation();
+    let mut output = match open_output() {
+        Ok(output) => output,
         Err(err) => {
-            let _ = ready.send(Err(AudioError::NoOutputDevice(err.to_string())));
+            let _ = ready.send(Err(err));
             return;
         }
     };
-    sink.log_on_drop(false);
-    let player = rodio::Player::connect_new(sink.mixer());
     let _ = ready.send(Ok(()));
+    let mut queue: VecDeque<Queued> = VecDeque::new();
+    let mut paused = false;
 
     loop {
         match rx.recv_timeout(Duration::from_millis(40)) {
             Ok(Command::Play(clip, on_start)) => {
-                let (Some(channels), Some(rate)) =
-                    (NonZero::new(1u16), NonZero::new(clip.sample_rate))
-                else {
-                    continue;
+                let queued = Queued {
+                    clip,
+                    on_start: Arc::new(Mutex::new(on_start)),
                 };
-                let source = rodio::buffer::SamplesBuffer::new(channels, rate, clip.samples);
-                let source = Announced {
-                    inner: source,
-                    on_start,
-                };
-                player.append(Metered::new(source, Arc::clone(&level)));
-                if !player.is_paused() {
-                    player.play();
+                append(&output.player, &queued, &level);
+                queue.push_back(queued);
+                if !paused {
+                    output.player.play();
                 }
             }
             Ok(Command::Stop) => {
-                player.clear();
-                player.play();
+                output.player.clear();
+                output.player.play();
+                queue.clear();
+                paused = false;
                 level.store(0, Ordering::Relaxed);
             }
             Ok(Command::Pause) => {
-                player.pause();
+                output.player.pause();
+                paused = true;
                 level.store(0, Ordering::Relaxed);
             }
-            Ok(Command::Resume) => player.play(),
+            Ok(Command::Resume) => {
+                output.player.play();
+                paused = false;
+            }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
-        if player.empty() {
+        // Clips the device finished are gone from the player's queue.
+        while queue.len() > output.player.len() {
+            queue.pop_front();
+        }
+        let now = crate::devices::output_generation();
+        if now != generation {
+            generation = now;
+            switch_output(&mut output, &queue, paused, &level);
+        }
+        if output.player.empty() {
             playing.store(false, Ordering::Relaxed);
             level.store(0, Ordering::Relaxed);
         }
     }
+}
+
+/// Moves playback to the newly chosen device. The sentence being spoken
+/// starts again from its beginning there; the rest of the queue follows.
+fn switch_output(
+    output: &mut Output,
+    queue: &VecDeque<Queued>,
+    paused: bool,
+    level: &Arc<AtomicU32>,
+) {
+    let next = match open_output() {
+        Ok(next) => next,
+        Err(err) => {
+            tracing::warn!(%err, "could not switch the output device");
+            return;
+        }
+    };
+    output.player.clear();
+    level.store(0, Ordering::Relaxed);
+    for queued in queue {
+        append(&next.player, queued, level);
+    }
+    if paused {
+        next.player.pause();
+    } else {
+        next.player.play();
+    }
+    *output = next;
+    tracing::info!("output device switched");
 }
 
 #[cfg(test)]
@@ -312,14 +404,18 @@ mod tests {
         let channels = NonZero::new(1u16).unwrap();
         let calls = Arc::new(AtomicU32::new(0));
         let counter = Arc::clone(&calls);
-        let mut source = Announced {
-            inner: rodio::buffer::SamplesBuffer::new(channels, rate, vec![0.1f32; 10]),
-            on_start: Some(Box::new(move || {
-                counter.fetch_add(1, Ordering::Relaxed);
-            })),
-        };
+        let on_start: OnStart = Box::new(move || {
+            counter.fetch_add(1, Ordering::Relaxed);
+        });
+        let slot: StartSlot = Arc::new(Mutex::new(Some(on_start)));
+        let samples = || rodio::buffer::SamplesBuffer::new(channels, rate, vec![0.1f32; 10]);
+        let mut source = Announced::new(samples(), Arc::clone(&slot));
         assert_eq!(calls.load(Ordering::Relaxed), 0);
         while source.next().is_some() {}
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+        // Replayed on another device: heard again, announced only once.
+        let mut replay = Announced::new(samples(), slot);
+        while replay.next().is_some() {}
         assert_eq!(calls.load(Ordering::Relaxed), 1);
     }
 }

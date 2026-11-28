@@ -12,10 +12,10 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample};
 
-use crate::signal::rms;
+use crate::signal::{resample, rms};
 use crate::{AudioClip, AudioError, PlaybackLevel};
 
 /// How a recording ends.
@@ -121,7 +121,8 @@ impl std::fmt::Debug for Recording {
 }
 
 impl Recording {
-    /// Starts recording from the default microphone.
+    /// Starts recording from the chosen microphone (see [`crate::devices`]).
+    /// A change of microphone while recording carries on in the same buffer.
     pub fn start(options: RecordOptions) -> Result<Self, AudioError> {
         let shared = Arc::new(Shared::default());
         let (ready_tx, ready_rx) = mpsc::channel::<Result<u32, AudioError>>();
@@ -262,10 +263,11 @@ fn capture_thread(
     options: RecordOptions,
     ready: mpsc::Sender<Result<u32, AudioError>>,
 ) {
-    let stream = match open_stream(&shared) {
-        Ok((stream, rate)) => {
-            let _ = ready.send(Ok(rate));
-            stream
+    let mut generation = crate::devices::input_generation();
+    let (mut stream, rate) = match open_stream(&shared, None) {
+        Ok(opened) => {
+            let _ = ready.send(Ok(opened.1));
+            opened
         }
         Err(err) => {
             let _ = ready.send(Err(err));
@@ -284,6 +286,21 @@ fn capture_thread(
     let mut echo = EchoGate::default();
     while !shared.stop.load(Ordering::Relaxed) {
         std::thread::sleep(TICK);
+        let now = crate::devices::input_generation();
+        if now != generation {
+            generation = now;
+            // The old stream must close before some drivers open the new one.
+            drop(stream);
+            stream = match open_stream(&shared, Some(rate)) {
+                Ok((next, _)) => next,
+                Err(err) => {
+                    // The lesson opens a new recording, which reports the error.
+                    tracing::warn!(%err, "could not switch the microphone");
+                    shared.finished.store(true, Ordering::Relaxed);
+                    return;
+                }
+            };
+        }
         let level = f32::from_bits(shared.level.load(Ordering::Relaxed));
         shared
             .now_ms
@@ -391,22 +408,28 @@ fn median(values: &mut [f32]) -> f32 {
     values[values.len() / 2]
 }
 
-fn open_stream(shared: &Arc<Shared>) -> Result<(cpal::Stream, u32), AudioError> {
-    let device = cpal::default_host()
-        .default_input_device()
-        .ok_or(AudioError::NoInputDevice)?;
+/// Opens the chosen microphone. `keep_rate` is the rate of a recording that
+/// switches devices: audio from a device at another rate is converted to it.
+/// Returns the stream and the recording's rate.
+fn open_stream(
+    shared: &Arc<Shared>,
+    keep_rate: Option<u32>,
+) -> Result<(cpal::Stream, u32), AudioError> {
+    let device = crate::devices::input_device()?;
     let supported = device
         .default_input_config()
         .map_err(|e| AudioError::Device(e.to_string()))?;
     let config = supported.config();
     let channels = usize::from(config.channels.max(1));
-    let rate = config.sample_rate;
+    let device_rate = config.sample_rate;
+    let rate = keep_rate.unwrap_or(device_rate);
+    let rates = (device_rate, rate);
 
     let stream = match supported.sample_format() {
-        SampleFormat::F32 => build::<f32>(&device, config, channels, shared),
-        SampleFormat::I16 => build::<i16>(&device, config, channels, shared),
-        SampleFormat::U16 => build::<u16>(&device, config, channels, shared),
-        SampleFormat::I32 => build::<i32>(&device, config, channels, shared),
+        SampleFormat::F32 => build::<f32>(&device, config, channels, rates, shared),
+        SampleFormat::I16 => build::<i16>(&device, config, channels, rates, shared),
+        SampleFormat::U16 => build::<u16>(&device, config, channels, rates, shared),
+        SampleFormat::I32 => build::<i32>(&device, config, channels, rates, shared),
         other => Err(AudioError::Device(format!(
             "unsupported sample format {other:?}"
         ))),
@@ -414,7 +437,7 @@ fn open_stream(shared: &Arc<Shared>) -> Result<(cpal::Stream, u32), AudioError> 
     stream
         .play()
         .map_err(|e| AudioError::Device(e.to_string()))?;
-    tracing::info!(rate, channels, "microphone opened");
+    tracing::info!(device_rate, rate, channels, "microphone opened");
     Ok((stream, rate))
 }
 
@@ -422,6 +445,7 @@ fn build<T>(
     device: &cpal::Device,
     config: cpal::StreamConfig,
     channels: usize,
+    (device_rate, rate): (u32, u32),
     shared: &Arc<Shared>,
 ) -> Result<cpal::Stream, AudioError>
 where
@@ -439,6 +463,11 @@ where
                         frame.iter().map(|s| s.to_sample::<f32>()).sum::<f32>() / channels as f32
                     })
                     .collect();
+                let mono = if device_rate == rate {
+                    mono
+                } else {
+                    resample(&mono, device_rate, rate)
+                };
                 shared.level.store(rms(&mono).to_bits(), Ordering::Relaxed);
                 if let Ok(mut samples) = shared.samples.lock() {
                     samples.data.extend_from_slice(&mono);
