@@ -6,6 +6,42 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.47.3] - 2026-11-28
+
+### Added
+- Microphone and sound can be changed during a lesson (headphones button) and in
+  Settings → Microphone and sound. The recording and the tutor's voice move to the new
+  device without stopping the lesson; a device that is unplugged falls back to the
+  system default.
+- The board keeps the whole lesson: arrows on the board page back through what was
+  written. Code goes on the board in a dark panel with line numbers and syntax colors
+  (`CODIGO:` lines and code blocks, which are never read aloud), and the tutor uses up to
+  three visual lines per answer, almost always in programming, logic and mathematics.
+- Colored emoji in the lesson chat (Twemoji) and a picker with 347 of them; other emoji
+  use the system's emoji font. The voice never reads emoji.
+- Reactions to the tutor's turns, as in Teams (👍 ❤️ 😂 😮 😕 🙏). The tutor gets them with
+  the next message and reads the student's emoji and mood: 😕 brings another explanation.
+- My study preferences: the tutor notes how the student likes to learn and reads those
+  notes at the start of each lesson. The notes are a Markdown file the student can edit
+  in Settings or in another app, travel with backups, and can be turned off (on by
+  default). The privacy policy says so in every language; everyone agrees to the
+  documents again.
+
+### Changed
+- English terms in Portuguese lessons are said by the tutor's own voice from a
+  Portuguese respelling ("implementí", "istringue") and shown as written; operators are
+  said in words. The separate English voice stays optional in Settings.
+
+### Fixed
+- The lesson bar stayed on step 1 when the tutor moved on without its step line; other
+  ways of writing it, and the tutor's own words, now move it forward.
+- Speech that was heard but came back without words (about one turn in five with
+  Nemotron) is read again by another installed recognizer, and the student is told when
+  it still fails instead of the lesson going quiet. The clip is kept as
+  `last-unrecognized.wav`.
+- In Japanese, Korean and Chinese lessons with the English voice on, the tutor was asked
+  to mark every sentence as English.
+
 ## [0.46.0] - 2026-11-27
 
 ### Added
