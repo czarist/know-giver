@@ -36,11 +36,12 @@ pub fn reactions(ui: &mut egui::Ui, current: Option<&str>) -> Option<Option<Stri
                 changed = Some(None);
             }
         }
-        let add = match picture_of("🙂", 14.0) {
-            Some(image) => egui::Button::image(image.tint(Color32::from_white_alpha(120))),
-            None => egui::Button::new("+"),
-        }
-        .frame(false);
+        let muted = crate::theme::palette(ui.ctx()).muted;
+        let add = egui::Button::new(egui::RichText::new("+").size(13.0).strong().color(muted))
+            .stroke(egui::Stroke::new(1.0, muted.gamma_multiply(0.6)))
+            .fill(Color32::TRANSPARENT)
+            .corner_radius(9.0)
+            .min_size(vec2(22.0, 18.0));
         let add = ui.add(add).on_hover_text(t!("lesson.react"));
         egui::Popup::from_toggle_button_response(&add).show(|ui| {
             ui.horizontal(|ui| {
@@ -191,14 +192,9 @@ pub fn label(ui: &mut egui::Ui, text: &str) {
     });
 }
 
-/// The picker's button: 😊 in color.
-pub fn picker_button() -> egui::Button<'static> {
-    let index = SET.iter().position(|(e, _)| *e == "😊").unwrap_or(0);
-    match picture(index, 20.0) {
-        Some(image) => egui::Button::image(image),
-        None => egui::Button::new("😊"),
-    }
-    .frame(false)
+/// The picker's button: a plain line smile, calm next to the text.
+pub fn picker_button(color: Color32) -> egui::Button<'static> {
+    egui::Button::image(crate::icons::Icon::Smile.image(18.0, color)).frame(false)
 }
 
 /// The picker grid; a click adds that emoji to `input`.

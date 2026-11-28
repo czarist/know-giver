@@ -91,7 +91,7 @@ Model reference: <https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b>
 
 ## Current Status
 
-Version 0.47.4. Everything an agent can build and check without a human ear, a
+Version 0.47.5. Everything an agent can build and check without a human ear, a
 microphone or other platforms is done. What remains open needs a person, hardware or
 the real AI service (listed under "Not yet verified"). Each release ends with a
 CHANGELOG entry, the workspace version bump and an annotated tag `vX.Y.Z` on `main`.
@@ -105,6 +105,10 @@ shows the running window. Reminders are Know Giver's own popup, every 3 hours by
 (30 minutes to 8 hours in Settings), while the student is away from the app and the
 active plan has an unfinished subject. Native tray, popup and installer behavior still
 needs testing on Windows, macOS and Linux.
+
+In 0.47.5: the lesson's device picker works inside its popup (plain lists), a calmer
+chat box (two lines, Enter sends), a neutral emoji button and line-style emoji in the
+text field, a "+" for reactions, and long handout titles that wrap before their buttons.
 
 In 0.47.4: microphone and output switched during a lesson; a richer board kept for
 the whole lesson (code with syntax colors, pages to look back); English terms respelled

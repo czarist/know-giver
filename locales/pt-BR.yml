@@ -292,6 +292,7 @@ lesson:
   interrupt: "Interromper o tutor (Esc)"
   captions: "Legendas"
   emoji: "Emojis"
+  send_keys: "Enter envia · Shift+Enter quebra a linha"
   react: "Reagir"
   reaction_remove: "Tirar a reação"
   transcript: "Transcrição e chat"

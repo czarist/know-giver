@@ -292,6 +292,7 @@ lesson:
   interrupt: "打断老师（Esc）"
   captions: "字幕"
   emoji: "表情符号"
+  send_keys: "Enter 发送 · Shift+Enter 换行"
   react: "回应"
   reaction_remove: "取消回应"
   transcript: "对话记录与聊天"
