@@ -331,6 +331,10 @@ primeiro.
 
 **Trocando de computador.** Configurações → *Levar para outro computador* salva seus planos, desempenho, apostilas, discursivas e preferências num único arquivo `.kgbackup`. No computador novo, abra-o já na primeira tela da configuração (*Importar backup*) ou nas Configurações: só falta configurar a IA, porque o serviço de IA, a chave, os modelos e as contas conectadas nunca vão no arquivo. Importar substitui os estudos daquele computador, depois de guardar uma cópia deles na pasta `backups` dos dados do app.
 
+**Durante a aula.** O botão de fones troca o microfone e o som (para um headset, por exemplo) sem parar a aula; Configurações → Microfone e som guarda a escolha. O quadro guarda tudo o que foi escrito na aula, com setas para voltar, e mostra código num painel escuro com números de linha e cores de sintaxe. Termos em inglês são ditos pela própria voz do tutor, com pronúncia brasileira, e aparecem como se escrevem. O chat aceita emojis coloridos, e você pode reagir ao que o tutor diz como no Teams (👍 ❤️ 😂 😮 😕 🙏): o tutor lê a reação e o seu humor, e 😕 traz outra explicação.
+
+**Minhas preferências de estudo.** O tutor anota como você gosta de aprender (exemplos práticos, ritmo mais devagar, o que você acha difícil) e lê essas anotações no começo de cada aula. Elas são um arquivo de texto que você edita em Configurações → Minhas preferências de estudo ou em qualquer editor; o que você escreve vale mais. Ficam no seu computador, vão para a IA junto com a aula e acompanham o backup. Ligadas por padrão; desligue no mesmo lugar.
+
 ## Privado por padrão
 
 - O reconhecimento de fala e as vozes rodam no seu computador. As gravações nunca saem

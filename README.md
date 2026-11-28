@@ -323,6 +323,10 @@ bar and mark schemes. The exam notice and past exams always come first.
 
 **Moving to another computer.** Settings → *Move to another computer* saves your plans, progress, handouts, written answers and preferences in one `.kgbackup` file. On the new computer, open it from the first screen of the setup (*Import backup*) or from Settings: only the AI is left to set up, since the AI service, its key, models and connected accounts never go into the file. Importing replaces that computer's study, after keeping a copy of it in the `backups` folder of the app's data.
 
+**During the lesson.** The headphones button switches the microphone and the sound (to a headset, say) without stopping the lesson; Settings → Microphone and sound keeps the choice. The board keeps everything written in the lesson, with arrows to page back, and shows code in a dark panel with line numbers and syntax colors. English terms are said by the tutor's own voice, with a Brazilian pronunciation, and shown as written. The chat takes colored emoji, and you can react to what the tutor says as in Teams (👍 ❤️ 😂 😮 😕 🙏): the tutor reads the reaction and your mood, and 😕 brings another explanation.
+
+**My study preferences.** The tutor notes how you like to learn (practical examples, a slower pace, what you find hard) and reads those notes at the start of each lesson. They are a text file you can edit in Settings → My study preferences or in any editor; what you write comes first. They stay on your computer, go to the AI with the lesson and travel with backups. On by default; turn them off in the same place.
+
 ## Private by default
 
 - Speech recognition and the voices run on your machine. Recordings never leave it.
