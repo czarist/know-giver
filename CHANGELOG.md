@@ -6,6 +6,22 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
+## [0.47.5] - 2026-11-28
+
+### Changed
+- The lesson chat box has two lines that grow, a frame and the send button on the
+  right; Enter sends and Shift+Enter starts a new line.
+- The emoji button is a plain line smile, and the reaction button a small "+".
+- Emoji typed in the text field are drawn as line icons (Segoe UI Symbol on Windows)
+  instead of filled shapes.
+
+### Fixed
+- Choosing a microphone or sound device from the lesson's headphones button did nothing:
+  the drop-downs opened inside a popup, which egui does not show. They are plain lists
+  there now; Settings keeps the drop-downs.
+- The chat panel widened past its column when the send-keys hint did not fit.
+- Long handout titles ran under their buttons; they wrap before them now.
+
 ## [0.47.4] - 2026-11-28
 
 ### Added

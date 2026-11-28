@@ -292,6 +292,7 @@ lesson:
   interrupt: "先生の話を止める（Esc）"
   captions: "字幕"
   emoji: "絵文字"
+  send_keys: "Enter で送信 · Shift+Enter で改行"
   react: "リアクション"
   reaction_remove: "リアクションを外す"
   transcript: "会話の記録とチャット"
