@@ -74,8 +74,18 @@ fn picture(index: usize, size: f32) -> Option<Image<'static>> {
 /// The emoji of the set at the start of `text`, longest first: its index
 /// and how many bytes it takes (with a trailing emoji-style mark).
 fn at_start(text: &str) -> Option<(usize, usize)> {
+    // Only the emoji that start with this character are tried: chat text is
+    // checked every frame, character by character.
+    let first = text.chars().next()?;
+    if !could_start_emoji(first) {
+        return None;
+    }
+    let candidates = by_first_char().get(&first)?;
     let mut best: Option<(usize, usize)> = None;
-    for (index, (emoji, _)) in SET.iter().enumerate() {
+    for &index in candidates {
+        let Some((emoji, _)) = SET.get(index) else {
+            continue;
+        };
         let plain = emoji.trim_end_matches(VARIATION);
         let len = if text.starts_with(emoji) {
             emoji.len()
@@ -95,6 +105,27 @@ fn at_start(text: &str) -> Option<(usize, usize)> {
             0
         };
         (index, len + extra)
+    })
+}
+
+/// Every emoji of the set starts at U+2000 or later; letters, accented ones
+/// included, never do.
+fn could_start_emoji(c: char) -> bool {
+    u32::from(c) >= 0x2000
+}
+
+/// The set's emoji grouped by their first character, built once.
+fn by_first_char() -> &'static std::collections::HashMap<char, Vec<usize>> {
+    static INDEX: std::sync::OnceLock<std::collections::HashMap<char, Vec<usize>>> =
+        std::sync::OnceLock::new();
+    INDEX.get_or_init(|| {
+        let mut index: std::collections::HashMap<char, Vec<usize>> = Default::default();
+        for (n, (emoji, _)) in SET.iter().enumerate() {
+            if let Some(first) = emoji.chars().next() {
+                index.entry(first).or_default().push(n);
+            }
+        }
+        index
     })
 }
 
@@ -129,6 +160,11 @@ fn pieces(text: &str) -> Vec<Piece<'_>> {
 
 /// A wrapping label whose emoji are drawn in color.
 pub fn label(ui: &mut egui::Ui, text: &str) {
+    // Most messages have no emoji: drawn as before, without splitting.
+    if !text.chars().any(could_start_emoji) {
+        ui.label(text);
+        return;
+    }
     let pieces = pieces(text);
     if !pieces.iter().any(|p| matches!(p, Piece::Emoji(_))) {
         ui.label(text);
@@ -189,9 +225,9 @@ pub fn picker(ui: &mut egui::Ui, input: &mut String) {
                         if index % PICKER_COLUMNS == PICKER_COLUMNS - 1 || index + 1 == PICKER_LEN {
                             ui.end_row();
                         }
-                        // A gap between the most used and the rest.
+                        // An empty row between the most used and the rest
+                        // (a grid takes no `add_space`).
                         if index + 1 == PICKER_LEN {
-                            ui.add_space(4.0);
                             ui.end_row();
                         }
                     }
