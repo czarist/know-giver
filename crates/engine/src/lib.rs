@@ -17,6 +17,7 @@ mod illustrations;
 mod lesson;
 mod mock;
 mod models;
+mod notes;
 mod ocr;
 mod paths;
 mod plans;
@@ -58,7 +59,7 @@ pub use kg_audio::{
     AudioError, CloudSpeechConfig, Cue, CueGroup, EnglishVoice, KokoroVoice, ModelId, PiperVoice,
     SttEngine, TtsBackend, Voice, VoiceGender, WhisperModel,
 };
-pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE};
+pub use kg_audio::{EXPRESSIVENESS_RANGE, RHYTHM_VARIATION_RANGE, input_devices, output_devices};
 pub use kg_handout::{
     CjkScript, Document as HandoutDocument, ExamLabels, Exercise as HandoutExercise, HandoutError,
     Labels as HandoutLabels, Section as HandoutSection, TextBox, TopicHandout, cjk_font,
@@ -170,6 +171,17 @@ pub enum Command {
     CloseReview,
 
     SaveSettings(Settings),
+    /// Switches the microphone (`None`: system default) at once, also in the
+    /// middle of a lesson, and keeps the choice.
+    SetInputDevice(Option<String>),
+    /// Switches the speakers or headphones (`None`: system default) at once,
+    /// also in the middle of a lesson, and keeps the choice.
+    SetOutputDevice(Option<String>),
+    /// Saves the student's preference notes as edited in Settings.
+    SaveStudentNotes(String),
+    /// Reacts to turn `index` of the lesson with an emoji (`None` takes the
+    /// reaction back); the tutor reads it in the next turn.
+    ReactToTurn(usize, Option<String>),
     TestConnection,
     /// Tests settings not saved yet (first-run setup).
     TestAiConfig(Box<AiConfig>),
@@ -426,6 +438,8 @@ pub enum Notice {
         total: u32,
     },
     NothingHeard,
+    /// Speech was heard but no recognizer made words of it.
+    NotUnderstood,
     Exported(PathBuf),
     HandoutSaved(PathBuf),
     ContentPrepared(PrepareSummary),
@@ -584,6 +598,8 @@ pub struct Engine {
     waker: Waker,
     next_session_id: u64,
     backup: backup::BackupState,
+    /// The student's preference notes, as saved (see `notes`).
+    student_notes: String,
 }
 
 impl std::fmt::Debug for Engine {
@@ -644,6 +660,7 @@ impl Engine {
         });
         let (events_tx, events_rx) = mpsc::channel();
         let models = ModelStore::new(paths.models_dir());
+        let student_notes = notes::read(&paths);
         settings.voice = settings.voice.runnable(|id| models.is_installed(id));
         let mut engine = Self {
             store,
@@ -700,7 +717,9 @@ impl Engine {
             waker: Arc::new(|| {}),
             next_session_id: 1,
             backup: backup::BackupState::default(),
+            student_notes,
         };
+        engine.apply_audio_devices();
         engine.restore_chatgpt_session();
         engine.recover_writing();
         engine.reload_plans();
@@ -964,6 +983,21 @@ impl Engine {
             }
 
             Command::SaveSettings(settings) => self.save_settings(settings),
+            Command::SaveStudentNotes(text) => self.save_student_notes(text),
+            Command::ReactToTurn(index, reaction) => {
+                self.react_to_turn(index, reaction);
+                Ok(())
+            }
+            Command::SetInputDevice(name) => {
+                let mut settings = self.settings.clone();
+                settings.input_device = name;
+                self.store_audio_devices(settings)
+            }
+            Command::SetOutputDevice(name) => {
+                let mut settings = self.settings.clone();
+                settings.output_device = name;
+                self.store_audio_devices(settings)
+            }
             Command::InstallOcrModel => self.install_ocr_model(),
             Command::CancelOcrModelDownload => {
                 self.cancel_ocr_model_download();
@@ -1213,6 +1247,7 @@ impl Engine {
             || (settings.speech_rate - self.settings.speech_rate).abs() > f32::EPSILON;
         settings.save(&mut self.store, &self.env_ai)?;
         self.settings = settings;
+        self.apply_audio_devices();
         self.start_local_ocr_server();
         if voice_changed {
             self.stop_audio();
@@ -1220,6 +1255,21 @@ impl Engine {
         }
         self.notices.push(Notice::SettingsSaved);
         Ok(())
+    }
+
+    /// Saves a new microphone or output without the "saved" notice: open
+    /// recordings and playback move to it on their own.
+    fn store_audio_devices(&mut self, mut settings: Settings) -> Result<(), EngineError> {
+        settings.normalize();
+        settings.save(&mut self.store, &self.env_ai)?;
+        self.settings = settings;
+        self.apply_audio_devices();
+        Ok(())
+    }
+
+    fn apply_audio_devices(&self) {
+        kg_audio::set_input_device(self.settings.input_device.clone());
+        kg_audio::set_output_device(self.settings.output_device.clone());
     }
 
     fn test_connection(&mut self) {
@@ -1322,6 +1372,7 @@ impl Engine {
                         )
                     })
                     .collect(),
+                student_notes: self.notes_for_tutor(),
             },
             topic.title.clone(),
         ))

@@ -249,6 +249,7 @@ pub fn notice(notice: &Notice) -> (String, bool) {
             t!("notice.quiz_saved", correct = correct, total = total)
         }
         Notice::NothingHeard => t!("notice.nothing_heard"),
+        Notice::NotUnderstood => t!("notice.not_understood"),
         Notice::Exported(path) => t!("notice.exported", path = path.display()),
         Notice::HandoutSaved(path) => t!("notice.handout_saved", path = path.display()),
         Notice::ContentPrepared(summary) => match (&summary.pdf, summary.failed) {

@@ -1,6 +1,6 @@
 # Know Giver Privacy Policy
 
-Version of November 25, 2026 (2026-11-25.1). This international version applies in every
+Version of November 28, 2026 (2026-11-28.1). This international version applies in every
 region where the app is offered to the public. Section 13 adds the rules of the European
 Union (GDPR), the United Kingdom (UK GDPR and the Data Protection Act 2018), the United
 States (including the California Consumer Privacy Act as amended by the CPRA, and COPPA),
@@ -49,6 +49,7 @@ The app's data folder (`%LOCALAPPDATA%\KnowGiver` on Windows, or the folder set 
 - the notices, past exams, answer keys and materials you upload, plus your plans,
   progress, quizzes, reviews, handouts, highlights and notes;
 - lesson conversations and the mistakes notebook;
+- notes on your study preferences (`notes/student-notes.md`), written by you and the tutor, when that option is on;
 - photos of written answers, their transcripts and grades;
 - PaddleOCR-VL model files, downloaded into the local models folder if you install local OCR;
 - the date and time you agreed to these documents;
@@ -61,7 +62,7 @@ diagnostic recordings stay in the data folder.
 
 | Recipient | What | When |
 |---|---|---|
-| The AI provider you chose | Excerpts of the notice and materials, topics, your messages and transcribed answers, your name (so the tutor can address you), handout text | For each AI task |
+| The AI provider you chose | Excerpts of the notice and materials, topics, your messages and transcribed answers, your name (so the tutor can address you), handout text, your study preference notes (if that option is on) | For each AI task |
 | PaddleOCR-VL running locally through llama.cpp v0.8.0 `llama-server` | Photos of written answers | By default; processed on your computer, not sent to a provider |
 | The provider's vision model | Photos of written answers and pages of scanned PDFs | Written-answer photos only if you explicitly select external OCR; scanned-PDF pages only when you request OCR and have configured a vision model |
 | Wikipedia | The search term for a whiteboard picture | If whiteboard pictures are on |

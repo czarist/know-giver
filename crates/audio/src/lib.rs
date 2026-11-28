@@ -12,6 +12,7 @@
 
 mod capture;
 mod cues;
+mod devices;
 mod hardware;
 mod kokoro_ffi;
 mod kokoro_runtime;
@@ -29,10 +30,13 @@ mod whisper;
 
 pub use capture::{RecordOptions, Recording};
 pub use cues::{Cue, CueGroup, CuePlayer};
+pub use devices::{input_devices, output_devices, set_input_device, set_output_device};
 pub use hardware::{GpuVendor, SpeechHardware};
 pub use kokoro_ffi::release as release_kokoro;
 pub use kokoro_runtime::prepare_kokoro_executable;
-pub use language::{SpeechLang, language_runs, speech_pieces, strip_language_marks};
+pub use language::{
+    SpeechLang, language_runs, resolve_respellings, speech_pieces, strip_language_marks,
+};
 pub use models::{ModelId, ModelStore, PiperVoice, SttEngine, WhisperModel, unpack_archive};
 pub use nemotron::{NemotronBackend, NemotronRuntime, NemotronStt, nvidia_driver_present};
 pub use parakeet::ParakeetStt;

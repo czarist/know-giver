@@ -1,6 +1,6 @@
 # Política de Privacidade do Know Giver
 
-Versão de 25 de novembro de 2026 (2026-11-25.1), de acordo com a Lei Geral de Proteção de
+Versão de 28 de novembro de 2026 (2026-11-28.1), de acordo com a Lei Geral de Proteção de
 Dados (Lei nº 13.709/2018, LGPD). Esta é a versão para quem usa o aplicativo no Brasil.
 
 ## 1. Resumo
@@ -46,6 +46,7 @@ definida em `KG_DATA_DIR`):
 - editais, provas, gabaritos e materiais enviados, além dos planos, do progresso, dos
   quizzes, das revisões, das apostilas, dos destaques e das notas;
 - conversas das aulas e o caderno de erros;
+- as anotações das suas preferências de estudo (`notes/student-notes.md`), escritas por você e pelo tutor, quando essa opção está ligada;
 - fotos das respostas discursivas, suas transcrições e avaliações;
 - arquivos do modelo PaddleOCR-VL, baixados para a pasta local de modelos se você instalar o OCR local;
 - a data e a hora do seu aceite destes documentos;
@@ -58,7 +59,7 @@ gravações temporárias de diagnóstico ficam só na pasta de dados.
 
 | Para onde | O quê | Quando |
 |---|---|---|
-| Fornecedor de IA escolhido por você | Trechos do edital e dos materiais, tópicos, suas mensagens e respostas transcritas, seu nome (para o tutor chamar você), textos das apostilas | Em cada tarefa de IA |
+| Fornecedor de IA escolhido por você | Trechos do edital e dos materiais, tópicos, suas mensagens e respostas transcritas, seu nome (para o tutor chamar você), textos das apostilas, suas preferências de estudo anotadas (se essa opção estiver ligada) | Em cada tarefa de IA |
 | PaddleOCR-VL rodando localmente pelo `llama-server` v0.8.0 do llama.cpp | Fotos das respostas discursivas | Por padrão; processadas no computador, não enviadas a um fornecedor |
 | Modelo de visão do fornecedor | Fotos das respostas discursivas e páginas de PDFs escaneados | Fotos de respostas só se você escolher explicitamente o OCR externo; páginas de PDFs escaneados só quando você pedir a leitura e tiver configurado um modelo de visão |
 | Wikipédia | O termo de busca de uma imagem do quadro | Se a opção de imagens estiver ligada |
