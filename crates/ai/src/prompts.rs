@@ -226,6 +226,7 @@ mod tests {
             "DESTAQUE:",
             "EXEMPLO:",
             "IMAGEM:",
+            "CODIGO:",
         ] {
             assert!(en.tutor.contains(marker), "{marker}");
         }

@@ -117,24 +117,38 @@ const BOARD_MARKERS: [&str; 3] = ["QUADRO:", "FORMULA:", "DIAGRAMA:"];
 /// Markers whose whole line is one board entry (tables, timelines...).
 /// Matched in capitals only, so speech such as "Exemplo: imagine..." is
 /// never taken for the board.
-const BOARD_BLOCK_MARKERS: [&str; 6] = [
+const BOARD_BLOCK_MARKERS: [&str; 7] = [
     "IMAGEM:",
     "TABELA:",
     "LINHA DO TEMPO:",
     "MAPA:",
     "DESTAQUE:",
     "EXEMPLO:",
+    CODE_MARKER,
 ];
+/// A short piece of code for the board; its lines are separated by a
+/// literal `\n`, since every board entry is one line of the answer.
+const CODE_MARKER: &str = "CODIGO:";
+/// A Markdown code fence. Code in one never reaches the voice: it goes to
+/// the board as a [`CODE_MARKER`] entry.
+const CODE_FENCE: &str = "```";
 /// Longest whiteboard point kept, in characters.
 const BOARD_POINT_CHARS: usize = 90;
 /// Longest single-entry board line kept, in characters.
 const BOARD_BLOCK_CHARS: usize = 320;
+/// Longest piece of code kept for the board, in characters.
+const BOARD_CODE_CHARS: usize = 600;
 
 /// Lesson-progress lines: the lesson plan, moving to a step, and the end.
 /// Never spoken nor shown on the board. Matched in capitals only.
 const OUTLINE_MARKER: &str = "ROTEIRO:";
 const STEP_MARKER: &str = "ETAPA:";
 const END_MARKER: &str = "FIM";
+/// Something the tutor noticed about how the student learns, kept in their
+/// notes for future lessons. Never spoken nor shown.
+const NOTE_MARKER: &str = "PREFERENCIA:";
+/// Longest note kept, in characters.
+const NOTE_CHARS: usize = 200;
 /// Steps kept from the tutor's lesson plan, and their longest length.
 const OUTLINE_STEPS: usize = 5;
 const OUTLINE_STEP_CHARS: usize = 60;
@@ -142,8 +156,86 @@ const OUTLINE_STEP_CHARS: usize = 60;
 /// True for a line about the lesson's progress rather than speech.
 fn progress_line(line: &str) -> bool {
     line.starts_with(OUTLINE_MARKER)
+        || line.starts_with(NOTE_MARKER)
         || line.starts_with(STEP_MARKER)
         || line.starts_with(END_MARKER)
+}
+
+/// A board entry for a piece of code (lines separated by a literal `\n`),
+/// kept as written: indentation and a final dot matter in code.
+fn code_entry(code: &str) -> Option<String> {
+    let code = code.trim_matches(|c: char| c == '`' || c.is_whitespace());
+    let code = code.trim_start_matches("\\n").trim_end_matches("\\n");
+    (!code.trim().is_empty()).then(|| {
+        let code: String = code.chars().take(BOARD_CODE_CHARS).collect();
+        format!("{CODE_MARKER} {code}")
+    })
+}
+
+/// The step of a line that is only a step marker, in any case and with or
+/// without the colon ("Etapa: 3", "ETAPA 3", "**ETAPA: 3**"). A sentence
+/// that starts with the word ("Etapa 3 é sobre...") is not one.
+fn step_alone(line: &str) -> Option<usize> {
+    let word = STEP_MARKER.trim_end_matches(':');
+    let head = line.get(..word.len())?;
+    if !head.eq_ignore_ascii_case(word) {
+        return None;
+    }
+    let rest = line[word.len()..].trim_start_matches([':', ' ', '*']);
+    let digits = rest
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(rest.len());
+    let tail = rest[digits..].trim_matches(|c: char| c.is_whitespace() || matches!(c, '.' | '*'));
+    if digits == 0 || !tail.is_empty() {
+        return None;
+    }
+    rest[..digits].parse().ok().filter(|n| *n >= 1)
+}
+
+/// The step a tutor said it is moving to when it forgot the `ETAPA:` line
+/// ("Vamos à etapa 3", "Moving on to step 2"), so the lesson bar follows
+/// what the student hears. Only phrases about moving on count.
+pub fn spoken_step(speech: &str) -> Option<usize> {
+    const WORDS: [&str; 3] = ["etapa ", "step ", "parte "];
+    const MOVING: [&str; 12] = [
+        "vamos",
+        "passamos",
+        "passando",
+        "seguimos",
+        "avançamos",
+        "partimos",
+        "agora",
+        "indo",
+        "próxima",
+        "move on",
+        "moving on",
+        "on to",
+    ];
+    let lower = speech.to_lowercase();
+    let mut found = None;
+    for word in WORDS {
+        for (at, _) in lower.match_indices(word) {
+            let after = &lower[at + word.len()..];
+            let digits = after
+                .find(|c: char| !c.is_ascii_digit())
+                .unwrap_or(after.len());
+            let Ok(n) = after[..digits].parse::<usize>() else {
+                continue;
+            };
+            let before: String = lower[..at]
+                .chars()
+                .rev()
+                .take(24)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect();
+            if n >= 1 && MOVING.iter().any(|m| before.contains(m)) {
+                found = found.max(Some(n));
+            }
+        }
+    }
+    found
 }
 
 /// The board marker a line starts with, if any.
@@ -173,6 +265,8 @@ pub struct TutorReply {
     pub step: Option<usize>,
     /// The tutor closed the lesson.
     pub finished: bool,
+    /// What the tutor noticed about how the student learns, for their notes.
+    pub notes: Vec<String>,
 }
 
 impl TutorReply {
@@ -183,8 +277,39 @@ impl TutorReply {
         let mut outline = Vec::new();
         let mut step = None;
         let mut finished = false;
+        let mut notes = Vec::new();
+        // Lines of a Markdown code block, while inside one.
+        let mut fence: Option<Vec<&str>> = None;
         for line in text.lines() {
+            if line.trim_start().starts_with(CODE_FENCE) {
+                match fence.take() {
+                    Some(code) => {
+                        if let Some(entry) = code_entry(&code.join("\\n")) {
+                            board.push(entry);
+                        }
+                    }
+                    None => fence = Some(Vec::new()),
+                }
+                continue;
+            }
+            if let Some(code) = fence.as_mut() {
+                code.push(line.trim_end());
+                continue;
+            }
             let clean = line.trim().trim_matches('*').trim();
+            if let Some(rest) = clean.strip_prefix(CODE_MARKER) {
+                if let Some(entry) = code_entry(rest) {
+                    board.push(entry);
+                }
+                continue;
+            }
+            if let Some(rest) = clean.strip_prefix(NOTE_MARKER) {
+                let note: String = rest.trim().chars().take(NOTE_CHARS).collect();
+                if !note.is_empty() {
+                    notes.push(note);
+                }
+                continue;
+            }
             if let Some(rest) = clean.strip_prefix(OUTLINE_MARKER) {
                 outline = rest
                     .split('|')
@@ -202,6 +327,21 @@ impl TutorReply {
                     .parse::<usize>()
                     .ok()
                     .filter(|n| *n >= 1);
+                continue;
+            }
+            // Models also write "Etapa: 3" or "ETAPA 3" alone on a line.
+            if let Some(n) = step_alone(clean) {
+                step = Some(n);
+                continue;
+            }
+            // Or put the marker at the end of a sentence.
+            if let Some(at) = line.rfind(STEP_MARKER)
+                && let Some(n) = step_alone(&line[at..])
+            {
+                step = Some(n);
+                if !line[..at].trim().is_empty() {
+                    speech.push(&line[..at]);
+                }
                 continue;
             }
             if clean.trim_end_matches(['.', '!']) == END_MARKER {
@@ -242,12 +382,19 @@ impl TutorReply {
                 speech.push(line);
             }
         }
+        // A block the answer never closed still belongs on the board.
+        if let Some(code) = fence
+            && let Some(entry) = code_entry(&code.join("\\n"))
+        {
+            board.push(entry);
+        }
         Self {
             speech: speech.join("\n").trim().to_owned(),
             board,
             outline,
             step,
             finished,
+            notes,
         }
     }
 }
@@ -335,6 +482,9 @@ pub struct TopicContext {
     pub mistakes: Vec<String>,
     /// English passages are read in an English voice: the tutor marks them.
     pub english_voice: bool,
+    /// The student's preference notes (see [`TutorReply::notes`]); `None`
+    /// when the student turned them off, empty when there are none yet.
+    pub student_notes: Option<String>,
 }
 
 impl TopicContext {
@@ -476,6 +626,10 @@ fn stream_tutor(
 struct SpokenStream {
     pending: String,
     board_line: bool,
+    /// The current line opens or closes a Markdown code block.
+    fence_line: bool,
+    /// Inside a code block: nothing is spoken until it closes.
+    in_fence: bool,
 }
 
 impl SpokenStream {
@@ -483,7 +637,25 @@ impl SpokenStream {
         for ch in delta.chars() {
             if ch == '\n' {
                 self.finish(on_sentence);
-                self.board_line = false;
+                if self.fence_line {
+                    self.in_fence = !self.in_fence;
+                }
+                self.fence_line = false;
+                self.board_line = self.in_fence;
+                continue;
+            }
+            if self.in_fence {
+                // Only a closing fence matters here.
+                self.pending.push(ch);
+                if self.pending.trim_start().starts_with(CODE_FENCE) {
+                    self.fence_line = true;
+                }
+                if !self.pending.trim_start().is_empty()
+                    && !CODE_FENCE.starts_with(self.pending.trim_start())
+                    && !self.fence_line
+                {
+                    self.pending.clear();
+                }
                 continue;
             }
             if self.board_line {
@@ -492,7 +664,11 @@ impl SpokenStream {
             let end_of_sentence = ch.is_whitespace() && self.pending.ends_with(['.', '!', '?']);
             self.pending.push(ch);
             let clean = self.pending.trim_start().trim_start_matches('*');
-            if board_marker(clean).is_some() || progress_line(clean) {
+            if clean.starts_with(CODE_FENCE) {
+                self.fence_line = true;
+                self.board_line = true;
+                self.pending.clear();
+            } else if board_marker(clean).is_some() || progress_line(clean) {
                 self.board_line = true;
                 self.pending.clear();
             } else if end_of_sentence {
@@ -502,7 +678,7 @@ impl SpokenStream {
     }
 
     fn finish(&mut self, on_sentence: &mut impl FnMut(&str)) {
-        if !self.board_line && !self.pending.trim().is_empty() {
+        if !self.board_line && !self.in_fence && !self.pending.trim().is_empty() {
             on_sentence(self.pending.trim());
         }
         self.pending.clear();
@@ -561,8 +737,14 @@ fn tutor_system(topic: &TopicContext, lang: PromptLanguage) -> ChatMessage {
         }
     };
     let mut plan = lesson_plan(topic, lang);
-    if topic.english_voice {
-        plan.push_str(lang.pick(ENGLISH_MARKS, ENGLISH_MARKS_EN));
+    match lang {
+        // Always: without an English voice, the Portuguese voice says the
+        // respelling the tutor gives for each English term.
+        PromptLanguage::Portuguese => plan.push_str(ENGLISH_MARKS),
+        PromptLanguage::English if topic.english_voice => plan.push_str(ENGLISH_MARKS_EN),
+        // Only the English passages of a lesson in another language.
+        _ if topic.english_voice => plan.push_str(ENGLISH_MARKS_OTHER),
+        _ => {}
     }
     // Last, so a name cannot be mistaken for another placeholder.
     values.push(("teacher", &teacher));
@@ -589,11 +771,15 @@ fn lesson_plan(topic: &TopicContext, lang: PromptLanguage) -> String {
         );
         format!("\n- {intro}\n{}", list.join("\n"))
     };
-    let quiz = format!("{quiz}{}", mistakes_block(topic, lang));
+    let quiz = format!(
+        "{quiz}{}{}",
+        mistakes_block(topic, lang),
+        notes_block(topic, lang)
+    );
     if lang.base() == PromptLanguage::English {
         return lesson_plan_en(topic, teaching, &quiz);
     }
-    let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
+    let rules = "- Siga o roteiro em ordem. Quando o aluno mostrar que entendeu a etapa atual, passe para a próxima e escreva, em uma linha separada, ETAPA: seguido do número da nova etapa. Sempre que disser ao aluno que vai passar para outra etapa, escreva essa linha na mesma resposta; sem ela, a barra de progresso do aluno não avança. Depois da última etapa vem a revisão final: faça uma ou duas perguntas que juntem o que foi visto. Quando o aluno responder, corrija se preciso, encerre a aula com um resumo de duas frases, parabenize e escreva FIM em uma linha separada. Se o aluno pedir para parar antes, resuma o que foi visto e escreva FIM. Essas linhas não são lidas em voz alta.";
     if topic.outline.is_empty() {
         return format!(
             "- Na sua primeira resposta, monte o roteiro desta aula: de {} etapas curtas, de até 6 palavras cada, do básico ao que mais cai na prova. Não inclua a revisão final, ela vem sempre no fim. Escreva em uma linha separada ROTEIRO: etapa | etapa | etapa. Comece pela etapa 1.\n{teaching}\n{rules}{quiz}",
@@ -636,7 +822,7 @@ fn lesson_plan(topic: &TopicContext, lang: PromptLanguage) -> String {
 /// [`lesson_plan`] in English. The markers (`ROTEIRO:`, `ETAPA:`, `FIM`)
 /// stay as they are: the app reads them.
 fn lesson_plan_en(topic: &TopicContext, teaching: &str, quiz: &str) -> String {
-    let rules = "- Follow the plan in order. When the student shows they understood the current step, move to the next one and write, on a separate line, ETAPA: followed by the new step's number. After the last step comes the final review: ask one or two questions that bring together what was covered. When the student answers, correct if needed, close the lesson with a two-sentence summary, congratulate them and write FIM on a separate line. If the student asks to stop earlier, sum up what was covered and write FIM. These lines are not read aloud and must be written exactly like this.";
+    let rules = "- Follow the plan in order. When the student shows they understood the current step, move to the next one and write, on a separate line, ETAPA: followed by the new step's number. Whenever you tell the student you are moving to another step, write that line in the same answer; without it, the student's progress bar does not move. After the last step comes the final review: ask one or two questions that bring together what was covered. When the student answers, correct if needed, close the lesson with a two-sentence summary, congratulate them and write FIM on a separate line. If the student asks to stop earlier, sum up what was covered and write FIM. These lines are not read aloud and must be written exactly like this.";
     if topic.outline.is_empty() {
         return format!(
             "- In your first answer, build this lesson's plan: {} short steps of up to 6 words each, from the basics to what exams ask most. Do not include the final review; it always comes at the end. Write on a separate line ROTEIRO: step | step | step. Start with step 1.\n{teaching}\n{rules}{quiz}",
@@ -674,8 +860,13 @@ fn lesson_plan_en(topic: &TopicContext, teaching: &str, quiz: &str) -> String {
 /// In English lessons, every sentence goes to the English voice.
 const ENGLISH_MARKS_EN: &str = "\n- Write each sentence you say between [en] and [/en], one sentence at a time, so it is read with an English voice. Keep the board lines (QUADRO: and the others) outside these marks.";
 
-/// How the tutor marks English for the English voice.
-const ENGLISH_MARKS: &str = "\n- Quando disser algo em inglês (palavras, frases, exemplos, pronúncia), escreva o trecho em inglês entre [en] e [/en], uma frase por vez, para ele ser lido com pronúncia inglesa. Exemplo: A frase [en]I have been working here[/en] usa o present perfect continuous. Fora dessas marcas, fale só português.";
+/// How the tutor marks English: the term as written, and how a Brazilian
+/// says it, so the Portuguese voice reads it naturally (see
+/// `kg_audio::resolve_respellings`).
+const ENGLISH_MARKS: &str = "\n- Quando disser algo em inglês, escreva assim: [en=pronúncia]termo[/en]. O termo fica como se escreve em inglês e é o que aparece na tela. A pronúncia é como um brasileiro fala o termo, escrita com a ortografia e os acentos do português, para a voz em português ler de forma natural; ela não aparece na tela. Exemplos: [en=implementí]implement[/en], [en=istringue]string[/en], [en=uáiol]while[/en], [en=ríturn]return[/en], [en=frêimuork]framework[/en], [en=éssi quiú éli]SQL[/en], [en=ei pi ái]API[/en]. Isso vale para termos técnicos soltos no meio da fala (palavras-chave e nomes de código, nomes de funções, comandos, siglas lidas em inglês, jargão) e para frases e exemplos curtos em inglês. Exemplo: O [en=fór]for[/en] percorre a lista, e o [en=brêik]break[/en] interrompe o laço. Palavras já aportuguesadas (software, mouse, site) ficam sem marca. Fora dessas marcas, fale só português.";
+
+/// The same for a lesson in Japanese, Korean or Chinese: only the English.
+const ENGLISH_MARKS_OTHER: &str = "\n- When you say something in English, write that part between [en] and [/en], one sentence or term at a time, so it is read with an English voice. This covers sentences and examples and also single technical terms inside your speech: code keywords and names ([en]if[/en], [en]while[/en], [en]return[/en]), function names, commands, acronyms read in English ([en]SQL[/en], [en]API[/en]) and jargon. Everything else stays in the lesson's language, outside the marks.";
 
 /// The student's past mistakes, for the tutor to go over in the lesson.
 fn mistakes_block(topic: &TopicContext, lang: PromptLanguage) -> String {
@@ -693,6 +884,44 @@ fn mistakes_block(topic: &TopicContext, lang: PromptLanguage) -> String {
         "The student got these questions wrong in earlier quizzes. Go over each point in the step where it comes up: explain why the right answer is right and why theirs is not, without embarrassing them, and check they understood:",
     );
     format!("\n- {intro}\n{}", list.join("\n"))
+}
+
+/// What the tutor knows of how the student likes to learn, and how it adds
+/// to it with [`NOTE_MARKER`] lines. Nothing when the notes are off.
+fn notes_block(topic: &TopicContext, lang: PromptLanguage) -> String {
+    let Some(notes) = topic.student_notes.as_deref() else {
+        return String::new();
+    };
+    let write = lang.pick(
+        "Quando perceber algo novo e duradouro sobre como este aluno aprende (prefere exemplos práticos, se perde com termos em inglês, gosta de ir devagar, tem dificuldade com um assunto, pediu algo para as próximas aulas), escreva no final da resposta, em uma linha separada, PREFERENCIA: seguido de uma frase curta. Essa linha não é lida nem mostrada; fica guardada para as próximas aulas. No máximo uma por resposta, e só quando for realmente novo.",
+        "When you notice something new and lasting about how this student learns (prefers practical examples, gets lost in jargon, likes to go slowly, struggles with a subject, asked for something in future lessons), write at the end of your answer, on a separate line, PREFERENCIA: followed by one short sentence. That line is neither read nor shown; it is kept for future lessons. At most one per answer, and only when it is really new.",
+    );
+    let notes = notes_excerpt(notes);
+    if notes.trim().is_empty() {
+        return format!("\n- {write}");
+    }
+    let read = lang.pick(
+        "Anotações sobre como este aluno prefere aprender, escritas por ele e por você em aulas anteriores. Adapte a aula a elas; o que o aluno escreveu vale mais:",
+        "Notes on how this student prefers to learn, written by them and by you in earlier lessons. Adapt the lesson to them; what the student wrote comes first:",
+    );
+    format!("\n- {read}\n{notes}\n- {write}")
+}
+
+/// Most of the notes given to the tutor, in characters.
+const NOTES_IN_PROMPT: usize = 3_000;
+
+/// The notes, kept short: the beginning (where the student writes) and the
+/// latest of the tutor's additions at the end.
+fn notes_excerpt(notes: &str) -> String {
+    let chars: Vec<char> = notes.trim().chars().collect();
+    if chars.len() <= NOTES_IN_PROMPT {
+        return chars.into_iter().collect();
+    }
+    let head: String = chars[..NOTES_IN_PROMPT / 3].iter().collect();
+    let tail: String = chars[chars.len() - NOTES_IN_PROMPT * 2 / 3..]
+        .iter()
+        .collect();
+    format!("{head}\n[…]\n{tail}")
 }
 
 /// Past mistakes given to the tutor or the review, at most.
@@ -998,6 +1227,72 @@ mod tests {
         assert_eq!(
             spoken,
             ["A crase é uma união.", "Repare no acento!", "Uma pergunta?"]
+        );
+    }
+
+    #[test]
+    fn step_markers_are_found_in_their_usual_variants() {
+        for text in [
+            "Muito bem.\nEtapa: 3",
+            "Muito bem.\nETAPA 3",
+            "Muito bem.\n**ETAPA: 3.**",
+            "Muito bem. ETAPA: 3",
+        ] {
+            let reply = TutorReply::parse(text);
+            assert_eq!(reply.step, Some(3), "{text}");
+            assert_eq!(reply.speech, "Muito bem.", "{text}");
+        }
+        let speech = TutorReply::parse("Etapa 3 é sobre povos indígenas.");
+        assert_eq!(speech.step, None);
+        assert_eq!(speech.speech, "Etapa 3 é sobre povos indígenas.");
+    }
+
+    #[test]
+    fn a_spoken_move_to_a_step_is_understood() {
+        assert_eq!(
+            spoken_step("Vamos ao conteúdo da etapa 3: povos indígenas."),
+            Some(3)
+        );
+        assert_eq!(spoken_step("Agora, etapa 2."), Some(2));
+        assert_eq!(spoken_step("Moving on to step 4."), Some(4));
+        assert_eq!(spoken_step("Na etapa 1 vimos o racismo."), None);
+        assert_eq!(spoken_step("Sem etapas aqui."), None);
+    }
+
+    #[test]
+    fn preference_notes_are_kept_and_never_spoken() {
+        let text = "Muito bem!\nPREFERENCIA: prefere exemplos do dia a dia.\nQUADRO: Juros simples";
+        let mut stream = SpokenStream::default();
+        let mut spoken = Vec::new();
+        stream.push(text, &mut |s| spoken.push(s.to_owned()));
+        stream.finish(&mut |s| spoken.push(s.to_owned()));
+        assert_eq!(spoken, ["Muito bem!"]);
+        let reply = TutorReply::parse(text);
+        assert_eq!(reply.speech, "Muito bem!");
+        assert_eq!(reply.notes, ["prefere exemplos do dia a dia."]);
+    }
+
+    #[test]
+    fn code_goes_to_the_board_and_is_never_spoken() {
+        let text = "O laço repete. Veja.\nCODIGO: for i in range(3):\\n    print(i).\n```python\nif x == 1:\n    y = 2\n```\nEntendeu?";
+        let mut stream = SpokenStream::default();
+        let mut spoken = Vec::new();
+        let chars: Vec<char> = text.chars().collect();
+        for piece in chars.chunks(5) {
+            let piece: String = piece.iter().collect();
+            stream.push(&piece, &mut |s| spoken.push(s.to_owned()));
+        }
+        stream.finish(&mut |s| spoken.push(s.to_owned()));
+        assert_eq!(spoken, ["O laço repete.", "Veja.", "Entendeu?"]);
+
+        let reply = TutorReply::parse(text);
+        assert_eq!(reply.speech, "O laço repete. Veja.\nEntendeu?");
+        assert_eq!(
+            reply.board,
+            [
+                "CODIGO: for i in range(3):\\n    print(i).",
+                "CODIGO: if x == 1:\\n    y = 2",
+            ]
         );
     }
 

@@ -56,7 +56,7 @@ pub use tasks::{
     HandoutDraft, LessonLength, PlanDraft, PlanPrefs, QuestionDraft, QuizFormat, ReviewFeedback,
     SectionDraft, SubjectDraft, TopicContext, TopicDraft, TutorReply, evaluate_review, find_roles,
     generate_handout, generate_plan, generate_quiz, review_question, review_question_avoiding,
-    start_lesson, start_lesson_stream, tutor_reply, tutor_reply_stream,
+    spoken_step, start_lesson, start_lesson_stream, tutor_reply, tutor_reply_stream,
 };
 pub use throttle::Throttle;
 

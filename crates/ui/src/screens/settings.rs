@@ -46,6 +46,8 @@ pub fn show(app: &mut KnowGiverApp, ui: &mut egui::Ui) {
         ui.add_space(12.0);
         voice_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
+        notes_section(ui, engine, draft, &mut actions);
+        ui.add_space(12.0);
         models_section(ui, engine, draft, &mut actions);
         ui.add_space(12.0);
         section(ui, &t!("settings.study_reminders.title"), |ui| {
@@ -489,12 +491,66 @@ fn ai_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions:
     });
 }
 
+/// The student's preference notes: on or off, and the file to edit.
+fn notes_section(ui: &mut egui::Ui, engine: &Engine, draft: &mut Settings, actions: &mut Actions) {
+    section(ui, &t!("settings.notes.title"), |ui| {
+        ui.checkbox(&mut draft.student_notes, t!("settings.notes.enabled"));
+        widgets::hint(ui, &t!("settings.notes.hint"));
+        ui.add_space(6.0);
+        // (as saved when editing began, as edited); the saved text follows
+        // the tutor's additions while nothing is being edited.
+        let id = egui::Id::new("student_notes_edit");
+        let saved = engine.student_notes();
+        let (mut base, mut text) = ui
+            .ctx()
+            .data(|d| d.get_temp::<(String, String)>(id))
+            .unwrap_or_else(|| (saved.to_owned(), saved.to_owned()));
+        if base == text && base != saved {
+            base = saved.to_owned();
+            text = saved.to_owned();
+        }
+        ui.add(
+            egui::TextEdit::multiline(&mut text)
+                .hint_text(t!("settings.notes.placeholder"))
+                .desired_rows(8)
+                .desired_width(f32::INFINITY),
+        );
+        ui.horizontal(|ui| {
+            let edited = text != base;
+            if ui
+                .add_enabled(edited, egui::Button::new(t!("settings.notes.save")))
+                .clicked()
+            {
+                actions.send(Command::SaveStudentNotes(text.clone()));
+                base = text.clone();
+            }
+            let path = engine.paths().student_notes();
+            if ui
+                .add_enabled(path.exists(), egui::Button::new(t!("settings.notes.open")))
+                .on_disabled_hover_text(t!("settings.notes.open_after_save"))
+                .clicked()
+            {
+                crate::app::open_file(&path);
+            }
+        });
+        ui.ctx().data_mut(|d| d.insert_temp(id, (base, text)));
+    });
+}
+
 pub(crate) fn voice_section(
     ui: &mut egui::Ui,
     engine: &Engine,
     draft: &mut Settings,
     actions: &mut Actions,
 ) {
+    section(ui, &t!("audio_devices.title"), |ui| {
+        crate::audio_devices::pickers(
+            ui,
+            &mut draft.input_device,
+            &mut draft.output_device,
+            actions,
+        );
+    });
     section(ui, &t!("settings.voice.title"), |ui| {
         ui.checkbox(&mut draft.voice_enabled, t!("settings.voice.enabled"));
         ui.checkbox(&mut draft.auto_stop, t!("settings.voice.auto_stop"));

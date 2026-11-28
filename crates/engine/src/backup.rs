@@ -26,7 +26,7 @@ const FORMAT: u32 = 1;
 const MANIFEST: &str = "manifest.json";
 const DATABASE: &str = "know-giver.db";
 /// Study folders under the data folder that travel with the database.
-const STUDY_DIRS: [&str; 2] = ["handouts", "discursive"];
+const STUDY_DIRS: [&str; 3] = ["handouts", "discursive", crate::notes::NOTES_DIR];
 /// Where an import waits until the app reopens its data.
 const STAGING: &str = "import-staging";
 

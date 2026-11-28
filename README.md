@@ -461,6 +461,7 @@ More: [native/CUDA builds](docs/builds.md), [Kokoro evaluation](docs/kokoro-eval
 - Whiteboard pictures are shown from [Wikipedia](https://pt.wikipedia.org); the
   caption names the article, where each picture's author and license are listed.
 - Icons: [Lucide](https://lucide.dev), ISC license (`crates/ui/assets/icons`).
+- Colored emoji: [Twemoji](https://github.com/jdecked/twemoji), graphics under CC-BY 4.0 (`crates/ui/assets/emoji`).
 - Achievement badges (`crates/ui/assets/stickers`): original SVGs made for Know Giver,
   under the project's license.
 - AI provider logos: [Simple Icons](https://simpleicons.org), CC0 (`crates/ui/assets/providers`);

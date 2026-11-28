@@ -16,7 +16,7 @@ pub const SETUP_VERSION: u32 = 1;
 
 /// Date of the terms of use and privacy policy in `docs/legal`. A new date
 /// asks for agreement again.
-pub const TERMS_VERSION: &str = "2026-11-25.1";
+pub const TERMS_VERSION: &str = "2026-11-28.1";
 
 /// Where the student uses the app; the terms follow its law. The app is
 /// offered to the public only in the listed regions; elsewhere ("other"),
@@ -117,6 +117,11 @@ const UNFINISHED_EXTRA: f32 = 1.5;
 const OLD_DEFAULT_TURN_PAUSE: f32 = 1.0;
 /// Bumped when saved turn pauses are moved to a new default.
 const TURN_PAUSE_VERSION: u32 = 1;
+/// Version 1, only in development builds, turned the English voice on for
+/// everyone; its sudden change of voice sounded wrong, and the main voice now
+/// says English terms from the tutor's respelling instead. Version 2 turns
+/// off what version 1 turned on; a voice chosen by the student stays.
+const ENGLISH_VOICE_VERSION: u32 = 2;
 
 use crate::Teacher;
 
@@ -148,6 +153,13 @@ pub struct Settings {
     pub manuscript_ocr: ManuscriptOcr,
     /// Read tutor answers aloud.
     pub voice_enabled: bool,
+    /// Microphone by name; `None` follows the system default.
+    pub input_device: Option<String>,
+    /// Speakers or headphones by name; `None` follows the system default.
+    pub output_device: Option<String>,
+    /// The tutor notes how the student likes to learn and reads those notes
+    /// at the start of each lesson (see `notes`).
+    pub student_notes: bool,
     /// Stop listening when the student goes quiet.
     pub auto_stop: bool,
     /// Quiet, in seconds, after a finished sentence before the student's
@@ -172,6 +184,9 @@ pub struct Settings {
     /// Kokoro voice for English passages in lessons; `None` reads them in
     /// the main voice.
     pub english_voice: Option<EnglishVoice>,
+    /// Last [`ENGLISH_VOICE_VERSION`] applied; 0 in settings saved before it.
+    #[serde(default)]
+    pub english_voice_version: u32,
     pub tts_backend: TtsBackend,
     pub cloud_speech: CloudSpeechConfig,
     pub speech_pitch: f32,
@@ -235,6 +250,9 @@ impl Default for Settings {
             ai: AiConfig::default(),
             manuscript_ocr: ManuscriptOcr::default(),
             voice_enabled: true,
+            input_device: None,
+            output_device: None,
+            student_notes: true,
             auto_stop: true,
             turn_pause: DEFAULT_TURN_PAUSE,
             turn_pause_version: TURN_PAUSE_VERSION,
@@ -244,6 +262,7 @@ impl Default for Settings {
             whisper_model: WhisperModel::default(),
             voice: Voice::default(),
             english_voice: None,
+            english_voice_version: ENGLISH_VOICE_VERSION,
             tts_backend: TtsBackend::default(),
             cloud_speech: CloudSpeechConfig::default(),
             speech_pitch: 0.0,
@@ -348,6 +367,12 @@ impl Settings {
 
     pub(crate) fn normalize(&mut self) {
         self.quiz_size = self.quiz_size.clamp(3, 10);
+        if self.english_voice_version < ENGLISH_VOICE_VERSION {
+            if self.english_voice_version == 1 {
+                self.english_voice = None;
+            }
+            self.english_voice_version = ENGLISH_VOICE_VERSION;
+        }
         if self.turn_pause_version < TURN_PAUSE_VERSION {
             if (self.turn_pause - OLD_DEFAULT_TURN_PAUSE).abs() < 0.05 {
                 self.turn_pause = DEFAULT_TURN_PAUSE;
@@ -419,6 +444,25 @@ mod tests {
             api_key: "env-key".into(),
             ..AiConfig::default()
         }
+    }
+
+    #[test]
+    fn english_voice_turned_on_by_version_one_is_turned_off_once() {
+        let mut turned_on: Settings =
+            serde_json::from_str(r#"{"english_voice":"af_heart","english_voice_version":1}"#)
+                .unwrap();
+        turned_on.normalize();
+        assert_eq!(turned_on.english_voice, None);
+        assert_eq!(turned_on.english_voice_version, ENGLISH_VOICE_VERSION);
+        // Chosen again afterwards, it stays.
+        turned_on.english_voice = Some(EnglishVoice::Heart);
+        turned_on.normalize();
+        assert_eq!(turned_on.english_voice, Some(EnglishVoice::Heart));
+
+        let mut chosen: Settings =
+            serde_json::from_str(r#"{"english_voice":"am_michael"}"#).unwrap();
+        chosen.normalize();
+        assert_eq!(chosen.english_voice, Some(EnglishVoice::Michael));
     }
 
     #[test]

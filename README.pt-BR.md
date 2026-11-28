@@ -472,6 +472,7 @@ Mais: [builds nativos/CUDA](docs/builds.md), [avaliação do Kokoro](docs/kokoro
 - As imagens do quadro vêm da [Wikipédia](https://pt.wikipedia.org); a legenda indica o
   artigo, onde estão o autor e a licença de cada imagem.
 - Ícones: [Lucide](https://lucide.dev), licença ISC (`crates/ui/assets/icons`).
+- Emojis coloridos: [Twemoji](https://github.com/jdecked/twemoji), gráficos sob CC-BY 4.0 (`crates/ui/assets/emoji`).
 - Ícones das conquistas (`crates/ui/assets/stickers`): SVGs originais feitos para o Know
   Giver, sob a licença do projeto.
 - Logos dos fornecedores de IA: [Simple Icons](https://simpleicons.org), CC0

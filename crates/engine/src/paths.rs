@@ -71,6 +71,12 @@ impl AppPaths {
         self.data_dir.join("last-recording.wav")
     }
 
+    /// The latest recording in which speech was heard but no words came
+    /// out, kept to look into why.
+    pub fn unrecognized_recording(&self) -> PathBuf {
+        self.data_dir.join("last-unrecognized.wav")
+    }
+
     /// Log of the current run, replaced at each start.
     pub fn log_file(&self) -> PathBuf {
         self.data_dir.join("know-giver.log")
