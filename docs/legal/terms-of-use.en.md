@@ -1,6 +1,6 @@
 # Know Giver Terms of Use
 
-Version of November 25, 2026 (2026-11-25.1). This international version applies in every
+Version of November 28, 2026 (2026-11-28.1). This international version applies in every
 region where the app is offered to the public; section 17 adds the rules of each region.
 
 ## 1. Who we are

@@ -60,12 +60,46 @@ pub fn language_runs(text: &str) -> Vec<(SpeechLang, String)> {
         .collect()
 }
 
+/// Resolves `[en=respelling]word[/en]`: the tutor gives an English term
+/// with how the main voice should say it, spelled the Portuguese way
+/// ("implementí"). With `say` the respelling replaces the term, to be read
+/// in the main voice; otherwise the term stays as `[en]word[/en]` (shown on
+/// screen, or read by an English voice).
+pub fn resolve_respellings(text: &str, say: bool) -> String {
+    const RESPELLED: &str = "[en=";
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.to_ascii_lowercase().find(RESPELLED) {
+        let after = &rest[at + RESPELLED.len()..];
+        let Some(end) = after.find(']') else {
+            break;
+        };
+        let respelling = after[..end].trim();
+        let body = &after[end + 1..];
+        let (word, tail) = match body.to_ascii_lowercase().find(CLOSE) {
+            Some(close) => (&body[..close], &body[close + CLOSE.len()..]),
+            None => (body, ""),
+        };
+        out.push_str(&rest[..at]);
+        if say && !respelling.is_empty() {
+            out.push_str(respelling);
+        } else {
+            out.push_str(OPEN);
+            out.push_str(word);
+            out.push_str(CLOSE);
+        }
+        rest = tail;
+    }
+    out.push_str(rest);
+    out
+}
+
 /// The text without language marks, for captions and the transcript.
 pub fn strip_language_marks(text: &str) -> String {
     if !text.contains('[') {
         return text.to_owned();
     }
-    language_runs(text)
+    language_runs(&resolve_respellings(text, false))
         .into_iter()
         .map(|(_, run)| run)
         .collect::<Vec<_>>()
@@ -78,7 +112,9 @@ pub fn strip_language_marks(text: &str) -> String {
 /// when `english` is true; otherwise everything is read by the main voice.
 pub fn speech_pieces(text: &str, english: bool) -> Vec<(SpeechLang, String)> {
     let mut pieces = Vec::new();
-    for (lang, run) in language_runs(text) {
+    // Without an English voice, respelled terms are said by the main voice.
+    let text = resolve_respellings(text, !english);
+    for (lang, run) in language_runs(&text) {
         if lang == SpeechLang::English && english {
             let clean: String = run.chars().filter(|c| !MARKUP.contains(c)).collect();
             let clean = clean.trim();
@@ -104,6 +140,26 @@ mod tests {
 
     fn runs(text: &str) -> Vec<(SpeechLang, String)> {
         language_runs(text)
+    }
+
+    #[test]
+    fn respelled_terms_are_said_by_the_main_voice_but_shown_as_written() {
+        let text = "Use [en=implementí]implement[/en] com uma [EN=istringue]string[/en].";
+        assert_eq!(strip_language_marks(text), "Use implement com uma string.");
+        assert_eq!(
+            speech_pieces(text, false),
+            [(Main, "Use implementí com uma istringue.".to_owned())]
+        );
+        // With an English voice, it reads the term itself.
+        assert_eq!(
+            speech_pieces(text, true),
+            [
+                (Main, "Use".to_owned()),
+                (English, "implement".to_owned()),
+                (Main, "com uma".to_owned()),
+                (English, "string".to_owned()),
+            ]
+        );
     }
 
     #[test]

@@ -57,6 +57,7 @@ pub(crate) struct SttJob {
     models: ModelStore,
     whisper: WhisperModel,
     whisper_installed: bool,
+    parakeet_installed: bool,
 }
 
 impl SttJob {
@@ -89,6 +90,7 @@ impl SttJob {
             models: models.clone(),
             whisper,
             whisper_installed,
+            parakeet_installed: parakeet,
         })
     }
 
@@ -105,7 +107,45 @@ impl SttJob {
     }
 
     /// Final transcription of a turn. `context` is what the tutor said last.
+    /// When the recognizer finds no words in audio the recorder took for
+    /// speech, another installed recognizer reads it once more: Nemotron
+    /// sometimes returns nothing for clear speech.
     pub(crate) fn transcribe(
+        &self,
+        clip: &AudioClip,
+        context: &str,
+    ) -> Result<String, EngineError> {
+        let text = self.transcribe_with_chosen(clip, context)?;
+        if !text.trim().is_empty() {
+            return Ok(text);
+        }
+        match self.second_try(clip, context) {
+            Some(checked) => {
+                tracing::info!(engine = ?self.engine, text = %checked, "empty transcript read again");
+                Ok(checked)
+            }
+            None => Ok(text),
+        }
+    }
+
+    /// Another installed recognizer over a clip the chosen one found empty.
+    fn second_try(&self, clip: &AudioClip, context: &str) -> Option<String> {
+        if self.engine != SttEngine::Whisper
+            && let Some(text) = self.retranscribe(clip, context)
+        {
+            return Some(text);
+        }
+        if self.engine != SttEngine::Parakeet && self.parakeet_installed {
+            match self.parakeet(clip) {
+                Ok(text) if !text.trim().is_empty() => return Some(text),
+                Ok(_) => {}
+                Err(err) => tracing::warn!(%err, "parakeet second try failed"),
+            }
+        }
+        None
+    }
+
+    fn transcribe_with_chosen(
         &self,
         clip: &AudioClip,
         context: &str,
