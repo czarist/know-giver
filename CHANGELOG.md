@@ -6,7 +6,7 @@ All notable changes to Know Giver. Format based on
 
 ## [Unreleased]
 
-## [0.47.3] - 2026-11-28
+## [0.47.4] - 2026-11-28
 
 ### Added
 - Microphone and sound can be changed during a lesson (headphones button) and in
@@ -41,6 +41,10 @@ All notable changes to Know Giver. Format based on
   `last-unrecognized.wav`.
 - In Japanese, Korean and Chinese lessons with the English voice on, the tutor was asked
   to mark every sentence as English.
+- The lesson froze with a long chat: every message was searched for emoji on every frame.
+  Messages without emoji are drawn as before, and the search only tries the emoji that
+  start with each character.
+- Opening the emoji picker closed the app.
 
 ## [0.46.0] - 2026-11-27
 
