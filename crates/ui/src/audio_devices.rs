@@ -48,6 +48,102 @@ pub fn pickers(
             .unwrap_or(false)
     });
     let found = lists(ui.ctx(), refresh);
+    pick_rows(ui, input, output, &found, actions);
+    footer(ui);
+}
+
+/// The same pickers as plain lists, for inside a popup: a drop-down there
+/// would open a popup in a popup, which egui does not show.
+pub fn lists_inline(
+    ui: &mut egui::Ui,
+    input: &mut Option<String>,
+    output: &mut Option<String>,
+    actions: &mut Actions,
+) {
+    let refresh = ui.ctx().data(|d| {
+        d.get_temp::<bool>(egui::Id::new("audio_device_refresh"))
+            .unwrap_or(false)
+    });
+    let found = lists(ui.ctx(), refresh);
+    let list = |ui: &mut egui::Ui,
+                salt: &str,
+                title: String,
+                current: &Option<String>,
+                devices: &[String]| {
+        ui.label(RichText::new(title).strong());
+        let mut picked = current.clone();
+        egui::ScrollArea::vertical()
+            .id_salt(salt)
+            .max_height(150.0)
+            .show(ui, |ui| {
+                for (choice, label) in choices(current, devices) {
+                    ui.selectable_value(&mut picked, choice, label);
+                }
+            });
+        ui.add_space(6.0);
+        (picked != *current).then_some(picked)
+    };
+    if let Some(pick) = list(
+        ui,
+        "lesson_input_devices",
+        t!("audio_devices.microphone").into_owned(),
+        input,
+        &found.inputs,
+    ) {
+        *input = pick.clone();
+        actions.send(Command::SetInputDevice(pick));
+    }
+    if let Some(pick) = list(
+        ui,
+        "lesson_output_devices",
+        t!("audio_devices.output").into_owned(),
+        output,
+        &found.outputs,
+    ) {
+        *output = pick.clone();
+        actions.send(Command::SetOutputDevice(pick));
+    }
+    footer(ui);
+}
+
+/// The choices of one list: the system default, a chosen device that is not
+/// connected now, and the connected ones.
+fn choices(current: &Option<String>, devices: &[String]) -> Vec<(Option<String>, String)> {
+    let mut out = vec![(None, t!("audio_devices.system_default").into_owned())];
+    if let Some(name) = current
+        && !devices.contains(name)
+    {
+        out.push((
+            Some(name.clone()),
+            t!("audio_devices.not_connected", name = name).into_owned(),
+        ));
+    }
+    out.extend(
+        devices
+            .iter()
+            .map(|name| (Some(name.clone()), name.clone())),
+    );
+    out
+}
+
+fn footer(ui: &mut egui::Ui) {
+    let clicked = ui.button(t!("audio_devices.refresh")).clicked();
+    ui.ctx()
+        .data_mut(|d| d.insert_temp(egui::Id::new("audio_device_refresh"), clicked));
+    ui.label(
+        RichText::new(t!("audio_devices.hint"))
+            .small()
+            .color(theme::palette(ui.ctx()).muted),
+    );
+}
+
+fn pick_rows(
+    ui: &mut egui::Ui,
+    input: &mut Option<String>,
+    output: &mut Option<String>,
+    found: &Lists,
+    actions: &mut Actions,
+) {
     egui::Grid::new(ui.id().with("audio_devices"))
         .num_columns(2)
         .spacing([12.0, 8.0])
@@ -65,41 +161,28 @@ pub fn pickers(
             }
             ui.end_row();
         });
-    let clicked = ui.button(t!("audio_devices.refresh")).clicked();
-    ui.ctx()
-        .data_mut(|d| d.insert_temp(egui::Id::new("audio_device_refresh"), clicked));
-    ui.label(
-        RichText::new(t!("audio_devices.hint"))
-            .small()
-            .color(theme::palette(ui.ctx()).muted),
-    );
 }
 
-/// One device list; returns the new choice when it changed.
+/// One device drop-down; returns the new choice when it changed.
 fn picker(
     ui: &mut egui::Ui,
     salt: &str,
     current: &Option<String>,
     devices: &[String],
 ) -> Option<Option<String>> {
-    let label = |name: &Option<String>| match name {
-        None => t!("audio_devices.system_default").to_string(),
-        Some(name) if devices.contains(name) => name.clone(),
-        Some(name) => t!("audio_devices.not_connected", name = name).to_string(),
-    };
+    let choices = choices(current, devices);
+    let selected = choices
+        .iter()
+        .find(|(choice, _)| choice == current)
+        .map(|(_, label)| label.clone())
+        .unwrap_or_default();
     let mut picked = current.clone();
     egui::ComboBox::from_id_salt(salt)
-        .selected_text(label(current))
+        .selected_text(selected)
         .width(280.0)
         .show_ui(ui, |ui| {
-            ui.selectable_value(&mut picked, None, label(&None));
-            if let Some(name) = current
-                && !devices.contains(name)
-            {
-                ui.selectable_value(&mut picked, Some(name.clone()), label(current));
-            }
-            for name in devices {
-                ui.selectable_value(&mut picked, Some(name.clone()), name.as_str());
+            for (choice, label) in choices {
+                ui.selectable_value(&mut picked, choice, label);
             }
         });
     (picked != *current).then_some(picked)
